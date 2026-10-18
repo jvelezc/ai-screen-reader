@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Preference workflow fixture</title>
+<main>
+  <h1>Preference workflow</h1>
+  <button id="review" type="button">Review preferences</button>
+  <dialog id="reviewDialog" aria-labelledby="dialogTitle">
+    <h2 id="dialogTitle">Review preferences</h2>
+    <p>These preferences are synthetic test data.</p>
+    <button id="closeReview" type="button" autofocus>Close review</button>
+    <button type="button">Keep reviewing</button>
+  </dialog>
+  <form id="preferences" novalidate>
+    <p><label><input id="terms" type="checkbox" required aria-describedby="termsRequirement">Accept terms</label></p>
+    <p id="termsRequirement">Required to save preferences.</p>
+    <fieldset><legend>Delivery speed</legend>
+      <label><input name="speed" type="radio" value="standard" checked>Standard</label>
+      <label><input name="speed" type="radio" value="express">Express</label>
+    </fieldset>
+    <p id="regionLabel">Delivery region</p>
+    <div id="region" role="combobox" tabindex="0" aria-labelledby="regionLabel"
+         aria-controls="regions" aria-expanded="false" aria-haspopup="listbox" aria-required="true">Choose region</div>
+    <ul id="regions" role="listbox" aria-label="Delivery regions" hidden>
+      <li id="north" role="option" aria-selected="false">North</li>
+      <li id="south" role="option" aria-selected="false">South</li>
+    </ul>
+    <p id="regionStatus" role="status">No region selected</p>
+    <button type="submit">Save preferences</button>
+    <p id="validation" role="alert" tabindex="-1" hidden></p>
+  </form>
+  <section id="saved" hidden><h2 id="savedTitle" tabindex="-1">Preferences saved</h2></section>
+  <p id="paymentReason">Payment cannot be reached through this disabled control.</p>
+  <button type="button" aria-disabled="true" aria-describedby="paymentReason">Continue to payment</button>
+</main>
+<script>
+const review = document.querySelector('#review');
+const dialog = document.querySelector('#reviewDialog');
+review.addEventListener('click', () => dialog.showModal());
+document.querySelector('#closeReview').addEventListener('click', () => dialog.close());
+dialog.addEventListener('close', () => review.focus());
+dialog.addEventListener('keydown', event => {
+  if (event.key !== 'Tab') return;
+  const buttons = [...dialog.querySelectorAll('button')];
+  const first = buttons[0], last = buttons[buttons.length - 1];
+  if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault(); first.focus();
+  } else if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault(); last.focus();
+  }
+});
+const terms = document.querySelector('#terms');
+const combo = document.querySelector('#region');
+const list = document.querySelector('#regions');
+const options = [...list.children];
+let active = -1;
+let chosen = -1;
+function closeOptions() {
+  list.hidden = true;
+  combo.setAttribute('aria-expanded', 'false');
+  combo.removeAttribute('aria-activedescendant');
+}
+combo.addEventListener('keydown', event => {
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    event.preventDefault();
+    list.hidden = false;
+    combo.setAttribute('aria-expanded', 'true');
+    active = Math.max(0, Math.min(options.length - 1, active + (event.key === 'ArrowDown' ? 1 : -1)));
+    combo.setAttribute('aria-activedescendant', options[active].id);
+    options.forEach((option, index) => option.setAttribute('aria-selected', String(index === active)));
+  } else if (event.key === 'Enter' && !list.hidden) {
+    event.preventDefault();
+    chosen = active;
+    options.forEach((option, index) => option.setAttribute('aria-selected', String(index === chosen)));
+    combo.textContent = options[chosen].textContent;
+    document.querySelector('#regionStatus').textContent = 'Delivery region: ' + options[chosen].textContent;
+    closeOptions();
+  } else if (event.key === 'Escape') {
+    event.preventDefault();
+    closeOptions();
+  }
+});
+combo.addEventListener('blur', closeOptions);
+document.querySelector('#preferences').addEventListener('submit', event => {
+  event.preventDefault();
+  const validation = document.querySelector('#validation');
+  if (!terms.checked || chosen < 0) {
+    const message = !terms.checked ? 'Accept terms before saving.' : 'Choose a delivery region before saving.';
+    terms.setAttribute('aria-invalid', String(!terms.checked));
+    validation.textContent = message;
+    validation.setAttribute('aria-label', message);
+    validation.hidden = false;
+    validation.focus();
+    return;
+  }
+  terms.removeAttribute('aria-invalid');
+  validation.hidden = true;
+  setTimeout(() => {
+    document.querySelector('#saved').hidden = false;
+    document.querySelector('#savedTitle').focus();
+  }, 80);
+});
+</script>
+</html>

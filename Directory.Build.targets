@@ -1,0 +1,20 @@
+<Project>
+  <Target Name="ValidateArchitecture" BeforeTargets="CoreCompile">
+    <ItemGroup>
+      <_ForbiddenProjectReference Include="@(ProjectReference)"
+          Condition="'$(MSBuildProjectName)' == 'HeadlessScreenReader.Domain'" />
+      <_ForbiddenProjectReference Include="@(ProjectReference)"
+          Condition="('$(MSBuildProjectName)' == 'HeadlessScreenReader.ScreenReader' Or '$(MSBuildProjectName)' == 'HeadlessScreenReader.Browser.Playwright') And '%(ProjectReference.Filename)' != 'HeadlessScreenReader.Domain'" />
+      <_ForbiddenPackageReference Include="@(PackageReference)"
+          Condition="'$(MSBuildProjectName)' == 'HeadlessScreenReader.Domain' Or '$(MSBuildProjectName)' == 'HeadlessScreenReader.ScreenReader'" />
+      <_ForbiddenFrameworkReference Include="@(FrameworkReference)"
+          Condition="('$(MSBuildProjectName)' == 'HeadlessScreenReader.Domain' Or '$(MSBuildProjectName)' == 'HeadlessScreenReader.ScreenReader') And '%(FrameworkReference.Identity)' != 'Microsoft.NETCore.App'" />
+    </ItemGroup>
+    <Error Condition="'@(_ForbiddenProjectReference)' != ''"
+        Text="Architecture violation: $(MSBuildProjectName) cannot reference @(_ForbiddenProjectReference)." />
+    <Error Condition="'@(_ForbiddenPackageReference)' != ''"
+        Text="Architecture violation: $(MSBuildProjectName) must not depend on external packages: @(_ForbiddenPackageReference)." />
+    <Error Condition="'@(_ForbiddenFrameworkReference)' != ''"
+        Text="Architecture violation: $(MSBuildProjectName) must not depend on hosting frameworks: @(_ForbiddenFrameworkReference)." />
+  </Target>
+</Project>

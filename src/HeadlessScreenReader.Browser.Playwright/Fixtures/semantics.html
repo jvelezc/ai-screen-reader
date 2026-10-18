@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Semantic source fixture</title>
+<main>
+  <h1>Semantic sources</h1>
+  <label><input id="required" type="checkbox" required>Required choice</label>
+  <label><input type="checkbox">Optional choice</label>
+  <span role="checkbox" tabindex="0" aria-checked="false" aria-required="true">Declared choice</span>
+  <button id="toggle">Toggle requirement</button>
+  <div role="listbox" aria-label="Loaded choices">
+    <div role="option" aria-posinset="5" aria-setsize="20" tabindex="0">Fifth</div>
+    <div role="option" aria-posinset="6" aria-setsize="20">Sixth</div>
+  </div>
+  <div role="listbox" aria-label="Unknown total">
+    <div role="option" aria-posinset="8" aria-setsize="-1">Eighth</div>
+  </div>
+  <div role="listbox" aria-label="Invalid declarations">
+    <div role="option" aria-posinset="10" aria-setsize="2">Inconsistent</div>
+    <div role="option" aria-posinset="not-a-number" aria-setsize="10">Invalid position</div>
+    <div role="option" aria-posinset="0" aria-setsize="0">Zero values</div>
+    <div role="option" aria-posinset="1" aria-setsize="-2">Invalid negative size</div>
+  </div>
+  <div role="listbox" aria-label="Partial declarations">
+    <div role="option" aria-posinset="9">Position only</div>
+    <div role="option" aria-setsize="30">Size only</div>
+  </div>
+  <div role="listbox" aria-label="Undeclared choices"><div role="option">No declaration</div></div>
+  <nav aria-label="Last navigation"><a href="#required">Return to first choice</a></nav>
+</main>
+<script>
+document.querySelector('#toggle').addEventListener('click', () => {
+  const choice = document.querySelector('#required');
+  choice.required = !choice.required;
+});
+</script>
+</html>

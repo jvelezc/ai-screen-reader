@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Frame reading fixture</title>
+<main>
+  <h1>Frame fixture</h1>
+  <button>Before frame</button>
+  <div role="group" aria-label="Outer choices">
+    <label><input type="radio" name="outer" checked>Outer choice</label>
+    <iframe id="child" title="Preferences frame"></iframe>
+  </div>
+  <h2>After child</h2>
+  <button id="replace">Replace child</button>
+  <button id="remove">Remove child</button>
+  <iframe title="Hidden frame" hidden srcdoc="<h2>hidden-frame-do-not-read</h2>"></iframe>
+  <iframe title="Unsupported data frame" src="data:text/html,<h2>unsupported-frame-do-not-read</h2>"></iframe>
+</main>
+<script>
+const encodeFrame = html => html.replaceAll('&', '&amp;').replaceAll('"', '&quot;');
+const nested = '<title>Nested document</title><h3>Nested heading</h3><button>Nested action</button>';
+document.querySelector('#child').srcdoc = `<title>Child document</title><main>
+  <h2>Child heading</h2>
+  <button onclick="document.getElementById('status').textContent='Child complete'">Child action</button>
+  <div role="status" id="status">Child ready</div>
+  <label>Child secret<input type="password" value="frame-secret-do-not-read"></label>
+  <label><input type="radio" name="child" checked>Ungrouped child choice</label>
+  <div role="group" aria-label="Child choices">
+    <label><input type="radio" name="grouped" checked>Child first</label>
+    <label><input type="radio" name="grouped">Child second</label>
+  </div>
+  <div role="combobox" tabindex="0" aria-label="Child region" aria-expanded="true" aria-activedescendant="north"
+    onkeydown="if(event.key==='ArrowDown')this.setAttribute('aria-activedescendant','south')">
+    <div role="listbox" aria-label="Child regions"><div role="option" id="north" aria-selected="true">Child North</div><div role="option" id="south">Child South</div></div>
+  </div>
+  <iframe title="Nested frame" srcdoc="${encodeFrame(nested)}"></iframe>
+</main>`;
+document.querySelector('#replace').addEventListener('click', () => {
+  document.querySelector('#child').srcdoc = '<title>Replacement document</title><h2>Replacement heading</h2><button>Replacement action</button>';
+});
+document.querySelector('#remove').addEventListener('click', () => document.querySelector('#child').remove());
+</script>
+</html>

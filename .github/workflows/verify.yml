@@ -1,0 +1,63 @@
+name: Verify foundation
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - name: Restore locked dependencies
+        run: dotnet restore HeadlessScreenReader.slnx --locked-mode
+      - name: Build
+        run: dotnet build HeadlessScreenReader.slnx -c Release --no-restore
+      - name: Check formatting
+        run: dotnet format HeadlessScreenReader.slnx --verify-no-changes --no-restore
+      - name: Install Chromium
+        run: pwsh -NoProfile -File src/HeadlessScreenReader.Cli/bin/Release/net10.0/playwright.ps1 install chromium --with-deps
+      - name: Test
+        run: dotnet test HeadlessScreenReader.slnx -c Release --no-build --logger trx --results-directory artifacts/test-results
+      - name: Exercise CLI
+        run: |
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          dotnet run --project src/HeadlessScreenReader.Cli -c Release --no-build | Tee-Object -FilePath artifacts/demo.jsonl
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run --project src/HeadlessScreenReader.Cli -c Release --no-build -- --widgets | Tee-Object -FilePath artifacts/widgets.jsonl
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run --project src/HeadlessScreenReader.Cli -c Release --no-build -- --text | Tee-Object -FilePath artifacts/text.jsonl
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run --project src/HeadlessScreenReader.Cli -c Release --no-build -- --frames | Tee-Object -FilePath artifacts/frames.jsonl
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Check manual reference remains pending
+        run: |
+          dotnet run --project src/HeadlessScreenReader.Cli -c Release --no-build -- --reference-template | Set-Content -Encoding utf8 artifacts/reference-template.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run --project src/HeadlessScreenReader.Cli -c Release --no-build -- --assess-reference artifacts/reference-template.json | Tee-Object -FilePath artifacts/reference-assessment.json
+          if ($LASTEXITCODE -ne 3) { throw "An unrun reference worksheet must return exit code 3." }
+          exit 0
+      - name: Retain synthetic test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: foundation-${{ matrix.os }}
+          path: artifacts/
+          retention-days: 7
+          if-no-files-found: warn

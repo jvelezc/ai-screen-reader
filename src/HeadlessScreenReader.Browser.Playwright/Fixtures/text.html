@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Exposed text navigation fixture</title>
+<main>
+  <h1>Text reading</h1>
+  <pre id="reading">  Café é 👩‍💻 can't
+
+Last line  </pre>
+  <p>Adjacent <strong>bold</strong> text.</p>
+  <div aria-hidden="true">hidden-text-do-not-read</div>
+  <label>Private note <input value="text-fixture-value-do-not-read"></label>
+  <div contenteditable="true" aria-label="Editable area">editable-text-do-not-read</div>
+  <button id="change">Change passage</button>
+</main>
+<script>
+document.querySelector('#change').addEventListener('click', () => {
+  document.querySelector('#reading').firstChild.textContent = 'Updated passage';
+});
+</script>
+</html>

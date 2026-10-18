@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Live observation fixture</title>
+<main>
+  <h1>Live observations</h1>
+  <button id="update">Update progress</button>
+  <button id="busy">Start busy update</button>
+  <button id="settle">Finish busy update</button>
+  <button id="nestedUpdate">Update nested status</button>
+  <button id="timedUpdate">Start timed update</button>
+  <section id="progress" role="status" aria-label="Progress updates">
+    <p id="progressText">Working</p>
+    <input aria-label="Synthetic editor" value="live-input-canary-do-not-log">
+    <div contenteditable="true" aria-label="Synthetic notes">live-editable-canary-do-not-log</div>
+    <p id="nested" role="status" aria-label="Nested updates">Nested ready</p>
+  </section>
+</main>
+<script>
+const progress = document.querySelector('#progress');
+const text = document.querySelector('#progressText');
+document.querySelector('#update').addEventListener('click', () => { text.textContent = 'Complete'; });
+document.querySelector('#busy').addEventListener('click', () => {
+  progress.setAttribute('aria-busy', 'true');
+  text.textContent = 'Partial update';
+});
+document.querySelector('#settle').addEventListener('click', () => {
+  text.textContent = 'Finished update';
+  progress.setAttribute('aria-busy', 'false');
+});
+document.querySelector('#nestedUpdate').addEventListener('click', () => {
+  document.querySelector('#nested').textContent = 'Nested complete';
+});
+document.querySelector('#timedUpdate').addEventListener('click', () => {
+  setTimeout(() => { text.textContent = 'Timed complete'; }, 150);
+});
+</script>
+</html>

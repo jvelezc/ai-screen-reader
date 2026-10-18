@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>HeadlessScreenReader foundation fixture</title></head>
+<body>
+  <h1>Screen reader fixture</h1>
+  <nav aria-label="Primary"><a href="#details">Read details</a></nav>
+  <main>
+    <h2>Controls</h2>
+    <button id="open-details">Open details</button>
+    <button id="unnamed"></button>
+    <button disabled>Unavailable</button>
+    <label>Account <input type="text" value="synthetic-account-value"></label>
+    <label>Secret <input type="password" value="fixture-secret-do-not-log"></label>
+    <label><input type="checkbox">Enable summaries</label>
+    <section id="details" hidden>
+      <h2 id="details-heading" tabindex="-1">Details opened</h2>
+      <p>The keyboard activation reached this synthetic destination.</p>
+    </section>
+    <p id="status" role="status">Ready</p>
+    <p aria-hidden="true">Hidden diagnostic text</p>
+  </main>
+  <script>
+    document.getElementById('open-details').addEventListener('click', () => {
+      document.getElementById('details').hidden = false;
+      document.getElementById('details-heading').focus();
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'b') document.getElementById('status').textContent = 'Browser received b';
+    });
+  </script>
+</body>
+</html>
