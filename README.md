@@ -65,6 +65,8 @@ This is a solo project: commit directly to `main`. Feature branches and pull req
 
 Each job restores locked packages using the pinned SDK, builds with warnings as errors and architecture checks, verifies formatting, installs Chromium, runs the full test suite (including real Chromium tests), and exercises the CLI demos. A run fails if no test results are produced or any discovered test does not execute and pass. Test results and synthetic demo output are retained for seven days. Fix a failed CI run before starting the next increment. Local success and a successful remote CI run are separate checks.
 
+The Linux job uses Ubuntu 24.04 and loads an AppArmor profile granting user namespaces only to that runner's installed Chromium headless shell, following [Chromium's per-binary guidance](https://chromium.googlesource.com/chromium/src/+/main/docs/security/apparmor-userns-restrictions.md). Chromium sandboxing stays enabled; no machine-wide user-namespace setting is changed. This CI setup does not establish the later hostile-site isolation milestone.
+
 ## Dependency boundaries
 
 | Project | Responsibility | Project dependencies |
