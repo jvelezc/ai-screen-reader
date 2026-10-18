@@ -1,14 +1,16 @@
-name: Verify foundation
+name: CI
 
 on:
   push:
-  pull_request:
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
   verify:
+    name: Build and test (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
@@ -34,7 +36,19 @@ jobs:
       - name: Install Chromium
         run: pwsh -NoProfile -File src/HeadlessScreenReader.Cli/bin/Release/net10.0/playwright.ps1 install chromium --with-deps
       - name: Test
-        run: dotnet test HeadlessScreenReader.slnx -c Release --no-build --logger trx --results-directory artifacts/test-results
+        run: |
+          dotnet test HeadlessScreenReader.slnx -c Release --no-build --no-restore --logger trx --results-directory artifacts/test-results
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $reports = @(Get-ChildItem artifacts/test-results -Filter *.trx)
+          if ($reports.Count -eq 0) { throw "No test result files were produced." }
+          foreach ($report in $reports) {
+            [xml]$trx = Get-Content -LiteralPath $report.FullName -Raw
+            $counts = $trx.TestRun.ResultSummary.Counters
+            if ([int]$counts.total -le 0 -or [int]$counts.executed -ne [int]$counts.total -or [int]$counts.passed -ne [int]$counts.total) {
+              throw "Expected every discovered test to execute and pass: $($report.Name)."
+            }
+            "${{ matrix.os }}: Discovered $($counts.total), passed $($counts.passed), failed $($counts.failed)." >> $env:GITHUB_STEP_SUMMARY
+          }
       - name: Exercise CLI
         run: |
           New-Item -ItemType Directory -Force -Path artifacts | Out-Null

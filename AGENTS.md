@@ -2,6 +2,12 @@
 
 Work inside this checkout and preserve the existing architecture plan under outputs/.
 
+## Git workflow
+
+- This is a solo project. Commit directly to main; feature branches and pull requests are not required.
+- Every push to main runs GitHub Actions CI on Windows and Linux. Fix a failed run before starting the next increment.
+- Preserve published history; do not force-push or rewrite commits without explicit approval.
+
 ## Architecture
 
 - Domain contains platform-independent observations, commands, outcomes, and contracts. It must not reference Playwright, ASP.NET Core, database/storage SDKs, or a DI container.

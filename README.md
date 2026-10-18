@@ -57,7 +57,13 @@ Browser tests require the Chromium installation above. To run just the browser-i
 dotnet test tests/HeadlessScreenReader.Tests -c Release --filter "Category!=Browser"
 ```
 
-The project uses xUnit 2 and the VSTest command mode, not native MTP mode. The GitHub Actions workflow prepares Windows and Linux runs when this repository is hosted; local success does not establish that those remote jobs have run.
+The project uses xUnit 2 and the VSTest command mode, not native MTP mode.
+
+## Git workflow and CI
+
+This is a solo project: commit directly to `main`. Feature branches and pull requests are optional. Every push to `main` runs the [CI workflow](.github/workflows/verify.yml) on Windows and Ubuntu; it can also be started manually from GitHub Actions.
+
+Each job restores locked packages using the pinned SDK, builds with warnings as errors and architecture checks, verifies formatting, installs Chromium, runs the full test suite (including real Chromium tests), and exercises the CLI demos. A run fails if no test results are produced or any discovered test does not execute and pass. Test results and synthetic demo output are retained for seven days. Fix a failed CI run before starting the next increment. Local success and a successful remote CI run are separate checks.
 
 ## Dependency boundaries
 
