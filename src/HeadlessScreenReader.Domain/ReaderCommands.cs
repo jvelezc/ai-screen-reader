@@ -35,7 +35,13 @@ public enum ReaderCommand
     NextFrame,
     PreviousFrame,
     NextRange,
-    PreviousRange
+    PreviousRange,
+    NextTree,
+    PreviousTree,
+    NextTreeItem,
+    PreviousTreeItem,
+    NextTabItem,
+    PreviousTabItem
 }
 
 public enum ReaderOutcome

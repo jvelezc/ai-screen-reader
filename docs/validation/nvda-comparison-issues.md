@@ -16,7 +16,9 @@ The v6 increment: [exposed text navigation](reader-text-v6.md) adds source-tagge
 
 Earlier profile v7: [bounded child frames](reader-frames-v7.md) adds nested trusted document observations, frame/generation identity, actual child focus and explicit coverage exclusions. Windows/Linux each pass 190 tests, including 36 Chromium cases. No fresh v7 NVDA comparison was performed. The hosted platform and full reference acceptance remain open.
 
-Latest profile v8: [range widgets](reader-ranges-v8.md) add source-tagged values/bounds/value text for noneditable slider, meter and progressbar roles, range navigation, numeric predicates and range-bearing events. The full suite contains 231 cases. No fresh v8 NVDA comparison is claimed; current remote results are recorded in [GitHub Actions](https://github.com/jvelezc/ai-screen-reader/actions/workflows/verify.yml). Hosted and capture-privacy gates remain open.
+Earlier profile v8: [range widgets](reader-ranges-v8.md) add source-tagged values/bounds/value text for noneditable slider, meter and progressbar roles, range navigation, numeric predicates and range-bearing events. The full suite contains 231 cases. No fresh v8 NVDA comparison is claimed; current remote results are recorded in [GitHub Actions](https://github.com/jvelezc/ai-screen-reader/actions/workflows/verify.yml). Hosted and capture-privacy gates remain open.
+
+Latest profile v9: [trees and tabs](reader-composites-v9.md) add exposed hierarchy and scoped peer context, browse-only semantic navigation, actual focused activation, and separate expansion/focus/selection observations. The full suite contains 277 cases. No fresh v9 NVDA comparison is claimed; current Windows/Ubuntu remote results remain in [GitHub Actions](https://github.com/jvelezc/ai-screen-reader/actions/workflows/verify.yml). Hosted and capture-privacy gates remain open.
 
 ## Findings
 

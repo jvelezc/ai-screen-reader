@@ -9,7 +9,7 @@ using Microsoft.Playwright;
 
 if (args.Contains("--help", StringComparer.Ordinal))
 {
-    Console.WriteLine("HeadlessScreenReader. Usage: [--widgets | --observe-live | --text | --frames | --ranges] [--headed] | --reference-template | --reference-case <id> | --assess-reference <file>");
+    Console.WriteLine("HeadlessScreenReader. Usage: [--widgets | --observe-live | --text | --frames | --ranges | --composites] [--headed] | --reference-template | --reference-case <id> | --assess-reference <file>");
     foreach (var item in ReferenceValidation.Cases) Console.WriteLine($"  {item.Id}: {item.Task}");
     return 0;
 }
@@ -35,8 +35,8 @@ if (args.Length == 2 && args[0] == "--assess-reference")
 }
 var referenceCase = args.Length == 2 && args[0] == "--reference-case"
     ? ReferenceValidation.FindCase(args[1]) : null;
-if (referenceCase is null && (args.Any(arg => arg is not "--headed" and not "--widgets" and not "--observe-live" and not "--text" and not "--frames" and not "--ranges")
-    || args.Count(arg => arg is "--widgets" or "--observe-live" or "--text" or "--frames" or "--ranges") > 1))
+if (referenceCase is null && (args.Any(arg => arg is not "--headed" and not "--widgets" and not "--observe-live" and not "--text" and not "--frames" and not "--ranges" and not "--composites")
+    || args.Count(arg => arg is "--widgets" or "--observe-live" or "--text" or "--frames" or "--ranges" or "--composites") > 1))
 {
     Console.Error.WriteLine("Invalid arguments or unknown reference case. Use --help; only bundled fixtures are supported.");
     return 2;
@@ -51,7 +51,8 @@ try
         headed: referenceCase is not null || args.Contains("--headed", StringComparer.Ordinal),
         cancellationToken: cancellation.Token,
         fixture: referenceCase?.Fixture
-            ?? (args.Contains("--ranges", StringComparer.Ordinal) ? BundledFixture.Ranges
+            ?? (args.Contains("--composites", StringComparer.Ordinal) ? BundledFixture.Composites
+                : args.Contains("--ranges", StringComparer.Ordinal) ? BundledFixture.Ranges
                 : args.Contains("--frames", StringComparer.Ordinal) ? BundledFixture.Frames
                 : args.Contains("--text", StringComparer.Ordinal) ? BundledFixture.Text
                 : args.Contains("--observe-live", StringComparer.Ordinal) ? BundledFixture.LiveRegions
@@ -88,6 +89,47 @@ try
         var step = await session.ExecuteAsync(command, key, cancellation.Token, goal);
         Console.WriteLine(JsonSerializer.Serialize(new { Profile = ScreenReaderSession.Profile, Step = step }, json));
         return step;
+    }
+    if (args.Contains("--composites", StringComparer.Ordinal))
+    {
+        await Execute(ReaderCommand.NextTree);
+        await Execute(ReaderCommand.NextTreeItem);
+        var initial = await browser.CaptureAsync(cancellation.Token);
+        var readOnly = !session.Timeline.Any(item => item.Kind == ReaderEventKind.InputAttempted);
+        var collapsed = !initial.Nodes.Any(node => node.Name is "Design" or "Notes" or "Details content");
+        await Execute(ReaderCommand.Tab);
+        var expanded = await Execute(ReaderCommand.PressKey, "ArrowRight",
+            new("treeitem", "Projects", MustBeFocused: true, Expanded: true));
+        var child = await Execute(ReaderCommand.PressKey, "ArrowDown",
+            new("treeitem", "Design", MustBeFocused: true, Selected: false));
+        var opened = await Execute(ReaderCommand.Activate,
+            goal: new("treeitem", "Design", MustBeFocused: true, Selected: true));
+        await Execute(ReaderCommand.Tab);
+        var tabFocus = await Execute(ReaderCommand.PressKey, "ArrowRight",
+            new("tab", "Details", MustBeFocused: true, Selected: false));
+        var selected = await Execute(ReaderCommand.Activate,
+            goal: new("tab", "Details", MustBeFocused: true, Selected: true));
+        var final = await browser.CaptureAsync(cancellation.Token);
+        var hierarchy = child.Context?.HierarchyLevel is { IsValid: true, Value: 2 }
+            && child.Context.ExposedPeers?.Count == 2 && child.FocusedNodeId != child.CursorNodeId;
+        var treeVerified = expanded.Verification == VerificationStatus.Satisfied
+            && child.Verification == VerificationStatus.Satisfied && opened.Verification == VerificationStatus.Satisfied
+            && final.Nodes.Any(node => node.Role == "StaticText" && node.Name == "Opened Design");
+        var tabsVerified = tabFocus.Verification == VerificationStatus.Satisfied
+            && selected.Verification == VerificationStatus.Satisfied
+            && final.Nodes.Any(node => node.Role == "tabpanel" && node.Name == "Details");
+        var hidden = collapsed && !final.Nodes.Any(node => node.Name == "Overview content");
+        foreach (var item in session.Timeline) Console.WriteLine(JsonSerializer.Serialize(new { Event = item }, json));
+        Console.WriteLine(JsonSerializer.Serialize(new
+        {
+            ReadOnlyBrowseObserved = readOnly,
+            TreeHierarchyObserved = hierarchy,
+            TreeActivationVerified = treeVerified,
+            ManualTabSelectionVerified = tabsVerified,
+            HiddenContentExcluded = hidden,
+            browser.Environment
+        }, json));
+        return readOnly && hierarchy && treeVerified && tabsVerified && hidden ? 0 : 1;
     }
     if (args.Contains("--ranges", StringComparer.Ordinal))
     {

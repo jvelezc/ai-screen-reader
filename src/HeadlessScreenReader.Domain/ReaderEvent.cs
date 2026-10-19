@@ -21,4 +21,5 @@ public sealed record ReaderEvent(
     string? PreviousNodeId = null,
     LiveRegionObservation? LiveRegion = null,
     FrameObservation? Frame = null,
-    RangeObservation? Range = null);
+    RangeObservation? Range = null,
+    HierarchyLevelObservation? HierarchyLevel = null);

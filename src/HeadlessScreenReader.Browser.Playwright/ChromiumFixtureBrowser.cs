@@ -6,7 +6,7 @@ using Microsoft.Playwright;
 
 namespace HeadlessScreenReader.Browser.Playwright;
 
-public enum BundledFixture { Foundation, Widgets, LiveRegions, Semantics, Landmarks, Text, Frames, Ranges }
+public enum BundledFixture { Foundation, Widgets, LiveRegions, Semantics, Landmarks, Text, Frames, Ranges, Composites }
 
 /// <summary>A disposable, synthetic fixture harness. This is not an arbitrary-site scanning sandbox.</summary>
 public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, IAsyncDisposable
@@ -153,7 +153,7 @@ public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, IAsyn
                             && focusedBackend.GetInt32() == focusedBackendId
                             || role == "RootWebArea" && props.GetValueOrDefault("focused") == "true",
                         IsDisabled: props.GetValueOrDefault("disabled") == "true",
-                        HeadingLevel: int.TryParse(props.GetValueOrDefault("level"),
+                        HeadingLevel: role == "heading" && int.TryParse(props.GetValueOrDefault("level"),
                             CultureInfo.InvariantCulture, out var level) ? level : null,
                         Checked: props.GetValueOrDefault("checked"),
                         Expanded: bool.TryParse(props.GetValueOrDefault("expanded"), out var expanded)
@@ -174,7 +174,10 @@ public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, IAsyn
                         Text: role is "StaticText" or "LineBreak" && !props.ContainsKey("editable")
                             ? new(Value(node, "name") ?? "", SemanticSource.ChromiumAccessibility) : null,
                         FrameId: frame.Id, DocumentId: documentId,
-                        Range: ReadRange(node, role, props)));
+                        Range: ReadRange(node, role, props),
+                        HierarchyLevel: role == "treeitem" && int.TryParse(props.GetValueOrDefault("level"),
+                            CultureInfo.InvariantCulture, out var hierarchyLevel)
+                            ? new(hierarchyLevel, SemanticSource.ChromiumAccessibility) : null));
                     parentId = scopedId;
                 }
                 // Chromium can expose input contents as descendant StaticText, even when

@@ -26,7 +26,8 @@ public sealed record AccessibleNode(
     ExposedText? Text = null,
     string? FrameId = null,
     string? DocumentId = null,
-    RangeObservation? Range = null);
+    RangeObservation? Range = null,
+    HierarchyLevelObservation? HierarchyLevel = null);
 
 public enum SemanticSource { ChromiumAccessibility, NativeHtmlProperty, DeclaredAria }
 
@@ -50,7 +51,8 @@ public sealed record ExposedPeerPosition(string ContainerId, int Position, int C
 public sealed record ReaderContext(
     string NodeId, ImmutableArray<AccessibleContainer> Ancestors,
     bool AncestryComplete, ExposedPeerPosition? ExposedPeers,
-    LogicalSetPosition? LogicalSet = null);
+    LogicalSetPosition? LogicalSet = null,
+    HierarchyLevelObservation? HierarchyLevel = null);
 
 /// <summary>IDs are scoped to a live document, never treated as cross-session identities.</summary>
 public sealed record AccessibilitySnapshot(

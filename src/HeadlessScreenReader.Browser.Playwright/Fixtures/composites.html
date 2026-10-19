@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Composite fixture</title>
+<h1>Composite fixture</h1>
+<main>
+  <div id="files" role="tree" tabindex="0" aria-label="Files" aria-activedescendant="projects">
+    <div id="projects" role="treeitem" aria-label="Projects" aria-expanded="false" aria-selected="true">
+      Projects
+      <div id="children" role="group" hidden>
+        <div id="design" role="treeitem" aria-label="Design" aria-selected="false">Design</div>
+        <div id="notes" role="treeitem" aria-label="Notes" aria-selected="false">Notes</div>
+      </div>
+    </div>
+    <div id="archive" role="treeitem" aria-label="Archive" aria-selected="false">Archive</div>
+  </div>
+  <p id="opened" role="status">No file opened</p>
+  <div role="tablist" aria-label="Views">
+    <button id="overview" role="tab" aria-selected="true" aria-controls="overview-panel" tabindex="0">Overview</button>
+    <button id="details" role="tab" aria-selected="false" aria-controls="details-panel" tabindex="-1">Details</button>
+  </div>
+  <section id="overview-panel" role="tabpanel" aria-labelledby="overview">Overview content</section>
+  <section id="details-panel" role="tabpanel" aria-labelledby="details" hidden>Details content</section>
+  <button id="roving">Use roving tree</button>
+</main>
+<script>
+  const tree = document.getElementById('files');
+  const projects = document.getElementById('projects');
+  const children = document.getElementById('children');
+  const visible = () => [...tree.querySelectorAll('[role="treeitem"]')].filter(item => !item.closest('[hidden]'));
+  tree.addEventListener('keydown', event => {
+    const roving = event.target.getAttribute('role') === 'treeitem';
+    const current = roving ? event.target : document.getElementById(tree.getAttribute('aria-activedescendant'));
+    const items = visible();
+    let target = current;
+    if (event.key === 'ArrowRight' && current === projects) {
+      if (children.hidden) { children.hidden = false; projects.setAttribute('aria-expanded', 'true'); }
+      else target = document.getElementById('design');
+    } else if (event.key === 'ArrowLeft') {
+      if (current !== projects && current.closest('#children')) target = projects;
+      else if (current === projects) { children.hidden = true; projects.setAttribute('aria-expanded', 'false'); }
+    } else if (event.key === 'ArrowDown') target = items[Math.min(items.length - 1, items.indexOf(current) + 1)];
+    else if (event.key === 'ArrowUp') target = items[Math.max(0, items.indexOf(current) - 1)];
+    else if (event.key === 'Home') target = items[0];
+    else if (event.key === 'End') target = items[items.length - 1];
+    else if (event.key === 'Enter') {
+      for (const item of tree.querySelectorAll('[role="treeitem"]')) item.setAttribute('aria-selected', String(item === current));
+      document.getElementById('opened').textContent = `Opened ${current.getAttribute('aria-label')}`;
+    } else return;
+    event.preventDefault();
+    if (roving) {
+      for (const item of tree.querySelectorAll('[role="treeitem"]')) item.tabIndex = item === target ? 0 : -1;
+      target.focus();
+    } else tree.setAttribute('aria-activedescendant', target.id);
+  });
+  document.getElementById('roving').addEventListener('click', () => {
+    tree.tabIndex = -1;
+    tree.removeAttribute('aria-activedescendant');
+    for (const item of tree.querySelectorAll('[role="treeitem"]')) item.tabIndex = item === projects ? 0 : -1;
+    projects.focus();
+  });
+  const tabs = [...document.querySelectorAll('[role="tab"]')];
+  for (const tab of tabs) {
+    tab.addEventListener('keydown', event => {
+      let index = tabs.indexOf(tab);
+      if (event.key === 'ArrowRight') index = (index + 1) % tabs.length;
+      else if (event.key === 'ArrowLeft') index = (index + tabs.length - 1) % tabs.length;
+      else if (event.key === 'Home') index = 0;
+      else if (event.key === 'End') index = tabs.length - 1;
+      else return;
+      event.preventDefault();
+      for (const item of tabs) item.tabIndex = item === tabs[index] ? 0 : -1;
+      tabs[index].focus();
+    });
+    tab.addEventListener('click', () => {
+      for (const item of tabs) {
+        item.setAttribute('aria-selected', String(item === tab));
+        document.getElementById(item.getAttribute('aria-controls')).hidden = item !== tab;
+      }
+    });
+  }
+</script>
+</html>
