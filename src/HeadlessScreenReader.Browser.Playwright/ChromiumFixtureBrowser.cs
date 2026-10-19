@@ -6,7 +6,7 @@ using Microsoft.Playwright;
 
 namespace HeadlessScreenReader.Browser.Playwright;
 
-public enum BundledFixture { Foundation, Widgets, LiveRegions, Semantics, Landmarks, Text, Frames }
+public enum BundledFixture { Foundation, Widgets, LiveRegions, Semantics, Landmarks, Text, Frames, Ranges }
 
 /// <summary>A disposable, synthetic fixture harness. This is not an arbitrary-site scanning sandbox.</summary>
 public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, IAsyncDisposable
@@ -144,7 +144,8 @@ public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, IAsyn
                 var role = Value(node, "role") ?? "unknown";
                 if (!node.GetProperty("ignored").GetBoolean())
                 {
-                    if (role is "checkbox" or "radio" or "option" or "treeitem" or "listitem" or "tab" or "textbox" or "searchbox"
+                    if ((role is "checkbox" or "radio" or "option" or "treeitem" or "listitem" or "tab" or "textbox" or "searchbox"
+                            || IsRangeRole(role) && !props.ContainsKey("editable"))
                         && node.TryGetProperty("backendDOMNodeId", out var supplementId))
                         supplementIds[scopedId] = supplementId.GetInt32();
                     ordered.Add(new(scopedId, role, (Value(node, "name") ?? "").Trim(),
@@ -172,7 +173,8 @@ public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, IAsyn
                             ? new(props["required"] is "true" or "1", SemanticSource.ChromiumAccessibility) : null,
                         Text: role is "StaticText" or "LineBreak" && !props.ContainsKey("editable")
                             ? new(Value(node, "name") ?? "", SemanticSource.ChromiumAccessibility) : null,
-                        FrameId: frame.Id, DocumentId: documentId));
+                        FrameId: frame.Id, DocumentId: documentId,
+                        Range: ReadRange(node, role, props)));
                     parentId = scopedId;
                 }
                 // Chromium can expose input contents as descendant StaticText, even when
@@ -194,7 +196,7 @@ public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, IAsyn
             foreach (var node in nodes)
             {
                 if (!supplementIds.TryGetValue(node.Id, out var backendId)) { supplemented.Add(node); continue; }
-                var values = await ReadSemanticPropertiesAsync(backendId).ConfigureAwait(false);
+                var values = await ReadSemanticPropertiesAsync(backendId, node.Range is not null).ConfigureAwait(false);
                 var required = node.Required;
                 if (required is null && values.TryGetProperty("checkboxRequired", out var native)
                     && native.ValueKind is JsonValueKind.True or JsonValueKind.False)
@@ -219,7 +221,15 @@ public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, IAsyn
                     && values.GetProperty("protected").ValueKind is JsonValueKind.True or JsonValueKind.False
                     ? new ProtectedObservation(values.GetProperty("protected").GetBoolean(), SemanticSource.NativeHtmlProperty) : null;
                 supplemented.Add(node with
-                { Required = required, IsRequired = required?.Value ?? node.IsRequired, LogicalSet = logicalSet, Protection = protection });
+                {
+                    Required = required,
+                    IsRequired = required?.Value ?? node.IsRequired,
+                    LogicalSet = logicalSet,
+                    Protection = protection,
+                    Range = node.Range is { ValueText: null } range
+                        && values.GetProperty("rangeValueText").GetString() is { Length: > 0 } rangeText
+                        ? range with { ValueText = new(rangeText, SemanticSource.DeclaredAria) } : node.Range
+                });
             }
             nodes = supplemented.ToImmutable();
             var childrenById = nodes.Where(node => node.ParentId is not null)
@@ -245,7 +255,7 @@ public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, IAsyn
         }
     }
 
-    private async Task<JsonElement> ReadSemanticPropertiesAsync(int backendId)
+    private async Task<JsonElement> ReadSemanticPropertiesAsync(int backendId, bool readRangeText)
     {
         var resolved = await _cdp.SendAsync("DOM.resolveNode", new Dictionary<string, object>
         { ["backendNodeId"] = backendId, ["objectGroup"] = "hsr-semantics" }).ConfigureAwait(false);
@@ -254,12 +264,13 @@ public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, IAsyn
         var id = objectId.GetString()!;
         try
         {
-            // Fixed, read-only, standard semantic properties only. Never read value, text or diagnostic attributes.
+            // Fixed, read-only standard semantics. Never read editable values or diagnostic attributes.
             var response = await _cdp.SendAsync("Runtime.callFunctionOn", new Dictionary<string, object>
             {
                 ["objectId"] = id,
                 ["returnByValue"] = true,
-                ["functionDeclaration"] = "function() { return { checkboxRequired: this.localName === 'input' && this.type === 'checkbox' ? this.required : null, protected: this.localName === 'input' ? this.type === 'password' : null, required: this.getAttribute('aria-required'), position: this.getAttribute('aria-posinset'), size: this.getAttribute('aria-setsize') }; }"
+                ["arguments"] = new[] { new Dictionary<string, object> { ["value"] = readRangeText } },
+                ["functionDeclaration"] = "function(readRangeText) { return { checkboxRequired: this.localName === 'input' && this.type === 'checkbox' ? this.required : null, protected: this.localName === 'input' ? this.type === 'password' : null, required: this.getAttribute('aria-required'), position: this.getAttribute('aria-posinset'), size: this.getAttribute('aria-setsize'), rangeValueText: readRangeText ? this.getAttribute('aria-valuetext') : null }; }"
             }).ConfigureAwait(false);
             if (response is null || response.Value.TryGetProperty("exceptionDetails", out _))
                 throw new BrowserOperationException("SEMANTIC_PROPERTIES_UNAVAILABLE");

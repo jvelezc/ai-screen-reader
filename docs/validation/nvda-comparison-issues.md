@@ -14,7 +14,9 @@ Earlier v5 follow-up: [landmark gap closure](reader-landmarks-v5.md) resolves DI
 
 The v6 increment: [exposed text navigation](reader-text-v6.md) adds source-tagged ranges, character/word/logical-line traversal and explicit invalidation. Windows/Linux each pass 162 tests, including 26 Chromium cases. No fresh v6 NVDA comparison was performed; all earlier comparison observations remain historical.
 
-Latest profile v7: [bounded child frames](reader-frames-v7.md) adds nested trusted document observations, frame/generation identity, actual child focus and explicit coverage exclusions. Windows/Linux each pass 190 tests, including 36 Chromium cases. No fresh v7 NVDA comparison was performed. The hosted platform and full reference acceptance remain open.
+Earlier profile v7: [bounded child frames](reader-frames-v7.md) adds nested trusted document observations, frame/generation identity, actual child focus and explicit coverage exclusions. Windows/Linux each pass 190 tests, including 36 Chromium cases. No fresh v7 NVDA comparison was performed. The hosted platform and full reference acceptance remain open.
+
+Latest profile v8: [range widgets](reader-ranges-v8.md) add source-tagged values/bounds/value text for noneditable slider, meter and progressbar roles, range navigation, numeric predicates and range-bearing events. The full suite contains 231 cases. No fresh v8 NVDA comparison is claimed; current remote results are recorded in [GitHub Actions](https://github.com/jvelezc/ai-screen-reader/actions/workflows/verify.yml). Hosted and capture-privacy gates remain open.
 
 ## Findings
 

@@ -9,14 +9,17 @@ public sealed record ObservationExpectation(
     bool MustBeFocused = false,
     string? Checked = null,
     bool? Expanded = null,
-    bool? Selected = null)
+    bool? Selected = null,
+    double? RangeValue = null)
 {
     public bool IsSatisfiedBy(AccessibilitySnapshot snapshot) =>
         snapshot.Nodes.Any(node => node.Role == Role && node.Name == Name
             && (!MustBeFocused || snapshot.EffectiveFocusedNode?.Id == node.Id)
             && (Checked is null || node.Checked == Checked)
             && (Expanded is null || node.Expanded == Expanded)
-            && (Selected is null || node.Selected == Selected));
+            && (Selected is null || node.Selected == Selected)
+            && (RangeValue is null || double.IsFinite(RangeValue.Value)
+                && node.Range is { IsConsistent: true, Value: double value } && value == RangeValue.Value));
 }
 
 public sealed record ObservationWaitOptions

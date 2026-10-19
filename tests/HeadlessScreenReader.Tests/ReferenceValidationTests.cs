@@ -12,7 +12,7 @@ public sealed class ReferenceValidationTests
     [Fact]
     public void Assessment_PreviousReaderProfile_RequiresFreshEvidence()
     {
-        foreach (var profile in new[] { "hsr-desktop-reader-v4", "hsr-desktop-reader-v5", "hsr-desktop-reader-v6" })
+        foreach (var profile in new[] { "hsr-desktop-reader-v4", "hsr-desktop-reader-v5", "hsr-desktop-reader-v6", "hsr-desktop-reader-v7" })
         {
             var worksheet = CompleteWorksheet() with { HsrProfile = profile };
             var assessment = ReferenceValidation.Assess(worksheet);

@@ -8,7 +8,7 @@ public enum ReaderEventKind
     WaitTimedOut, Cancelled, BrowserError, CommandCompleted, LiveRegionChanged, FrameChanged
 }
 
-/// <summary>Ordered simulated reader evidence. Typed values and AX value properties are excluded.</summary>
+/// <summary>Ordered simulated reader evidence. Editable values are excluded; supported ranges are explicit.</summary>
 public sealed record ReaderEvent(
     long Sequence,
     long CommandSequence,
@@ -20,4 +20,5 @@ public sealed record ReaderEvent(
     string Detail,
     string? PreviousNodeId = null,
     LiveRegionObservation? LiveRegion = null,
-    FrameObservation? Frame = null);
+    FrameObservation? Frame = null,
+    RangeObservation? Range = null);

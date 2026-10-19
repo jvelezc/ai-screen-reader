@@ -33,7 +33,9 @@ public enum ReaderCommand
     NextLine,
     PreviousLine,
     NextFrame,
-    PreviousFrame
+    PreviousFrame,
+    NextRange,
+    PreviousRange
 }
 
 public enum ReaderOutcome
@@ -72,6 +74,7 @@ public sealed record ReaderStep(
     public ReaderTextRange? TextRange { get; init; }
     public TextCursorResetReason? TextCursorReset { get; init; }
     public FrameObservation? Frame { get; init; }
+    public RangeObservation? Range { get; init; }
     public System.Collections.Immutable.ImmutableArray<FrameObservation> FrameCoverage { get; init; } = [];
 }
 

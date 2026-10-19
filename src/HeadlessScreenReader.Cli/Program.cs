@@ -9,7 +9,7 @@ using Microsoft.Playwright;
 
 if (args.Contains("--help", StringComparer.Ordinal))
 {
-    Console.WriteLine("HeadlessScreenReader. Usage: [--widgets | --observe-live | --text | --frames] [--headed] | --reference-template | --reference-case <id> | --assess-reference <file>");
+    Console.WriteLine("HeadlessScreenReader. Usage: [--widgets | --observe-live | --text | --frames | --ranges] [--headed] | --reference-template | --reference-case <id> | --assess-reference <file>");
     foreach (var item in ReferenceValidation.Cases) Console.WriteLine($"  {item.Id}: {item.Task}");
     return 0;
 }
@@ -35,8 +35,8 @@ if (args.Length == 2 && args[0] == "--assess-reference")
 }
 var referenceCase = args.Length == 2 && args[0] == "--reference-case"
     ? ReferenceValidation.FindCase(args[1]) : null;
-if (referenceCase is null && (args.Any(arg => arg is not "--headed" and not "--widgets" and not "--observe-live" and not "--text" and not "--frames")
-    || args.Count(arg => arg is "--widgets" or "--observe-live" or "--text" or "--frames") > 1))
+if (referenceCase is null && (args.Any(arg => arg is not "--headed" and not "--widgets" and not "--observe-live" and not "--text" and not "--frames" and not "--ranges")
+    || args.Count(arg => arg is "--widgets" or "--observe-live" or "--text" or "--frames" or "--ranges") > 1))
 {
     Console.Error.WriteLine("Invalid arguments or unknown reference case. Use --help; only bundled fixtures are supported.");
     return 2;
@@ -51,7 +51,8 @@ try
         headed: referenceCase is not null || args.Contains("--headed", StringComparer.Ordinal),
         cancellationToken: cancellation.Token,
         fixture: referenceCase?.Fixture
-            ?? (args.Contains("--frames", StringComparer.Ordinal) ? BundledFixture.Frames
+            ?? (args.Contains("--ranges", StringComparer.Ordinal) ? BundledFixture.Ranges
+                : args.Contains("--frames", StringComparer.Ordinal) ? BundledFixture.Frames
                 : args.Contains("--text", StringComparer.Ordinal) ? BundledFixture.Text
                 : args.Contains("--observe-live", StringComparer.Ordinal) ? BundledFixture.LiveRegions
                 : args.Contains("--widgets", StringComparer.Ordinal) ? BundledFixture.Widgets : BundledFixture.Foundation));
@@ -87,6 +88,41 @@ try
         var step = await session.ExecuteAsync(command, key, cancellation.Token, goal);
         Console.WriteLine(JsonSerializer.Serialize(new { Profile = ScreenReaderSession.Profile, Step = step }, json));
         return step;
+    }
+    if (args.Contains("--ranges", StringComparer.Ordinal))
+    {
+        var browsed = await Execute(ReaderCommand.NextRange);
+        var noInput = !session.Timeline.Any(item => item.Kind == ReaderEventKind.InputAttempted);
+        var focusRequired = await Execute(ReaderCommand.Activate);
+        await Execute(ReaderCommand.Tab);
+        var changed = await Execute(ReaderCommand.PressKey, "ArrowRight",
+            new("slider", "Volume", MustBeFocused: true, RangeValue: 50));
+        var minimum = await Execute(ReaderCommand.PressKey, "Home");
+        var maximum = await Execute(ReaderCommand.PressKey, "End");
+        await Execute(ReaderCommand.Tab);
+        var fractional = await Execute(ReaderCommand.PressKey, "ArrowRight",
+            new("slider", "Level", MustBeFocused: true, RangeValue: 0.5));
+        await Execute(ReaderCommand.Tab);
+        var completed = await Execute(ReaderCommand.Activate,
+            goal: new("progressbar", "Transfer", RangeValue: 200));
+        var rangeSnapshot = await browser.CaptureAsync(cancellation.Token);
+        var navigated = browsed.Range?.Value == 40 && noInput && focusRequired.Outcome == ReaderOutcome.FocusRequired;
+        var sliderVerified = changed.Verification == VerificationStatus.Satisfied
+            && fractional.Verification == VerificationStatus.Satisfied
+            && minimum.Range?.Value == 0 && maximum.Range?.Value == 100;
+        var progressVerified = completed.Verification == VerificationStatus.Satisfied;
+        var unknown = rangeSnapshot.Nodes.Any(node => node.Role == "progressbar" && node.Name == "Waiting"
+            && node.Range is { Value: null });
+        foreach (var item in session.Timeline) Console.WriteLine(JsonSerializer.Serialize(new { Event = item }, json));
+        Console.WriteLine(JsonSerializer.Serialize(new
+        {
+            RangeNavigationObserved = navigated,
+            SliderValuesVerified = sliderVerified,
+            ProgressValueVerified = progressVerified,
+            UnknownProgressPreserved = unknown,
+            browser.Environment
+        }, json));
+        return navigated && sliderVerified && progressVerified && unknown ? 0 : 1;
     }
     if (args.Contains("--frames", StringComparer.Ordinal))
     {

@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using HeadlessScreenReader.Domain;
 
@@ -7,7 +8,7 @@ namespace HeadlessScreenReader.ScreenReader;
 /// <summary>One local controller. Dispose after all calls finish; hosted controller fencing is separate.</summary>
 public sealed class ScreenReaderSession : IDisposable
 {
-    public const string Profile = "hsr-desktop-reader-v7";
+    public const string Profile = "hsr-desktop-reader-v8";
     private readonly ReaderTextNavigator _text = new();
     private readonly IScreenReaderBrowser _browser;
     private readonly int _maxCommands;
@@ -196,7 +197,8 @@ public sealed class ScreenReaderSession : IDisposable
             if (nodes[i].Id == _cursorId)
                 start = i;
         var backwards = command is ReaderCommand.MovePrevious or ReaderCommand.PreviousHeading
-            or ReaderCommand.PreviousLink or ReaderCommand.PreviousButton or ReaderCommand.PreviousLandmark or ReaderCommand.PreviousFrame;
+            or ReaderCommand.PreviousLink or ReaderCommand.PreviousButton or ReaderCommand.PreviousLandmark
+            or ReaderCommand.PreviousFrame or ReaderCommand.PreviousRange;
         if (backwards && start < 0)
             start = nodes.Length;
         // Moving to a previous landmark leaves the current enclosing context.
@@ -215,6 +217,7 @@ public sealed class ScreenReaderSession : IDisposable
                 ReaderCommand.NextLink or ReaderCommand.PreviousLink => node.Role == "link",
                 ReaderCommand.NextButton or ReaderCommand.PreviousButton => node.Role == "button",
                 ReaderCommand.NextFrame or ReaderCommand.PreviousFrame => node.Role is "Iframe" or "IframePresentational",
+                ReaderCommand.NextRange or ReaderCommand.PreviousRange => node.Role is "slider" or "meter" or "progressbar",
                 ReaderCommand.NextLandmark or ReaderCommand.PreviousLandmark => node.Role is "main" or "navigation" or "banner"
                     or "contentinfo" or "complementary" or "search" or "region" or "form",
                 _ => false
@@ -297,6 +300,7 @@ public sealed class ScreenReaderSession : IDisposable
                         Required = CurrentNode()?.Required,
                         Protection = CurrentNode()?.Protection,
                         Frame = CurrentFrame(),
+                        Range = CurrentNode()?.Range,
                         FrameCoverage = _snapshot.Frames,
                         Mode = _mode
                     };
@@ -352,7 +356,8 @@ public sealed class ScreenReaderSession : IDisposable
             if (oldNodes.TryGetValue(node.Id, out var old)
                 && (old.Checked != node.Checked || old.Expanded != node.Expanded || old.Selected != node.Selected
                     || old.Invalid != node.Invalid || old.IsDisabled != node.IsDisabled
-                    || old.Required != node.Required || old.LogicalSet != node.LogicalSet || old.Protection != node.Protection))
+                    || old.Required != node.Required || old.LogicalSet != node.LogicalSet || old.Protection != node.Protection
+                    || old.Range != node.Range))
                 Record(ReaderEventKind.WidgetStateChanged, Describe(node), node.Id);
         }
         if (previous is not null)
@@ -375,6 +380,7 @@ public sealed class ScreenReaderSession : IDisposable
             Required = CurrentNode()?.Required,
             Protection = CurrentNode()?.Protection,
             Frame = CurrentFrame(),
+            Range = CurrentNode()?.Range,
             FrameCoverage = _snapshot?.Frames ?? []
         };
 
@@ -436,7 +442,8 @@ public sealed class ScreenReaderSession : IDisposable
             }
             _timeline.Add(new(++_eventSequence, _commandSequence,
                 _time.GetElapsedTime(_started).TotalMilliseconds, kind, _command,
-                _snapshot?.DocumentId, nodeId, detail, previousNodeId, liveRegion, frame));
+                _snapshot?.DocumentId, nodeId, detail, previousNodeId, liveRegion, frame,
+                _snapshot?.Nodes.FirstOrDefault(node => node.Id == nodeId)?.Range));
         }
     }
 
@@ -457,6 +464,18 @@ public sealed class ScreenReaderSession : IDisposable
         if (node.LogicalSet is { IsValid: true, Position: int position } set)
             text += set.Size is > 0 ? $", item {position} of {set.Size}" : $", item {position}, set size unknown";
         if (node.Invalid is not null and not "false") text += ", invalid";
+        if (node.Range is { } range)
+        {
+            if (!range.IsConsistent) text += ", range data inconsistent";
+            else
+            {
+                text += range.ValueText is { Text.Length: > 0 } valueText ? $", value {valueText.Text}"
+                    : range.Value is double value ? $", value {value.ToString(CultureInfo.InvariantCulture)}"
+                    : ", current value not exposed";
+                if (range.Minimum is double minimum) text += $", minimum {minimum.ToString(CultureInfo.InvariantCulture)}";
+                if (range.Maximum is double maximum) text += $", maximum {maximum.ToString(CultureInfo.InvariantCulture)}";
+            }
+        }
         if (!string.IsNullOrWhiteSpace(node.Description)) text += $". {node.Description}";
         return text;
     }

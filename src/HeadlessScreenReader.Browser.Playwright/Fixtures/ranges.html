@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Range fixture</title>
+<h1>Range fixture</h1>
+<main>
+  <label>Volume <input type="range" min="0" max="100" step="10" value="40"></label>
+  <div id="level" tabindex="0" role="slider" aria-label="Level" aria-valuemin="-5" aria-valuemax="5" aria-valuenow="0" aria-valuetext="Neutral"></div>
+  <progress id="transfer" aria-label="Transfer" max="200" value="50"></progress>
+  <meter aria-label="Balance" min="-10" max="10" value="-2"></meter>
+  <progress aria-label="Waiting"></progress>
+  <label>Locked volume <input type="range" min="0" max="100" value="80" disabled></label>
+  <button id="complete">Complete transfer</button>
+  <input aria-label="Numeric field" type="number" value="819273">
+  <input aria-label="Private field" type="password" value="RANGE_PASSWORD_CANARY">
+  <div contenteditable role="slider" aria-label="Editable range" aria-valuenow="57" aria-valuetext="RANGE_VALUE_TEXT_CANARY">RANGE_EDITABLE_CANARY</div>
+  <div role="checkbox" aria-label="Nonrange" aria-checked="false" aria-valuenow="731829"></div>
+</main>
+<script>
+  // Fail this fixture's observation if the new supplement reads excluded value text.
+  for (const element of document.querySelectorAll('input[type="password"], input[type="number"], [role="checkbox"], [contenteditable]')) {
+    const getAttribute = element.getAttribute;
+    element.getAttribute = function(name) {
+      if (name === 'aria-valuetext') throw new Error('Excluded value-text read');
+      return getAttribute.call(this, name);
+    };
+  }
+  const level = document.getElementById('level');
+  level.addEventListener('keydown', event => {
+    let value = Number(level.getAttribute('aria-valuenow'));
+    if (event.key === 'ArrowRight' || event.key === 'ArrowUp') value += 0.5;
+    else if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') value -= 0.5;
+    else if (event.key === 'Home') value = -5;
+    else if (event.key === 'End') value = 5;
+    else return;
+    event.preventDefault();
+    value = Math.max(-5, Math.min(5, value));
+    level.setAttribute('aria-valuenow', String(value));
+    level.setAttribute('aria-valuetext', value === 0 ? 'Neutral' : `Level ${value}`);
+  });
+  document.getElementById('complete').addEventListener('click', () => {
+    document.getElementById('transfer').value = 200;
+  });
+</script>
+</html>

@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 
 namespace HeadlessScreenReader.Domain;
 
-/// <summary>Exposed semantics only. Form values and diagnostic labels are deliberately absent.</summary>
+/// <summary>Exposed semantics only. Editable form values and diagnostic labels are deliberately absent.</summary>
 public sealed record AccessibleNode(
     string Id,
     string Role,
@@ -25,7 +25,8 @@ public sealed record AccessibleNode(
     ProtectedObservation? Protection = null,
     ExposedText? Text = null,
     string? FrameId = null,
-    string? DocumentId = null);
+    string? DocumentId = null,
+    RangeObservation? Range = null);
 
 public enum SemanticSource { ChromiumAccessibility, NativeHtmlProperty, DeclaredAria }
 
