@@ -6,7 +6,7 @@ using Microsoft.Playwright;
 
 namespace HeadlessScreenReader.Browser.Playwright;
 
-public enum BundledFixture { Foundation, Widgets, LiveRegions, Semantics, Landmarks, Text, Frames, Ranges, Composites, Tables }
+public enum BundledFixture { Foundation, Widgets, LiveRegions, Semantics, Landmarks, Text, Frames, Ranges, Composites, Tables, Paragraphs }
 
 /// <summary>A disposable, synthetic fixture harness. This is not an arbitrary-site scanning sandbox.</summary>
 public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, IAsyncDisposable

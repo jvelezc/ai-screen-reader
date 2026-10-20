@@ -49,7 +49,10 @@ public enum ReaderCommand
     NextRow,
     PreviousRow,
     NextColumn,
-    PreviousColumn
+    PreviousColumn,
+    ReadCurrentParagraph,
+    NextParagraph,
+    PreviousParagraph
 }
 
 public enum ReaderOutcome
@@ -86,6 +89,7 @@ public sealed record ReaderStep(
     public RequiredObservation? Required { get; init; }
     public ProtectedObservation? Protection { get; init; }
     public ReaderTextRange? TextRange { get; init; }
+    public ReaderTextPassage? Passage { get; init; }
     public TextCursorResetReason? TextCursorReset { get; init; }
     public FrameObservation? Frame { get; init; }
     public RangeObservation? Range { get; init; }

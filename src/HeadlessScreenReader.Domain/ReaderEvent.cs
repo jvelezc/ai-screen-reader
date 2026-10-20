@@ -23,4 +23,5 @@ public sealed record ReaderEvent(
     FrameObservation? Frame = null,
     RangeObservation? Range = null,
     HierarchyLevelObservation? HierarchyLevel = null,
-    TableObservation? Table = null);
+    TableObservation? Table = null,
+    ReaderTextPassage? Passage = null);

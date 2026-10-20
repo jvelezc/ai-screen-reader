@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Paragraph fixture</title></head><body>
+<main><h1>Paragraph fixture</h1>
+<button type="button" id="change">Change paragraph</button><button type="button" id="remove">Remove paragraph</button>
+<p>Read <em>inter</em><strong>national</strong> text with <a href="#">linked words</a>.</p>
+<p>Visible <span hidden>HIDDEN_PARAGRAPH_CANARY</span>only.</p>
+<p>Unicode é👩‍💻<br>next.</p>
+<p>Before <input aria-label="Field" value="PARAGRAPH_EDITABLE_CANARY"> after.</p>
+<p>Before <img alt="Diagram" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E"> after.</p>
+<p><a href="#" aria-label="Named empty link"></a></p>
+<p id="changing">Original <em>passage</em>.</p>
+<p>Last parent paragraph.</p>
+<iframe title="Child paragraphs" srcdoc="<!doctype html><html lang='en'><title>Child</title><p>Child <em>paragraph</em>.</p></html>"></iframe>
+</main>
+<script>
+document.getElementById('change').addEventListener('click',()=>{const p=document.getElementById('changing');if(p)p.textContent='Updated paragraph.';});
+document.getElementById('remove').addEventListener('click',()=>document.getElementById('changing')?.remove());
+</script>
+</body></html>

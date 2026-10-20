@@ -9,7 +9,7 @@ using Microsoft.Playwright;
 
 if (args.Contains("--help", StringComparer.Ordinal))
 {
-    Console.WriteLine("HeadlessScreenReader. Usage: [--widgets | --observe-live | --text | --frames | --ranges | --composites | --tables] [--headed] | --reference-template | --reference-case <id> | --assess-reference <file>");
+    Console.WriteLine("HeadlessScreenReader. Usage: [--widgets | --observe-live | --text | --frames | --ranges | --composites | --tables | --paragraphs] [--headed] | --reference-template | --reference-case <id> | --assess-reference <file>");
     foreach (var item in ReferenceValidation.Cases) Console.WriteLine($"  {item.Id}: {item.Task}");
     return 0;
 }
@@ -35,8 +35,8 @@ if (args.Length == 2 && args[0] == "--assess-reference")
 }
 var referenceCase = args.Length == 2 && args[0] == "--reference-case"
     ? ReferenceValidation.FindCase(args[1]) : null;
-if (referenceCase is null && (args.Any(arg => arg is not "--headed" and not "--widgets" and not "--observe-live" and not "--text" and not "--frames" and not "--ranges" and not "--composites" and not "--tables")
-    || args.Count(arg => arg is "--widgets" or "--observe-live" or "--text" or "--frames" or "--ranges" or "--composites" or "--tables") > 1))
+if (referenceCase is null && (args.Any(arg => arg is not "--headed" and not "--widgets" and not "--observe-live" and not "--text" and not "--frames" and not "--ranges" and not "--composites" and not "--tables" and not "--paragraphs")
+    || args.Count(arg => arg is "--widgets" or "--observe-live" or "--text" or "--frames" or "--ranges" or "--composites" or "--tables" or "--paragraphs") > 1))
 {
     Console.Error.WriteLine("Invalid arguments or unknown reference case. Use --help; only bundled fixtures are supported.");
     return 2;
@@ -51,7 +51,8 @@ try
         headed: referenceCase is not null || args.Contains("--headed", StringComparer.Ordinal),
         cancellationToken: cancellation.Token,
         fixture: referenceCase?.Fixture
-            ?? (args.Contains("--tables", StringComparer.Ordinal) ? BundledFixture.Tables
+            ?? (args.Contains("--paragraphs", StringComparer.Ordinal) ? BundledFixture.Paragraphs
+                : args.Contains("--tables", StringComparer.Ordinal) ? BundledFixture.Tables
                 : args.Contains("--composites", StringComparer.Ordinal) ? BundledFixture.Composites
                 : args.Contains("--ranges", StringComparer.Ordinal) ? BundledFixture.Ranges
                 : args.Contains("--frames", StringComparer.Ordinal) ? BundledFixture.Frames
@@ -90,6 +91,37 @@ try
         var step = await session.ExecuteAsync(command, key, cancellation.Token, goal);
         Console.WriteLine(JsonSerializer.Serialize(new { Profile = ScreenReaderSession.Profile, Step = step }, json));
         return step;
+    }
+    if (args.Contains("--paragraphs", StringComparer.Ordinal))
+    {
+        var before = await browser.CaptureAsync(cancellation.Token);
+        var first = await Execute(ReaderCommand.NextParagraph);
+        var current = await Execute(ReaderCommand.ReadCurrentParagraph);
+        var boundary = await Execute(ReaderCommand.PreviousParagraph);
+        var hidden = await Execute(ReaderCommand.NextParagraph);
+        var unicode = await Execute(ReaderCommand.NextParagraph);
+        var control = await Execute(ReaderCommand.NextParagraph);
+        var after = await browser.CaptureAsync(cancellation.Token);
+        var joined = first.Announcement == "Read international text with linked words."
+            && current.Announcement == first.Announcement;
+        var sources = first.Passage?.Fragments.Length > 1
+            && first.Passage.Fragments.All(fragment => before.Nodes.Any(n => n.Id == fragment.NodeId && n.Text?.Text == fragment.Text));
+        var bounded = boundary.Outcome == ReaderOutcome.NoMatch && boundary.CursorNodeId == first.CursorNodeId;
+        var excluded = hidden.Announcement == "Visible only." && control.Outcome == ReaderOutcome.Unsupported && control.Passage is null;
+        var exact = unicode.Announcement == "Unicode é👩‍💻\nnext.";
+        var noInput = before.FocusedNode?.Id == after.FocusedNode?.Id && !session.Timeline.Any(e => e.Kind == ReaderEventKind.InputAttempted);
+        foreach (var item in session.Timeline) Console.WriteLine(JsonSerializer.Serialize(new { Event = item }, json));
+        Console.WriteLine(JsonSerializer.Serialize(new
+        {
+            ParagraphTextJoined = joined,
+            SourceFragmentsPreserved = sources,
+            BoundariesPreserved = bounded,
+            HiddenAndEditableExcluded = excluded,
+            ExactUnicodeAndBreaksObserved = exact,
+            ReadOnlyBrowseObserved = noInput,
+            browser.Environment
+        }, json));
+        return joined && sources && bounded && excluded && exact && noInput ? 0 : 1;
     }
     if (args.Contains("--tables", StringComparer.Ordinal))
     {

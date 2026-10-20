@@ -8,7 +8,7 @@ namespace HeadlessScreenReader.ScreenReader;
 /// <summary>One local controller. Dispose after all calls finish; hosted controller fencing is separate.</summary>
 public sealed class ScreenReaderSession : IDisposable
 {
-    public const string Profile = "hsr-desktop-reader-v10";
+    public const string Profile = "hsr-desktop-reader-v11";
     private readonly ReaderTextNavigator _text = new();
     private readonly IScreenReaderBrowser _browser;
     private readonly int _maxCommands;
@@ -71,7 +71,7 @@ public sealed class ScreenReaderSession : IDisposable
             _completedKeystrokes = 0;
             Record(ReaderEventKind.CommandStarted, command.ToString());
             cancellationToken.ThrowIfCancellationRequested();
-            step = ReaderTextNavigator.IsCommand(command) && expectation is not null
+            step = (ReaderTextNavigator.IsCommand(command) || ReaderParagraphNavigator.IsCommand(command)) && expectation is not null
                 ? Result(ReaderOutcome.Unsupported, "Text navigation does not accept semantic goal expectations.")
                 : await RunCommandAsync(command, key, cancellationToken).ConfigureAwait(false);
             if (expectation is not null)
@@ -109,7 +109,7 @@ public sealed class ScreenReaderSession : IDisposable
         finally
         {
             if (step is not null)
-                Record(ReaderEventKind.Announcement, step.Announcement, step.CursorNodeId);
+                Record(ReaderEventKind.Announcement, step.Announcement, step.CursorNodeId, passage: step.Passage);
             Record(ReaderEventKind.CommandCompleted, step?.Outcome.ToString() ?? "No result");
             _inputGate.Release();
         }
@@ -171,6 +171,13 @@ public sealed class ScreenReaderSession : IDisposable
             return Result(ReaderOutcome.Observed, Describe(CurrentNode()));
         if (_mode != ReaderMode.Browse)
             return Result(ReaderOutcome.Unsupported, "Reading navigation requires browse mode.");
+        if (ReaderParagraphNavigator.IsCommand(command))
+        {
+            var paragraph = ReaderParagraphNavigator.Move(_snapshot!, CurrentNode()?.Id, command);
+            if (paragraph.TargetId is not null) _cursorId = paragraph.TargetId;
+            _text.Clear();
+            return Result(paragraph.Outcome, paragraph.Announcement, paragraph.ErrorCode) with { Passage = paragraph.Passage };
+        }
         if (ReaderTextNavigator.IsCommand(command))
         {
             var navigation = _text.Move(_snapshot!, CurrentNode()?.Id, command);
@@ -451,7 +458,7 @@ public sealed class ScreenReaderSession : IDisposable
     }
 
     private void Record(ReaderEventKind kind, string detail, string? nodeId = null, string? previousNodeId = null,
-        LiveRegionObservation? liveRegion = null, FrameObservation? frame = null)
+        LiveRegionObservation? liveRegion = null, FrameObservation? frame = null, ReaderTextPassage? passage = null)
     {
         lock (_timelineLock)
         {
@@ -470,7 +477,7 @@ public sealed class ScreenReaderSession : IDisposable
                 _snapshot?.DocumentId, nodeId, detail, previousNodeId, liveRegion, frame,
                 _snapshot?.Nodes.FirstOrDefault(node => node.Id == nodeId)?.Range,
                 _snapshot?.Nodes.FirstOrDefault(node => node.Id == nodeId)?.HierarchyLevel,
-                _snapshot?.Nodes.FirstOrDefault(node => node.Id == nodeId)?.Table));
+                _snapshot?.Nodes.FirstOrDefault(node => node.Id == nodeId)?.Table, passage));
         }
     }
 
