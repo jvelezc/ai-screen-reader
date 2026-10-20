@@ -4,6 +4,7 @@
     <Project Path="src/HeadlessScreenReader.Cli/HeadlessScreenReader.Cli.csproj" />
     <Project Path="src/HeadlessScreenReader.Domain/HeadlessScreenReader.Domain.csproj" />
     <Project Path="src/HeadlessScreenReader.Egress/HeadlessScreenReader.Egress.csproj" />
+    <Project Path="src/HeadlessScreenReader.Exploration/HeadlessScreenReader.Exploration.csproj" />
     <Project Path="src/HeadlessScreenReader.Mcp/HeadlessScreenReader.Mcp.csproj" />
     <Project Path="src/HeadlessScreenReader.ScreenReader/HeadlessScreenReader.ScreenReader.csproj" />
   </Folder>

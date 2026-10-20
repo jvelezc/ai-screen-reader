@@ -9,7 +9,7 @@ using Microsoft.Playwright;
 
 if (args.Contains("--help", StringComparer.Ordinal))
 {
-    Console.WriteLine("HeadlessScreenReader. Usage: [--widgets | --observe-live | --text | --frames | --ranges | --composites | --tables | --paragraphs | --multiselect | --typeahead] [--headed] | --reference-template | --reference-case <id> | --assess-reference <file>");
+    Console.WriteLine("HeadlessScreenReader. Usage: [--traversal | --widgets | --observe-live | --text | --frames | --ranges | --composites | --tables | --paragraphs | --multiselect | --typeahead] [--headed] | --reference-template | --reference-case <id> | --assess-reference <file>");
     foreach (var item in ReferenceValidation.Cases) Console.WriteLine($"  {item.Id}: {item.Task}");
     return 0;
 }
@@ -35,8 +35,8 @@ if (args.Length == 2 && args[0] == "--assess-reference")
 }
 var referenceCase = args.Length == 2 && args[0] == "--reference-case"
     ? ReferenceValidation.FindCase(args[1]) : null;
-if (referenceCase is null && (args.Any(arg => arg is not "--headed" and not "--widgets" and not "--observe-live" and not "--text" and not "--frames" and not "--ranges" and not "--composites" and not "--tables" and not "--paragraphs" and not "--multiselect" and not "--typeahead")
-    || args.Count(arg => arg is "--widgets" or "--observe-live" or "--text" or "--frames" or "--ranges" or "--composites" or "--tables" or "--paragraphs" or "--multiselect" or "--typeahead") > 1))
+if (referenceCase is null && (args.Any(arg => arg is not "--headed" and not "--traversal" and not "--widgets" and not "--observe-live" and not "--text" and not "--frames" and not "--ranges" and not "--composites" and not "--tables" and not "--paragraphs" and not "--multiselect" and not "--typeahead")
+    || args.Count(arg => arg is "--traversal" or "--widgets" or "--observe-live" or "--text" or "--frames" or "--ranges" or "--composites" or "--tables" or "--paragraphs" or "--multiselect" or "--typeahead") > 1))
 {
     Console.Error.WriteLine("Invalid arguments or unknown reference case. Use --help; only bundled fixtures are supported.");
     return 2;
@@ -47,6 +47,8 @@ Console.CancelKeyPress += (_, e) => { e.Cancel = true; cancellation.Cancel(); };
 var json = new JsonSerializerOptions { Converters = { new JsonStringEnumConverter() } };
 try
 {
+    if (args.Contains("--traversal", StringComparer.Ordinal))
+        return await TraversalDemo.RunAsync(args.Contains("--headed", StringComparer.Ordinal), cancellation.Token);
     await using var browser = await ChromiumFixtureBrowser.LaunchAsync(
         headed: referenceCase is not null || args.Contains("--headed", StringComparer.Ordinal),
         cancellationToken: cancellation.Token,
@@ -476,5 +478,10 @@ catch (PlaywrightException)
 catch (BrowserOperationException exception)
 {
     Console.Error.WriteLine($"Browser operation failed: {exception.Code}");
+    return 1;
+}
+catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+{
+    Console.Error.WriteLine("LOCAL_ARTIFACT_WRITE_FAILED. Inspect retained files and .pending markers; original files were not replaced.");
     return 1;
 }

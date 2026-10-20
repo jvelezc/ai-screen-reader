@@ -391,6 +391,7 @@
         "type": "Project",
         "dependencies": {
           "HeadlessScreenReader.Browser.Playwright": "[1.0.0, )",
+          "HeadlessScreenReader.Exploration": "[1.0.0, )",
           "HeadlessScreenReader.ScreenReader": "[1.0.0, )"
         }
       },
@@ -401,6 +402,13 @@
         "type": "Project",
         "dependencies": {
           "HeadlessScreenReader.Domain": "[1.0.0, )"
+        }
+      },
+      "headlessscreenreader.exploration": {
+        "type": "Project",
+        "dependencies": {
+          "HeadlessScreenReader.Domain": "[1.0.0, )",
+          "HeadlessScreenReader.ScreenReader": "[1.0.0, )"
         }
       },
       "headlessscreenreader.mcp": {

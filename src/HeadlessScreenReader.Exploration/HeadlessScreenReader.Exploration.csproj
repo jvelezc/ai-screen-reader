@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../HeadlessScreenReader.Domain/HeadlessScreenReader.Domain.csproj" />
+    <ProjectReference Include="../HeadlessScreenReader.ScreenReader/HeadlessScreenReader.ScreenReader.csproj" />
+  </ItemGroup>
+</Project>

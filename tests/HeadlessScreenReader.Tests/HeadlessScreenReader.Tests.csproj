@@ -9,6 +9,7 @@
     <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
     <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
     <ProjectReference Include="../../src/HeadlessScreenReader.Domain/HeadlessScreenReader.Domain.csproj" />
+    <ProjectReference Include="../../src/HeadlessScreenReader.Exploration/HeadlessScreenReader.Exploration.csproj" />
     <ProjectReference Include="../../src/HeadlessScreenReader.ScreenReader/HeadlessScreenReader.ScreenReader.csproj" />
     <ProjectReference Include="../../src/HeadlessScreenReader.Browser.Playwright/HeadlessScreenReader.Browser.Playwright.csproj" />
     <ProjectReference Include="../../src/HeadlessScreenReader.Cli/HeadlessScreenReader.Cli.csproj" />
