@@ -2,6 +2,8 @@
 
 The prototype exposes HeadlessScreenReader as local MCP tools. Claude receives exposed roles, names, focus, selection, text, frame coverage, command outcomes and an ordered evidence timeline. Two connections are available: **headless-reader-web** reads approved public HTTPS pages in isolated Linux containers; **headless-reader** runs trusted fixtures locally.
 
+**Start here: [copy and paste the complete Claude instructions](copy-to-claude.md).** One block explains every tool, the navigation rules, verification and a complete first task.
+
 ## Public website prototype
 
 Prerequisites: the repository-pinned .NET SDK, PowerShell 7, and a running Linux amd64 Podman machine or Docker engine. This Windows checkout has Podman and the published image installed. The browser uses a separate container network fence; it does not browse through your signed-in desktop browser.
@@ -68,6 +70,8 @@ Ask Claude:
 The path is reader_status → reader_open_fixture with Foundation → reader_snapshot → reader_execute commands. The fixture's first Tab reaches its link; the second Tab reaches Open details. Activate sends Enter. A goal with role heading, name Details opened and mustBeFocused true must return verification Satisfied. reader_timeline should show Tab, Tab and Enter input attempts and a GoalVerified event. Browse commands can find the button but cannot focus or activate it by themselves.
 
 Other fixtures expose tables, paragraphs, live regions, frames, ranges, trees/tabs and multi-selection. reader_status lists exact fixture and command names. Snapshot pages are immutable: continue with the returned observationId; start offset 0 to refresh. Commands invalidate the previous observation's pagination token. Every command requires the current snapshot's documentId, and stale session/document identities cannot authorize input.
+
+The **Typeahead** fixture adds focused listbox prefix input: Tab to Fruit search, then reader_execute with command **Typeahead**, key **pe**, and goal `{role:"option",name:"Peaches",mustBeFocused:true,selected:false}`. A new request waits 1100ms for the fixture's idle reset, then sends 1..16 ASCII letters/digits through actual supported listbox focus. The next identical prefix reaches Pears; selected Apples stays separate. Roving focus and selection-following-focus examples are also present. This specialized operation does not enable raw printable keys or public-page typing. See [v13 validation](../validation/reader-typeahead-v13.md).
 
 ## Prototype limits
 

@@ -9,7 +9,7 @@ using Microsoft.Playwright;
 
 if (args.Contains("--help", StringComparer.Ordinal))
 {
-    Console.WriteLine("HeadlessScreenReader. Usage: [--widgets | --observe-live | --text | --frames | --ranges | --composites | --tables | --paragraphs | --multiselect] [--headed] | --reference-template | --reference-case <id> | --assess-reference <file>");
+    Console.WriteLine("HeadlessScreenReader. Usage: [--widgets | --observe-live | --text | --frames | --ranges | --composites | --tables | --paragraphs | --multiselect | --typeahead] [--headed] | --reference-template | --reference-case <id> | --assess-reference <file>");
     foreach (var item in ReferenceValidation.Cases) Console.WriteLine($"  {item.Id}: {item.Task}");
     return 0;
 }
@@ -35,8 +35,8 @@ if (args.Length == 2 && args[0] == "--assess-reference")
 }
 var referenceCase = args.Length == 2 && args[0] == "--reference-case"
     ? ReferenceValidation.FindCase(args[1]) : null;
-if (referenceCase is null && (args.Any(arg => arg is not "--headed" and not "--widgets" and not "--observe-live" and not "--text" and not "--frames" and not "--ranges" and not "--composites" and not "--tables" and not "--paragraphs" and not "--multiselect")
-    || args.Count(arg => arg is "--widgets" or "--observe-live" or "--text" or "--frames" or "--ranges" or "--composites" or "--tables" or "--paragraphs" or "--multiselect") > 1))
+if (referenceCase is null && (args.Any(arg => arg is not "--headed" and not "--widgets" and not "--observe-live" and not "--text" and not "--frames" and not "--ranges" and not "--composites" and not "--tables" and not "--paragraphs" and not "--multiselect" and not "--typeahead")
+    || args.Count(arg => arg is "--widgets" or "--observe-live" or "--text" or "--frames" or "--ranges" or "--composites" or "--tables" or "--paragraphs" or "--multiselect" or "--typeahead") > 1))
 {
     Console.Error.WriteLine("Invalid arguments or unknown reference case. Use --help; only bundled fixtures are supported.");
     return 2;
@@ -51,7 +51,8 @@ try
         headed: referenceCase is not null || args.Contains("--headed", StringComparer.Ordinal),
         cancellationToken: cancellation.Token,
         fixture: referenceCase?.Fixture
-            ?? (args.Contains("--multiselect", StringComparer.Ordinal) ? BundledFixture.Multiselect
+            ?? (args.Contains("--typeahead", StringComparer.Ordinal) ? BundledFixture.Typeahead
+                : args.Contains("--multiselect", StringComparer.Ordinal) ? BundledFixture.Multiselect
                 : args.Contains("--paragraphs", StringComparer.Ordinal) ? BundledFixture.Paragraphs
                 : args.Contains("--tables", StringComparer.Ordinal) ? BundledFixture.Tables
                 : args.Contains("--composites", StringComparer.Ordinal) ? BundledFixture.Composites
@@ -92,6 +93,34 @@ try
         var step = await session.ExecuteAsync(command, key, cancellation.Token, goal);
         Console.WriteLine(JsonSerializer.Serialize(new { Profile = ScreenReaderSession.Profile, Step = step }, json));
         return step;
+    }
+    if (args.Contains("--typeahead", StringComparer.Ordinal))
+    {
+        await Execute(ReaderCommand.Tab);
+        var first = await Execute(ReaderCommand.Typeahead, "PE", new("option", "Peaches", MustBeFocused: true, Selected: false));
+        var repeated = await Execute(ReaderCommand.Typeahead, "pe", new("option", "Pears", MustBeFocused: true, Selected: false));
+        var absent = await Execute(ReaderCommand.Typeahead, "zz");
+        var rawDenied = await Execute(ReaderCommand.PressKey, "p");
+        await Execute(ReaderCommand.Tab);
+        var roving = await Execute(ReaderCommand.Typeahead, "pep", new("option", "Peppers", MustBeFocused: true, Selected: false));
+        var matched = first.Verification == VerificationStatus.Satisfied && repeated.Verification == VerificationStatus.Satisfied
+            && first.CursorNodeId != repeated.CursorNodeId && first.BrowserKeystrokes == 2 && repeated.BrowserKeystrokes == 2;
+        var selection = new[] { first, repeated, absent }.All(step =>
+            step.ListboxSelection?.Options.Where(o => o.Selection?.Value == true).Select(o => o.Name).SequenceEqual(["Apples"]) == true);
+        var unknown = absent.Outcome == ReaderOutcome.Unknown && absent.Typeahead?.PrefixMatchesObservedFocus == false && absent.BarrierCode is null;
+        var rovingObserved = roving.Verification == VerificationStatus.Satisfied && roving.FocusedNodeId == roving.CursorNodeId && roving.ActiveDescendantNodeId is null;
+        var policy = rawDenied.Outcome == ReaderOutcome.Denied && rawDenied.BrowserKeystrokes == 0;
+        foreach (var item in session.Timeline) Console.WriteLine(JsonSerializer.Serialize(new { Event = item }, json));
+        Console.WriteLine(JsonSerializer.Serialize(new
+        {
+            PrefixAndResetVerified = matched,
+            SelectionSeparate = selection,
+            NoMatchRemainsUnknown = unknown,
+            RovingFocusVerified = rovingObserved,
+            RawPrintableKeyDenied = policy,
+            browser.Environment
+        }, json));
+        return matched && selection && unknown && rovingObserved && policy ? 0 : 1;
     }
     if (args.Contains("--multiselect", StringComparer.Ordinal))
     {

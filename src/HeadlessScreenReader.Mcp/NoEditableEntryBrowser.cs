@@ -8,6 +8,14 @@ public sealed class NoEditableEntryBrowser(IScreenReaderBrowser inner, bool link
     public Task<AccessibilitySnapshot> CaptureAsync(CancellationToken cancellationToken = default) =>
         inner.CaptureAsync(cancellationToken);
 
+    public async Task PressListboxKeyAsync(ListboxKeyInput input, CancellationToken cancellationToken = default)
+    {
+        if (linksOnly) throw new BrowserInputDeniedException("PUBLIC_PAGE_READ_ONLY_INPUT_DENIED");
+        if (!input.IsAuthorizedBy(await inner.CaptureAsync(cancellationToken).ConfigureAwait(false)))
+            throw new BrowserInputDeniedException("TYPEAHEAD_SCOPE_CHANGED");
+        await inner.PressListboxKeyAsync(input, cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task PressKeyAsync(string key, CancellationToken cancellationToken = default)
     {
         if (key is "Tab" or "Shift+Tab" or "Escape")

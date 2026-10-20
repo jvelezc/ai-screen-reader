@@ -183,6 +183,39 @@ public sealed class ChromiumMcpTests
         Assert.Equal(2, timeline.GetProperty("data").GetProperty("events").EnumerateArray().Count(e => e.GetProperty("kind").GetString() == "InputDenied"));
     }
 
+    [Fact]
+    public async Task StdioTypeahead_AdvertisesBoundsAndVerifiesFocusedPrefixWithSelectionSeparate()
+    {
+        await using var client = await ConnectAsync();
+        var status = await CallAsync(client, "reader_status");
+        Assert.Contains("Typeahead", status.GetProperty("data").GetProperty("commands").EnumerateArray().Select(c => c.GetString()));
+        Assert.Equal(16, status.GetProperty("data").GetProperty("typeahead").GetProperty("maximumPrefixLength").GetInt32());
+        var open = await CallAsync(client, "reader_open_fixture", new() { ["fixture"] = "Typeahead" });
+        var id = open.GetProperty("sessionId").GetString()!;
+        var snapshot = await CallAsync(client, "reader_snapshot", new() { ["sessionId"] = id });
+        var doc = snapshot.GetProperty("data").GetProperty("documentId").GetString()!;
+        await Execute(client, id, doc, "Tab");
+        var step = (await CallAsync(client, "reader_execute", new()
+        {
+            ["sessionId"] = id,
+            ["documentId"] = doc,
+            ["command"] = "Typeahead",
+            ["key"] = "pe",
+            ["goal"] = new { role = "option", name = "Peaches", mustBeFocused = true, selected = false }
+        })).GetProperty("data");
+        Assert.Equal("Satisfied", step.GetProperty("verification").GetString());
+        Assert.Equal(2, step.GetProperty("browserKeystrokes").GetInt32());
+        Assert.True(step.GetProperty("typeahead").GetProperty("prefixMatchesObservedFocus").GetBoolean());
+        Assert.Equal("Apples", Assert.Single(step.GetProperty("listboxSelection").GetProperty("options").EnumerateArray(),
+            o => o.GetProperty("selection").GetProperty("value").GetBoolean()).GetProperty("name").GetString());
+        var denied = await CallAsync(client, "reader_execute", new()
+        { ["sessionId"] = id, ["documentId"] = doc, ["command"] = "PressKey", ["key"] = "p" });
+        Assert.Equal("Denied", denied.GetProperty("data").GetProperty("outcome").GetString());
+        var events = (await CallAsync(client, "reader_timeline", new() { ["sessionId"] = id })).GetProperty("data").GetProperty("events").EnumerateArray();
+        Assert.Equal(new[] { "Tab", "p", "e" }, events.Where(e => e.GetProperty("kind").GetString() == "InputCompleted").Select(e => e.GetProperty("detail").GetString()));
+        await CallAsync(client, "reader_close", new() { ["sessionId"] = id });
+    }
+
     private static Task<McpClient> ConnectAsync() => McpClient.CreateAsync(new StdioClientTransport(new()
     {
         Command = Environment.GetEnvironmentVariable("DOTNET_HOST_PATH") ?? "dotnet",

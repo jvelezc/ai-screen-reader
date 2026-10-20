@@ -25,7 +25,7 @@ public sealed class ReaderTools(ReaderWorkspace workspace)
         CancellationToken cancellationToken = default) =>
         Result(await workspace.SnapshotAsync(sessionId, offset, limit, observationId, cancellationToken));
 
-    [McpServerTool(Name = "reader_execute", Destructive = false, OpenWorld = false), Description("Run one named reader command with sessionId and current snapshot documentId. Browse commands read/move only. Tab changes actual focus. Activate never repairs focus. PressKey requires focus mode and an allowlisted key. Optional goal verifies observed semantics; input completion alone is not success. No editable text entry.")]
+    [McpServerTool(Name = "reader_execute", Destructive = false, OpenWorld = false), Description("Run one named reader command with sessionId and current snapshot documentId. Browse commands read/move only. Tab changes actual focus. Activate never repairs focus. PressKey requires focus mode and an allowlisted key. Typeahead uses key=1..16 ASCII letters/digits, waits 1100ms to start a fresh prefix and types only through actual noneditable listbox focus in trusted fixtures; denied on public pages. Optional goal verifies observed semantics; input completion alone is not success. No editable text entry.")]
     public async Task<CallToolResult> Execute(string sessionId, string documentId, string command, string? key = null,
         ObservationExpectation? goal = null, CancellationToken cancellationToken = default) =>
         Result(await workspace.ExecuteAsync(sessionId, documentId, command, key, goal, cancellationToken));

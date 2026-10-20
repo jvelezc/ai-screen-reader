@@ -82,6 +82,8 @@ public interface IScreenReaderBrowser
 {
     Task<AccessibilitySnapshot> CaptureAsync(CancellationToken cancellationToken = default);
     Task PressKeyAsync(string key, CancellationToken cancellationToken = default);
+    Task PressListboxKeyAsync(ListboxKeyInput input, CancellationToken cancellationToken = default) =>
+        Task.FromException(new BrowserInputDeniedException("TYPEAHEAD_NOT_SUPPORTED"));
 }
 
 public sealed class BrowserOperationException(string code, Exception? innerException = null)

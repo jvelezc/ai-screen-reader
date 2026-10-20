@@ -6,9 +6,9 @@ using HeadlessScreenReader.Domain;
 namespace HeadlessScreenReader.ScreenReader;
 
 /// <summary>One local controller. Dispose after all calls finish; hosted controller fencing is separate.</summary>
-public sealed class ScreenReaderSession : IDisposable
+public sealed partial class ScreenReaderSession : IDisposable
 {
-    public const string Profile = "hsr-desktop-reader-v12";
+    public const string Profile = "hsr-desktop-reader-v13";
     private readonly ReaderTextNavigator _text = new();
     private readonly IScreenReaderBrowser _browser;
     private readonly int _maxCommands;
@@ -94,7 +94,9 @@ public sealed class ScreenReaderSession : IDisposable
         catch (BrowserInputDeniedException exception)
         {
             Record(ReaderEventKind.InputDenied, exception.Code);
-            step = Result(ReaderOutcome.Denied, "Input was denied before browser dispatch.", errorCode: exception.Code);
+            step = Result(_completedKeystrokes == 0 ? ReaderOutcome.Denied : ReaderOutcome.Unknown,
+                _completedKeystrokes == 0 ? "Input was denied before browser dispatch." : "Further input denied; prior characters were dispatched.",
+                errorCode: exception.Code, inputMayHaveOccurred: _completedKeystrokes > 0);
             return step;
         }
         catch (BrowserOperationException exception)
@@ -134,6 +136,8 @@ public sealed class ScreenReaderSession : IDisposable
             return Result(ReaderOutcome.Unsupported, "Use the bounded observation stream for idle changes.");
         if (command == ReaderCommand.PressKey && !BrowserKeyPolicy.Allows(key))
             return Result(ReaderOutcome.Denied, "Keyboard operation denied by the local fixture policy.");
+        if (command == ReaderCommand.Typeahead && !ListboxTypeaheadPolicy.AllowsPrefix(key))
+            return Result(ReaderOutcome.Denied, "Typeahead requires 1..16 ASCII letters or digits.", errorCode: "TYPEAHEAD_PREFIX_INVALID");
         await RefreshAsync(token).ConfigureAwait(false);
         if (expectedDocumentId is not null && _snapshot!.DocumentId != expectedDocumentId)
             return Result(ReaderOutcome.Denied, "Document changed; capture a fresh observation before continuing.",
@@ -166,6 +170,8 @@ public sealed class ScreenReaderSession : IDisposable
                 return Result(ReaderOutcome.Unsupported, "Explicit browser keys require focus mode.");
             return await DispatchAsync(key!, token).ConfigureAwait(false);
         }
+        if (command == ReaderCommand.Typeahead)
+            return await TypeaheadAsync(key!.ToLowerInvariant(), token).ConfigureAwait(false);
         string? shortcut = command switch
         {
             ReaderCommand.NextHeading => "h",

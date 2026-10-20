@@ -56,7 +56,8 @@ public enum ReaderCommand
     NextListbox,
     PreviousListbox,
     NextOption,
-    PreviousOption
+    PreviousOption,
+    Typeahead
 }
 
 public enum ReaderOutcome
@@ -99,6 +100,7 @@ public sealed record ReaderStep(
     public RangeObservation? Range { get; init; }
     public ReaderTableContext? Table { get; init; }
     public ListboxSelectionContext? ListboxSelection { get; init; }
+    public TypeaheadObservation? Typeahead { get; init; }
     public System.Collections.Immutable.ImmutableArray<FrameObservation> FrameCoverage { get; init; } = [];
 }
 

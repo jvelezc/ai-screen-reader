@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Listbox typeahead fixture</title>
+<main>
+  <h1>Listbox typeahead fixture</h1>
+  <div role="listbox" aria-label="Fruit search" aria-multiselectable="true" tabindex="0" aria-activedescendant="apple" id="fruit">
+    <div role="option" id="apple" aria-selected="true">Apples</div>
+    <div role="option" id="peach" aria-selected="false">Peaches</div>
+    <div role="group" aria-label="More fruit">
+      <div role="option" id="pear" aria-selected="false">Pears</div>
+      <div role="option" id="plum" aria-selected="false" aria-disabled="true">Plums</div>
+    </div>
+    <div role="option" aria-selected="true" hidden>Peanut hidden</div>
+    <div role="option" id="long" aria-selected="false">abcdefghijklmnop target</div>
+  </div>
+  <div role="listbox" aria-label="Roving search" aria-multiselectable="true" id="roving">
+    <div role="option" id="carrot" aria-selected="true" tabindex="0">Carrots</div>
+    <div role="option" id="pea" aria-selected="false" tabindex="-1">Peas</div>
+    <div role="option" id="pepper" aria-selected="false" tabindex="-1">Peppers</div>
+  </div>
+  <div role="listbox" aria-label="Selection follows focus" tabindex="0" aria-activedescendant="blue" id="single">
+    <div role="option" id="blue" aria-selected="true">Blue</div>
+    <div role="option" id="red" aria-selected="false">Red</div>
+  </div>
+  <div role="listbox" aria-label="Editable override" contenteditable="true" tabindex="0" aria-activedescendant="edit-option" id="editable">
+    <div role="option" id="edit-option" aria-selected="true">Editable option</div>
+  </div>
+</main>
+<script>
+for (const box of document.querySelectorAll('[role=listbox]:not([contenteditable])')) {
+  let prefix = '', last = -Infinity;
+  const roving = box.id === 'roving';
+  box.addEventListener('keydown', event => {
+    if (!/^[a-z0-9]$/i.test(event.key) || event.ctrlKey || event.altKey || event.metaKey) return;
+    event.preventDefault();
+    const now = performance.now();
+    if (now - last >= 1000) prefix = '';
+    prefix += event.key.toLowerCase();
+    last = now;
+    const options = [...box.querySelectorAll('[role=option]:not([hidden])')].filter(option => option.getAttribute('aria-disabled') !== 'true');
+    const active = roving ? document.activeElement : document.getElementById(box.getAttribute('aria-activedescendant'));
+    // A fresh first character starts after the active item; subsequent characters refine it.
+    const start = Math.max(0, options.indexOf(active));
+    for (let distance = prefix.length === 1 ? 1 : 0; distance <= options.length; distance++) {
+      const option = options[(start + distance) % options.length];
+      if (!option.textContent.toLowerCase().startsWith(prefix)) continue;
+      if (roving) {
+        options.forEach(item => item.tabIndex = item === option ? 0 : -1);
+        option.focus();
+      } else box.setAttribute('aria-activedescendant', option.id);
+      if (box.id === 'single') options.forEach(item => item.setAttribute('aria-selected', String(item === option)));
+      break;
+    }
+  });
+}
+</script>
+</html>
