@@ -23,8 +23,9 @@ public static class IsolationProbe
         var status = File.ReadAllLines("/proc/self/status");
         var uid = status.First(line => line.StartsWith("Uid:", StringComparison.Ordinal)).Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)[1];
         var noPrivileges = status.Any(line => line.StartsWith("NoNewPrivs:", StringComparison.Ordinal) && line.TrimEnd().EndsWith('1'));
-        var capabilities = status.First(line => line.StartsWith("CapEff:", StringComparison.Ordinal)).Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)[1];
-        var restricted = ulong.TryParse(capabilities, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var bits) && bits == 0x40000;
+        var restricted = new[] { "CapEff:", "CapPrm:", "CapInh:", "CapBnd:" }.All(field =>
+            CapabilitiesAreRestricted(status.First(line => line.StartsWith(field, StringComparison.Ordinal))
+                .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)[1]));
         var root = File.ReadLines("/proc/self/mountinfo").Select(line => line.Split(' ')).First(fields => fields[4] == "/");
         var readOnly = root[5].Split(',').Contains("ro", StringComparer.Ordinal);
         var privateTcpBlocked = !await CanConnectAsync(proxy, 3130, token).ConfigureAwait(false);
@@ -45,6 +46,10 @@ public static class IsolationProbe
         return new(true, uid != "0", noPrivileges, readOnly, restricted, privateTcpBlocked, privateUdpBlocked,
             publicTcpBlocked, publicIpv6Blocked, denied, tls);
     }
+
+    public static bool CapabilitiesAreRestricted(string value) =>
+        ulong.TryParse(value, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var bits)
+        && (bits & ~0x40000UL) == 0; // Zero or only SYS_CHROOT; never require a privilege to be effective.
 
     public static async Task<bool> SentinelAsync(IPAddress address, bool udp, CancellationToken token)
     {

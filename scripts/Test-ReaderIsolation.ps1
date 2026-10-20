@@ -6,8 +6,7 @@ try {
     $arguments = (Get-ReaderWorkerArguments $ctx) + @('--entrypoint', 'dotnet', $ctx.Image,
         '/app/egress/HeadlessScreenReader.Egress.dll', 'probe', $ctx.ProxyIp, $AllowedHosts)
     $run = Invoke-ReaderRuntime $Runtime $arguments -AllowFailure
-    if ($run.Code -ne 0) { throw "ISOLATION_PROBE_FAILED: $($run.Text)" }
     $probe = $run.Text | ConvertFrom-Json
-    if (-not $probe.Passed) { throw 'ISOLATION_PROBE_INCOMPLETE' }
     [pscustomobject]@{ Control = $ctx.Control; Probe = $probe; DefaultDropPolicies = $ctx.KernelPolicies.Count; Runtime = $Runtime } | ConvertTo-Json -Depth 5
+    if ($run.Code -ne 0 -or -not $probe.Passed) { throw 'ISOLATION_PROBE_FAILED; see the emitted receipt for each check.' }
 } finally { Stop-ReaderIsolation $ctx }

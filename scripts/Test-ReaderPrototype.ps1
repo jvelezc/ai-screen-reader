@@ -11,7 +11,10 @@ try {
     $code = $LASTEXITCODE
 } finally { $env:HSR_ACCEPTANCE_RUN_ID = $previousRunId }
 $result = ($output -join "`n") | ConvertFrom-Json
-if ($code -ne 0 -or -not $result.PrototypePassed) { throw "PUBLIC_MCP_ACCEPTANCE_FAILED: $($result.Reason)" }
+if ($code -ne 0 -or -not $result.PrototypePassed) {
+    $result | ConvertTo-Json -Depth 5
+    throw "PUBLIC_MCP_ACCEPTANCE_FAILED: $($result.Reason)"
+}
 # Windows may terminate the stdio launcher before its finally block. The worker heartbeat
 # and proxy/fence expiry must still remove this run's containers without global cleanup.
 $deadline = [DateTimeOffset]::UtcNow.AddSeconds(25)
@@ -21,6 +24,6 @@ do {
     if ($remaining.Count -eq 0) { break }
     Start-Sleep -Milliseconds 500
 } while ([DateTimeOffset]::UtcNow -lt $deadline)
-if ($remaining.Count -ne 0) { throw 'PROTOTYPE_CONTAINERS_DID_NOT_EXPIRE' }
-$result | Add-Member -NotePropertyName ContainersReleased -NotePropertyValue $true
+$result | Add-Member -NotePropertyName ContainersReleased -NotePropertyValue ($remaining.Count -eq 0)
 $result | ConvertTo-Json -Depth 5
+if ($remaining.Count -ne 0) { throw 'PROTOTYPE_CONTAINERS_DID_NOT_EXPIRE' }
