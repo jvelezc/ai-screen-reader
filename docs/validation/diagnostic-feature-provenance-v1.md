@@ -1,6 +1,6 @@
 # Diagnostic feature provenance v1 validation
 
-October 20, 2026, local Windows: **757 discovered/executed/passed, 0 failed/skipped**. All 731 preceding test identities are retained; 26 cases were added, including seven real Chromium cases. Discovery and TRX identity sets match. Nonincremental Release build: zero warnings/errors. Formatting verification passed. Receipt: artifacts/recording-validation/feature-provenance-windows.trx. The four-route CLI passed at artifacts/features/0afc0511de28493d8fa39e55eb40b173/index.md. Remote CI is tracked on the corresponding main push.
+October 20, 2026, local Windows: **757 discovered/executed/passed, 0 failed/skipped**. All 731 preceding test identities are retained; 26 cases were added, including seven real Chromium cases. Discovery and TRX identity sets match. Nonincremental Release build: zero warnings/errors. Formatting verification passed. Receipt: artifacts/recording-validation/feature-provenance-windows.trx. The four-route CLI passed at artifacts/features/0afc0511de28493d8fa39e55eb40b173/index.md. [CI run 39496187180](https://github.com/jvelezc/ai-screen-reader/actions/runs/39496187180) passed all 757 tests on Windows and Ubuntu, both four-route feature demos, prior recording demos and packaging. Independent Linux isolation/public-reader acceptance also passed.
 
 | Requirement | Evidence |
 | --- | --- |

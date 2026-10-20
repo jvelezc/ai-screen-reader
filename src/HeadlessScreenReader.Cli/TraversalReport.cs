@@ -37,7 +37,7 @@ public static class TraversalReport
         text.AppendLine($"Attempted keys: {receipt.AttemptedKeystrokes}; completed keyboard API calls: {receipt.CompletedKeystrokes}. "
             + $"Unexecuted route instructions: {receipt.UnexecutedInstructions}. Timeline truncated: {receipt.TimelineTruncated}.").AppendLine();
         text.AppendLine(recording is null
-            ? "Structured reader observations and events only. No recording, credential entry, human takeover, automatic replay, site-wide coverage percentage or accessibility-conformance claim. Routes run on fresh synthetic fixtures."
+            ? "Structured reader observations and events only. No recording, credential entry, human takeover, site-wide coverage percentage or accessibility-conformance claim. Evidence selection never sends live input. Routes run on fresh synthetic fixtures."
             : $"Controlled input-free fixture recording. Stage: {Cell(recording.Stage)}; timing: {Cell(recording.Alignment?.ReasonCode ?? recording.ErrorCode ?? "Unknown")}. "
                 + "Video links are passive acquisition/event intervals including timing uncertainty; pixels do not verify the requested destination. "
                 + "No credential entry, human takeover, automatic replay or accessibility-conformance claim.").AppendLine();
