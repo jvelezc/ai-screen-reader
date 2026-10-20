@@ -6,7 +6,7 @@ using Microsoft.Playwright;
 namespace HeadlessScreenReader.Mcp;
 
 /// <summary>One process-owned browser. Lifecycle, observation and input share one controller gate.</summary>
-public sealed class ReaderWorkspace(TimeProvider timeProvider) : IAsyncDisposable
+public sealed class ReaderWorkspace(TimeProvider timeProvider, VerifiedPublicAccess? publicAccess = null) : IAsyncDisposable
 {
     private readonly SemaphoreSlim _gate = new(1, 1);
     private ChromiumFixtureBrowser? _browser;
@@ -23,7 +23,10 @@ public sealed class ReaderWorkspace(TimeProvider timeProvider) : IAsyncDisposabl
     public ToolReply Status() => new("ready", null, ScreenReaderSession.Profile, new
     {
         Transport = "stdio",
-        Scope = "trusted bundled fixtures",
+        Scope = publicAccess is null ? "trusted bundled fixtures" : "approved public HTTPS hosts and trusted fixtures",
+        PublicWebsites = publicAccess is not null,
+        ApprovedHosts = publicAccess?.Policy.AllowedHosts ?? [],
+        Isolation = publicAccess?.Receipt,
         Fixtures = Enum.GetNames<BundledFixture>(),
         Commands = Enum.GetNames<ReaderCommand>().Where(command => command != nameof(ReaderCommand.ObserveChanges)),
         MaxSessionMinutes = 10,
@@ -46,17 +49,37 @@ public sealed class ReaderWorkspace(TimeProvider timeProvider) : IAsyncDisposabl
         {
             await CloseCoreAsync().ConfigureAwait(false);
             _browser = await ChromiumFixtureBrowser.LaunchAsync(headed, token, Enum.Parse<BundledFixture>(fixture)).ConfigureAwait(false);
-            _reader = new(new NoEditableEntryBrowser(_browser), maxCommands: 500, maxTimelineEvents: 5000);
-            _sessionId = Guid.NewGuid().ToString("N");
-            _expiredSessionId = null;
-            _openedAt = timeProvider.GetTimestamp();
-            _operations = 0;
-            var sessionId = _sessionId;
-            _leaseTimer = timeProvider.CreateTimer(_ => { _ = ExpireAsync(sessionId); }, null,
-                TimeSpan.FromMinutes(10), Timeout.InfiniteTimeSpan);
+            AttachSession(linksOnly: false);
             return new ToolReply("opened", _sessionId, ScreenReaderSession.Profile, new
             { _browser.Environment, Next = "Call reader_snapshot, then use its documentId for reader_execute." });
         }, token).ConfigureAwait(false);
+    }
+
+    public Task<ToolReply> OpenUrlAsync(string url, CancellationToken token = default)
+    {
+        if (publicAccess is null) return Task.FromResult(ToolReply.Error("PUBLIC_SITES_DISABLED"));
+        var decision = publicAccess.Policy.AssessUrl(url);
+        if (!decision.Allowed) return Task.FromResult(ToolReply.Error(decision.DenialCode!));
+        return LockedAsync(async () =>
+        {
+            await CloseCoreAsync().ConfigureAwait(false);
+            _browser = await ChromiumFixtureBrowser.LaunchPublicPageAsync(url, publicAccess.Proxy, publicAccess.Policy, token).ConfigureAwait(false);
+            AttachSession(linksOnly: true);
+            return new("opened", _sessionId, ScreenReaderSession.Profile, new
+            { _browser.Environment, Isolation = publicAccess.Receipt, InputPolicy = "Public pages: traversal and focused link activation only; no form entry or button activation." });
+        }, token);
+    }
+
+    private void AttachSession(bool linksOnly)
+    {
+        _reader = new(new NoEditableEntryBrowser(_browser!, linksOnly), maxCommands: 500, maxTimelineEvents: 5000);
+        _sessionId = Guid.NewGuid().ToString("N");
+        _expiredSessionId = null;
+        _openedAt = timeProvider.GetTimestamp();
+        _operations = 0;
+        var sessionId = _sessionId;
+        _leaseTimer = timeProvider.CreateTimer(_ => { _ = ExpireAsync(sessionId); }, null,
+            TimeSpan.FromMinutes(10), Timeout.InfiniteTimeSpan);
     }
 
     public Task<ToolReply> SnapshotAsync(string sessionId, int offset = 0, int limit = 80,
@@ -67,6 +90,8 @@ public sealed class ReaderWorkspace(TimeProvider timeProvider) : IAsyncDisposabl
         {
             if (offset == 0)
             {
+                _observation = null;
+                _observationId = null;
                 _observation = await _browser!.CaptureAsync(token).ConfigureAwait(false);
                 _observationId = Guid.NewGuid().ToString("N");
             }
@@ -78,6 +103,7 @@ public sealed class ReaderWorkspace(TimeProvider timeProvider) : IAsyncDisposabl
             return new("observed", _sessionId, ScreenReaderSession.Profile, new
             {
                 snapshot.DocumentId,
+                snapshot.DocumentUrl,
                 ObservationId = _observationId,
                 Offset = offset,
                 TotalNodes = snapshot.Nodes.Length,

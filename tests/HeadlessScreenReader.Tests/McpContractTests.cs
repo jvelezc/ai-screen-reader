@@ -43,6 +43,7 @@ public sealed class McpContractTests
         Assert.Equal("DOCUMENT_REQUIRED", (await workspace.ExecuteAsync("absent", "", "Activate")).ErrorCode);
         Assert.Equal("SESSION_NOT_FOUND", (await workspace.SnapshotAsync("absent")).ErrorCode);
         Assert.Equal("SESSION_NOT_FOUND", (await workspace.CloseAsync("absent")).ErrorCode);
+        Assert.Equal("PUBLIC_SITES_DISABLED", (await workspace.OpenUrlAsync("https://example.com")).ErrorCode);
     }
 
     [Theory]

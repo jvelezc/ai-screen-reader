@@ -397,10 +397,17 @@
       "headlessscreenreader.domain": {
         "type": "Project"
       },
+      "headlessscreenreader.egress": {
+        "type": "Project",
+        "dependencies": {
+          "HeadlessScreenReader.Domain": "[1.0.0, )"
+        }
+      },
       "headlessscreenreader.mcp": {
         "type": "Project",
         "dependencies": {
           "HeadlessScreenReader.Browser.Playwright": "[1.0.0, )",
+          "HeadlessScreenReader.Egress": "[1.0.0, )",
           "HeadlessScreenReader.ScreenReader": "[1.0.0, )",
           "Microsoft.Extensions.Hosting": "[10.0.13, )",
           "ModelContextProtocol": "[2.2.0, )"

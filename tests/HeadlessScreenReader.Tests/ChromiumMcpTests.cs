@@ -14,7 +14,7 @@ public sealed class ChromiumMcpTests
     {
         await using var client = await ConnectAsync();
         var tools = await client.ListToolsAsync();
-        Assert.Equal(new[] { "reader_close", "reader_execute", "reader_observe", "reader_open_fixture", "reader_snapshot", "reader_status", "reader_timeline" },
+        Assert.Equal(new[] { "reader_close", "reader_execute", "reader_observe", "reader_open_fixture", "reader_open_url", "reader_snapshot", "reader_status", "reader_timeline" },
             tools.Select(tool => tool.Name).Order(StringComparer.Ordinal));
         var execute = tools.Single(tool => tool.Name == "reader_execute").JsonSchema;
         Assert.Equal("object", execute.GetProperty("type").GetString());

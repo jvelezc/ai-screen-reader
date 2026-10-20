@@ -73,6 +73,28 @@ public sealed class McpInputPolicyTests
         Assert.Empty(inner.Keys);
     }
 
+    [Theory]
+    [InlineData("button", "Enter", false)]
+    [InlineData("checkbox", "Space", false)]
+    [InlineData("link", "Space", false)]
+    [InlineData("link", "Enter", true)]
+    public async Task PublicPages_OnlyFocusedLinkEnterCanDispatchBeyondTraversal(string role, string key, bool allowed)
+    {
+        var inner = new PolicyBrowser(new AccessibleNode("focused", role, "Target", IsFocused: true));
+        var guard = new NoEditableEntryBrowser(inner, linksOnly: true);
+        if (allowed)
+        {
+            await guard.PressKeyAsync(key);
+            Assert.Equal(new[] { key }, inner.Keys);
+        }
+        else
+        {
+            var denied = await Assert.ThrowsAsync<BrowserInputDeniedException>(() => guard.PressKeyAsync(key));
+            Assert.Equal("PUBLIC_PAGE_READ_ONLY_INPUT_DENIED", denied.Code);
+            Assert.Empty(inner.Keys);
+        }
+    }
+
     private sealed class PolicyBrowser(params AccessibleNode[] nodes) : IScreenReaderBrowser
     {
         public List<string> Keys { get; } = [];

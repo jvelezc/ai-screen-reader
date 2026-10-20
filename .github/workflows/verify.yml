@@ -9,6 +9,38 @@ permissions:
   contents: read
 
 jobs:
+  isolated-prototype:
+    name: Isolated public MCP prototype (Linux)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - name: Build isolated prototype
+        run: pwsh -NoProfile -File scripts/Install-IsolatedReader.ps1 -Runtime docker
+      - name: Prove namespace fence and proxy policy
+        run: pwsh -NoProfile -File scripts/Test-ReaderIsolation.ps1 -Runtime docker | Set-Content artifacts/isolated/isolation.json
+      - name: Exercise public task through real stdio MCP and sandboxed Chromium
+        run: |
+          pwsh -NoProfile -File scripts/Test-ReaderPrototype.ps1 -Runtime docker | Set-Content artifacts/isolated/public-smoke.json
+          if ($LASTEXITCODE -ne 0) { throw 'PUBLIC_MCP_ACCEPTANCE_FAILED' }
+      - name: Retain acceptance receipts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: isolated-prototype-linux
+          path: |
+            artifacts/isolated/isolation.json
+            artifacts/isolated/public-smoke.json
+            artifacts/isolated/public-*-observation.json
+          retention-days: 7
   verify:
     name: Build and test (${{ matrix.os }})
     strategy:

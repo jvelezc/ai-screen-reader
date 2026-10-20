@@ -3,7 +3,7 @@ using HeadlessScreenReader.Domain;
 namespace HeadlessScreenReader.Mcp;
 
 /// <summary>Prototype input gate. This does not establish a capture-exclusion protocol.</summary>
-public sealed class NoEditableEntryBrowser(IScreenReaderBrowser inner) : IScreenReaderBrowser
+public sealed class NoEditableEntryBrowser(IScreenReaderBrowser inner, bool linksOnly = false) : IScreenReaderBrowser
 {
     public Task<AccessibilitySnapshot> CaptureAsync(CancellationToken cancellationToken = default) =>
         inner.CaptureAsync(cancellationToken);
@@ -24,6 +24,8 @@ public sealed class NoEditableEntryBrowser(IScreenReaderBrowser inner) : IScreen
             || owner?.Role is not ("button" or "link" or "menuitem" or "checkbox" or "radio" or "switch"
                 or "slider" or "tree" or "treeitem" or "tab" or "tablist" or "listbox" or "option" or "combobox"))
             throw new BrowserInputDeniedException("EDITABLE_OR_UNSUPPORTED_INPUT_DENIED");
+        if (linksOnly && (key != "Enter" || owner.Role != "link" || effective?.Id != owner.Id))
+            throw new BrowserInputDeniedException("PUBLIC_PAGE_READ_ONLY_INPUT_DENIED");
         await inner.PressKeyAsync(key, cancellationToken).ConfigureAwait(false);
     }
 }

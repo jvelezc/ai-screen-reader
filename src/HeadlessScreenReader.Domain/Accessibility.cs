@@ -67,6 +67,7 @@ public sealed record AccessibilitySnapshot(
     ImmutableArray<string> Limitations)
 {
     public ImmutableArray<FrameObservation> Frames { get; init; } = [];
+    public string? DocumentUrl { get; init; }
 
     public AccessibleNode? FocusedNode =>
         Nodes.FirstOrDefault(node => node.IsFocused && node.Role != "RootWebArea")

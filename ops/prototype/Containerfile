@@ -1,0 +1,10 @@
+FROM mcr.microsoft.com/playwright/dotnet:v1.63.0-noble@sha256:4bb37fb71e75c18b6f8b8e4230139c7654de3dd39e55b66e84392c93933fed4e
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends iptables && rm -rf /var/lib/apt/lists/*
+COPY artifacts/isolated/server/ /app/server/
+COPY artifacts/isolated/egress/ /app/egress/
+COPY ops/prototype/firewall.sh /app/firewall.sh
+RUN chmod 0555 /app/firewall.sh /app/server/.playwright/node/linux-x64/node
+WORKDIR /app
+USER 1001:1001
+ENTRYPOINT ["dotnet", "/app/server/HeadlessScreenReader.Mcp.dll"]

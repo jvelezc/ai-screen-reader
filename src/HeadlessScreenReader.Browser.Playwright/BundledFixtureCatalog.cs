@@ -6,8 +6,8 @@ namespace HeadlessScreenReader.Browser.Playwright;
 public sealed record BundledFixtureIdentity(BundledFixture Fixture, string ContentSha256);
 
 public sealed record FixtureBrowserEnvironment(
-    string BrowserVersion, string PlaywrightVersion, bool Headed, BundledFixtureIdentity Content,
-    FrameCaptureOptions? FrameLimits = null);
+    string BrowserVersion, string PlaywrightVersion, bool Headed, BundledFixtureIdentity? Content,
+    FrameCaptureOptions? FrameLimits = null, string? SourceUrl = null);
 
 /// <summary>Only trusted, embedded fixtures. Content hashes identify the UTF-8 text sent to Chromium.</summary>
 public static class BundledFixtureCatalog

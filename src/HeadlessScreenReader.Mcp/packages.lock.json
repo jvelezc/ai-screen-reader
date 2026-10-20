@@ -340,6 +340,12 @@
       "headlessscreenreader.domain": {
         "type": "Project"
       },
+      "headlessscreenreader.egress": {
+        "type": "Project",
+        "dependencies": {
+          "HeadlessScreenReader.Domain": "[1.0.0, )"
+        }
+      },
       "headlessscreenreader.screenreader": {
         "type": "Project",
         "dependencies": {

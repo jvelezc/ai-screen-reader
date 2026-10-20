@@ -6,4 +6,7 @@
     <ProjectReference Include="../HeadlessScreenReader.ScreenReader/HeadlessScreenReader.ScreenReader.csproj" />
     <ProjectReference Include="../HeadlessScreenReader.Browser.Playwright/HeadlessScreenReader.Browser.Playwright.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\HeadlessScreenReader.Egress\HeadlessScreenReader.Egress.csproj" />
+  </ItemGroup>
 </Project>

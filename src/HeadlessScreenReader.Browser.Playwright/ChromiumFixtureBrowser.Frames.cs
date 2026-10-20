@@ -76,6 +76,8 @@ public sealed partial class ChromiumFixtureBrowser
         try
         {
             var frames = await ReadFrameTreeAsync().ConfigureAwait(false);
+            if (_publicPolicy is not null && !_publicPolicy.AssessUrl(frames[0].Url).Allowed)
+                throw new BrowserOperationException("TARGET_SCOPE_CHANGED");
             var coverage = new List<FrameObservation>();
             var documents = new Dictionary<string, FrameDocument>(StringComparer.Ordinal);
             var attempts = 0;
@@ -145,6 +147,14 @@ public sealed partial class ChromiumFixtureBrowser
             var nodes = ordered.ToImmutable();
             if (nodes.Count(node => node.IsFocused && node.Role != "RootWebArea") > 1)
                 throw new BrowserOperationException("FRAME_FOCUS_AMBIGUOUS");
+            var blocked = Array.Empty<string>();
+            lock (_blockedOrigins) blocked = _blockedOrigins.ToArray();
+            var limitations = new[]
+            {
+                _publicPolicy is null ? "Bundled trusted fixture; all external network requests are blocked."
+                    : "Approved HTTPS page through verified external egress isolation. Public-page input is traversal and link activation only.",
+                $"AX document budget: at most 5000 raw nodes per captured frame. Blocked network origins: {string.Join(", ", blocked)}"
+            };
             return new(documents[frames[0].Id].DocumentId, nodes,
                 ["Only trusted same-target about:srcdoc/about:blank child documents are supported; frame coverage is explicit.",
                  "Frame captures are bounded and sequential, not an atomic cross-document observation.",
@@ -152,8 +162,8 @@ public sealed partial class ChromiumFixtureBrowser
                  "Live changes are snapshot observations, not a speech scheduler; intermediate updates can be missed.",
                  "Exposed peer counts and declared logical set positions are separate observations.",
                  "Required and logical positions carry explicit AX/native/declared source provenance.",
-                 "Text navigation uses exposed text runs; newline-delimited lines do not describe visual wrapping."])
-            { Frames = coverage.ToImmutableArray() };
+                 "Text navigation uses exposed text runs; newline-delimited lines do not describe visual wrapping.", .. limitations])
+            { Frames = coverage.ToImmutableArray(), DocumentUrl = frames[0].Url };
         }
         catch (PlaywrightException exception)
         {

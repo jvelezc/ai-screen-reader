@@ -17,6 +17,7 @@ public sealed class ChromiumReferenceTests
     {
         await using var browser = await ChromiumFixtureBrowser.LaunchAsync(fixture: fixture);
         var environment = browser.Environment;
+        Assert.NotNull(environment.Content);
         Assert.Equal(fixture, environment.Content.Fixture);
         Assert.False(environment.Headed); // This automated harness check is not a headed NVDA run.
         using var stream = typeof(ChromiumFixtureBrowser).Assembly.GetManifestResourceStream(

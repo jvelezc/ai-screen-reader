@@ -8,7 +8,7 @@ namespace HeadlessScreenReader.Browser.Playwright;
 
 public enum BundledFixture { Foundation, Widgets, LiveRegions, Semantics, Landmarks, Text, Frames, Ranges, Composites, Tables, Paragraphs, Multiselect }
 
-/// <summary>A disposable, synthetic fixture harness. This is not an arbitrary-site scanning sandbox.</summary>
+/// <summary>Chromium observations for fixtures and isolation-gated HTTPS pages. Egress enforcement is external.</summary>
 public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, IAsyncDisposable
 {
     private readonly IPlaywright _playwright;
@@ -20,12 +20,15 @@ public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, IAsyn
     private readonly string _sessionId = Guid.NewGuid().ToString("N");
     private readonly TaskCompletionSource _closed = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private bool _disposed;
+    private readonly PublicTargetPolicy? _publicPolicy;
+    private readonly HashSet<string> _blockedOrigins;
 
     public FixtureBrowserEnvironment Environment { get; }
 
     private ChromiumFixtureBrowser(
         IPlaywright playwright, IBrowser browser, IBrowserContext context, IPage page, ICDPSession cdp,
-        BundledFixture fixture, bool headed, FrameCaptureOptions frameOptions)
+        BundledFixture? fixture, bool headed, FrameCaptureOptions frameOptions,
+        PublicTargetPolicy? publicPolicy = null, HashSet<string>? blockedOrigins = null, string? sourceUrl = null)
     {
         _playwright = playwright;
         _browser = browser;
@@ -33,9 +36,11 @@ public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, IAsyn
         _page = page;
         _cdp = cdp;
         _frameOptions = frameOptions;
+        _publicPolicy = publicPolicy;
+        _blockedOrigins = blockedOrigins ?? [];
         Environment = new(browser.Version,
             typeof(Microsoft.Playwright.Playwright).Assembly.GetName().Version!.ToString(),
-            headed, BundledFixtureCatalog.Describe(fixture), frameOptions);
+            headed, fixture is { } named ? BundledFixtureCatalog.Describe(named) : null, frameOptions, sourceUrl);
         _browser.Disconnected += (_, _) => _closed.TrySetResult();
         _page.Close += (_, _) => _closed.TrySetResult();
     }
@@ -93,6 +98,8 @@ public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, IAsyn
         cancellationToken.ThrowIfCancellationRequested();
         try
         {
+            if (_publicPolicy is not null && !_publicPolicy.AssessUrl(_page.Url).Allowed)
+                throw new BrowserOperationException("TARGET_SCOPE_CHANGED");
             return await CaptureCoreAsync().WaitAsync(TimeSpan.FromSeconds(5), cancellationToken)
                 .ConfigureAwait(false);
         }
@@ -116,6 +123,7 @@ public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, IAsyn
             if (groups.Any(group => group.Skip(1).Any(node => node.GetRawText() != group.First().GetRawText())))
                 throw new BrowserOperationException("AX_NODE_ID_CONFLICT");
             var raw = groups.Select(group => group.First()).ToArray();
+            if (raw.Length > 5000) throw new BrowserOperationException("AX_NODE_LIMIT");
             var byId = raw.ToDictionary(node => node.GetProperty("nodeId").GetString()!);
             var root = raw.FirstOrDefault(node => !node.TryGetProperty("parentId", out _));
             if (root.ValueKind == JsonValueKind.Undefined)
@@ -319,7 +327,15 @@ public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, IAsyn
             throw new BrowserOperationException("KEY_DENIED");
         try
         {
+            var priorUrl = _page.Url;
+            var navigation = _publicPolicy is not null && key == "Enter"
+                ? _page.WaitForURLAsync(url => url != priorUrl, new() { WaitUntil = WaitUntilState.Load, Timeout = 5000 }) : null;
             await _page.Keyboard.PressAsync(key).ConfigureAwait(false);
+            if (navigation is not null)
+            {
+                try { await navigation.ConfigureAwait(false); }
+                catch (TimeoutException) { /* A key does not prove navigation; the reader observes the actual result. */ }
+            }
         }
         catch (PlaywrightException exception)
         {

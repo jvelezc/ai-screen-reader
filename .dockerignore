@@ -1,0 +1,13 @@
+**
+!artifacts/
+!artifacts/isolated/
+!artifacts/isolated/server/
+!artifacts/isolated/server/**
+!artifacts/isolated/egress/
+!artifacts/isolated/egress/**
+!ops/
+!ops/prototype/
+!ops/prototype/**
+artifacts/isolated/server/.playwright/node/darwin-*/
+artifacts/isolated/server/.playwright/node/win32_*/
+artifacts/isolated/server/.playwright/node/linux-arm64/

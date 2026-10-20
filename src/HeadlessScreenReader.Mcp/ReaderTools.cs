@@ -16,6 +16,10 @@ public sealed class ReaderTools(ReaderWorkspace workspace)
     public async Task<CallToolResult> OpenFixture(string fixture, bool headed = false, CancellationToken cancellationToken = default) =>
         Result(await workspace.OpenFixtureAsync(fixture, headed, cancellationToken));
 
+    [McpServerTool(Name = "reader_open_url", OpenWorld = true, Destructive = false), Description("Open a public HTTPS URL only when reader_status reports verified isolation and its hostname is approved. Default local fixture server denies this tool. No IP literals, private targets, credentials or custom proxy/settings. Public pages support semantic reading, Tab traversal and focused link activation; form entry and button activation are denied.")]
+    public async Task<CallToolResult> OpenUrl(string url, CancellationToken cancellationToken = default) =>
+        Result(await workspace.OpenUrlAsync(url, cancellationToken));
+
     [McpServerTool(Name = "reader_snapshot", ReadOnly = true, OpenWorld = false), Description("Observe exposed AX nodes, focus, frame coverage and limitations. Editable values excluded. Start offset=0 for fresh capture; subsequent pages require its observationId. At most 100 nodes/page; observations are immutable until a fresh capture or command.")]
     public async Task<CallToolResult> Snapshot(string sessionId, int offset = 0, int limit = 80, string? observationId = null,
         CancellationToken cancellationToken = default) =>

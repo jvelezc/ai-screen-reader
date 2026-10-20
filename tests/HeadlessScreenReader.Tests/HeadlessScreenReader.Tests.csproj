@@ -16,5 +16,6 @@
   <ItemGroup><Using Include="Xunit" /></ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\HeadlessScreenReader.Mcp\HeadlessScreenReader.Mcp.csproj" />
+    <ProjectReference Include="..\..\src\HeadlessScreenReader.Egress\HeadlessScreenReader.Egress.csproj" />
   </ItemGroup>
 </Project>
