@@ -33,9 +33,11 @@ public sealed class TraversalRunner(TimeProvider? timeProvider = null)
         double Elapsed() => _time.GetElapsedTime(started).TotalMilliseconds;
         using var deadline = new CancellationTokenSource(limits.Duration, _time);
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, deadline.Token);
-        var capture = new ObservedBrowser(browser);
+        var capture = new ObservedBrowser(browser, Elapsed);
+        var readerBefore = Elapsed();
         using var reader = new ScreenReaderSession(capture, maxCommands: limits.MaxCommands + 1,
             waitOptions: waitOptions, timeProvider: _time);
+        var readerOrigin = new EvidenceInterval(readerBefore, Elapsed());
         var observations = new List<TraversalObservation>();
         var attempts = new List<TraversalAttempt>();
         var execution = TraversalExecution.Interrupted;
@@ -53,7 +55,8 @@ public sealed class TraversalRunner(TimeProvider? timeProvider = null)
             var fingerprint = Convert.ToHexStringLower(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(
                 new { Version = "same-document-reader-state-v1", Snapshot = snapshot, step.Mode, step.CursorNodeId })));
             var observation = new TraversalObservation($"o{observations.Count + 1}", snapshot,
-                step.Mode, step.CursorNodeId, fingerprint, Elapsed());
+                step.Mode, step.CursorNodeId, fingerprint, Elapsed())
+            { CaptureWindow = capture.Window };
             observations.Add(observation);
             return observation;
         }
@@ -155,16 +158,23 @@ public sealed class TraversalRunner(TimeProvider? timeProvider = null)
         return new("hsr-traversal-v1", ScreenReaderSession.Profile, plan, limits, execution, reachability,
             barrier, policy, stop, [.. observations], [.. attempts], reader.Timeline, reader.TimelineTruncated,
             plan.Instructions.Length - attempts.Count, error)
-        { StartedAtUtc = startedAtUtc, DurationMilliseconds = Elapsed() };
+        {
+            StartedAtUtc = startedAtUtc,
+            DurationMilliseconds = Elapsed(),
+            Clock = new(started, _time.TimestampFrequency, readerOrigin)
+        };
     }
 
-    private sealed class ObservedBrowser(IScreenReaderBrowser browser) : IScreenReaderBrowser
+    private sealed class ObservedBrowser(IScreenReaderBrowser browser, Func<double> elapsed) : IScreenReaderBrowser
     {
         public AccessibilitySnapshot? Last { get; private set; }
         public int Version { get; private set; }
+        public EvidenceInterval? Window { get; private set; }
         public async Task<AccessibilitySnapshot> CaptureAsync(CancellationToken cancellationToken = default)
         {
+            var before = elapsed();
             var snapshot = await browser.CaptureAsync(cancellationToken).ConfigureAwait(false);
+            Window = new(before, elapsed());
             Last = snapshot;
             Version++;
             return snapshot;

@@ -1,0 +1,28 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Recording-safe synthetic shop</title>
+<style>
+html,body { margin:0; background:#e8eef8; font:12px sans-serif }
+main { padding:6px } h1 { margin:0 0 4px; font-size:18px } h2 { margin:4px 0; font-size:16px }
+p { margin:4px 0 } button { font-size:11px; margin:2px 0 }
+#code { position:fixed;left:0;top:200px;height:16px;display:flex } #code div { width:8px;height:16px }
+</style><body><main>
+<h1>Synthetic shop</h1><p>One synthetic item. No order is submitted.</p>
+<button id="preview">Open checkout preview</button>
+<button id="validation">Checkout with missing address</button>
+<button id="unchanged">Checkout without feedback</button>
+<section id="checkout" hidden><h2 id="destination" tabindex="-1">Checkout preview</h2><p>No order was submitted.</p></section>
+<div id="validation-dialog" role="dialog" aria-modal="true" aria-label="Address required" hidden>
+<h2 id="validation-heading" tabindex="-1">Address required</h2><p>A missing address prevented checkout.</p></div>
+<button disabled>Unavailable checkout</button><p>End of synthetic shop</p>
+</main><div id="code" aria-hidden="true"></div><script>
+document.getElementById('preview').addEventListener('click',()=>{
+  document.getElementById('checkout').hidden=false; document.getElementById('destination').focus();
+});
+document.getElementById('validation').addEventListener('click',()=>{
+  document.getElementById('validation-dialog').hidden=false; document.getElementById('validation-heading').focus();
+});
+// Diagnostic frame identity is separate from reader-visible semantics and goal verification.
+let tick=0; const cells=[];
+for(let i=0;i<32;i++){const cell=document.createElement('div');document.querySelector('#code').append(cell);cells.push(cell);}
+function renderCode(){const bytes=[0,tick,tick,165];cells.forEach((cell,i)=>cell.style.background=(bytes[i>>3]>>(7-i%8))&1?'white':'black');}
+setInterval(()=>{tick=(tick+1)%256;renderCode();},40);renderCode();
+</script></body></html>

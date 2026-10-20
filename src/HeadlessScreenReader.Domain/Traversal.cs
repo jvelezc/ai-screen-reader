@@ -29,7 +29,14 @@ public enum TraversalStopReason
 /// <summary>A retained reader snapshot; URL payloads are omitted from this local evidence schema.</summary>
 public sealed record TraversalObservation(
     string Id, AccessibilitySnapshot Snapshot, ReaderMode Mode, string? CursorNodeId,
-    string Fingerprint, double ElapsedMilliseconds);
+    string Fingerprint, double ElapsedMilliseconds)
+{
+    public EvidenceInterval? CaptureWindow { get; init; }
+}
+
+/// <summary>Inclusive monotonic clock bounds, in milliseconds from the named origin.</summary>
+public sealed record EvidenceInterval(double StartMilliseconds, double EndMilliseconds);
+public sealed record TraversalClock(long OriginTimestamp, long TimestampFrequency, EvidenceInterval ReaderOrigin);
 
 /// <summary>Observed result references never name an unobserved intended destination.</summary>
 public sealed record TraversalAttempt(
@@ -49,7 +56,8 @@ public sealed record TraversalReceipt(
     public string RunId { get; init; } = Guid.NewGuid().ToString("N");
     public DateTimeOffset StartedAtUtc { get; init; }
     public double DurationMilliseconds { get; init; }
-    public bool HasRecording => false;
+    public bool HasRecording { get; init; }
+    public TraversalClock? Clock { get; init; }
     public string Assistance => "None; this runner has no human-input channel";
     public int CompletedKeystrokes => Attempts.Sum(a => a.Step?.BrowserKeystrokes ?? 0);
     public int AttemptedKeystrokes => Timeline.Count(e => e.Kind == ReaderEventKind.InputAttempted);

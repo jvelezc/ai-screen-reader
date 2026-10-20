@@ -44,7 +44,7 @@ public static class TraversalTraceDiagram
             var sourceY = 136 + positions[edge.SourceObservationId] * 156 + 76;
             var resultY = 136 + positions[edge.ResultObservationId] * 156;
             var firstEvent = receipt.Attempts.Single(a => a.Id == edge.AttemptId).Events.FirstOrDefault();
-            Link(firstEvent is null ? edge.SourceObservationId : $"event-{firstEvent.Sequence}");
+            Link(receipt.HasRecording ? edge.AttemptId : firstEvent is null ? edge.SourceObservationId : $"event-{firstEvent.Sequence}");
             xml.WriteStartElement("path"); Attribute("d", $"M 200 {sourceY} L 200 {resultY - 5}");
             Attribute("stroke", "#42526b"); Attribute("stroke-width", "2"); Attribute("fill", "none"); Attribute("marker-end", "url(#arrow)"); xml.WriteEndElement();
             Element("title", $"{edge.AttemptId}: {edge.Command}; {KeyLabel(edge)}; {edge.Outcome}; verification {edge.Verification}");
@@ -76,7 +76,7 @@ public static class TraversalTraceDiagram
         {
             var sourceY = 136 + positions[attempt.SourceObservationId] * 156 + 76;
             var firstEvent = attempt.Events.FirstOrDefault();
-            Link(firstEvent is null ? attempt.SourceObservationId : $"event-{firstEvent.Sequence}");
+            Link(receipt.HasRecording ? attempt.Id : firstEvent is null ? attempt.SourceObservationId : $"event-{firstEvent.Sequence}");
             xml.WriteStartElement("path"); Attribute("d", $"M 200 {sourceY} L 200 {sourceY + 38}");
             Attribute("stroke", "#936014"); Attribute("stroke-width", "2"); Attribute("stroke-dasharray", "5 4");
             Attribute("marker-end", "url(#arrow)"); xml.WriteEndElement();

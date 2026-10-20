@@ -38,7 +38,8 @@ const review = document.querySelector('#review');
 const dialog = document.querySelector('#reviewDialog');
 review.addEventListener('click', () => dialog.showModal());
 document.querySelector('#closeReview').addEventListener('click', () => dialog.close());
-dialog.addEventListener('close', () => review.focus());
+// Native dialog closing restores its opener synchronously. A queued close handler
+// must not steal focus back after the next reader command has already navigated.
 dialog.addEventListener('keydown', event => {
   if (event.key !== 'Tab') return;
   const buttons = [...dialog.querySelectorAll('button')];

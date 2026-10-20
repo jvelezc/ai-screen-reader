@@ -6,7 +6,7 @@ using Microsoft.Playwright;
 
 namespace HeadlessScreenReader.Browser.Playwright;
 
-public enum BundledFixture { Foundation, Widgets, LiveRegions, Semantics, Landmarks, Text, Frames, Ranges, Composites, Tables, Paragraphs, Multiselect, Typeahead, Traversal, CapturePrivacy, RecordingMarkers }
+public enum BundledFixture { Foundation, Widgets, LiveRegions, Semantics, Landmarks, Text, Frames, Ranges, Composites, Tables, Paragraphs, Multiselect, Typeahead, Traversal, CapturePrivacy, RecordingMarkers, TraversalRecording }
 
 /// <summary>Chromium observations for fixtures and isolation-gated HTTPS pages. Egress enforcement is external.</summary>
 public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, IAsyncDisposable
@@ -75,7 +75,7 @@ public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, IAsyn
             {
                 AcceptDownloads = false,
                 ServiceWorkers = ServiceWorkerPolicy.Block,
-                ViewportSize = fixture is BundledFixture.CapturePrivacy or BundledFixture.RecordingMarkers
+                ViewportSize = fixture is BundledFixture.CapturePrivacy or BundledFixture.RecordingMarkers or BundledFixture.TraversalRecording
                     ? new() { Width = 320, Height = 240 } : new() { Width = 1280, Height = 720 }
             }).ConfigureAwait(false);
             await context.RouteAsync("**/*", route => route.AbortAsync()).ConfigureAwait(false);

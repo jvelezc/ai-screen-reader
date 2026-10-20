@@ -9,6 +9,29 @@ namespace HeadlessScreenReader.Tests;
 public sealed class ChromiumObservationTests
 {
     [Fact]
+    public async Task ClosedDialog_QueuedNotificationCannotStealSubsequentFocus()
+    {
+        await using var browser = await ChromiumFixtureBrowser.LaunchAsync(fixture: BundledFixture.Widgets);
+        await browser.PressKeyAsync("Tab");
+        await browser.PressKeyAsync("Enter");
+        Assert.Contains((await browser.CaptureAsync()).Nodes, n => n.Role == "dialog" && n.Name == "Review preferences");
+        // Observe the native queued notification deterministically instead of racing host round trips.
+        var keptFocus = await browser.DiagnosticPage.EvaluateAsync<bool>("""
+            async () => {
+              const dialog = document.querySelector('dialog');
+              const standard = document.querySelector('input[value="standard"]');
+              const closed = new Promise(resolve => dialog.addEventListener('close',
+                () => resolve(document.activeElement === standard), {once:true}));
+              dialog.close();
+              standard.focus();
+              return await closed;
+            }
+            """);
+        Assert.True(keptFocus, "A delayed fixture close handler must not undo a later focus transition.");
+        Assert.Equal("Standard", (await browser.CaptureAsync()).FocusedNode?.Name);
+    }
+
+    [Fact]
     public async Task Context_ChromiumWidgets_ExposesRadioOptionAndDialogContainers()
     {
         await using var browser = await ChromiumFixtureBrowser.LaunchAsync(fixture: BundledFixture.Widgets);

@@ -15,7 +15,7 @@ public sealed record RecordingProbeMedia(ImmutableArray<SourceMarkerFrame> Sourc
     public int VideoFramesPerSecond => 25;
 }
 
-/// <summary>Owns only the trusted timing fixture; exposes neither arbitrary script nor general recording.</summary>
+/// <summary>Owns a trusted, input-free recording fixture; exposes neither arbitrary script nor general recording.</summary>
 public sealed class ChromiumRecordingProbe : IAsyncDisposable
 {
     private readonly ChromiumFixtureBrowser _browser;
@@ -46,9 +46,17 @@ public sealed class ChromiumRecordingProbe : IAsyncDisposable
         await _browser.DiagnosticPage.SetViewportSizeAsync(320, 240).ConfigureAwait(false);
         await _browser.DiagnosticPage.EvaluateAsync("() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))").ConfigureAwait(false);
         await _source.StartAsync().ConfigureAwait(false);
+        var firstVideoFrame = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         _videoStarted = true;
         _ = await _browser.DiagnosticPage.Screencast.StartAsync(new()
-        { Path = Path.Combine(_folder, "original.webm"), Size = new() { Width = 320, Height = 240 }, Quality = 90 }).ConfigureAwait(false);
+        {
+            Path = Path.Combine(_folder, "original.webm"),
+            Size = new() { Width = 320, Height = 240 },
+            Quality = 90,
+            // Readiness only. The SDK's Single timestamp is never used as timing evidence.
+            OnFrame = _ => { firstVideoFrame.TrySetResult(); return Task.CompletedTask; }
+        }).ConfigureAwait(false);
+        await firstVideoFrame.Task.WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
     }
 
     internal Task StopCollectorsAsync() => _stop ??= StopCoreAsync();
@@ -102,12 +110,19 @@ public sealed class ChromiumRecordingProbe : IAsyncDisposable
 public sealed partial class ChromiumFixtureBrowser
 {
     public static async Task<ChromiumRecordingProbe> LaunchRecordingProbeAsync(string folder, CancellationToken cancellationToken = default)
+        => await LaunchControlledRecordingAsync(folder, BundledFixture.RecordingMarkers, cancellationToken).ConfigureAwait(false);
+
+    public static async Task<ChromiumRecordingProbe> LaunchTraversalRecordingAsync(string folder, CancellationToken cancellationToken = default)
+        => await LaunchControlledRecordingAsync(folder, BundledFixture.TraversalRecording, cancellationToken).ConfigureAwait(false);
+
+    private static async Task<ChromiumRecordingProbe> LaunchControlledRecordingAsync(string folder, BundledFixture fixture,
+        CancellationToken cancellationToken)
     {
         folder = Path.GetFullPath(folder);
         if (Directory.Exists(folder) && Directory.EnumerateFileSystemEntries(folder).Any())
             throw new BrowserOperationException("RECORDING_PROBE_FOLDER_NOT_EMPTY");
         Directory.CreateDirectory(folder);
-        var browser = await LaunchCoreAsync(false, cancellationToken, BundledFixture.RecordingMarkers, null,
+        var browser = await LaunchCoreAsync(false, cancellationToken, fixture, null,
             Path.Combine(folder, "staging")).ConfigureAwait(false);
         try
         {

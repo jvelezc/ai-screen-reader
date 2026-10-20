@@ -9,9 +9,23 @@ namespace HeadlessScreenReader.Cli;
 /// <summary>A passive Markdown report. Selecting evidence never invokes browser operations.</summary>
 public static class TraversalReport
 {
-    public static string Render(TraversalReceipt receipt, int? route = null)
+    public static string Render(TraversalReceipt receipt, int? route = null, TraversalRecordingEvidence? recording = null)
     {
         if (route is < 1) throw new ArgumentOutOfRangeException(nameof(route));
+        if (receipt.HasRecording != (recording?.Media is not null))
+            throw new ArgumentException("TRAVERSAL_RECORDING_DECLARATION_INVALID", nameof(recording));
+        if (recording?.Alignment is { } binding && (binding.RunId != receipt.RunId
+            || receipt.Observations.Any(o => o.Snapshot.DocumentId != binding.DocumentId)
+            || recording.Media?.Artifacts.SingleOrDefault(a => a.File == "original.webm")?.Sha256 != binding.VideoSha256))
+            throw new ArgumentException("TRAVERSAL_RECORDING_BINDING_INVALID", nameof(recording));
+        string Video(string id)
+        {
+            var cue = recording?.Alignment?.Cues.SingleOrDefault(c => c.EvidenceId == id);
+            if (route is not int n || recording?.Alignment?.Calibrated != true || cue?.StartSeconds is null || cue.EndSeconds is null
+                || cue.Coverage is not (RecordingCueCoverage.Covered or RecordingCueCoverage.Partial))
+                return cue?.Coverage.ToString() ?? "Unavailable";
+            return FormattableString.Invariant($"[Video {cue.StartSeconds:F3}–{cue.EndSeconds:F3}s ({cue.Coverage})](route-{n}-media/original.webm#t={cue.StartSeconds:F3},{cue.EndSeconds:F3})");
+        }
         var graph = TraversalProjection.Build(receipt);
         var text = new StringBuilder();
         text.AppendLine($"# {Cell(receipt.Plan.Name)}").AppendLine();
@@ -22,8 +36,14 @@ public static class TraversalReport
         text.AppendLine($"**Requested destination:** {Cell(receipt.Plan.Destination.Role)}: {Cell(receipt.Plan.Destination.Name)}.").AppendLine();
         text.AppendLine($"Attempted keys: {receipt.AttemptedKeystrokes}; completed keyboard API calls: {receipt.CompletedKeystrokes}. "
             + $"Unexecuted route instructions: {receipt.UnexecutedInstructions}. Timeline truncated: {receipt.TimelineTruncated}.").AppendLine();
-        text.AppendLine("Structured reader observations and events only. No recording, credential entry, human takeover, automatic replay, "
-            + "site-wide coverage percentage or accessibility-conformance claim. Routes run on fresh synthetic fixtures.").AppendLine();
+        text.AppendLine(recording is null
+            ? "Structured reader observations and events only. No recording, credential entry, human takeover, automatic replay, site-wide coverage percentage or accessibility-conformance claim. Routes run on fresh synthetic fixtures."
+            : $"Controlled input-free fixture recording. Stage: {Cell(recording.Stage)}; timing: {Cell(recording.Alignment?.ReasonCode ?? recording.ErrorCode ?? "Unknown")}. "
+                + "Video links are passive acquisition/event intervals including timing uncertainty; pixels do not verify the requested destination. "
+                + "No credential entry, human takeover, automatic replay or accessibility-conformance claim.").AppendLine();
+        if (recording?.Media is not null && route is int mediaRoute)
+            text.AppendLine($"[Original recording](route-{mediaRoute}-media/original.webm) · [Clock samples, media hashes and structured evidence](route-{mediaRoute}.json). "
+                + FormattableString.Invariant($"Timing uncertainty: {recording.Alignment?.UncertaintyMilliseconds:F3} ms; an accessibility capture is an interval, not an atomic video frame.")).AppendLine();
         if (receipt.ErrorCode is not null) text.AppendLine($"Engine/policy code: {Cell(receipt.ErrorCode)}.").AppendLine();
         text.AppendLine("## Observed traversal graph").AppendLine();
         if (route is int routeId)
@@ -33,16 +53,17 @@ public static class TraversalReport
             + "and transcript in this report. Each arrow records the reader command separately from actual browser keys.").AppendLine();
         text.AppendLine("Every arrow below joins observations actually retained for this attempt. The requested goal does not create a node. "
             + "Observations are kept separate, including repeated states and different states at the same URL.").AppendLine();
-        text.AppendLine("| Attempt | Source | Actual result | Command | Browser keys | Reader outcome | Goal verification | Events |");
-        text.AppendLine("| --- | --- | --- | --- | --- | --- | --- | --- |");
+        text.AppendLine("| Attempt | Source | Actual result | Command | Browser keys | Reader outcome | Goal verification | Events |"
+            + (recording is null ? "" : " Recording interval |"));
+        text.AppendLine("| --- | --- | --- | --- | --- | --- | --- | --- |" + (recording is null ? "" : " --- |"));
         foreach (var attempt in receipt.Attempts)
         {
             var edge = graph.Edges.SingleOrDefault(e => e.AttemptId == attempt.Id);
             var destination = edge is null ? "No reliable result observation" : Link(edge.ResultObservationId);
             var events = attempt.Events.IsEmpty ? "Unavailable" : $"[Transcript](#event-{attempt.Events[0].Sequence})";
-            text.AppendLine($"| {Cell(attempt.Id)} | {Link(attempt.SourceObservationId)} | {destination} | "
+            text.AppendLine($"| <a id=\"{WebUtility.HtmlEncode(attempt.Id)}\"></a>{Cell(attempt.Id)} | {Link(attempt.SourceObservationId)} | {destination} | "
                 + $"{attempt.Instruction.Command} | {(edge is null ? "See transcript; no reliable result state" : Cell(TraversalTraceDiagram.KeyLabel(edge)))} | {attempt.Step?.Outcome.ToString() ?? "Interrupted"} | "
-                + $"{attempt.Step?.Verification.ToString() ?? "NotRequested"} | {events} |");
+                + $"{attempt.Step?.Verification.ToString() ?? "NotRequested"} | {events} |" + (recording is null ? "" : $" {Video(attempt.Id)} |"));
         }
         text.AppendLine().AppendLine("**Future path assessment:** no combination found within bounded exploration remains Unknown. "
             + "A long or complex trace is evidence to assess alongside alternative paths, discoverability, repetition and user validation; "
@@ -52,6 +73,7 @@ public static class TraversalReport
         {
             text.AppendLine($"<a id=\"{WebUtility.HtmlEncode(observation.Id)}\"></a>");
             text.AppendLine($"### Observation {Cell(observation.Id)}").AppendLine();
+            if (recording is not null) text.AppendLine($"Capture interval: {Video(observation.Id)}.").AppendLine();
             text.AppendLine($"Document: {Cell(observation.Snapshot.DocumentId)}; mode: {observation.Mode}; "
                 + $"cursor: {Cell(observation.CursorNodeId ?? "none")}; focus: {Cell(observation.Snapshot.FocusedNode?.Id ?? "none")}; "
                 + $"active descendant: {Cell(observation.Snapshot.FocusedNode?.ActiveDescendantId ?? "none")}.").AppendLine();
@@ -65,11 +87,12 @@ public static class TraversalReport
             text.AppendLine();
         }
         text.AppendLine("## Transcript").AppendLine();
-        text.AppendLine("| Event | Command sequence | Elapsed ms | Kind | Detail |");
-        text.AppendLine("| --- | --- | --- | --- | --- |");
+        text.AppendLine("| Event | Command sequence | Elapsed ms | Kind | Detail |" + (recording is null ? "" : " Recording interval |"));
+        text.AppendLine("| --- | --- | --- | --- | --- |" + (recording is null ? "" : " --- |"));
         foreach (var item in receipt.Timeline)
             text.AppendLine($"| <a id=\"event-{item.Sequence}\"></a>{item.Sequence} | {item.CommandSequence} | "
-                + $"{item.ElapsedMilliseconds.ToString("F1", CultureInfo.InvariantCulture)} | {item.Kind} | {Cell(item.Detail)} |");
+                + $"{item.ElapsedMilliseconds.ToString("F1", CultureInfo.InvariantCulture)} | {item.Kind} | {Cell(item.Detail)} |"
+                + (recording is null ? "" : $" {Video($"event-{item.Sequence}")} |"));
         return text.ToString();
     }
 

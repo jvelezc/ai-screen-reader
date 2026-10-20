@@ -22,6 +22,8 @@ The recording fixtures launch at their required 320×240 viewport, avoiding stal
 
 ## Next: recording evidence for traversal
 
+Implemented in the subsequent [controlled traversal recording slice](0022-traversal-recording-evidence.md). Its next step is an integrated passive evidence viewer.
+
 Attach permitted recording segments, immutable media hashes and calibrated event/frame links to the existing authored traversal receipts and node/edge reports. Start with a trusted shop fixture whose permitted visual content excludes prefilled private values. Preserve observation/input/goal uncertainty, and never infer arrival or a barrier from video alone. Clicking a report link must remain passive.
 
 The broader command/persistence exclusion protocol, expiring input ownership, private viewer, diagnostic feature provenance, separate eligible replay results and hosted durability remain open gates. The 20-marker fixture proof does not make milestone 2 or arbitrary-site recording complete.
