@@ -127,6 +127,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           dotnet run --project src/HeadlessScreenReader.Cli -c Release --no-build -- --traversal | Tee-Object -FilePath artifacts/traversal.jsonl
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run --project src/HeadlessScreenReader.Cli -c Release --no-build -- --capture-probe | Tee-Object -FilePath artifacts/capture-probe.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Check manual reference remains pending
         run: |
           dotnet run --project src/HeadlessScreenReader.Cli -c Release --no-build -- --reference-template | Set-Content -Encoding utf8 artifacts/reference-template.json

@@ -14,13 +14,13 @@ The user has deferred public MCP hosting, Claude setup and official plugin publi
 | 5: hosted pilot | Deferred | Existing local stdio adapter | Public HTTPS endpoint, remote authorization, operations, client acceptance and hosted report |
 | 6: measured extensions | Later | Bounded reader improvements through v13 | Broader validated widgets and compatible-run comparisons; public plugins remain deferred |
 
-## Next: capture exclusion feasibility
+## Next: precise recording synchronization
 
-The [capture admission protocol](decisions/0019-capture-admission.md) now fences observations and both keyboard paths, drains actual operations after caller cancellation, requires AX stop acknowledgement, preserves the same context, and resets the reader baseline across epochs. Failed or stalled transitions remain closed. Real Chromium tests cover a visible synthetic canary and denied input. This is a partial privacy gate: there are no recording or screenshot collectors enabled yet.
+The [capture admission protocol](decisions/0019-capture-admission.md) fences observations and both keyboard paths, drains actual operations after caller cancellation, requires AX stop acknowledgement, preserves the same context, and resets the reader baseline across epochs. Failed or stalled transitions remain closed. The [controlled collector probe](decisions/0020-capture-collector-feasibility.md) adds separately opted-in synthetic recording segments with pending-write drain, decoded video/JPEG canaries, staging inspection, artifact hashes and explicit failure stages. Default sessions start no recording collector.
 
-Next, prove acknowledged stop and callback drain for an explicitly controlled recording collector with synthetic visual canaries. Inspect decoded frames and every persisted/staging artifact. Do not enable credential entry or general recordings before that proof. A human takeover lease and private viewer remain separate work.
+Next, resolve precise recording timestamps. The pinned SDK exposes frame times as single-precision Unix milliseconds, with 131,072 ms spacing at the current epoch; the receipt retains that uncertainty. It cannot prove the proposal's 250 ms synchronization target. Obtain a precise timestamp source and measure at least 20 fixture action markers in original frames before adding permitted recording segments to traversal receipts.
 
-After that gate passes, add original permitted recording segments to the current traversal receipt. Measure correspondence between at least 20 fixture action markers and the original frames; retain uncertainty against the proposal's 250 ms target. Do not call milestone 2 complete before those acceptance tests pass.
+Do not call milestone 2 complete before that acceptance passes. General recordings, complete reader-command/persistence exclusion, credential entry, a human takeover lease and a private viewer remain separate work. Run the current synthetic privacy probe with `dotnet run --project src/HeadlessScreenReader.Cli -c Release -- --capture-probe` and open its printed report path.
 
 ## Run the completed traversal slice
 

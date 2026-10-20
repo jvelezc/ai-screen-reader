@@ -12,4 +12,4 @@ Public-page capture control is unavailable. The fixture capability is not expose
 
 ## Next acceptance gate
 
-Add an explicitly controlled collector feasibility probe. Prove stop acknowledgements, frame callback drain and segment boundaries using synthetic visual canaries. Inspect decoded frames and persisted/staging artifacts, rather than searching compressed video bytes for text. Prove restart failure stays closed and preserve the same context. Only then enable permitted original recordings and measure at least 20 action markers against the proposal's 250 ms synchronization target. Each additional collector must join the exclusion protocol before it can be enabled.
+The subsequent [controlled collector probe](0020-capture-collector-feasibility.md) extends this first admission increment with original synthetic segments and decoded canaries. It does not enable general recording or sensitive input. Precise timestamps and at least 20 measured action markers against the proposal's 250 ms synchronization target are next. Each additional collector must join the exclusion protocol before it can be enabled.

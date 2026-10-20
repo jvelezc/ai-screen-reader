@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>Capture privacy fixture</title>
+<style>html,body { margin:0; width:100%; height:100%; background:#20b840 } #tick { position:fixed; top:0; right:0 }</style>
+<body><h1>Permitted before exclusion</h1><span id="tick"></span>
+<script>
+window.contextMarker = Math.random().toString(36);
+let tick = 0;
+setInterval(() => document.querySelector('#tick').textContent = ++tick, 40);
+window.captureProbePhase = phase => {
+  document.querySelectorAll('[data-private]').forEach(n => n.remove());
+  document.querySelector('h1').textContent = phase === 'excluded' ? 'capture-visible-secret-canary' : 'Permitted after exclusion';
+  document.documentElement.style.background = document.body.style.background = phase === 'excluded' ? '#e41a3d' : '#215ce0';
+  if (phase === 'excluded') {
+    const input = document.createElement('input'); input.type = 'password'; input.dataset.private = '';
+    input.value = 'capture-field-secret-canary'; document.body.append(input); input.focus();
+  }
+};
+</script>
+</body></html>

@@ -5,6 +5,8 @@ namespace HeadlessScreenReader.Browser.Playwright;
 
 public sealed partial class ChromiumFixtureBrowser
 {
+    private Func<Task> _stopProbeCollector = () => Task.CompletedTask;
+    private Func<Task> _restartProbeCollector = () => Task.CompletedTask;
     public CaptureStatus CaptureStatus => _captureAdmission.Status;
 
     // Only the trusted test assembly can inspect the independent diagnostic surface.
@@ -21,6 +23,7 @@ public sealed partial class ChromiumFixtureBrowser
         if (_publicPolicy is not null) throw new BrowserOperationException("PUBLIC_CAPTURE_CONTROL_UNAVAILABLE");
         return _captureAdmission.ExcludeAsync(async () =>
         {
+            await _stopProbeCollector().ConfigureAwait(false);
             await _cdp.SendAsync("Accessibility.disable").ConfigureAwait(false);
         });
     }
@@ -33,7 +36,9 @@ public sealed partial class ChromiumFixtureBrowser
         return _captureAdmission.ResumeAsync(lease, async () =>
         {
             await _cdp.SendAsync("Accessibility.enable").ConfigureAwait(false);
-            return (await CaptureCoreAsync().ConfigureAwait(false)) with { CaptureEpoch = CaptureStatus.Epoch + 1 };
+            var baseline = (await CaptureCoreAsync().ConfigureAwait(false)) with { CaptureEpoch = CaptureStatus.Epoch + 1 };
+            await _restartProbeCollector().ConfigureAwait(false);
+            return baseline;
         });
     }
 }

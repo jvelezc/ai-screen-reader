@@ -6,7 +6,7 @@ using Microsoft.Playwright;
 
 namespace HeadlessScreenReader.Browser.Playwright;
 
-public enum BundledFixture { Foundation, Widgets, LiveRegions, Semantics, Landmarks, Text, Frames, Ranges, Composites, Tables, Paragraphs, Multiselect, Typeahead, Traversal }
+public enum BundledFixture { Foundation, Widgets, LiveRegions, Semantics, Landmarks, Text, Frames, Ranges, Composites, Tables, Paragraphs, Multiselect, Typeahead, Traversal, CapturePrivacy }
 
 /// <summary>Chromium observations for fixtures and isolation-gated HTTPS pages. Egress enforcement is external.</summary>
 public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, IAsyncDisposable
@@ -49,6 +49,11 @@ public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, IAsyn
     public static async Task<ChromiumFixtureBrowser> LaunchAsync(
         bool headed = false, CancellationToken cancellationToken = default,
         BundledFixture fixture = BundledFixture.Foundation, FrameCaptureOptions? frameOptions = null)
+        => await LaunchCoreAsync(headed, cancellationToken, fixture, frameOptions, null).ConfigureAwait(false);
+
+    private static async Task<ChromiumFixtureBrowser> LaunchCoreAsync(
+        bool headed, CancellationToken cancellationToken, BundledFixture fixture,
+        FrameCaptureOptions? frameOptions, string? artifactsDirectory)
     {
         if (!Enum.IsDefined(fixture)) throw new ArgumentOutOfRangeException(nameof(fixture));
         frameOptions ??= new();
@@ -63,6 +68,7 @@ public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, IAsyn
             {
                 Headless = !headed,
                 ChromiumSandbox = true,
+                ArtifactsDir = artifactsDirectory,
                 Timeout = 15_000
             }).ConfigureAwait(false);
             var context = await browser.NewContextAsync(new()
@@ -387,7 +393,11 @@ public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, IAsyn
         _disposed = true;
         try
         {
-            await _captureAdmission.CloseAsync(() => _context.CloseAsync()).ConfigureAwait(false);
+            await _captureAdmission.CloseAsync(async () =>
+            {
+                try { await _stopProbeCollector().WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false); }
+                finally { await _context.CloseAsync().ConfigureAwait(false); }
+            }).ConfigureAwait(false);
         }
         finally
         {
