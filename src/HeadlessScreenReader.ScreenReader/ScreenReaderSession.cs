@@ -21,6 +21,7 @@ public sealed partial class ScreenReaderSession : IDisposable
     private readonly List<ReaderEvent> _timeline = [];
     private readonly Dictionary<string, string> _liveText = new(StringComparer.Ordinal);
     private AccessibilitySnapshot? _snapshot;
+    private long? _captureEpoch;
     private string? _cursorId;
     private ReaderMode _mode;
     private ReaderCommand _command;
@@ -405,7 +406,15 @@ public sealed partial class ScreenReaderSession : IDisposable
     {
         var next = await _browser.CaptureAsync(token).ConfigureAwait(false);
         var previous = _snapshot;
-        if (previous?.DocumentId != next.DocumentId)
+        var epochChanged = _captureEpoch is { } previousEpoch && previousEpoch != next.CaptureEpoch;
+        if (epochChanged)
+        {
+            Record(ReaderEventKind.CaptureBaselineReset, "Observation exclusion ended; fresh baseline, continuity unknown.");
+            _text.Clear();
+            _liveText.Clear();
+        }
+        _captureEpoch = next.CaptureEpoch;
+        if (previous?.DocumentId != next.DocumentId || previous.CaptureEpoch != next.CaptureEpoch)
         {
             _cursorId = null;
             _mode = ReaderMode.Browse;
@@ -418,6 +427,11 @@ public sealed partial class ScreenReaderSession : IDisposable
         if (_mode == ReaderMode.Focus)
             _cursorId = next.EffectiveFocusedNode?.Id;
         Record(ReaderEventKind.Observation, $"Captured {next.Nodes.Length} exposed nodes.");
+        if (epochChanged)
+        {
+            ObserveLiveRegions(next, null);
+            return;
+        }
         ObserveFrames(next, previous);
         ObserveLiveRegions(next, previous);
         if (previous?.FocusedNode?.Id != next.FocusedNode?.Id)

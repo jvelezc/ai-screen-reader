@@ -16,7 +16,9 @@ The user has deferred public MCP hosting, Claude setup and official plugin publi
 
 ## Next: capture exclusion feasibility
 
-Prove the original milestone 0 privacy gate before enabling recording or credential entry. Use synthetic canaries only. Demonstrate acknowledged stop of every sensitive collector, the same browser context surviving suspension, explicit observation/recording gaps, and a fresh post-resumption baseline. Failure to stop a collector must prevent sensitive input; failed restart must remain visible. Inspect every persisted artifact and staging file for canary leakage.
+The [capture admission protocol](decisions/0019-capture-admission.md) now fences observations and both keyboard paths, drains actual operations after caller cancellation, requires AX stop acknowledgement, preserves the same context, and resets the reader baseline across epochs. Failed or stalled transitions remain closed. Real Chromium tests cover a visible synthetic canary and denied input. This is a partial privacy gate: there are no recording or screenshot collectors enabled yet.
+
+Next, prove acknowledged stop and callback drain for an explicitly controlled recording collector with synthetic visual canaries. Inspect decoded frames and every persisted/staging artifact. Do not enable credential entry or general recordings before that proof. A human takeover lease and private viewer remain separate work.
 
 After that gate passes, add original permitted recording segments to the current traversal receipt. Measure correspondence between at least 20 fixture action markers and the original frames; retain uncertainty against the proposal's 250 ms target. Do not call milestone 2 complete before those acceptance tests pass.
 

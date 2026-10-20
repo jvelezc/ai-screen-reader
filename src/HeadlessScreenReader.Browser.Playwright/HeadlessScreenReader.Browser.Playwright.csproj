@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
+    <InternalsVisibleTo Include="HeadlessScreenReader.Tests" />
     <ProjectReference Include="../HeadlessScreenReader.Domain/HeadlessScreenReader.Domain.csproj" />
     <PackageReference Include="Microsoft.Playwright" />
     <EmbeddedResource Include="Fixtures/*.html" />

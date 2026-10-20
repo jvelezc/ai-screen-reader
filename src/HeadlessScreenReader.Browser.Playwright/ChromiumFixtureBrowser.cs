@@ -16,6 +16,7 @@ public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, IAsyn
     private readonly IBrowserContext _context;
     private readonly IPage _page;
     private readonly ICDPSession _cdp;
+    private readonly CaptureAdmission _captureAdmission = new();
     private readonly FrameCaptureOptions _frameOptions;
     private readonly string _sessionId = Guid.NewGuid().ToString("N");
     private readonly TaskCompletionSource _closed = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -100,7 +101,9 @@ public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, IAsyn
         {
             if (_publicPolicy is not null && !_publicPolicy.AssessUrl(_page.Url).Allowed)
                 throw new BrowserOperationException("TARGET_SCOPE_CHANGED");
-            return await CaptureCoreAsync().WaitAsync(TimeSpan.FromSeconds(5), cancellationToken)
+            return await _captureAdmission.RunAsync(async () =>
+                (await CaptureCoreAsync().ConfigureAwait(false)) with { CaptureEpoch = _captureAdmission.Status.Epoch })
+                .WaitAsync(TimeSpan.FromSeconds(5), cancellationToken)
                 .ConfigureAwait(false);
         }
         catch (TimeoutException exception)
@@ -325,6 +328,15 @@ public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, IAsyn
         cancellationToken.ThrowIfCancellationRequested();
         if (!BrowserKeyPolicy.Allows(key))
             throw new BrowserOperationException("KEY_DENIED");
+        await _captureAdmission.RunAsync(async () =>
+        {
+            await PressKeyCoreAsync(key).ConfigureAwait(false);
+            return true;
+        }, input: true).WaitAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task PressKeyCoreAsync(string key)
+    {
         try
         {
             var priorUrl = _page.Url;
@@ -375,7 +387,7 @@ public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, IAsyn
         _disposed = true;
         try
         {
-            await _context.CloseAsync().ConfigureAwait(false);
+            await _captureAdmission.CloseAsync(() => _context.CloseAsync()).ConfigureAwait(false);
         }
         finally
         {

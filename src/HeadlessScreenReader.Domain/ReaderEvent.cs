@@ -5,7 +5,8 @@ public enum ReaderEventKind
     CommandStarted, InputAttempted, InputCompleted, Observation,
     FocusChanged, ActiveDescendantChanged, WidgetStateChanged,
     DialogOpened, DialogClosed, Announcement, GoalVerified,
-    WaitTimedOut, Cancelled, BrowserError, CommandCompleted, LiveRegionChanged, FrameChanged, InputDenied
+    WaitTimedOut, Cancelled, BrowserError, CommandCompleted, LiveRegionChanged, FrameChanged, InputDenied,
+    CaptureBaselineReset
 }
 
 /// <summary>Ordered simulated reader evidence. Editable values are excluded; supported ranges are explicit.</summary>

@@ -68,6 +68,8 @@ public sealed record AccessibilitySnapshot(
 {
     public ImmutableArray<FrameObservation> Frames { get; init; } = [];
     public string? DocumentUrl { get; init; }
+    /// <summary>Changes after an observation exclusion; no continuity may be inferred across epochs.</summary>
+    public long CaptureEpoch { get; init; }
 
     public AccessibleNode? FocusedNode =>
         Nodes.FirstOrDefault(node => node.IsFocused && node.Role != "RootWebArea")
