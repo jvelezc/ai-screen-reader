@@ -9,6 +9,45 @@ namespace HeadlessScreenReader.Tests;
 public sealed class ChromiumCaptureProbeTests
 {
     [Fact]
+    public async Task VideoDecoder_InspectsActualFirstAndLastFramesWithIndependentSolidColorControl()
+    {
+        var folder = Path.GetFullPath(Path.Combine("artifacts", "capture-decoder-controls", Guid.NewGuid().ToString("N")));
+        Directory.CreateDirectory(folder);
+        await using var browser = await ChromiumFixtureBrowser.LaunchAsync(fixture: BundledFixture.CapturePrivacy);
+        var page = browser.DiagnosticPage;
+        await page.SetViewportSizeAsync(320, 240);
+        // Deliberately recorded positive control, separate from the exclusion probe's artifacts.
+        await page.EvaluateAsync("() => { document.documentElement.style.background = document.body.style.background = '#e41a3d'; }");
+        var first = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var last = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var frames = 0;
+        var greenAfter = int.MaxValue;
+        var video = Path.Combine(folder, "positive-control.webm");
+        _ = await page.Screencast.StartAsync(new()
+        {
+            Path = video,
+            Size = new() { Width = 320, Height = 240 },
+            OnFrame = _ =>
+            {
+                var count = Interlocked.Increment(ref frames);
+                if (count >= 1) first.TrySetResult();
+                if (count >= Volatile.Read(ref greenAfter)) last.TrySetResult();
+                return Task.CompletedTask;
+            }
+        });
+        await first.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await page.EvaluateAsync("() => { document.documentElement.style.background = document.body.style.background = '#20b840'; }");
+        Interlocked.Exchange(ref greenAfter, Volatile.Read(ref frames) + 3);
+        await last.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await page.Screencast.StopAsync();
+        var decoded = await CaptureProbeDecoder.InspectAsync(page, await File.ReadAllBytesAsync(video), video: true);
+        Assert.True(decoded.Frames > 1);
+        Assert.True(decoded.FirstFrameCanaryPixels > 320 * 240 / 2);
+        Assert.Equal(0, decoded.LastFrameCanaryPixels);
+        Assert.True(decoded.CanaryPixels >= decoded.FirstFrameCanaryPixels);
+    }
+
+    [Fact]
     public async Task AlreadyCancelledProbe_RetainsExplicitFailedReceiptWithoutStartingCollectors()
     {
         using var cancellation = new CancellationTokenSource();

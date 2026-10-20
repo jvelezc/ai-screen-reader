@@ -17,3 +17,9 @@ The existing admission tests still cover stop/baseline failure and timeout, toke
 An initial .NET probe failed because a precise-time admission cutoff was incorrectly applied to the SDK's single-precision Unix timestamp. That cutoff was removed. Reported timestamps now carry conservative quantization uncertainty (131,072 ms at the current epoch); **250 ms synchronization is not proven**. Raw presentation timing and at least 20 objective markers are next.
 
 This is a controlled fixture proof, not arbitrary-site privacy certification. Default/public sessions do not start recording. Remote Windows/Linux and independent isolation acceptance are reported separately by the corresponding main CI run. No local Linux, deployment or fresh assistive-technology check was performed for this increment.
+
+## Decoder boundary follow-up
+
+Further synchronization research exposed ambiguity when drawing a video's initial frame before explicit presentation acknowledgement. The decoder now seeks every frame including frame zero, awaits `requestVideoFrameCallback`, verifies the reported media time within 1 ms of the expected 25 fps position, and rejects transparent/unpainted data. It retains first/last canary-pixel counts and sanitized decoder-specific error codes.
+
+`VideoDecoder_InspectsActualFirstAndLastFramesWithIndependentSolidColorControl` records an intentionally red-first, green-last control outside the exclusion probe's artifact directory, then verifies both decoded boundaries. Local Windows full validation: **653 discovered/executed/passed, 0 failed/skipped**, retaining all 652 prior identities. Nonincremental Release build and format verification passed. TRX: `artifacts/capture-validation/decoder-windows-final.trx`. The preceding 652-case increment passed Windows, Ubuntu and independent isolation CI in run `39471215742`; this follow-up has its own main CI gate.
