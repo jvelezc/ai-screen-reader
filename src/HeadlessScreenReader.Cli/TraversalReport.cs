@@ -44,6 +44,8 @@ public static class TraversalReport
         if (recording?.Media is not null && route is int mediaRoute)
             text.AppendLine($"[Original recording](route-{mediaRoute}-media/original.webm) · [Clock samples, media hashes and structured evidence](route-{mediaRoute}.json). "
                 + FormattableString.Invariant($"Timing uncertainty: {recording.Alignment?.UncertaintyMilliseconds:F3} ms; an accessibility capture is an interval, not an atomic video frame.")).AppendLine();
+        if (recording is not null && route is int viewerRoute)
+            text.AppendLine($"[Open the local evidence viewer](route-{viewerRoute}.html): trace, original video and selectable transcript.").AppendLine();
         if (receipt.ErrorCode is not null) text.AppendLine($"Engine/policy code: {Cell(receipt.ErrorCode)}.").AppendLine();
         text.AppendLine("## Observed traversal graph").AppendLine();
         if (route is int routeId)

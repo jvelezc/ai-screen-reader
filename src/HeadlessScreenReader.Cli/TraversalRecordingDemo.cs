@@ -107,7 +107,7 @@ public static class TraversalRecordingDemo
             + "Each route uses a fresh input-free fixture. Acquisition windows are separate from goal verification.\n\n"
             + string.Join("\n", results.Select((r, i) => r.Receipt is null
                 ? $"- Route {i + 1}: [{r.Recording.Stage}; {r.Recording.ErrorCode}](route-{i + 1}-failure.json)"
-                : $"- [{r.Receipt.Plan.Name}](route-{i + 1}.md): {r.Receipt.Reachability}; {r.Recording.Alignment?.ReasonCode ?? r.Recording.ErrorCode}. [Trace](route-{i + 1}.svg)"))
+                : $"- [{r.Receipt.Plan.Name}](route-{i + 1}.html): {r.Receipt.Reachability}; {r.Recording.Alignment?.ReasonCode ?? r.Recording.ErrorCode}. [Readable report](route-{i + 1}.md) · [Trace](route-{i + 1}.svg)"))
             + "\n\nNo recording of private inputs, arbitrary pages, human takeover or automatic replay. "
             + "Missing or partial media never changes the route's barrier assessment.\n").ConfigureAwait(false);
         Console.WriteLine(JsonSerializer.Serialize(new { RecordedRoutesReady = ready, Routes = results.Count, Report = Path.Combine(folder, "index.md") }));

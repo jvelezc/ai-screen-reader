@@ -16,7 +16,7 @@ public static class TraversalArtifactWriter
         ArgumentOutOfRangeException.ThrowIfLessThan(route, 1);
         var graph = TraversalProjection.Build(receipt);
         Directory.CreateDirectory(folder);
-        foreach (var extension in new[] { "json", "md", "svg" })
+        foreach (var extension in recording is null ? new[] { "json", "md", "svg" } : new[] { "json", "md", "svg", "html" })
         {
             var path = Path.Combine(folder, $"route-{route}.{extension}");
             if (File.Exists(path) || File.Exists(path + ".pending"))
@@ -45,10 +45,19 @@ public static class TraversalArtifactWriter
                     throw new IOException("TRAVERSAL_RECORDING_ARTIFACT_CHANGED");
             }
         }
+        var viewer = recording is null ? null : TraversalEvidenceViewer.Render(receipt, route, recording);
         await WriteNewAsync(Path.Combine(folder, $"route-{route}.json"),
-            JsonSerializer.Serialize(new { Receipt = receipt, Graph = graph, Environment = environment, Recording = recording }, TraversalDemo.JsonOptions));
+            JsonSerializer.Serialize(new
+            {
+                Receipt = receipt,
+                Graph = graph,
+                Environment = environment,
+                Recording = recording,
+                ViewerFile = viewer is null ? null : $"route-{route}.html"
+            }, TraversalDemo.JsonOptions));
         await WriteNewAsync(Path.Combine(folder, $"route-{route}.md"), TraversalReport.Render(receipt, route, recording));
         await WriteNewAsync(Path.Combine(folder, $"route-{route}.svg"), TraversalTraceDiagram.Render(receipt, route));
+        if (viewer is not null) await WriteNewAsync(Path.Combine(folder, $"route-{route}.html"), viewer);
     }
 
     internal static async Task WriteNewAsync(string path, string content)
