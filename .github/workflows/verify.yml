@@ -131,6 +131,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           dotnet run --project src/HeadlessScreenReader.Cli -c Release --no-build -- --replay | Tee-Object -FilePath artifacts/replay.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run --project src/HeadlessScreenReader.Cli -c Release --no-build -- --controller | Tee-Object -FilePath artifacts/controller.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           dotnet run --project src/HeadlessScreenReader.Cli -c Release --no-build -- --owned-scan | Tee-Object -FilePath artifacts/owned-scan.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           dotnet run --project src/HeadlessScreenReader.Cli -c Release --no-build -- --capture-probe | Tee-Object -FilePath artifacts/capture-probe.json

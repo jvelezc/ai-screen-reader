@@ -9,7 +9,7 @@ using Microsoft.Playwright;
 
 if (args.Contains("--help", StringComparer.Ordinal))
 {
-    Console.WriteLine("HeadlessScreenReader. Usage: --owned-scan | --replay | --features | --traversal-recording | --recording-sync | --capture-probe | [--traversal | --widgets | --observe-live | --text | --frames | --ranges | --composites | --tables | --paragraphs | --multiselect | --typeahead] [--headed] | --reference-template | --reference-case <id> | --assess-reference <file>");
+    Console.WriteLine("HeadlessScreenReader. Usage: --controller | --owned-scan | --replay | --features | --traversal-recording | --recording-sync | --capture-probe | [--traversal | --widgets | --observe-live | --text | --frames | --ranges | --composites | --tables | --paragraphs | --multiselect | --typeahead] [--headed] | --reference-template | --reference-case <id> | --assess-reference <file>");
     foreach (var item in ReferenceValidation.Cases) Console.WriteLine($"  {item.Id}: {item.Task}");
     return 0;
 }
@@ -35,9 +35,9 @@ if (args.Length == 2 && args[0] == "--assess-reference")
 }
 var referenceCase = args.Length == 2 && args[0] == "--reference-case"
     ? ReferenceValidation.FindCase(args[1]) : null;
-if (referenceCase is null && (args.Any(arg => arg is not "--owned-scan" and not "--replay" and not "--features" and not "--traversal-recording" and not "--recording-sync" and not "--capture-probe" and not "--headed" and not "--traversal" and not "--widgets" and not "--observe-live" and not "--text" and not "--frames" and not "--ranges" and not "--composites" and not "--tables" and not "--paragraphs" and not "--multiselect" and not "--typeahead")
-    || args.Count(arg => arg is "--owned-scan" or "--replay" or "--features" or "--traversal-recording" or "--recording-sync" or "--capture-probe" or "--traversal" or "--widgets" or "--observe-live" or "--text" or "--frames" or "--ranges" or "--composites" or "--tables" or "--paragraphs" or "--multiselect" or "--typeahead") > 1
-    || args.Any(arg => arg is "--owned-scan" or "--replay" or "--features" or "--traversal-recording" or "--capture-probe" or "--recording-sync") && args.Length != 1))
+if (referenceCase is null && (args.Any(arg => arg is not "--controller" and not "--owned-scan" and not "--replay" and not "--features" and not "--traversal-recording" and not "--recording-sync" and not "--capture-probe" and not "--headed" and not "--traversal" and not "--widgets" and not "--observe-live" and not "--text" and not "--frames" and not "--ranges" and not "--composites" and not "--tables" and not "--paragraphs" and not "--multiselect" and not "--typeahead")
+    || args.Count(arg => arg is "--controller" or "--owned-scan" or "--replay" or "--features" or "--traversal-recording" or "--recording-sync" or "--capture-probe" or "--traversal" or "--widgets" or "--observe-live" or "--text" or "--frames" or "--ranges" or "--composites" or "--tables" or "--paragraphs" or "--multiselect" or "--typeahead") > 1
+    || args.Any(arg => arg is "--controller" or "--owned-scan" or "--replay" or "--features" or "--traversal-recording" or "--capture-probe" or "--recording-sync") && args.Length != 1))
 {
     Console.Error.WriteLine("Invalid arguments or unknown reference case. Use --help; only bundled fixtures are supported.");
     return 2;
@@ -48,6 +48,8 @@ Console.CancelKeyPress += (_, e) => { e.Cancel = true; cancellation.Cancel(); };
 var json = new JsonSerializerOptions { Converters = { new JsonStringEnumConverter() } };
 try
 {
+    if (args.Contains("--controller", StringComparer.Ordinal))
+        return await ControllerDemo.RunAsync(cancellation.Token);
     if (args.Contains("--owned-scan", StringComparer.Ordinal))
         return await OwnedScanDemo.RunAsync(cancellation.Token);
     if (args.Contains("--replay", StringComparer.Ordinal))

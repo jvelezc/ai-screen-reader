@@ -71,6 +71,11 @@ public sealed class OwnedScanSession : IAsyncDisposable
 
     public Task<OwnedCommandReceipt> ExecuteAndPersistAsync(long expectedEpoch, ReaderCommand command, string? key = null,
         CancellationToken cancellationToken = default, ObservationExpectation? expectation = null, string? expectedDocumentId = null)
+        => WaitForCallerAsync(ExecuteTrackedAsync(expectedEpoch, command, key, cancellationToken, expectation, expectedDocumentId), cancellationToken);
+
+    // Same-assembly controller composition must drain the actual task, not the caller's bounded wait.
+    internal Task<OwnedCommandReceipt> ExecuteTrackedAsync(long expectedEpoch, ReaderCommand command, string? key,
+        CancellationToken cancellationToken, ObservationExpectation? expectation, string? expectedDocumentId, long? controllerGeneration = null)
     {
         cancellationToken.ThrowIfCancellationRequested();
         lock (_sync)
@@ -78,9 +83,9 @@ public sealed class OwnedScanSession : IAsyncDisposable
             Ensure(expectedEpoch);
             if (_active++ == 0) _drained = new(TaskCreationOptions.RunContinuationsAsynchronously);
         }
-        var actual = ExecuteCoreAsync(expectedEpoch, command, key, cancellationToken, expectation, expectedDocumentId);
+        var actual = ExecuteCoreAsync(expectedEpoch, command, key, cancellationToken, expectation, expectedDocumentId, controllerGeneration);
         ObserveFault(actual);
-        return WaitForCallerAsync(actual, cancellationToken);
+        return actual;
     }
 
     private async Task<OwnedCommandReceipt> WaitForCallerAsync(Task<OwnedCommandReceipt> actual, CancellationToken token)
@@ -90,7 +95,7 @@ public sealed class OwnedScanSession : IAsyncDisposable
     }
 
     private async Task<OwnedCommandReceipt> ExecuteCoreAsync(long epoch, ReaderCommand command, string? key,
-        CancellationToken callerToken, ObservationExpectation? expectation, string? expectedDocumentId)
+        CancellationToken callerToken, ObservationExpectation? expectation, string? expectedDocumentId, long? controllerGeneration)
     {
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(30), _time);
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(callerToken, deadline.Token);
@@ -104,7 +109,7 @@ public sealed class OwnedScanSession : IAsyncDisposable
                 {
                     Ensure(epoch);
                     if (_ordinal >= _maximumCommands) throw new BrowserOperationException("OWNED_COMMAND_BUDGET_EXHAUSTED");
-                    intent = new(_store.ScanId, ++_ordinal, epoch, command);
+                    intent = new(_store.ScanId, ++_ordinal, epoch, command) { ControllerGeneration = controllerGeneration };
                 }
                 _observed.Reset();
                 OwnedWriteReceipt? intentWrite = null, resultWrite = null;

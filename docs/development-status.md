@@ -9,12 +9,12 @@ The user has deferred public MCP hosting, Claude setup and official plugin publi
 | 0: core assumptions | Partial | Real Chromium semantics, separate cursor/focus, bounded keyboard input, same-context browser/reader exclusion, owned local persistence and controlled video canaries | Xvfb takeover and authenticated remote handshake |
 | 1: local screen reader | Substantial local implementation | Reader profile v13, fixtures, bounded events/observations, policy checks and CI | Capture/privacy feasibility remains a prerequisite to editable entry and recording; broader supported-control scope is explicit |
 | 2: evidence-backed workflow | In progress | Bounded routes, append-only JSON, node/edge reports, controlled recording canaries, 20-marker timing proof and original route media with capture/action/event intervals and passive local viewer; bounded diagnostic provenance, explicit fresh-run replay and owned evidence writes | Broader workflow acceptance and diagnostics/search coverage |
-| 3: intervention and isolation | Partial | Exact public-host policy and independent Linux egress fence | Hosted capture/persistence fencing, headed Xvfb/private viewer and exclusive input ownership with expiring controller leases |
+| 3: intervention and isolation | Partial | Exact public-host policy, independent Linux egress fence and exclusive local AI controller leases | Hosted capture/persistence fencing, headed Xvfb/private viewer and human ownership |
 | 4: durable hosted execution | Planned | Local append-only receipts are a starting contract | Supabase authorization, durable attempt storage, pgmq idempotency/fencing, private S3 finalization and failure/recovery tests |
 | 5: hosted pilot | Deferred | Existing local stdio adapter | Public HTTPS endpoint, remote authorization, operations, client acceptance and hosted report |
 | 6: measured extensions | Later | Bounded reader improvements through v13 | Broader validated widgets and compatible-run comparisons; public plugins remain deferred |
 
-## Next: exclusive input ownership
+## Next: headed Linux session feasibility
 
 The [capture admission protocol](decisions/0019-capture-admission.md) fences observations and both keyboard paths, drains actual operations after caller cancellation, requires AX stop acknowledgement, preserves the same context, and resets the reader baseline across epochs. Failed or stalled transitions remain closed. The [controlled collector probe](decisions/0020-capture-collector-feasibility.md) adds separately opted-in synthetic recording segments with pending-write drain, decoded video/JPEG canaries, staging inspection, artifact hashes and explicit failure stages. Default sessions start no recording collector.
 
@@ -22,7 +22,7 @@ The [20-marker synchronization probe](decisions/0021-recording-synchronization.m
 
 The [recorded traversal slice](decisions/0022-traversal-recording-evidence.md) now attaches original permitted video and calibrated capture/action/event intervals to four fresh input-free synthetic routes. Run `dotnet run --project src/HeadlessScreenReader.Cli -c Release -- --traversal-recording` and open its printed index. Source/result observations, actual keys, goal verification and video timing remain separate. Missing/partial media never changes a barrier assessment.
 
-The [passive local viewer](decisions/0023-passive-evidence-viewer.md) now supports node/action/event selection, original-video seeking and related timeline highlights, native keyboard operation and explicit unavailable/partial states. Selection sends no live input. The [reader-owned exclusion fence](decisions/0024-reader-capture-exclusion.md) now drains complete commands and idle sampling, blocks late results/timeline retention, rejects stale iterators and preserves same-context resume with a fresh baseline. The [bounded diagnostic inventory](decisions/0025-diagnostic-feature-provenance.md) now keeps declared hypotheses separate from exposed names, binds document/epoch/node evidence to authored traces, and preserves missing/stale cases. Run the fixed four-route demo with --features. The [controlled replay workflow](decisions/0026-eligible-fresh-run-replay.md) now compares fresh source equivalence and current environment/policy, rechecks before first dispatch and retains an independent new result. Run --replay for the fixed successful shop route. The [owned local pipeline](decisions/0027-owned-evidence-exclusion.md) now writes intent before dispatch, drains actual commands and file writes before exclusion acknowledgement, rejects stale epochs and requires a persisted fresh baseline before resume. Run --owned-scan for the real Chromium/files demo. **[NEXT: exclusive input ownership](decisions/0027-owned-evidence-exclusion.md#next-exclusive-input-ownership).** Fence commands behind one expiring controller lease; revoke admission and drain actual input before any replacement owner can proceed. Hosted persistence, general recordings, credential entry, human takeover and private remote viewing remain separate work. The privacy probe remains available with --capture-probe.
+The [passive local viewer](decisions/0023-passive-evidence-viewer.md) now supports node/action/event selection, original-video seeking and related timeline highlights, native keyboard operation and explicit unavailable/partial states. Selection sends no live input. The [reader-owned exclusion fence](decisions/0024-reader-capture-exclusion.md) now drains complete commands and idle sampling, blocks late results/timeline retention, rejects stale iterators and preserves same-context resume with a fresh baseline. The [bounded diagnostic inventory](decisions/0025-diagnostic-feature-provenance.md) now keeps declared hypotheses separate from exposed names, binds document/epoch/node evidence to authored traces, and preserves missing/stale cases. Run the fixed four-route demo with --features. The [controlled replay workflow](decisions/0026-eligible-fresh-run-replay.md) now compares fresh source equivalence and current environment/policy, rechecks before first dispatch and retains an independent new result. Run --replay for the fixed successful shop route. The [owned local pipeline](decisions/0027-owned-evidence-exclusion.md) now writes intent before dispatch, drains actual commands and file writes before exclusion acknowledgement, rejects stale epochs and requires a persisted fresh baseline before resume. Run --owned-scan for the real Chromium/files demo. The [exclusive local controller](decisions/0028-exclusive-local-controller.md) now checks expiring authority at command admission and final native dispatch, drains actual work before replacement and persists controller generation without bearer tokens. Run --controller to observe two generations sharing one real Chromium context. **[NEXT: headed Linux session feasibility](decisions/0028-exclusive-local-controller.md#next-headed-linux-session-feasibility).** Prove this flow with headed Chromium on a task-owned Xvfb display and retain cleanup/failure evidence in Linux CI. Hosted persistence, general recordings, credentials, human takeover and private remote viewing remain separate work. The privacy probe remains available with --capture-probe.
 
 ```mermaid
 flowchart LR
@@ -35,16 +35,17 @@ flowchart LR
     ReaderGate --> Features[Bounded diagnostic provenance]
     Features --> Replay[Eligible fresh-run replay]
     Replay --> Owned[Owned local evidence exclusion]
-    Owned --> Next[NEXT: exclusive input ownership]
+    Owned --> Controller[Exclusive local AI controller]
+    Controller --> Next[NEXT: headed Linux session]
     Next --> ViewerControl[Human takeover and private viewer]
     ViewerControl --> Durable[Durable hosted execution]
     classDef done fill:#dcfce7,stroke:#166534,color:#14532d
     classDef next fill:#dbeafe,stroke:#1d4ed8,color:#1e3a8a
     classDef planned fill:#f3f4f6,stroke:#6b7280,color:#374151
-    class Reader,Trace,Privacy,Timing,Recording,Viewer,ReaderGate,Features,Replay,Owned done
+    class Reader,Trace,Privacy,Timing,Recording,Viewer,ReaderGate,Features,Replay,Owned,Controller done
     class Next next
     class ViewerControl,Durable planned
-    click Next "decisions/0027-owned-evidence-exclusion.md#next-exclusive-input-ownership"
+    click Next "decisions/0028-exclusive-local-controller.md#next-headed-linux-session-feasibility"
 ```
 
 Green means an implemented, locally validated bounded capability; blue is the next increment; gray is planned. These are not full milestone-completion labels. CI, deployment and assistive-technology gates remain separate.

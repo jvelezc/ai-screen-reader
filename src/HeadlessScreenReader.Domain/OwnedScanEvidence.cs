@@ -5,6 +5,7 @@ namespace HeadlessScreenReader.Domain;
 public sealed record OwnedCommandIntent(string ScanId, long Ordinal, long Epoch, ReaderCommand Command)
 {
     public string Schema => "hsr-owned-command-intent-v1";
+    public long? ControllerGeneration { get; init; }
 }
 public enum OwnedCompletionState { ResultStored, ResultExcluded, Cancelled, EngineError, WriteUnconfirmed }
 public sealed record OwnedCommandCompletion(OwnedCommandIntent Intent, OwnedCompletionState State,
