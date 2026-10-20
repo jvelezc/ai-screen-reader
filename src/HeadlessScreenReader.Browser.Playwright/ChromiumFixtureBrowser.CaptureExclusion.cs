@@ -33,6 +33,7 @@ public sealed partial class ChromiumFixtureBrowser
     {
         ArgumentNullException.ThrowIfNull(lease);
         ObjectDisposedException.ThrowIf(_disposed, this);
+        if (_syntheticCanaryMayRemain) throw new BrowserOperationException("SYNTHETIC_CLEAR_REQUIRED");
         return _captureAdmission.ResumeAsync(lease, async () =>
         {
             await _cdp.SendAsync("Accessibility.enable").ConfigureAwait(false);

@@ -10,7 +10,11 @@ permissions:
 
 jobs:
   headed-session:
-    name: Headed Chromium and Xvfb (Linux)
+    name: Headed Chromium and Xvfb (${{ matrix.scenario }}, Linux)
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario: [controller, synthetic-handoff]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     defaults:
@@ -24,12 +28,12 @@ jobs:
         with:
           global-json-file: global.json
       - name: Prove headed process continuity and owned cleanup
-        run: pwsh -NoProfile -File scripts/Test-HeadedSession.ps1 -Runtime docker
+        run: pwsh -NoProfile -File scripts/Test-HeadedSession.ps1 -Runtime docker -Scenario '${{ matrix.scenario }}'
       - name: Retain headed acceptance receipts
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: headed-session-linux
+          name: headed-session-linux-${{ matrix.scenario }}
           path: artifacts/headed-linux/
           retention-days: 7
   isolated-prototype:
@@ -155,6 +159,8 @@ jobs:
           dotnet run --project src/HeadlessScreenReader.Cli -c Release --no-build -- --replay | Tee-Object -FilePath artifacts/replay.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           dotnet run --project src/HeadlessScreenReader.Cli -c Release --no-build -- --controller | Tee-Object -FilePath artifacts/controller.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run --project src/HeadlessScreenReader.Cli -c Release --no-build -- --synthetic-handoff | Tee-Object -FilePath artifacts/synthetic-handoff.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           dotnet run --project src/HeadlessScreenReader.Cli -c Release --no-build -- --owned-scan | Tee-Object -FilePath artifacts/owned-scan.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

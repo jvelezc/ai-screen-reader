@@ -4,7 +4,7 @@ using HeadlessScreenReader.Domain;
 namespace HeadlessScreenReader.Exploration;
 
 /// <summary>One expiring local AI controller. Trusted composition owns the adapter; no remote/human channel.</summary>
-public sealed class ControlledScanSession : IAsyncDisposable
+public sealed partial class ControlledScanSession : IAsyncDisposable
 {
     private static readonly ConditionalWeakTable<IScreenReaderBrowser, ControlledScanSession> Owners = new();
     private static readonly object OwnersLock = new();
@@ -56,7 +56,8 @@ public sealed class ControlledScanSession : IAsyncDisposable
             {
                 ExpireIfNeeded();
                 ObserveOwnedFault();
-                return new(_owned.Status.ScanId, _phase, _generation, _lease?.ExpiresAt, _active, _fault, [.. _events], _truncated, _owned.Status);
+                return new(_owned.Status.ScanId, _phase, _generation, _lease?.ExpiresAt, _active, _fault, [.. _events], _truncated, _owned.Status)
+                { Role = _lease?.Role };
             }
         }
     }
@@ -71,6 +72,10 @@ public sealed class ControlledScanSession : IAsyncDisposable
             EnsureOpen();
             if (_phase != ControllerPhase.Unowned) throw new BrowserOperationException("CONTROL_BUSY");
             if (_generation >= _maximumGrants) throw new BrowserOperationException("CONTROL_GRANT_LIMIT");
+            if (_browser is ISyntheticExcludedInput synthetic && synthetic.SyntheticStatus is { } state
+                && (state.CanaryMayRemain || state.AuthorityActive || state.ActiveOperations != 0))
+                throw new BrowserOperationException("CONTROL_SYNTHETIC_CLEAR_REQUIRED");
+            _role = ControllerRole.Automation;
             Change(ControllerPhase.Acquiring, "CONTROL_ACQUIRE_STARTED");
         }
         await _changes.WaitAsync().ConfigureAwait(false);
@@ -106,6 +111,7 @@ public sealed class ControlledScanSession : IAsyncDisposable
         lock (_sync)
         {
             ExpireIfNeeded(); EnsureLease(lease);
+            if (_role != ControllerRole.Automation) throw new BrowserOperationException("CONTROL_ROLE_DENIED");
             if (_active++ == 0) _drained = new(TaskCreationOptions.RunContinuationsAsynchronously);
         }
         var actual = ExecuteCoreAsync(lease.Generation, expectedEpoch, command, key, cancellationToken, expectation, expectedDocumentId);
@@ -159,19 +165,25 @@ public sealed class ControlledScanSession : IAsyncDisposable
         _timer?.Dispose(); _timer = null;
         _lease = null;
         Change(ControllerPhase.Revoking, code);
-        var actual = RevokeCoreAsync(_drained.Task);
+        var actual = RevokeCoreAsync(_drained.Task, _role);
         Observe(actual); return _revocation = actual;
     }
-    private async Task RevokeCoreAsync(Task drain)
+    private async Task RevokeCoreAsync(Task drain, ControllerRole role)
     {
         await _changes.WaitAsync().ConfigureAwait(false);
         try
         {
-            var stop = _owned.ExcludeCaptureAsync();
-            await Task.WhenAll(drain, stop).WaitAsync(TimeSpan.FromSeconds(5), _time).ConfigureAwait(false);
+            if (role == ControllerRole.SimulatedAssistance)
+                await Task.WhenAll(drain, StopSyntheticInput()).WaitAsync(TimeSpan.FromSeconds(5), _time).ConfigureAwait(false);
+            else
+            {
+                var stop = _owned.ExcludeCaptureAsync();
+                await Task.WhenAll(drain, stop).WaitAsync(TimeSpan.FromSeconds(5), _time).ConfigureAwait(false);
+                _gap = stop.Result;
+            }
             lock (_sync)
             {
-                _gap = stop.Result;
+                if (role == ControllerRole.SimulatedAssistance) _nativeSyntheticLease = null;
                 if (!_closing && _phase == ControllerPhase.Revoking) Change(ControllerPhase.Unowned, "CONTROL_DRAIN_ACKNOWLEDGED");
             }
         }
@@ -188,12 +200,14 @@ public sealed class ControlledScanSession : IAsyncDisposable
     private void ObserveOwnedFault()
     {
         if (_fault is null && !_closing && _owned.Status.FaultCode is not null) Fault("CONTROL_OWNED_FAULTED");
+        if (_fault is null && !_closing && _browser is ICaptureControl control && control.CaptureStatus.Phase == CapturePhase.Faulted)
+            Fault("CONTROL_ADAPTER_FAULTED");
     }
     private void EnsureLease(ControllerLease lease)
     {
         EnsureOpen();
         if (_phase != ControllerPhase.Active || _lease is null || lease.ScanId != _lease.ScanId
-            || lease.Token != _lease.Token || lease.Generation != _generation)
+            || lease.Token != _lease.Token || lease.Generation != _generation || lease.Role != _role)
             throw new BrowserOperationException("CONTROL_LEASE_INVALID");
     }
     private Task Dispatch(Func<Task> send)
@@ -201,7 +215,7 @@ public sealed class ControlledScanSession : IAsyncDisposable
         lock (_sync)
         {
             ExpireIfNeeded();
-            if (_closing || _phase != ControllerPhase.Active || _lease is null || _executingGeneration.Value != _generation
+            if (_closing || _phase != ControllerPhase.Active || _lease is null || _role != ControllerRole.Automation || _executingGeneration.Value != _generation
                 || _owned.Status.FaultCode is not null)
                 throw new BrowserInputDeniedException("CONTROL_INPUT_FENCED");
             return send();
@@ -211,17 +225,22 @@ public sealed class ControlledScanSession : IAsyncDisposable
     {
         _phase = phase;
         if (_events.Count == 256) { _events.Dequeue(); _truncated = true; }
-        _events.Enqueue(new(++_sequence, _generation, phase, code, _time.GetElapsedTime(_started).TotalMilliseconds));
+        _events.Enqueue(new ControllerEvent(++_sequence, _generation, phase, code, _time.GetElapsedTime(_started).TotalMilliseconds) { Role = _role });
     }
     private void Fault(string code)
     {
-        lock (_sync) { _fault ??= code; _timer?.Dispose(); _timer = null; _lease = null; Change(ControllerPhase.Faulted, code); }
+        lock (_sync)
+        {
+            _fault ??= code; _timer?.Dispose(); _timer = null; _lease = null; Change(ControllerPhase.Faulted, code);
+            TryStopSyntheticInput();
+        }
     }
     public ValueTask DisposeAsync()
     {
         lock (_sync)
         {
             _closing = true; _timer?.Dispose(); _timer = null; _lease = null;
+            TryStopSyntheticInput();
             return new(_close ??= CloseCoreAsync());
         }
     }

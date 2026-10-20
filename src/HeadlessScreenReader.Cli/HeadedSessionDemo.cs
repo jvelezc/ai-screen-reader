@@ -93,7 +93,7 @@ public static class HeadedSessionDemo
         return ready ? 0 : 3;
     }
 
-    private static async Task<bool> ConfirmProcessExitAsync(long pid)
+    internal static async Task<bool> ConfirmProcessExitAsync(long pid)
     {
         if (pid is < 1 or > int.MaxValue) return false;
         for (var i = 0; i < 100; i++)

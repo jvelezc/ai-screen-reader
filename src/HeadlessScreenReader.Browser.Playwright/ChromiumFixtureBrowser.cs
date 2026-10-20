@@ -6,7 +6,7 @@ using Microsoft.Playwright;
 
 namespace HeadlessScreenReader.Browser.Playwright;
 
-public enum BundledFixture { Foundation, Widgets, LiveRegions, Semantics, Landmarks, Text, Frames, Ranges, Composites, Tables, Paragraphs, Multiselect, Typeahead, Traversal, CapturePrivacy, RecordingMarkers, TraversalRecording }
+public enum BundledFixture { Foundation, Widgets, LiveRegions, Semantics, Landmarks, Text, Frames, Ranges, Composites, Tables, Paragraphs, Multiselect, Typeahead, Traversal, CapturePrivacy, RecordingMarkers, TraversalRecording, SyntheticHandoff }
 
 /// <summary>Chromium observations for fixtures and isolation-gated HTTPS pages. Egress enforcement is external.</summary>
 public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, ICaptureControl, IAsyncDisposable
@@ -22,6 +22,7 @@ public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, ICapt
     private readonly TaskCompletionSource _closed = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private bool _disposed;
     private readonly PublicTargetPolicy? _publicPolicy;
+    private readonly BundledFixture? _fixture;
     private readonly HashSet<string> _blockedOrigins;
 
     public FixtureBrowserEnvironment Environment { get; }
@@ -38,6 +39,7 @@ public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, ICapt
         _cdp = cdp;
         _frameOptions = frameOptions;
         _publicPolicy = publicPolicy;
+        _fixture = fixture;
         _blockedOrigins = blockedOrigins ?? [];
         Environment = new(browser.Version,
             typeof(Microsoft.Playwright.Playwright).Assembly.GetName().Version!.ToString(),
@@ -56,6 +58,7 @@ public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, ICapt
         FrameCaptureOptions? frameOptions, string? artifactsDirectory)
     {
         if (!Enum.IsDefined(fixture)) throw new ArgumentOutOfRangeException(nameof(fixture));
+        if (fixture == BundledFixture.SyntheticHandoff) EnsureSyntheticDiagnosticsDisabled();
         frameOptions ??= new();
         if (frameOptions.MaxFrames is < 1 or > 32 || frameOptions.MaxDepth is < 0 or > 8)
             throw new ArgumentOutOfRangeException(nameof(frameOptions), "Frame bounds are 1..32 documents and 0..8 child levels.");
@@ -75,7 +78,7 @@ public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, ICapt
             {
                 AcceptDownloads = false,
                 ServiceWorkers = ServiceWorkerPolicy.Block,
-                ViewportSize = fixture is BundledFixture.CapturePrivacy or BundledFixture.RecordingMarkers or BundledFixture.TraversalRecording
+                ViewportSize = fixture is BundledFixture.CapturePrivacy or BundledFixture.RecordingMarkers or BundledFixture.TraversalRecording or BundledFixture.SyntheticHandoff
                     ? new() { Width = 320, Height = 240 } : new() { Width = 1280, Height = 720 }
             }).ConfigureAwait(false);
             await context.RouteAsync("**/*", route => route.AbortAsync()).ConfigureAwait(false);

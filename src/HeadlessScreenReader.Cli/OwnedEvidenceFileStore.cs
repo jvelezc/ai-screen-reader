@@ -5,7 +5,7 @@ using HeadlessScreenReader.Domain;
 namespace HeadlessScreenReader.Cli;
 
 /// <summary>New scan-owned local files. Pending data survives failure; no crash/hosted durability claim.</summary>
-public sealed class OwnedEvidenceFileStore : IOwnedEvidenceStore
+public sealed class OwnedEvidenceFileStore : IOwnedEvidenceStore, IOwnedAssistanceStore
 {
     private readonly object _sync = new();
     private long _reservedBytes;
@@ -57,6 +57,21 @@ public sealed class OwnedEvidenceFileStore : IOwnedEvidenceStore
     {
         if (intent.ScanId != ScanId || intent.Ordinal < 1 || intent.Epoch < 1)
             throw new IOException("OWNED_INTENT_INVALID");
+    }
+    public Task<OwnedWriteReceipt> WriteAssistanceIntentAsync(OwnedAssistanceIntent intent)
+    {
+        ValidateAssistance(intent);
+        return WriteAsync($"assistance-{intent.Ordinal:D6}.intent.json", intent);
+    }
+    public Task<OwnedWriteReceipt> WriteAssistanceCompletionAsync(OwnedAssistanceCompletion completion)
+    {
+        ValidateAssistance(completion.Intent);
+        return WriteAsync($"assistance-{completion.Intent.Ordinal:D6}.completion.json", completion);
+    }
+    private void ValidateAssistance(OwnedAssistanceIntent intent)
+    {
+        if (intent.ScanId != ScanId || intent.Ordinal < 1 || intent.Epoch < 1 || intent.ControllerGeneration < 1 || !Enum.IsDefined(intent.Action))
+            throw new IOException("OWNED_ASSISTANCE_INVALID");
     }
     private async Task<OwnedWriteReceipt> WriteAsync<T>(string name, T value)
     {

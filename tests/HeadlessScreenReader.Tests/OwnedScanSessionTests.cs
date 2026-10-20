@@ -322,7 +322,7 @@ public sealed class OwnedScanSessionTests
         Assert.Equal(0, browser.Keys);
     }
 
-    internal sealed class RecordingStore : IOwnedEvidenceStore
+    internal sealed class RecordingStore : IOwnedEvidenceStore, IOwnedAssistanceStore
     {
         private readonly object _sync = new();
         private readonly List<object> _records = [];
@@ -339,6 +339,8 @@ public sealed class OwnedScanSessionTests
         public Task<OwnedWriteReceipt> WriteCompletionAsync(OwnedCommandCompletion completion) => Save("completion", completion);
         public Task<OwnedWriteReceipt> WriteBaselineAsync(OwnedScanBaseline baseline) => Save("baseline", baseline);
         public Task<OwnedWriteReceipt> WriteLifecycleAsync(OwnedScanLifecycle lifecycle) => Save(lifecycle.Event.Phase.ToString(), lifecycle);
+        public Task<OwnedWriteReceipt> WriteAssistanceIntentAsync(OwnedAssistanceIntent intent) => Save("assist-intent", intent);
+        public Task<OwnedWriteReceipt> WriteAssistanceCompletionAsync(OwnedAssistanceCompletion completion) => Save("assist-completion", completion);
         private async Task<OwnedWriteReceipt> Save(string stage, object value)
         {
             if (stage == DelayStage && !_delayed) { _delayed = true; Started.TrySetResult(); await Release.Task; }

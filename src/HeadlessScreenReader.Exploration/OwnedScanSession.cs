@@ -5,7 +5,7 @@ using HeadlessScreenReader.ScreenReader;
 namespace HeadlessScreenReader.Exploration;
 
 /// <summary>One trusted owner of a reader, adapter and typed evidence store. No human input authority.</summary>
-public sealed class OwnedScanSession : IAsyncDisposable
+public sealed partial class OwnedScanSession : IAsyncDisposable
 {
     private static readonly ConditionalWeakTable<IScreenReaderBrowser, OwnedScanSession> Owners = new();
     private static readonly object OwnersLock = new();
@@ -59,7 +59,11 @@ public sealed class OwnedScanSession : IAsyncDisposable
 
     public OwnedScanStatus Status
     {
-        get { lock (_sync) return new(_store.ScanId, new(_phase, _epoch, [.. _events], _truncated), _active, _writes, _fault); }
+        get
+        {
+            lock (_sync) return new(_store.ScanId, new(_phase, _epoch, [.. _events], _truncated), _active, _writes, _fault)
+            { SimulatedAssistanceIntroduced = _simulationIntroduced };
+        }
     }
     private double Elapsed() => _time.GetElapsedTime(_started).TotalMilliseconds;
     private void Ensure(long epoch)
@@ -109,7 +113,8 @@ public sealed class OwnedScanSession : IAsyncDisposable
                 {
                     Ensure(epoch);
                     if (_ordinal >= _maximumCommands) throw new BrowserOperationException("OWNED_COMMAND_BUDGET_EXHAUSTED");
-                    intent = new(_store.ScanId, ++_ordinal, epoch, command) { ControllerGeneration = controllerGeneration };
+                    intent = new(_store.ScanId, ++_ordinal, epoch, command)
+                    { ControllerGeneration = controllerGeneration, PriorSimulatedAssistance = _simulationIntroduced };
                 }
                 _observed.Reset();
                 OwnedWriteReceipt? intentWrite = null, resultWrite = null;
@@ -335,9 +340,20 @@ public sealed class OwnedScanSession : IAsyncDisposable
         public int CompletedInputCalls { get; private set; }
         public bool InputUncertain { get; private set; }
         public bool EpochMismatch { get; private set; }
+        public CaptureExclusionLease? AdapterLease { get; private set; }
         public CaptureStatus CaptureStatus => control.CaptureStatus;
-        public Task<CaptureExclusionLease> ExcludeCaptureAsync() => control.ExcludeCaptureAsync();
-        public Task<AccessibilitySnapshot> ResumeCaptureAsync(CaptureExclusionLease lease) => control.ResumeCaptureAsync(lease);
+        public async Task<CaptureExclusionLease> ExcludeCaptureAsync()
+        {
+            var lease = await control.ExcludeCaptureAsync().ConfigureAwait(false);
+            lock (owner._sync) AdapterLease = lease;
+            return lease;
+        }
+        public async Task<AccessibilitySnapshot> ResumeCaptureAsync(CaptureExclusionLease lease)
+        {
+            var baseline = await control.ResumeCaptureAsync(lease).ConfigureAwait(false);
+            lock (owner._sync) AdapterLease = null;
+            return baseline;
+        }
         public void Reset() { Snapshot = null; Window = null; InputRequests = CompletedInputCalls = 0; InputUncertain = EpochMismatch = false; }
         public async Task<AccessibilitySnapshot> CaptureAsync(CancellationToken cancellationToken = default)
         {

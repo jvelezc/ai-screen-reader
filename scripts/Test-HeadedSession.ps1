@@ -1,4 +1,5 @@
-param([ValidateSet('podman', 'docker')][string]$Runtime = 'podman', [switch]$SkipBuild)
+param([ValidateSet('podman', 'docker')][string]$Runtime = 'podman', [switch]$SkipBuild,
+    [ValidateSet('controller', 'synthetic-handoff')][string]$Scenario = 'controller')
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path $PSScriptRoot -Parent
 Import-Module (Join-Path $PSScriptRoot 'ReaderIsolation.psm1') -Force -DisableNameChecking
@@ -26,7 +27,7 @@ try {
     if ($Runtime -eq 'docker') { $security = @('--security-opt', "seccomp=$(Join-Path $repoRoot 'ops/prototype/playwright-seccomp.json')") }
     $arguments = @('create', '--name', $name, '--network', 'none', '--user', '1001:1001', '--cap-drop', 'ALL', '--cap-add', 'SYS_CHROOT',
         '--security-opt', 'no-new-privileges', '--memory', '1024m', '--cpus', '2', '--pids-limit', '256', '--shm-size', '256m',
-        '--label', "hsr.headed.owner=$runId") + $security + @($image)
+        '--label', "hsr.headed.owner=$runId", '--env', "HSR_HEADED_CASE=$Scenario") + $security + @($image)
     $null = Invoke-ReaderRuntime $Runtime $arguments
     $created = $true
     $stage = 'run'
@@ -54,7 +55,8 @@ try {
         -and $receipt.Kernel.Restricted -eq $true -and @($constraints.SecurityOptions | Where-Object { $_ -like 'no-new-privileges*' }).Count -eq 1 `
         -and $constraints.MemoryBytes -gt 0 -and $constraints.MemoryBytes -le 1073741824 `
         -and $constraints.PidsLimit -gt 0 -and $constraints.PidsLimit -le 256 -and $constraints.HostBindMounts -eq 0
-    $ready = $item.State.ExitCode -eq 0 -and $limitsObserved -and $receipt.Schema -eq 'hsr-headed-session-proof-v1' `
+    $expectedSchema = if ($Scenario -eq 'synthetic-handoff') { 'hsr-synthetic-handoff-proof-v1' } else { 'hsr-headed-session-proof-v1' }
+    $ready = $item.State.ExitCode -eq 0 -and $limitsObserved -and $receipt.Schema -eq $expectedSchema `
         -and $receipt.Ready -eq $true -and $cleanup.displayCleanupConfirmed -eq $true `
         -and $cleanup.commandExitCode -eq 0 -and $receipt.BrowserCloseConfirmed -eq $true
     if (-not $ready) { throw 'HEADED_ACCEPTANCE_FAILED' }
@@ -91,7 +93,9 @@ try {
     }
 }
 $result = [pscustomobject]@{ Schema = 'hsr-headed-runtime-v1'; RunId = $runId; Runtime = $Runtime; Ready = $ready;
-    CaseName = 'HeadedChromium_TwoControllerGenerationsPreserveProcessContextAndCleanOwnedDisplay';
+    Scenario = $Scenario;
+    CaseName = $(if ($Scenario -eq 'synthetic-handoff') { 'SyntheticHandoff_ActualInputIsExcludedFromOwnedFilesAndOriginalMedia' }
+        else { 'HeadedChromium_TwoControllerGenerationsPreserveProcessContextAndCleanOwnedDisplay' });
     Stage = $stage; ErrorCode = $errorCode; EvidenceCopied = $copied; ContainerRemoved = $removed; ImageRemoved = $imageRemoved;
     ProofStage = $proofStage; ProofErrorCode = $proofErrorCode; ObservedConstraints = $constraints;
     RetainedImage = $(if ($built -and -not $imageRemoved) { $image } else { $null });

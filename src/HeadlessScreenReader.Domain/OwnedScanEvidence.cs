@@ -6,6 +6,7 @@ public sealed record OwnedCommandIntent(string ScanId, long Ordinal, long Epoch,
 {
     public string Schema => "hsr-owned-command-intent-v1";
     public long? ControllerGeneration { get; init; }
+    public bool PriorSimulatedAssistance { get; init; }
 }
 public enum OwnedCompletionState { ResultStored, ResultExcluded, Cancelled, EngineError, WriteUnconfirmed }
 public sealed record OwnedCommandCompletion(OwnedCommandIntent Intent, OwnedCompletionState State,
@@ -37,6 +38,7 @@ public sealed record OwnedCommandReceipt(OwnedCommandCompletion Completion, Owne
 public sealed record OwnedScanStatus(string ScanId, CaptureStatus Capture, int ActiveOperations, int WritesInFlight, string? FaultCode)
 {
     public string Schema => "hsr-owned-scan-status-v1";
+    public bool SimulatedAssistanceIntroduced { get; init; }
 }
 
 /// <summary>Owned writes acknowledge their actual task, not a cancelled caller's wait. No raw input arguments in metadata.</summary>

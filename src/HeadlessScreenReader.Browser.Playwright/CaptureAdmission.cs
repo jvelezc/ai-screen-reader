@@ -6,7 +6,7 @@ namespace HeadlessScreenReader.Browser.Playwright;
 /// Closes admission before draining actual operations. Cancelling a caller's wait never
 /// releases an operation that Chromium may still be executing. Transitions are serialized.
 /// </summary>
-internal sealed class CaptureAdmission
+internal sealed partial class CaptureAdmission
 {
     private readonly TimeProvider _time;
     private readonly long _started;
@@ -112,6 +112,8 @@ internal sealed class CaptureAdmission
             {
                 if (_phase != CapturePhase.Excluded || lease.Token != _token || lease.Epoch != _epoch)
                     throw new BrowserOperationException("CAPTURE_LEASE_INVALID");
+                if (_syntheticLease is not null || _syntheticClosing)
+                    throw new BrowserOperationException("SYNTHETIC_INPUT_STILL_OWNED");
                 SetPhase(CapturePhase.Resuming);
             }
             try
@@ -150,6 +152,7 @@ internal sealed class CaptureAdmission
 
     private void SetPhase(CapturePhase phase)
     {
+        if (phase != CapturePhase.Excluded) CloseSyntheticAdmission();
         _phase = phase;
         if (_events.Count == 256) { _events.Dequeue(); _truncated = true; }
         _events.Enqueue(new(++_sequence, phase, _epoch, _time.GetElapsedTime(_started).TotalMilliseconds));
