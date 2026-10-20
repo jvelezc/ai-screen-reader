@@ -21,6 +21,10 @@ public sealed class TraversalArtifactTests : IDisposable
         Assert.Equal("Unknown", json.RootElement.GetProperty("Receipt").GetProperty("Reachability").GetString());
         Assert.Equal(1, json.RootElement.GetProperty("Graph").GetProperty("Edges").GetArrayLength());
         Assert.Contains("TimedOut", await File.ReadAllTextAsync(Path.Combine(_folder, "route-1.md")));
+        Assert.Contains("![Execution trace of observed states and action edges](route-1.svg)", await File.ReadAllTextAsync(Path.Combine(_folder, "route-1.md")));
+        var diagram = System.Xml.Linq.XDocument.Parse(await File.ReadAllTextAsync(Path.Combine(_folder, "route-1.svg")));
+        Assert.Contains("Activate | Enter (completed)", diagram.ToString());
+        Assert.Contains("reasonable-effort assessment: not assessed", diagram.ToString());
         Assert.Empty(Directory.GetFiles(_folder, "*.pending"));
         await Assert.ThrowsAsync<IOException>(() => TraversalArtifactWriter.WriteAsync(_folder, 1, receipt with { ErrorCode = "replacement" }));
         Assert.Equal(original, await File.ReadAllTextAsync(path));
@@ -53,6 +57,19 @@ public sealed class TraversalArtifactTests : IDisposable
         var receipt = await TraversalRunnerTests.Run(new(), TraversalRunnerTests.Plan(new TraversalInstruction(ReaderCommand.ReadCurrent)));
         await Assert.ThrowsAsync<IOException>(() => TraversalArtifactWriter.WriteAsync(_folder, 1, receipt));
         Assert.Equal("incomplete original", await File.ReadAllTextAsync(path));
+        Assert.False(File.Exists(Path.Combine(_folder, "route-1.json")));
+        Assert.False(File.Exists(Path.Combine(_folder, "route-1.md")));
+    }
+
+    [Fact]
+    public async Task ExistingDiagram_CannotBeLinkedToNewUnrelatedEvidence()
+    {
+        Directory.CreateDirectory(_folder);
+        var diagram = Path.Combine(_folder, "route-1.svg");
+        await File.WriteAllTextAsync(diagram, "original diagram");
+        var receipt = await TraversalRunnerTests.Run(new(), TraversalRunnerTests.Plan(new TraversalInstruction(ReaderCommand.ReadCurrent)));
+        await Assert.ThrowsAsync<IOException>(() => TraversalArtifactWriter.WriteAsync(_folder, 1, receipt));
+        Assert.Equal("original diagram", await File.ReadAllTextAsync(diagram));
         Assert.False(File.Exists(Path.Combine(_folder, "route-1.json")));
         Assert.False(File.Exists(Path.Combine(_folder, "route-1.md")));
     }

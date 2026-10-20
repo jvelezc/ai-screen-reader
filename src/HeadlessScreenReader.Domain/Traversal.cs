@@ -55,9 +55,30 @@ public sealed record TraversalReceipt(
     public int AttemptedKeystrokes => Timeline.Count(e => e.Kind == ReaderEventKind.InputAttempted);
 }
 
-public sealed record TraversalGraphNode(string ObservationId, string DocumentId, string Fingerprint);
+public sealed record TraversalGraphNode(string ObservationId, string DocumentId, string Fingerprint)
+{
+    public string Label { get; init; } = "";
+    public ReaderMode Mode { get; init; }
+    public string? CursorNodeId { get; init; }
+    public string? FocusedNodeId { get; init; }
+    public string? ActiveDescendantNodeId { get; init; }
+}
+
+/// <summary>Actual browser-key events. A missing completion never proves that input did not occur.</summary>
+public sealed record TraversalKeyTrace(string Key, long? AttemptEventSequence, long? CompletionEventSequence);
+
 public sealed record TraversalGraphEdge(
     string AttemptId, string SourceObservationId, string ResultObservationId,
-    ReaderOutcome? Outcome, VerificationStatus Verification);
+    ReaderOutcome? Outcome, VerificationStatus Verification)
+{
+    public ReaderCommand Command { get; init; }
+    public ImmutableArray<TraversalKeyTrace> KeyboardInputs { get; init; } = [];
+    public bool InputEvidenceComplete { get; init; }
+    public int CompletedKeystrokes { get; init; }
+    public bool InputMayHaveOccurred { get; init; }
+}
 public sealed record TraversalGraph(
-    string Version, ImmutableArray<TraversalGraphNode> Nodes, ImmutableArray<TraversalGraphEdge> Edges);
+    string Version, ImmutableArray<TraversalGraphNode> Nodes, ImmutableArray<TraversalGraphEdge> Edges)
+{
+    public ImmutableArray<TraversalAttempt> UnresolvedAttempts { get; init; } = [];
+}

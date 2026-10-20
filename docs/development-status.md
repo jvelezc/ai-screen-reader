@@ -28,4 +28,8 @@ dotnet run --project src/HeadlessScreenReader.Cli -c Release --no-build -- --tra
 
 Open the index path printed in the JSON summary. Four routes run in fresh browsers and produce separate receipts. Earlier batches are preserved. The report is passive evidence; selecting a link never sends browser input.
 
-This is authored route execution rather than an autonomous frontier search. Graph version `observation-graph-v1` has one node per retained observation and merges no states. No video, annotation, takeover or hosted durability is claimed.
+This is authored route execution rather than an autonomous frontier search. Graph version `execution-trace-v2` has one node per retained observation, labeled reader-command/browser-key edges and separate unresolved attempts. SVG files show the directed trace and link to the equivalent observation/event evidence; states are not merged. No video, annotation, takeover or hosted durability is claimed.
+
+## Later: features and reasonable action paths
+
+The [feature-path concept](decisions/0018-feature-path-traces.md) ties future objectives to candidate command/keystroke paths. Preserve the successful and unsuccessful traces needed to assess discoverability, repetitions, backtracking, timing and interaction burden. A bounded search that finds no combination remains Unknown; a large or complex graph alone does not establish unreasonable effort. Feature search and the burden rubric remain future work, and do not displace the capture exclusion gate.

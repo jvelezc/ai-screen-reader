@@ -9,8 +9,9 @@ namespace HeadlessScreenReader.Cli;
 /// <summary>A passive Markdown report. Selecting evidence never invokes browser operations.</summary>
 public static class TraversalReport
 {
-    public static string Render(TraversalReceipt receipt)
+    public static string Render(TraversalReceipt receipt, int? route = null)
     {
+        if (route is < 1) throw new ArgumentOutOfRangeException(nameof(route));
         var graph = TraversalProjection.Build(receipt);
         var text = new StringBuilder();
         text.AppendLine($"# {Cell(receipt.Plan.Name)}").AppendLine();
@@ -25,19 +26,27 @@ public static class TraversalReport
             + "site-wide coverage percentage or accessibility-conformance claim. Routes run on fresh synthetic fixtures.").AppendLine();
         if (receipt.ErrorCode is not null) text.AppendLine($"Engine/policy code: {Cell(receipt.ErrorCode)}.").AppendLine();
         text.AppendLine("## Observed traversal graph").AppendLine();
+        if (route is int routeId)
+            text.AppendLine($"![Execution trace of observed states and action edges](route-{routeId}.svg)").AppendLine()
+                .AppendLine($"[Open node and edge trace](route-{routeId}.svg)").AppendLine();
+        text.AppendLine("The companion SVG shows this trace as state nodes and directed action edges. Node and edge links open the observations "
+            + "and transcript in this report. Each arrow records the reader command separately from actual browser keys.").AppendLine();
         text.AppendLine("Every arrow below joins observations actually retained for this attempt. The requested goal does not create a node. "
             + "Observations are kept separate, including repeated states and different states at the same URL.").AppendLine();
-        text.AppendLine("| Attempt | Source | Actual result | Command | Reader outcome | Goal verification | Events |");
-        text.AppendLine("| --- | --- | --- | --- | --- | --- | --- |");
+        text.AppendLine("| Attempt | Source | Actual result | Command | Browser keys | Reader outcome | Goal verification | Events |");
+        text.AppendLine("| --- | --- | --- | --- | --- | --- | --- | --- |");
         foreach (var attempt in receipt.Attempts)
         {
             var edge = graph.Edges.SingleOrDefault(e => e.AttemptId == attempt.Id);
             var destination = edge is null ? "No reliable result observation" : Link(edge.ResultObservationId);
             var events = attempt.Events.IsEmpty ? "Unavailable" : $"[Transcript](#event-{attempt.Events[0].Sequence})";
             text.AppendLine($"| {Cell(attempt.Id)} | {Link(attempt.SourceObservationId)} | {destination} | "
-                + $"{attempt.Instruction.Command} | {attempt.Step?.Outcome.ToString() ?? "Interrupted"} | "
+                + $"{attempt.Instruction.Command} | {(edge is null ? "See transcript; no reliable result state" : Cell(TraversalTraceDiagram.KeyLabel(edge)))} | {attempt.Step?.Outcome.ToString() ?? "Interrupted"} | "
                 + $"{attempt.Step?.Verification.ToString() ?? "NotRequested"} | {events} |");
         }
+        text.AppendLine().AppendLine("**Future path assessment:** no combination found within bounded exploration remains Unknown. "
+            + "A long or complex trace is evidence to assess alongside alternative paths, discoverability, repetition and user validation; "
+            + "node count alone does not establish unreasonable effort. No reasonable-effort score is assigned here.");
         text.AppendLine().AppendLine("## Observations").AppendLine();
         foreach (var observation in receipt.Observations)
         {

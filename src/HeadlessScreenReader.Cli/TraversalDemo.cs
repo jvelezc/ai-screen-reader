@@ -54,7 +54,7 @@ public static class TraversalDemo
             && receipts[3].Barrier == TraversalBarrier.NoneObserved;
         await TraversalArtifactWriter.WriteNewAsync(Path.Combine(folder, "index.md"),
             "# Synthetic shop traversal reports\n\nFresh browser per route; original input is never replayed.\n\n"
-            + string.Join("\n", receipts.Select((r, i) => $"- [{r.Plan.Name}](route-{i + 1}.md): {r.Reachability}; {r.StopReason}"))
+            + string.Join("\n", receipts.Select((r, i) => $"- [{r.Plan.Name}](route-{i + 1}.md): {r.Reachability}; {r.StopReason}. [Node and edge trace](route-{i + 1}.svg)"))
             + "\n\nRecording, diagnostics, human intervention and hosted persistence remain open milestone gates.\n");
         Console.WriteLine(JsonSerializer.Serialize(new
         {

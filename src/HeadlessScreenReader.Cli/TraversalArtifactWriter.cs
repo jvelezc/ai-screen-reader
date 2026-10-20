@@ -15,9 +15,16 @@ public static class TraversalArtifactWriter
         ArgumentOutOfRangeException.ThrowIfLessThan(route, 1);
         var graph = TraversalProjection.Build(receipt);
         Directory.CreateDirectory(folder);
+        foreach (var extension in new[] { "json", "md", "svg" })
+        {
+            var path = Path.Combine(folder, $"route-{route}.{extension}");
+            if (File.Exists(path) || File.Exists(path + ".pending"))
+                throw new IOException("TRAVERSAL_ARTIFACT_ALREADY_EXISTS");
+        }
         await WriteNewAsync(Path.Combine(folder, $"route-{route}.json"),
             JsonSerializer.Serialize(new { Receipt = receipt, Graph = graph, Environment = environment }, TraversalDemo.JsonOptions));
-        await WriteNewAsync(Path.Combine(folder, $"route-{route}.md"), TraversalReport.Render(receipt));
+        await WriteNewAsync(Path.Combine(folder, $"route-{route}.md"), TraversalReport.Render(receipt, route));
+        await WriteNewAsync(Path.Combine(folder, $"route-{route}.svg"), TraversalTraceDiagram.Render(receipt, route));
     }
 
     internal static async Task WriteNewAsync(string path, string content)

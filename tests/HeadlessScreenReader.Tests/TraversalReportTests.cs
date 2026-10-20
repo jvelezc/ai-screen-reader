@@ -70,7 +70,7 @@ public sealed class TraversalReportTests
         Assert.Equal(VerificationStatus.TimedOut, restored.Attempts[0].Step!.Verification);
         Assert.Equal(receipt.Attempts[0].Events.Select(e => (e.Sequence, e.Kind)), restored.Attempts[0].Events.Select(e => (e.Sequence, e.Kind)));
         Assert.Equal(receipt.Observations.Select(o => o.Fingerprint), restored.Observations.Select(o => o.Fingerprint));
-        Assert.Equal(TraversalProjection.Build(receipt).Edges.ToArray(), TraversalProjection.Build(restored).Edges.ToArray());
+        Assert.Equal(JsonSerializer.Serialize(TraversalProjection.Build(receipt)), JsonSerializer.Serialize(TraversalProjection.Build(restored)));
         Assert.False(restored.HasRecording);
     }
 }

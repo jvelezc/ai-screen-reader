@@ -23,7 +23,15 @@ public sealed class ChromiumTraversalTests
         Assert.DoesNotContain(receipt.Observations[0].Snapshot.Nodes, n => n.Role == "heading" && n.Name == "Checkout preview");
         Assert.Equal("Checkout preview", receipt.Observations[^1].Snapshot.EffectiveFocusedNode?.Name);
         Assert.Equal(3, TraversalProjection.Build(receipt).Nodes.Length);
-        Assert.Equal(2, TraversalProjection.Build(receipt).Edges.Length);
+        var trace = TraversalProjection.Build(receipt);
+        Assert.Equal(2, trace.Edges.Length);
+        Assert.Equal(new[] { ReaderCommand.Tab, ReaderCommand.Activate }, trace.Edges.Select(e => e.Command));
+        Assert.Equal(new[] { "Tab", "Enter" }, trace.Edges.SelectMany(e => e.KeyboardInputs).Select(k => k.Key));
+        Assert.All(trace.Edges, e => Assert.True(e.InputEvidenceComplete));
+        Assert.Equal("heading: Synthetic shop", trace.Nodes[0].Label);
+        Assert.Equal("heading: Checkout preview", trace.Nodes[^1].Label);
+        var diagram = System.Xml.Linq.XDocument.Parse(TraversalTraceDiagram.Render(receipt));
+        Assert.Contains("Objective verified here", diagram.ToString());
         Assert.Contains(receipt.Observations[0].Snapshot.Nodes, n => n.Role == "button" && n.Name == "");
         var serialized = JsonSerializer.Serialize(receipt, TraversalDemo.JsonOptions);
         Assert.DoesNotContain("traversal-account-canary", serialized);

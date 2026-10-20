@@ -2,6 +2,8 @@
 
 October 20, 2026. Reader profile remains `hsr-desktop-reader-v13`; traversal schema is independently versioned `hsr-traversal-v1`.
 
+The later [directed trace increment](traversal-trace-v2.md) adds SVG state/action diagrams and graph projection `execution-trace-v2`. Counts below record the first traversal increment.
+
 ## Behavior and evidence
 
 | Requirement | Evidence |
