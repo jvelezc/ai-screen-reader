@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="ModelContextProtocol" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <ProjectReference Include="../HeadlessScreenReader.ScreenReader/HeadlessScreenReader.ScreenReader.csproj" />
+    <ProjectReference Include="../HeadlessScreenReader.Browser.Playwright/HeadlessScreenReader.Browser.Playwright.csproj" />
+  </ItemGroup>
+</Project>

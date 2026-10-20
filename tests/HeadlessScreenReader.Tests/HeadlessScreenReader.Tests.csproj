@@ -14,4 +14,7 @@
     <ProjectReference Include="../../src/HeadlessScreenReader.Cli/HeadlessScreenReader.Cli.csproj" />
   </ItemGroup>
   <ItemGroup><Using Include="Xunit" /></ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\HeadlessScreenReader.Mcp\HeadlessScreenReader.Mcp.csproj" />
+  </ItemGroup>
 </Project>

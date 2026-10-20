@@ -165,6 +165,8 @@ public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, IAsyn
                             ? selected : null,
                         Selection: bool.TryParse(props.GetValueOrDefault("selected"), out var selection)
                             ? new(selection, SemanticSource.ChromiumAccessibility) : null,
+                        Editability: props.GetValueOrDefault("editable") is { } editable
+                            ? new(editable, SemanticSource.ChromiumAccessibility) : null,
                         MultiSelectable: role == "listbox" && bool.TryParse(props.GetValueOrDefault("multiselectable"), out var multi)
                             ? new(multi, SemanticSource.ChromiumAccessibility) : null,
                         IsRequired: props.GetValueOrDefault("required") == "true",

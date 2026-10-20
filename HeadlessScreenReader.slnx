@@ -3,6 +3,7 @@
     <Project Path="src/HeadlessScreenReader.Browser.Playwright/HeadlessScreenReader.Browser.Playwright.csproj" />
     <Project Path="src/HeadlessScreenReader.Cli/HeadlessScreenReader.Cli.csproj" />
     <Project Path="src/HeadlessScreenReader.Domain/HeadlessScreenReader.Domain.csproj" />
+    <Project Path="src/HeadlessScreenReader.Mcp/HeadlessScreenReader.Mcp.csproj" />
     <Project Path="src/HeadlessScreenReader.ScreenReader/HeadlessScreenReader.ScreenReader.csproj" />
   </Folder>
   <Folder Name="/tests/">

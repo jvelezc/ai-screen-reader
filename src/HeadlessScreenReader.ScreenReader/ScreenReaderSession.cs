@@ -58,7 +58,7 @@ public sealed class ScreenReaderSession : IDisposable
 
     public async Task<ReaderStep> ExecuteAsync(
         ReaderCommand command, string? key = null, CancellationToken cancellationToken = default,
-        ObservationExpectation? expectation = null)
+        ObservationExpectation? expectation = null, string? expectedDocumentId = null)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         await _inputGate.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -73,7 +73,7 @@ public sealed class ScreenReaderSession : IDisposable
             cancellationToken.ThrowIfCancellationRequested();
             step = (ReaderTextNavigator.IsCommand(command) || ReaderParagraphNavigator.IsCommand(command)) && expectation is not null
                 ? Result(ReaderOutcome.Unsupported, "Text navigation does not accept semantic goal expectations.")
-                : await RunCommandAsync(command, key, cancellationToken).ConfigureAwait(false);
+                : await RunCommandAsync(command, key, cancellationToken, expectedDocumentId).ConfigureAwait(false);
             if (expectation is not null)
             {
                 if (step.Outcome is ReaderOutcome.Observed or ReaderOutcome.CursorMoved)
@@ -89,6 +89,12 @@ public sealed class ScreenReaderSession : IDisposable
             step = Result(ReaderOutcome.Unknown, "Observation interrupted; destination not verified.",
                 inputMayHaveOccurred: true) with
             { Verification = VerificationStatus.Interrupted };
+            return step;
+        }
+        catch (BrowserInputDeniedException exception)
+        {
+            Record(ReaderEventKind.InputDenied, exception.Code);
+            step = Result(ReaderOutcome.Denied, "Input was denied before browser dispatch.", errorCode: exception.Code);
             return step;
         }
         catch (BrowserOperationException exception)
@@ -116,7 +122,8 @@ public sealed class ScreenReaderSession : IDisposable
         }
     }
 
-    private async Task<ReaderStep> RunCommandAsync(ReaderCommand command, string? key, CancellationToken token)
+    private async Task<ReaderStep> RunCommandAsync(ReaderCommand command, string? key, CancellationToken token,
+        string? expectedDocumentId)
     {
         if (_commandsUsed >= _maxCommands)
             return Result(ReaderOutcome.BudgetExceeded, "Command budget exhausted.");
@@ -128,6 +135,9 @@ public sealed class ScreenReaderSession : IDisposable
         if (command == ReaderCommand.PressKey && !BrowserKeyPolicy.Allows(key))
             return Result(ReaderOutcome.Denied, "Keyboard operation denied by the local fixture policy.");
         await RefreshAsync(token).ConfigureAwait(false);
+        if (expectedDocumentId is not null && _snapshot!.DocumentId != expectedDocumentId)
+            return Result(ReaderOutcome.Denied, "Document changed; capture a fresh observation before continuing.",
+                errorCode: "DOCUMENT_CHANGED");
         if (command == ReaderCommand.EnterBrowseMode)
         {
             _text.Clear();

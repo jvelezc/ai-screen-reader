@@ -98,6 +98,8 @@ jobs:
           dotnet run --project src/HeadlessScreenReader.Cli -c Release --no-build -- --assess-reference artifacts/reference-template.json | Tee-Object -FilePath artifacts/reference-assessment.json
           if ($LASTEXITCODE -ne 3) { throw "An unrun reference worksheet must return exit code 3." }
           exit 0
+      - name: Publish usable MCP prototype
+        run: pwsh -NoProfile -File scripts/Install-ReaderPrototype.ps1 -SkipBrowserInstall -OutputDirectory (Join-Path $env:RUNNER_TEMP 'hsr-prototype')
       - name: Retain synthetic test results
         if: always()
         uses: actions/upload-artifact@v7

@@ -30,7 +30,8 @@ public sealed record AccessibleNode(
     HierarchyLevelObservation? HierarchyLevel = null,
     TableObservation? Table = null,
     MultiSelectableObservation? MultiSelectable = null,
-    SelectionObservation? Selection = null);
+    SelectionObservation? Selection = null,
+    EditabilityObservation? Editability = null);
 
 public enum SemanticSource { ChromiumAccessibility, NativeHtmlProperty, DeclaredAria }
 
@@ -38,6 +39,8 @@ public enum SemanticSource { ChromiumAccessibility, NativeHtmlProperty, Declared
 public sealed record RequiredObservation(bool Value, SemanticSource Source);
 
 public sealed record ProtectedObservation(bool Value, SemanticSource Source);
+
+public sealed record EditabilityObservation(string Kind, SemanticSource Source);
 
 /// <summary>Author-declared logical position, independent of currently exposed peers.</summary>
 public sealed record LogicalSetPosition(int? Position, int? Size, bool IsValid, SemanticSource Source);
@@ -82,6 +85,12 @@ public interface IScreenReaderBrowser
 
 public sealed class BrowserOperationException(string code, Exception? innerException = null)
     : Exception(code, innerException)
+{
+    public string Code { get; } = code;
+}
+
+/// <summary>A policy rejected the key before dispatch. No browser input occurred.</summary>
+public sealed class BrowserInputDeniedException(string code) : Exception(code)
 {
     public string Code { get; } = code;
 }
