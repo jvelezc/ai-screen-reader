@@ -22,4 +22,4 @@ The [pinned timestamp model](https://github.com/microsoft/playwright-dotnet/blob
 
 ## Next
 
-Collect precise browser presentation timestamps independently of that `float` model. Calibrate their relation to monotonic reader events, inspect at least 20 objective action markers in original media, and report measured error and uncertainty against the original 250 ms target. Then attach permitted original segments to traversal receipts. General recording, complete command/persistence exclusion, human takeover and hosted durability remain separate acceptance gates.
+The subsequent [synchronization increment](0021-recording-synchronization.md) uses precise raw Chromium timestamps, calibrates monotonic reader events and checks twenty objective action markers against the unchanged 250 ms target. Next, attach permitted original segments and passive frame/event links to traversal receipts. General recording, complete command/persistence exclusion, human takeover and hosted durability remain separate acceptance gates.

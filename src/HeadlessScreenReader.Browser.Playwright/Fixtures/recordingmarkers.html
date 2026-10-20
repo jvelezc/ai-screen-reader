@@ -1,0 +1,22 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Recording timing fixture</title>
+<style>html,body { margin:0; width:100%; height:100%; background:#e8eef8 } #code { position:fixed;left:0;top:200px;height:16px;display:flex } #code div { width:8px;height:16px }</style>
+<body><h1>Marker 0</h1><button>Start timing</button><div id="code" aria-hidden="true"></div>
+<script>
+let objective = 0, tick = 0;
+window.markerEvents = [];
+const cells = [];
+for (let i=0;i<32;i++) { const cell=document.createElement('div'); document.querySelector('#code').append(cell); cells.push(cell); }
+function renderCode() {
+  const bytes=[objective,tick,objective^tick,165];
+  cells.forEach((cell,i)=>cell.style.background=(bytes[i>>3]>>(7-i%8))&1?'white':'black');
+}
+setInterval(()=>{tick=(tick+1)%256;renderCode();},40);
+renderCode();
+addEventListener('keydown',event=>{
+  if (event.key!=='ArrowRight' || event.repeat || objective>=20) return;
+  objective++;
+  window.markerEvents.push({objective,unixMilliseconds:performance.timeOrigin+performance.now()});
+  document.querySelector('h1').textContent='Marker '+objective;
+  renderCode();
+});
+</script></body></html>
