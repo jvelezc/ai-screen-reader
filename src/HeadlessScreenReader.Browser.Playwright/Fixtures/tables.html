@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Table fixture</title></head><body>
+<main><h1>Table fixture</h1>
+<button id="remove" type="button">Remove Apples</button>
+<table aria-label="Products">
+<thead><tr><th scope="col">Product</th><th scope="col">Price</th></tr></thead>
+<tbody><tr id="apples"><th scope="row">Apples</th><td>$3</td></tr><tr><th scope="row">Pears</th><td>$4</td></tr></tbody>
+</table>
+<table role="table" aria-label="Missing headers"><tr><td>Plain A</td><td>Plain B</td></tr></table>
+<table aria-label="Unnamed header"><tr><th scope="col"></th><th scope="col">Amount</th></tr><tr><td>Unlabelled row</td><td>9</td></tr></table>
+<table aria-label="Hidden content"><tr><th scope="col">Visible header</th><th scope="col" style="visibility:hidden">HIDDEN_HEADER_CANARY</th></tr>
+<tr hidden><td>HIDDEN_ROW_CANARY</td><td>Hidden number</td></tr><tr><td>Visible value</td><td>Unknown column</td></tr></table>
+<table aria-label="Outer"><tr><th scope="col">Outer header</th></tr><tr><td><table aria-label="Inner"><tr><th scope="col">Inner header</th></tr><tr><td>Inner value</td></tr></table></td></tr></table>
+<table aria-label="Merged"><tr><th colspan="2">Merged header</th></tr><tr><td>One</td><td>Two</td></tr></table>
+<table role="grid" aria-label="Editable grid"><tr><th scope="col">Grid header</th></tr><tr><td>Grid cell</td></tr></table>
+<table aria-label="Virtual" aria-rowcount="100"><tr><th scope="col">Virtual header</th></tr><tr><td>Only visible row</td></tr></table>
+<table aria-label="Declared headers"><tr><th id="declared" scope="col">Declared</th></tr><tr><td headers="declared">Explicit link</td></tr></table>
+<iframe title="Child table" srcdoc="<!doctype html><html lang='en'><title>Child</title><table aria-label='Child products'><tr><th scope='col'>Child header</th></tr><tr><td>Child value</td></tr></table></html>"></iframe>
+</main>
+<script>document.getElementById('remove').addEventListener('click',()=>document.getElementById('apples')?.remove());</script>
+</body></html>

@@ -6,7 +6,7 @@ using Microsoft.Playwright;
 
 namespace HeadlessScreenReader.Browser.Playwright;
 
-public enum BundledFixture { Foundation, Widgets, LiveRegions, Semantics, Landmarks, Text, Frames, Ranges, Composites }
+public enum BundledFixture { Foundation, Widgets, LiveRegions, Semantics, Landmarks, Text, Frames, Ranges, Composites, Tables }
 
 /// <summary>A disposable, synthetic fixture harness. This is not an arbitrary-site scanning sandbox.</summary>
 public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, IAsyncDisposable
@@ -133,6 +133,7 @@ public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, IAsyn
             var visited = new HashSet<string>(StringComparer.Ordinal);
             var editableIds = new HashSet<string>(StringComparer.Ordinal);
             var supplementIds = new Dictionary<string, int>(StringComparer.Ordinal);
+            var tableIds = new Dictionary<string, int>(StringComparer.Ordinal);
             void Visit(JsonElement node, string? parentId = null, bool ancestorBusy = false)
             {
                 var id = node.GetProperty("nodeId").GetString()!;
@@ -144,6 +145,8 @@ public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, IAsyn
                 var role = Value(node, "role") ?? "unknown";
                 if (!node.GetProperty("ignored").GetBoolean())
                 {
+                    if (IsTableRole(role) && node.TryGetProperty("backendDOMNodeId", out var tableId))
+                        tableIds[scopedId] = tableId.GetInt32();
                     if ((role is "checkbox" or "radio" or "option" or "treeitem" or "listitem" or "tab" or "textbox" or "searchbox"
                             || IsRangeRole(role) && !props.ContainsKey("editable"))
                         && node.TryGetProperty("backendDOMNodeId", out var supplementId))
@@ -198,7 +201,9 @@ public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, IAsyn
             var supplemented = ImmutableArray.CreateBuilder<AccessibleNode>(nodes.Length);
             foreach (var node in nodes)
             {
-                if (!supplementIds.TryGetValue(node.Id, out var backendId)) { supplemented.Add(node); continue; }
+                var table = tableIds.TryGetValue(node.Id, out var tableBackend)
+                    ? await ReadTableAsync(tableBackend).ConfigureAwait(false) : null;
+                if (!supplementIds.TryGetValue(node.Id, out var backendId)) { supplemented.Add(node with { Table = table }); continue; }
                 var values = await ReadSemanticPropertiesAsync(backendId, node.Range is not null).ConfigureAwait(false);
                 var required = node.Required;
                 if (required is null && values.TryGetProperty("checkboxRequired", out var native)
@@ -225,6 +230,7 @@ public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, IAsyn
                     ? new ProtectedObservation(values.GetProperty("protected").GetBoolean(), SemanticSource.NativeHtmlProperty) : null;
                 supplemented.Add(node with
                 {
+                    Table = table,
                     Required = required,
                     IsRequired = required?.Value ?? node.IsRequired,
                     LogicalSet = logicalSet,

@@ -27,7 +27,8 @@ public sealed record AccessibleNode(
     string? FrameId = null,
     string? DocumentId = null,
     RangeObservation? Range = null,
-    HierarchyLevelObservation? HierarchyLevel = null);
+    HierarchyLevelObservation? HierarchyLevel = null,
+    TableObservation? Table = null);
 
 public enum SemanticSource { ChromiumAccessibility, NativeHtmlProperty, DeclaredAria }
 

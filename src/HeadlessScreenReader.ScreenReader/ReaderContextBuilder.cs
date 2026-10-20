@@ -73,5 +73,5 @@ internal static class ReaderContextBuilder
     private static bool IsContainer(AccessibleNode node) => node.Role is
         "main" or "navigation" or "banner" or "contentinfo" or "complementary" or "search" or "region"
         or "form" or "group" or "radiogroup" or "listbox" or "dialog" or "alertdialog" or "Iframe" or "IframePresentational"
-        or "tree" or "treeitem" or "tablist" or "tabpanel";
+        or "tree" or "treeitem" or "tablist" or "tabpanel" or "table" or "grid" or "treegrid" or "row";
 }

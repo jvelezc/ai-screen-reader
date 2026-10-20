@@ -22,4 +22,5 @@ public sealed record ReaderEvent(
     LiveRegionObservation? LiveRegion = null,
     FrameObservation? Frame = null,
     RangeObservation? Range = null,
-    HierarchyLevelObservation? HierarchyLevel = null);
+    HierarchyLevelObservation? HierarchyLevel = null,
+    TableObservation? Table = null);

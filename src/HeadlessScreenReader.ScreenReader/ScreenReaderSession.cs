@@ -8,7 +8,7 @@ namespace HeadlessScreenReader.ScreenReader;
 /// <summary>One local controller. Dispose after all calls finish; hosted controller fencing is separate.</summary>
 public sealed class ScreenReaderSession : IDisposable
 {
-    public const string Profile = "hsr-desktop-reader-v9";
+    public const string Profile = "hsr-desktop-reader-v10";
     private readonly ReaderTextNavigator _text = new();
     private readonly IScreenReaderBrowser _browser;
     private readonly int _maxCommands;
@@ -178,6 +178,16 @@ public sealed class ScreenReaderSession : IDisposable
             return Result(navigation.Outcome, navigation.Announcement) with
             { TextRange = navigation.Range, TextCursorReset = navigation.Reset };
         }
+        if (ReaderTableNavigator.IsCellCommand(command))
+        {
+            var navigation = ReaderTableNavigator.Move(_snapshot!, CurrentNode(), command);
+            if (navigation.Target is { } target)
+            {
+                _cursorId = target.Id;
+                _text.Clear();
+            }
+            return Result(navigation.Outcome, navigation.Message ?? Describe(CurrentNode()));
+        }
         return MoveCursor(command);
     }
 
@@ -199,7 +209,7 @@ public sealed class ScreenReaderSession : IDisposable
         var backwards = command is ReaderCommand.MovePrevious or ReaderCommand.PreviousHeading
             or ReaderCommand.PreviousLink or ReaderCommand.PreviousButton or ReaderCommand.PreviousLandmark
             or ReaderCommand.PreviousFrame or ReaderCommand.PreviousRange or ReaderCommand.PreviousTree
-            or ReaderCommand.PreviousTreeItem or ReaderCommand.PreviousTabItem;
+            or ReaderCommand.PreviousTreeItem or ReaderCommand.PreviousTabItem or ReaderCommand.PreviousTable;
         if (backwards && start < 0)
             start = nodes.Length;
         // Moving to a previous landmark leaves the current enclosing context.
@@ -208,6 +218,8 @@ public sealed class ScreenReaderSession : IDisposable
             ? ReaderContextBuilder.Build(_snapshot, CurrentNode())?.Ancestors
                 .Select(container => container.NodeId).ToHashSet(StringComparer.Ordinal)
             : null;
+        if (command == ReaderCommand.PreviousTable && ReaderTableNavigator.Build(_snapshot, CurrentNode()) is { } tableContext)
+            enclosing = new HashSet<string>(StringComparer.Ordinal) { tableContext.TableNodeId };
         for (var i = start + (backwards ? -1 : 1); i >= 0 && i < nodes.Length; i += backwards ? -1 : 1)
         {
             var node = nodes[i];
@@ -222,6 +234,7 @@ public sealed class ScreenReaderSession : IDisposable
                 ReaderCommand.NextTree or ReaderCommand.PreviousTree => node.Role == "tree",
                 ReaderCommand.NextTreeItem or ReaderCommand.PreviousTreeItem => node.Role == "treeitem",
                 ReaderCommand.NextTabItem or ReaderCommand.PreviousTabItem => node.Role == "tab",
+                ReaderCommand.NextTable or ReaderCommand.PreviousTable => ReaderTableNavigator.IsTable(node),
                 ReaderCommand.NextLandmark or ReaderCommand.PreviousLandmark => node.Role is "main" or "navigation" or "banner"
                     or "contentinfo" or "complementary" or "search" or "region" or "form",
                 _ => false
@@ -311,6 +324,7 @@ public sealed class ScreenReaderSession : IDisposable
                         Protection = CurrentNode()?.Protection,
                         Frame = CurrentFrame(),
                         Range = CurrentNode()?.Range,
+                        Table = ReaderTableNavigator.Build(_snapshot, CurrentNode()),
                         FrameCoverage = _snapshot.Frames,
                         Mode = _mode
                     };
@@ -367,7 +381,7 @@ public sealed class ScreenReaderSession : IDisposable
                 && (old.Checked != node.Checked || old.Expanded != node.Expanded || old.Selected != node.Selected
                     || old.Invalid != node.Invalid || old.IsDisabled != node.IsDisabled
                     || old.Required != node.Required || old.LogicalSet != node.LogicalSet || old.Protection != node.Protection
-                    || old.Range != node.Range || old.HierarchyLevel != node.HierarchyLevel))
+                    || old.Range != node.Range || old.HierarchyLevel != node.HierarchyLevel || old.Table != node.Table))
                 Record(ReaderEventKind.WidgetStateChanged, Describe(node), node.Id);
         }
         if (previous is not null)
@@ -391,6 +405,7 @@ public sealed class ScreenReaderSession : IDisposable
             Protection = CurrentNode()?.Protection,
             Frame = CurrentFrame(),
             Range = CurrentNode()?.Range,
+            Table = ReaderTableNavigator.Build(_snapshot, CurrentNode()),
             FrameCoverage = _snapshot?.Frames ?? []
         };
 
@@ -454,11 +469,12 @@ public sealed class ScreenReaderSession : IDisposable
                 _time.GetElapsedTime(_started).TotalMilliseconds, kind, _command,
                 _snapshot?.DocumentId, nodeId, detail, previousNodeId, liveRegion, frame,
                 _snapshot?.Nodes.FirstOrDefault(node => node.Id == nodeId)?.Range,
-                _snapshot?.Nodes.FirstOrDefault(node => node.Id == nodeId)?.HierarchyLevel));
+                _snapshot?.Nodes.FirstOrDefault(node => node.Id == nodeId)?.HierarchyLevel,
+                _snapshot?.Nodes.FirstOrDefault(node => node.Id == nodeId)?.Table));
         }
     }
 
-    private static string Describe(AccessibleNode? node)
+    private string Describe(AccessibleNode? node)
     {
         if (node is null)
             return "No current exposed content.";
@@ -490,7 +506,7 @@ public sealed class ScreenReaderSession : IDisposable
             }
         }
         if (!string.IsNullOrWhiteSpace(node.Description)) text += $". {node.Description}";
-        return text;
+        return text + ReaderTableNavigator.Describe(ReaderTableNavigator.Build(_snapshot, node));
     }
 
     public void Dispose()

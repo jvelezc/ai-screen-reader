@@ -20,6 +20,7 @@ dotnet run --project src/HeadlessScreenReader.Cli -c Release --no-build -- --tex
 dotnet run --project src/HeadlessScreenReader.Cli -c Release --no-build -- --frames
 dotnet run --project src/HeadlessScreenReader.Cli -c Release --no-build -- --ranges
 dotnet run --project src/HeadlessScreenReader.Cli -c Release --no-build -- --composites
+dotnet run --project src/HeadlessScreenReader.Cli -c Release --no-build -- --tables
 ```
 
 On Linux, install Chromium's system dependencies with the same Playwright command plus --with-deps. A visible local browser is optional:
@@ -39,6 +40,8 @@ The frame demo reads trusted embedded/nested documents and verifies a keyboard-a
 The range demo verifies native and fractional ARIA slider changes through actual keyboard focus, observes exact progress values and preserves missing current values. Its final line must report RangeNavigationObserved, SliderValuesVerified, ProgressValueVerified and UnknownProgressPreserved as true. Numeric goals require exact observed values; they do not infer percentages or overall task completion.
 
 The composite demo verifies tree hierarchy, read-only navigation, explicit tree activation and manually selected tabs. Its final line must report ReadOnlyBrowseObserved, TreeHierarchyObserved, TreeActivationVerified, ManualTabSelectionVerified and HiddenContentExcluded as true. Focus and selection are separate; collapsed children and hidden panels never count as observed. Tree peers use known exposed ownership and level, separately from declared logical positions.
+
+The table demo finds a native product table, moves across cells and down a column, and associates "$3" with the observed Apples row header and Price column header. Its final line must report TableHeadersObserved, CellNavigationObserved, BoundariesPreserved, MissingHeadersRemainUnknown and ReadOnlyBrowseObserved as true. It sends no keyboard input and never moves browser focus. Native row/column positions include hidden content; they are not exposed peer counts. See [table validation](docs/validation/reader-tables-v10.md).
 
 The CLI also supports an optional manual comparison with NVDA:
 
@@ -89,7 +92,9 @@ All direct package versions live in Directory.Packages.props. Commit packages.lo
 
 ## Current behavior and limits
 
-H/K/B/D bindings belong to the profile hsr-desktop-reader-v9. In browse mode they move the virtual cursor over exposed semantics. PreviousHeading/Link/Button/Landmark, Next/PreviousFrame, Next/PreviousRange, Next/PreviousTree, Next/PreviousTreeItem, Next/PreviousTabItem and DocumentStart/End provide browse-only navigation without input or wrap. PreviousLandmark skips known enclosing landmarks to leave the current context; parentage is never inferred from flat node order. In focus mode H/K/B/D dispatch h/k/b/d to the browser. Tab always uses actual browser focus; reaching an input widget switches to focus mode. Explicit raw keys are allowed only in focus mode and only under the local allowlist. Escape is an explicit keyboard command in either mode.
+H/K/B/D bindings belong to the profile hsr-desktop-reader-v10. In browse mode they move the virtual cursor over exposed semantics. PreviousHeading/Link/Button/Landmark, Next/PreviousFrame, Next/PreviousRange, Next/PreviousTree, Next/PreviousTreeItem, Next/PreviousTabItem and DocumentStart/End provide browse-only navigation without input or wrap. PreviousLandmark skips known enclosing landmarks to leave the current context; parentage is never inferred from flat node order. In focus mode H/K/B/D dispatch h/k/b/d to the browser. Tab always uses actual browser focus; reaching an input widget switches to focus mode. Explicit raw keys are allowed only in focus mode and only under the local allowlist. Escape is an explicit keyboard command in either mode.
+
+Next/PreviousTable discovers exposed tables (and explicitly unsupported grids). PreviousTable leaves the current enclosing table. Next/PreviousCell walks exposed cells in native row/column order within one table; from a row it enters that row. Next/PreviousRow retains the column, and Next/PreviousColumn retains the row. Missing cells and boundaries return NoMatch without movement or wrapping. These commands are browse-only and send no input. Header association is limited to exposed, named, same-table native headers with explicit scope="row" or scope="col"; absent or ambiguous support stays unknown. Spans, irregular layouts, outer tables containing nested tables, explicit headers links, declared virtual coordinates/counts, editable content and role overrides are unsupported; a simple inner table may be read independently. These rules are a bounded custom profile, not a complete HTML table-header algorithm.
 
 ReadCurrentText reads the selected text range or current node's observed descendant text. Next/PreviousCharacter, Next/PreviousWord and Next/PreviousLine traverse source-tagged text runs without input or wrap. Characters are grapheme clusters; punctuation forms separate word units. Ranges carry document/node identity and UTF-16 offsets. Document/run changes or node removal invalidate selection with Unknown/TextCursorReset until explicit re-anchoring, such as DocumentStart. Text commands require browse mode and reject semantic goal expectations. See [the text contract](docs/decisions/0007-exposed-text-navigation.md).
 

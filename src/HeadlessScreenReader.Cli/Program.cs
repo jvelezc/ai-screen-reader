@@ -9,7 +9,7 @@ using Microsoft.Playwright;
 
 if (args.Contains("--help", StringComparer.Ordinal))
 {
-    Console.WriteLine("HeadlessScreenReader. Usage: [--widgets | --observe-live | --text | --frames | --ranges | --composites] [--headed] | --reference-template | --reference-case <id> | --assess-reference <file>");
+    Console.WriteLine("HeadlessScreenReader. Usage: [--widgets | --observe-live | --text | --frames | --ranges | --composites | --tables] [--headed] | --reference-template | --reference-case <id> | --assess-reference <file>");
     foreach (var item in ReferenceValidation.Cases) Console.WriteLine($"  {item.Id}: {item.Task}");
     return 0;
 }
@@ -35,8 +35,8 @@ if (args.Length == 2 && args[0] == "--assess-reference")
 }
 var referenceCase = args.Length == 2 && args[0] == "--reference-case"
     ? ReferenceValidation.FindCase(args[1]) : null;
-if (referenceCase is null && (args.Any(arg => arg is not "--headed" and not "--widgets" and not "--observe-live" and not "--text" and not "--frames" and not "--ranges" and not "--composites")
-    || args.Count(arg => arg is "--widgets" or "--observe-live" or "--text" or "--frames" or "--ranges" or "--composites") > 1))
+if (referenceCase is null && (args.Any(arg => arg is not "--headed" and not "--widgets" and not "--observe-live" and not "--text" and not "--frames" and not "--ranges" and not "--composites" and not "--tables")
+    || args.Count(arg => arg is "--widgets" or "--observe-live" or "--text" or "--frames" or "--ranges" or "--composites" or "--tables") > 1))
 {
     Console.Error.WriteLine("Invalid arguments or unknown reference case. Use --help; only bundled fixtures are supported.");
     return 2;
@@ -51,7 +51,8 @@ try
         headed: referenceCase is not null || args.Contains("--headed", StringComparer.Ordinal),
         cancellationToken: cancellation.Token,
         fixture: referenceCase?.Fixture
-            ?? (args.Contains("--composites", StringComparer.Ordinal) ? BundledFixture.Composites
+            ?? (args.Contains("--tables", StringComparer.Ordinal) ? BundledFixture.Tables
+                : args.Contains("--composites", StringComparer.Ordinal) ? BundledFixture.Composites
                 : args.Contains("--ranges", StringComparer.Ordinal) ? BundledFixture.Ranges
                 : args.Contains("--frames", StringComparer.Ordinal) ? BundledFixture.Frames
                 : args.Contains("--text", StringComparer.Ordinal) ? BundledFixture.Text
@@ -89,6 +90,41 @@ try
         var step = await session.ExecuteAsync(command, key, cancellation.Token, goal);
         Console.WriteLine(JsonSerializer.Serialize(new { Profile = ScreenReaderSession.Profile, Step = step }, json));
         return step;
+    }
+    if (args.Contains("--tables", StringComparer.Ordinal))
+    {
+        var initial = await browser.CaptureAsync(cancellation.Token);
+        var table = await Execute(ReaderCommand.NextTable);
+        await Execute(ReaderCommand.NextCell);
+        await Execute(ReaderCommand.NextColumn);
+        var apples = await Execute(ReaderCommand.NextRow);
+        var pears = await Execute(ReaderCommand.NextRow);
+        var boundary = await Execute(ReaderCommand.NextRow);
+        var previous = await Execute(ReaderCommand.PreviousRow);
+        await Execute(ReaderCommand.NextTable);
+        var unknown = await Execute(ReaderCommand.NextCell);
+        var final = await browser.CaptureAsync(cancellation.Token);
+        var headers = apples.Table is { } context && context.RowHeaders.Select(h => h.Name).SequenceEqual(["Apples"])
+            && context.ColumnHeaders.Select(h => h.Name).SequenceEqual(["Price"]);
+        var moved = table.Table?.Geometry is { RowCount: 3, ColumnCount: 2 }
+            && pears.Announcement.StartsWith("$4, cell", StringComparison.Ordinal)
+            && previous.CursorNodeId == apples.CursorNodeId;
+        var bounded = boundary.Outcome == ReaderOutcome.NoMatch && boundary.CursorNodeId == pears.CursorNodeId;
+        var missing = unknown.Table is { RowHeaders.IsEmpty: true, ColumnHeaders.IsEmpty: true }
+            && unknown.Announcement.Contains("column header unknown", StringComparison.Ordinal);
+        var noInput = initial.FocusedNode?.Id == final.FocusedNode?.Id
+            && !session.Timeline.Any(e => e.Kind == ReaderEventKind.InputAttempted);
+        foreach (var item in session.Timeline) Console.WriteLine(JsonSerializer.Serialize(new { Event = item }, json));
+        Console.WriteLine(JsonSerializer.Serialize(new
+        {
+            TableHeadersObserved = headers,
+            CellNavigationObserved = moved,
+            BoundariesPreserved = bounded,
+            MissingHeadersRemainUnknown = missing,
+            ReadOnlyBrowseObserved = noInput,
+            browser.Environment
+        }, json));
+        return headers && moved && bounded && missing && noInput ? 0 : 1;
     }
     if (args.Contains("--composites", StringComparer.Ordinal))
     {

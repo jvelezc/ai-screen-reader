@@ -41,7 +41,15 @@ public enum ReaderCommand
     NextTreeItem,
     PreviousTreeItem,
     NextTabItem,
-    PreviousTabItem
+    PreviousTabItem,
+    NextTable,
+    PreviousTable,
+    NextCell,
+    PreviousCell,
+    NextRow,
+    PreviousRow,
+    NextColumn,
+    PreviousColumn
 }
 
 public enum ReaderOutcome
@@ -81,6 +89,7 @@ public sealed record ReaderStep(
     public TextCursorResetReason? TextCursorReset { get; init; }
     public FrameObservation? Frame { get; init; }
     public RangeObservation? Range { get; init; }
+    public ReaderTableContext? Table { get; init; }
     public System.Collections.Immutable.ImmutableArray<FrameObservation> FrameCoverage { get; init; } = [];
 }
 
