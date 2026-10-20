@@ -165,6 +165,7 @@ public sealed class ChromiumTableTests
         for (var i = 0; i < 16; i++)
         {
             var step = await reader.ExecuteAsync(ReaderCommand.NextTable);
+            Assert.Null(step.ErrorCode);
             if (step.Announcement.StartsWith(name + ", ", StringComparison.Ordinal)) return step;
             Assert.Equal(ReaderOutcome.CursorMoved, step.Outcome);
         }
