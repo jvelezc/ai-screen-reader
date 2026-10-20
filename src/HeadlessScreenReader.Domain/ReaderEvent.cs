@@ -24,4 +24,5 @@ public sealed record ReaderEvent(
     RangeObservation? Range = null,
     HierarchyLevelObservation? HierarchyLevel = null,
     TableObservation? Table = null,
-    ReaderTextPassage? Passage = null);
+    ReaderTextPassage? Passage = null,
+    ListboxSelectionContext? ListboxSelection = null);

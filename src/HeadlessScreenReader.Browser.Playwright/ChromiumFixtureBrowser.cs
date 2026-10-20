@@ -6,7 +6,7 @@ using Microsoft.Playwright;
 
 namespace HeadlessScreenReader.Browser.Playwright;
 
-public enum BundledFixture { Foundation, Widgets, LiveRegions, Semantics, Landmarks, Text, Frames, Ranges, Composites, Tables, Paragraphs }
+public enum BundledFixture { Foundation, Widgets, LiveRegions, Semantics, Landmarks, Text, Frames, Ranges, Composites, Tables, Paragraphs, Multiselect }
 
 /// <summary>A disposable, synthetic fixture harness. This is not an arbitrary-site scanning sandbox.</summary>
 public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, IAsyncDisposable
@@ -163,6 +163,10 @@ public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, IAsyn
                             ? expanded : null,
                         Selected: bool.TryParse(props.GetValueOrDefault("selected"), out var selected)
                             ? selected : null,
+                        Selection: bool.TryParse(props.GetValueOrDefault("selected"), out var selection)
+                            ? new(selection, SemanticSource.ChromiumAccessibility) : null,
+                        MultiSelectable: role == "listbox" && bool.TryParse(props.GetValueOrDefault("multiselectable"), out var multi)
+                            ? new(multi, SemanticSource.ChromiumAccessibility) : null,
                         IsRequired: props.GetValueOrDefault("required") == "true",
                         Invalid: props.GetValueOrDefault("invalid"),
                         Description: Value(node, "description"),

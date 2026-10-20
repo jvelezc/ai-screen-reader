@@ -10,7 +10,8 @@ public sealed record ObservationExpectation(
     string? Checked = null,
     bool? Expanded = null,
     bool? Selected = null,
-    double? RangeValue = null)
+    double? RangeValue = null,
+    ExposedSelectionExpectation? ExposedSelection = null)
 {
     public bool IsSatisfiedBy(AccessibilitySnapshot snapshot) =>
         snapshot.Nodes.Any(node => node.Role == Role && node.Name == Name
@@ -18,6 +19,7 @@ public sealed record ObservationExpectation(
             && (Checked is null || node.Checked == Checked)
             && (Expanded is null || node.Expanded == Expanded)
             && (Selected is null || node.Selected == Selected)
+            && (ExposedSelection is null || ExposedSelection.IsSatisfiedBy(snapshot, node))
             && (RangeValue is null || double.IsFinite(RangeValue.Value)
                 && node.Range is { IsConsistent: true, Value: double value } && value == RangeValue.Value));
 }

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Multi-select fixture</title>
+<main>
+  <h1>Multi-select fixture</h1>
+  <div role="listbox" aria-label="Fruit" aria-multiselectable="true" tabindex="0" aria-activedescendant="apples" id="fruit">
+    <div role="option" id="apples" aria-selected="true">Apples</div>
+    <div role="group" aria-label="More fruit">
+      <div role="option" id="pears" aria-selected="false">Pears</div>
+      <div role="option" id="plums" aria-selected="false" aria-disabled="true">Plums</div>
+    </div>
+    <div role="option" aria-selected="true" hidden>Hidden selected fruit</div>
+  </div>
+  <div role="listbox" aria-label="Vegetables" aria-multiselectable="true" id="vegetables">
+    <div role="option" id="carrots" aria-selected="false" tabindex="0">Carrots</div>
+    <div role="option" id="peas" aria-selected="false" tabindex="-1">Peas</div>
+  </div>
+  <div role="listbox" aria-label="Single choice" tabindex="0" aria-activedescendant="red">
+    <div role="option" id="red" aria-selected="true">Red</div>
+  </div>
+  <div role="listbox" aria-label="Unknown selection" aria-multiselectable="true" tabindex="0" aria-activedescendant="mystery">
+    <div role="option" id="mystery">Mystery</div>
+  </div>
+  <button id="remove">Remove Pears</button>
+</main>
+<script>
+const fruit = document.getElementById('fruit');
+fruit.addEventListener('keydown', event => {
+  const options = [...fruit.querySelectorAll('[role=option]:not([hidden])')];
+  const active = options.find(option => option.id === fruit.getAttribute('aria-activedescendant'));
+  let index = options.indexOf(active);
+  if (event.key === 'ArrowDown') index = Math.min(options.length - 1, index + 1);
+  else if (event.key === 'ArrowUp') index = Math.max(0, index - 1);
+  else if (event.key === 'Home') index = 0;
+  else if (event.key === 'End') index = options.length - 1;
+  else if (event.key === ' ') {
+    if (active && active.getAttribute('aria-disabled') !== 'true')
+      active.setAttribute('aria-selected', active.getAttribute('aria-selected') === 'true' ? 'false' : 'true');
+    event.preventDefault(); return;
+  } else return;
+  event.preventDefault();
+  if (options[index]) fruit.setAttribute('aria-activedescendant', options[index].id);
+});
+const vegetables = document.getElementById('vegetables');
+vegetables.addEventListener('keydown', event => {
+  const options = [...vegetables.querySelectorAll('[role=option]')];
+  let index = options.indexOf(document.activeElement);
+  if (event.key === 'ArrowDown') index = Math.min(options.length - 1, index + 1);
+  else if (event.key === 'ArrowUp') index = Math.max(0, index - 1);
+  else if (event.key === ' ') {
+    const active = options[index];
+    active.setAttribute('aria-selected', active.getAttribute('aria-selected') === 'true' ? 'false' : 'true');
+    event.preventDefault(); return;
+  } else return;
+  event.preventDefault();
+  options.forEach(option => option.tabIndex = -1);
+  options[index].tabIndex = 0;
+  options[index].focus();
+});
+document.getElementById('remove').addEventListener('click', () => document.getElementById('pears')?.remove());
+</script>
+</html>

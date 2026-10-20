@@ -52,7 +52,11 @@ public enum ReaderCommand
     PreviousColumn,
     ReadCurrentParagraph,
     NextParagraph,
-    PreviousParagraph
+    PreviousParagraph,
+    NextListbox,
+    PreviousListbox,
+    NextOption,
+    PreviousOption
 }
 
 public enum ReaderOutcome
@@ -94,6 +98,7 @@ public sealed record ReaderStep(
     public FrameObservation? Frame { get; init; }
     public RangeObservation? Range { get; init; }
     public ReaderTableContext? Table { get; init; }
+    public ListboxSelectionContext? ListboxSelection { get; init; }
     public System.Collections.Immutable.ImmutableArray<FrameObservation> FrameCoverage { get; init; } = [];
 }
 

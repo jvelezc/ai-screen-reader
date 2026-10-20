@@ -9,7 +9,7 @@ using Microsoft.Playwright;
 
 if (args.Contains("--help", StringComparer.Ordinal))
 {
-    Console.WriteLine("HeadlessScreenReader. Usage: [--widgets | --observe-live | --text | --frames | --ranges | --composites | --tables | --paragraphs] [--headed] | --reference-template | --reference-case <id> | --assess-reference <file>");
+    Console.WriteLine("HeadlessScreenReader. Usage: [--widgets | --observe-live | --text | --frames | --ranges | --composites | --tables | --paragraphs | --multiselect] [--headed] | --reference-template | --reference-case <id> | --assess-reference <file>");
     foreach (var item in ReferenceValidation.Cases) Console.WriteLine($"  {item.Id}: {item.Task}");
     return 0;
 }
@@ -35,8 +35,8 @@ if (args.Length == 2 && args[0] == "--assess-reference")
 }
 var referenceCase = args.Length == 2 && args[0] == "--reference-case"
     ? ReferenceValidation.FindCase(args[1]) : null;
-if (referenceCase is null && (args.Any(arg => arg is not "--headed" and not "--widgets" and not "--observe-live" and not "--text" and not "--frames" and not "--ranges" and not "--composites" and not "--tables" and not "--paragraphs")
-    || args.Count(arg => arg is "--widgets" or "--observe-live" or "--text" or "--frames" or "--ranges" or "--composites" or "--tables" or "--paragraphs") > 1))
+if (referenceCase is null && (args.Any(arg => arg is not "--headed" and not "--widgets" and not "--observe-live" and not "--text" and not "--frames" and not "--ranges" and not "--composites" and not "--tables" and not "--paragraphs" and not "--multiselect")
+    || args.Count(arg => arg is "--widgets" or "--observe-live" or "--text" or "--frames" or "--ranges" or "--composites" or "--tables" or "--paragraphs" or "--multiselect") > 1))
 {
     Console.Error.WriteLine("Invalid arguments or unknown reference case. Use --help; only bundled fixtures are supported.");
     return 2;
@@ -51,7 +51,8 @@ try
         headed: referenceCase is not null || args.Contains("--headed", StringComparer.Ordinal),
         cancellationToken: cancellation.Token,
         fixture: referenceCase?.Fixture
-            ?? (args.Contains("--paragraphs", StringComparer.Ordinal) ? BundledFixture.Paragraphs
+            ?? (args.Contains("--multiselect", StringComparer.Ordinal) ? BundledFixture.Multiselect
+                : args.Contains("--paragraphs", StringComparer.Ordinal) ? BundledFixture.Paragraphs
                 : args.Contains("--tables", StringComparer.Ordinal) ? BundledFixture.Tables
                 : args.Contains("--composites", StringComparer.Ordinal) ? BundledFixture.Composites
                 : args.Contains("--ranges", StringComparer.Ordinal) ? BundledFixture.Ranges
@@ -91,6 +92,52 @@ try
         var step = await session.ExecuteAsync(command, key, cancellation.Token, goal);
         Console.WriteLine(JsonSerializer.Serialize(new { Profile = ScreenReaderSession.Profile, Step = step }, json));
         return step;
+    }
+    if (args.Contains("--multiselect", StringComparer.Ordinal))
+    {
+        var initial = await browser.CaptureAsync(cancellation.Token);
+        await Execute(ReaderCommand.NextListbox);
+        await Execute(ReaderCommand.NextOption);
+        await Execute(ReaderCommand.NextOption);
+        var noFocus = await Execute(ReaderCommand.Activate);
+        var afterBrowse = await browser.CaptureAsync(cancellation.Token);
+        var readOnly = initial.FocusedNode?.Id == afterBrowse.FocusedNode?.Id
+            && initial.Nodes.Where(n => n.Role == "option").Select(n => (n.Id, n.Selected))
+                .SequenceEqual(afterBrowse.Nodes.Where(n => n.Role == "option").Select(n => (n.Id, n.Selected)))
+            && !session.Timeline.Any(e => e.Kind == ReaderEventKind.InputAttempted);
+        var owner = initial.Nodes.Single(n => n.Role == "listbox" && n.Name == "Fruit");
+        var apple = initial.Nodes.Single(n => n.Role == "option" && n.Name == "Apples");
+        var pear = initial.Nodes.Single(n => n.Role == "option" && n.Name == "Pears");
+        ObservationExpectation Goal(params string[] ids) => new("option", "Pears", MustBeFocused: true,
+            ExposedSelection: new(owner.Id, owner.DocumentId!, owner.FrameId!, [.. ids]));
+        await Execute(ReaderCommand.Tab);
+        var moved = await Execute(ReaderCommand.PressKey, "ArrowDown");
+        var selected = await Execute(ReaderCommand.Activate, goal: Goal(apple.Id, pear.Id));
+        var deselected = await Execute(ReaderCommand.Activate, goal: Goal(apple.Id));
+        await Execute(ReaderCommand.PressKey, "End");
+        var disabled = await Execute(ReaderCommand.Activate);
+        var source = selected.ListboxSelection?.MultiSelectable == new MultiSelectableObservation(true, SemanticSource.ChromiumAccessibility)
+            && selected.ListboxSelection.Options.All(o => o.Selection?.Source == SemanticSource.ChromiumAccessibility);
+        var scoped = selected.ListboxSelection is { ExposedOptionsOnly: true, Options.Length: 3 }
+            && !initial.Nodes.Any(n => n.Name == "Hidden selected fruit");
+        var focus = noFocus.Outcome == ReaderOutcome.FocusRequired && moved.FocusedNodeId == owner.Id
+            && moved.ActiveDescendantNodeId == pear.Id && moved.CursorNodeId == pear.Id;
+        var toggled = selected.Verification == VerificationStatus.Satisfied && deselected.Verification == VerificationStatus.Satisfied
+            && selected.ListboxSelection!.Options.Count(o => o.Selection?.Value == true) == 2
+            && deselected.ListboxSelection!.Options.Count(o => o.Selection?.Value == true) == 1;
+        var blocked = disabled.Outcome == ReaderOutcome.Blocked && disabled.BrowserKeystrokes == 0;
+        foreach (var item in session.Timeline) Console.WriteLine(JsonSerializer.Serialize(new { Event = item }, json));
+        Console.WriteLine(JsonSerializer.Serialize(new
+        {
+            SourceTaggedSelectionObserved = source,
+            ExposedSelectionScopePreserved = scoped,
+            ReadOnlyBrowseObserved = readOnly,
+            ActualFocusRequired = focus,
+            MultipleSelectionAndDeselectionVerified = toggled,
+            DisabledOptionBlockedWithoutInput = blocked,
+            browser.Environment
+        }, json));
+        return source && scoped && readOnly && focus && toggled && blocked ? 0 : 1;
     }
     if (args.Contains("--paragraphs", StringComparer.Ordinal))
     {

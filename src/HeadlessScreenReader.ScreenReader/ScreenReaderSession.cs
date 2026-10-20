@@ -8,7 +8,7 @@ namespace HeadlessScreenReader.ScreenReader;
 /// <summary>One local controller. Dispose after all calls finish; hosted controller fencing is separate.</summary>
 public sealed class ScreenReaderSession : IDisposable
 {
-    public const string Profile = "hsr-desktop-reader-v11";
+    public const string Profile = "hsr-desktop-reader-v12";
     private readonly ReaderTextNavigator _text = new();
     private readonly IScreenReaderBrowser _browser;
     private readonly int _maxCommands;
@@ -109,7 +109,8 @@ public sealed class ScreenReaderSession : IDisposable
         finally
         {
             if (step is not null)
-                Record(ReaderEventKind.Announcement, step.Announcement, step.CursorNodeId, passage: step.Passage);
+                Record(ReaderEventKind.Announcement, step.Announcement, step.CursorNodeId, passage: step.Passage,
+                    listboxSelection: step.ListboxSelection);
             Record(ReaderEventKind.CommandCompleted, step?.Outcome.ToString() ?? "No result");
             _inputGate.Release();
         }
@@ -171,6 +172,18 @@ public sealed class ScreenReaderSession : IDisposable
             return Result(ReaderOutcome.Observed, Describe(CurrentNode()));
         if (_mode != ReaderMode.Browse)
             return Result(ReaderOutcome.Unsupported, "Reading navigation requires browse mode.");
+        if (command is ReaderCommand.NextOption or ReaderCommand.PreviousOption)
+        {
+            var navigation = ReaderListboxNavigator.Move(_snapshot!, CurrentNode(), command);
+            if (navigation.TargetId is not null)
+            {
+                _cursorId = navigation.TargetId;
+                _text.Clear();
+            }
+            return Result(navigation.Outcome, navigation.TargetId is not null ? Describe(CurrentNode())
+                : navigation.Outcome == ReaderOutcome.Unsupported ? "Current listbox ownership is not observed."
+                : "No matching exposed option in the current listbox.");
+        }
         if (ReaderParagraphNavigator.IsCommand(command))
         {
             var paragraph = ReaderParagraphNavigator.Move(_snapshot!, CurrentNode()?.Id, command);
@@ -216,7 +229,8 @@ public sealed class ScreenReaderSession : IDisposable
         var backwards = command is ReaderCommand.MovePrevious or ReaderCommand.PreviousHeading
             or ReaderCommand.PreviousLink or ReaderCommand.PreviousButton or ReaderCommand.PreviousLandmark
             or ReaderCommand.PreviousFrame or ReaderCommand.PreviousRange or ReaderCommand.PreviousTree
-            or ReaderCommand.PreviousTreeItem or ReaderCommand.PreviousTabItem or ReaderCommand.PreviousTable;
+            or ReaderCommand.PreviousTreeItem or ReaderCommand.PreviousTabItem or ReaderCommand.PreviousTable
+            or ReaderCommand.PreviousListbox;
         if (backwards && start < 0)
             start = nodes.Length;
         // Moving to a previous landmark leaves the current enclosing context.
@@ -242,6 +256,7 @@ public sealed class ScreenReaderSession : IDisposable
                 ReaderCommand.NextTreeItem or ReaderCommand.PreviousTreeItem => node.Role == "treeitem",
                 ReaderCommand.NextTabItem or ReaderCommand.PreviousTabItem => node.Role == "tab",
                 ReaderCommand.NextTable or ReaderCommand.PreviousTable => ReaderTableNavigator.IsTable(node),
+                ReaderCommand.NextListbox or ReaderCommand.PreviousListbox => node.Role == "listbox",
                 ReaderCommand.NextLandmark or ReaderCommand.PreviousLandmark => node.Role is "main" or "navigation" or "banner"
                     or "contentinfo" or "complementary" or "search" or "region" or "form",
                 _ => false
@@ -268,6 +283,21 @@ public sealed class ScreenReaderSession : IDisposable
             return Result(ReaderOutcome.FocusRequired, "Move browser focus to the current control first.");
         // A composite's active descendant identifies the announced item. Input still goes to its DOM owner.
         var owner = _snapshot.FocusedNode!;
+        if (owner.Role == "listbox" || current.Role == "option" && owner.Role != "combobox")
+        {
+            var context = ListboxSelectionContext.Observe(_snapshot, current);
+            var option = context?.Options.FirstOrDefault(item => item.NodeId == current.Id);
+            if (context?.MultiSelectable?.Value != true || option?.Selection is null
+                || !(owner.Id == current.Id && owner.ActiveDescendantId is null
+                    || owner.Id == context.ListboxNodeId && owner.ActiveDescendantId == current.Id))
+                return Result(ReaderOutcome.Unsupported, "Focused multi-select option and local ownership must be observed.");
+            var listbox = _snapshot.Nodes.First(node => node.Id == context.ListboxNodeId);
+            if (listbox.IsDisabled)
+                return Result(ReaderOutcome.Blocked, "Current listbox is disabled.")
+                    with
+                { BarrierCode = "OBSERVED_DISABLED_CONTROL" };
+            return await DispatchAsync("Space", token).ConfigureAwait(false);
+        }
         if (owner.Role is "tree" or "tablist")
         {
             var expectedRole = owner.Role == "tree" ? "treeitem" : "tab";
@@ -301,7 +331,7 @@ public sealed class ScreenReaderSession : IDisposable
         _cursorId = _snapshot!.EffectiveFocusedNode?.Id;
         if (synchronizeMode)
             _mode = _snapshot.FocusedNode?.Role is "textbox" or "searchbox" or "combobox" or "spinbutton"
-                or "checkbox" or "radio" or "listbox" or "slider" or "tree" or "treeitem" or "tab" or "tablist" or "grid"
+                or "checkbox" or "radio" or "listbox" or "option" or "slider" or "tree" or "treeitem" or "tab" or "tablist" or "grid"
                 ? ReaderMode.Focus : ReaderMode.Browse;
         return Result(ReaderOutcome.Observed, Describe(CurrentNode()));
     }
@@ -332,6 +362,7 @@ public sealed class ScreenReaderSession : IDisposable
                         Frame = CurrentFrame(),
                         Range = CurrentNode()?.Range,
                         Table = ReaderTableNavigator.Build(_snapshot, CurrentNode()),
+                        ListboxSelection = ListboxSelectionContext.Observe(_snapshot, CurrentNode()),
                         FrameCoverage = _snapshot.Frames,
                         Mode = _mode
                     };
@@ -388,7 +419,8 @@ public sealed class ScreenReaderSession : IDisposable
                 && (old.Checked != node.Checked || old.Expanded != node.Expanded || old.Selected != node.Selected
                     || old.Invalid != node.Invalid || old.IsDisabled != node.IsDisabled
                     || old.Required != node.Required || old.LogicalSet != node.LogicalSet || old.Protection != node.Protection
-                    || old.Range != node.Range || old.HierarchyLevel != node.HierarchyLevel || old.Table != node.Table))
+                    || old.Range != node.Range || old.HierarchyLevel != node.HierarchyLevel || old.Table != node.Table
+                    || old.MultiSelectable != node.MultiSelectable || old.Selection != node.Selection))
                 Record(ReaderEventKind.WidgetStateChanged, Describe(node), node.Id);
         }
         if (previous is not null)
@@ -413,6 +445,7 @@ public sealed class ScreenReaderSession : IDisposable
             Frame = CurrentFrame(),
             Range = CurrentNode()?.Range,
             Table = ReaderTableNavigator.Build(_snapshot, CurrentNode()),
+            ListboxSelection = ListboxSelectionContext.Observe(_snapshot, CurrentNode()),
             FrameCoverage = _snapshot?.Frames ?? []
         };
 
@@ -458,7 +491,8 @@ public sealed class ScreenReaderSession : IDisposable
     }
 
     private void Record(ReaderEventKind kind, string detail, string? nodeId = null, string? previousNodeId = null,
-        LiveRegionObservation? liveRegion = null, FrameObservation? frame = null, ReaderTextPassage? passage = null)
+        LiveRegionObservation? liveRegion = null, FrameObservation? frame = null, ReaderTextPassage? passage = null,
+        ListboxSelectionContext? listboxSelection = null)
     {
         lock (_timelineLock)
         {
@@ -477,7 +511,8 @@ public sealed class ScreenReaderSession : IDisposable
                 _snapshot?.DocumentId, nodeId, detail, previousNodeId, liveRegion, frame,
                 _snapshot?.Nodes.FirstOrDefault(node => node.Id == nodeId)?.Range,
                 _snapshot?.Nodes.FirstOrDefault(node => node.Id == nodeId)?.HierarchyLevel,
-                _snapshot?.Nodes.FirstOrDefault(node => node.Id == nodeId)?.Table, passage));
+                _snapshot?.Nodes.FirstOrDefault(node => node.Id == nodeId)?.Table, passage,
+                listboxSelection ?? ListboxSelectionContext.Observe(_snapshot, _snapshot?.Nodes.FirstOrDefault(node => node.Id == nodeId))));
         }
     }
 
@@ -513,7 +548,8 @@ public sealed class ScreenReaderSession : IDisposable
             }
         }
         if (!string.IsNullOrWhiteSpace(node.Description)) text += $". {node.Description}";
-        return text + ReaderTableNavigator.Describe(ReaderTableNavigator.Build(_snapshot, node));
+        return text + ReaderTableNavigator.Describe(ReaderTableNavigator.Build(_snapshot, node))
+            + ReaderListboxNavigator.Describe(ListboxSelectionContext.Observe(_snapshot, node), node);
     }
 
     public void Dispose()
