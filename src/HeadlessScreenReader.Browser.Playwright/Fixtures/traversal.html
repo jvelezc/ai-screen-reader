@@ -5,10 +5,10 @@
   <main>
     <h1>Synthetic shop</h1>
     <p>One synthetic item. No payment or external navigation occurs.</p>
-    <button id="preview">Open checkout preview</button>
-    <button id="validation">Checkout with missing address</button>
-    <button id="unchanged">Checkout without feedback</button>
-    <button id="unlabelled"></button>
+    <button id="preview" data-hsr-feature="checkout-preview">Open checkout preview</button>
+    <button id="validation" data-hsr-feature="checkout-validation">Checkout with missing address</button>
+    <button id="unchanged" data-hsr-feature="checkout-without-feedback">Checkout without feedback</button>
+    <button id="unlabelled" data-hsr-feature="account-settings"></button>
     <label>Account <input value="traversal-account-canary" type="text"></label>
     <label>Secret <input value="traversal-secret-canary" type="password"></label>
     <section id="checkout" hidden>
@@ -19,7 +19,7 @@
       <h2 id="validation-heading" tabindex="-1">Address required</h2>
       <p>A missing address prevented the requested checkout preview.</p>
     </div>
-    <button disabled>Unavailable checkout</button>
+    <button data-hsr-feature="checkout-unavailable" disabled>Unavailable checkout</button>
     <p>End of synthetic shop</p>
   </main>
   <script>

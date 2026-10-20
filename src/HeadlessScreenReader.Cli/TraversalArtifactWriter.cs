@@ -11,7 +11,7 @@ namespace HeadlessScreenReader.Cli;
 public static class TraversalArtifactWriter
 {
     public static async Task WriteAsync(string folder, int route, TraversalReceipt receipt,
-        FixtureBrowserEnvironment? environment = null, TraversalRecordingEvidence? recording = null)
+        FixtureBrowserEnvironment? environment = null, TraversalRecordingEvidence? recording = null, FeatureDiscovery? features = null)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(route, 1);
         var graph = TraversalProjection.Build(receipt);
@@ -46,6 +46,8 @@ public static class TraversalArtifactWriter
             }
         }
         var viewer = recording is null ? null : TraversalEvidenceViewer.Render(receipt, route, recording);
+        var inventory = features is null ? null : FeatureProvenance.Build(features, receipt);
+        var featureReport = features is null ? "" : FeatureReport.Render(features, receipt);
         await WriteNewAsync(Path.Combine(folder, $"route-{route}.json"),
             JsonSerializer.Serialize(new
             {
@@ -53,9 +55,10 @@ public static class TraversalArtifactWriter
                 Graph = graph,
                 Environment = environment,
                 Recording = recording,
+                Features = inventory,
                 ViewerFile = viewer is null ? null : $"route-{route}.html"
             }, TraversalDemo.JsonOptions));
-        await WriteNewAsync(Path.Combine(folder, $"route-{route}.md"), TraversalReport.Render(receipt, route, recording));
+        await WriteNewAsync(Path.Combine(folder, $"route-{route}.md"), TraversalReport.Render(receipt, route, recording) + featureReport);
         await WriteNewAsync(Path.Combine(folder, $"route-{route}.svg"), TraversalTraceDiagram.Render(receipt, route));
         if (viewer is not null) await WriteNewAsync(Path.Combine(folder, $"route-{route}.html"), viewer);
     }

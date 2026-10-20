@@ -1,6 +1,6 @@
 # Reader-owned capture exclusion v1 validation
 
-October 20, 2026, local Windows: **731 discovered/executed/passed, 0 failed/skipped**. All 715 preceding test identities are retained; 16 cases were added. Discovery and TRX identity sets match. Nonincremental Release build: zero warnings/errors. Formatting verification passed. Receipt: artifacts/recording-validation/reader-capture-windows.trx. Remote CI is tracked on the corresponding main push.
+October 20, 2026, local Windows: **731 discovered/executed/passed, 0 failed/skipped**. All 715 preceding test identities are retained; 16 cases were added. Discovery and TRX identity sets match. Nonincremental Release build: zero warnings/errors. Formatting verification passed. Receipt: artifacts/recording-validation/reader-capture-windows.trx. [CI run 39493315500](https://github.com/jvelezc/ai-screen-reader/actions/runs/39493315500) passed all 731 tests on Windows and Ubuntu, recording demos and packaging. Independent Linux isolation/public-reader acceptance also passed.
 
 | Requirement | Evidence |
 | --- | --- |
