@@ -12,3 +12,11 @@ public sealed record CaptureStatus(CapturePhase Phase, long Epoch,
 
 /// <summary>Opaque authority to resume this exclusion only. Never a human input lease.</summary>
 public sealed record CaptureExclusionLease(Guid Token, long Epoch);
+
+/// <summary>Optional trusted local capture control. This authority never grants human input.</summary>
+public interface ICaptureControl
+{
+    CaptureStatus CaptureStatus { get; }
+    Task<CaptureExclusionLease> ExcludeCaptureAsync();
+    Task<AccessibilitySnapshot> ResumeCaptureAsync(CaptureExclusionLease lease);
+}

@@ -20,4 +20,4 @@ The standalone four-route demo passed at artifacts/traversal-recording/0337842e3
 
 The native-media regression initially used two Playwright expression waits that required eval under this strict CSP. Function predicates corrected the test harness; CSP was not weakened. Failed receipts are retained separately.
 
-Remote Windows/Linux CI is tracked on this increment's main push. No local Linux, deployment, fresh NVDA or Claude-client acceptance is claimed. These checks cover this bounded passive viewer, not general accessibility conformance or recording privacy on arbitrary content.
+[CI run 39490533339](https://github.com/jvelezc/ai-screen-reader/actions/runs/39490533339) passed all 715 tests on Windows and Ubuntu, the recording demos and packaging; the separate Linux isolation/public-reader task also passed. No local Linux, deployment, fresh NVDA or Claude-client acceptance is claimed. These checks cover this bounded passive viewer, not general accessibility conformance or recording privacy on arbitrary content.

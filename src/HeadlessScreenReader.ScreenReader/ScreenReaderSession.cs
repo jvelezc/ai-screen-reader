@@ -14,6 +14,7 @@ public sealed partial class ScreenReaderSession : IDisposable
     private readonly int _maxCommands;
     private readonly ObservationWaitOptions _wait;
     private readonly TimeProvider _time;
+    private readonly ReaderCaptureAdmission _readerCapture;
     private readonly long _started;
     private readonly int _maxTimelineEvents;
     private readonly SemaphoreSlim _inputGate = new(1, 1);
@@ -47,25 +48,34 @@ public sealed partial class ScreenReaderSession : IDisposable
         _maxCommands = maxCommands;
         _maxTimelineEvents = maxTimelineEvents;
         _time = timeProvider ?? TimeProvider.System;
+        _readerCapture = new(_time);
         _started = _time.GetTimestamp();
     }
 
     public ImmutableArray<ReaderEvent> Timeline
     {
-        get { lock (_timelineLock) return _timeline.ToImmutableArray(); }
+        get { return _readerCapture.Read(() => { lock (_timelineLock) return _timeline.ToImmutableArray(); }); }
     }
 
     public bool TimelineTruncated { get; private set; }
 
-    public async Task<ReaderStep> ExecuteAsync(
+    public Task<ReaderStep> ExecuteAsync(
         ReaderCommand command, string? key = null, CancellationToken cancellationToken = default,
         ObservationExpectation? expectation = null, string? expectedDocumentId = null)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+        return _readerCapture.RunAsync(() => ExecuteCoreAsync(command, key, cancellationToken, expectation, expectedDocumentId));
+    }
+
+    private async Task<ReaderStep> ExecuteCoreAsync(
+        ReaderCommand command, string? key, CancellationToken cancellationToken,
+        ObservationExpectation? expectation, string? expectedDocumentId)
+    {
         await _inputGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         ReaderStep? step = null;
         try
         {
+            _readerCapture.EnsurePermitted();
             _command = command;
             _commandSequence++;
             _inputAttempted = false;
@@ -524,26 +534,29 @@ public sealed partial class ScreenReaderSession : IDisposable
         LiveRegionObservation? liveRegion = null, FrameObservation? frame = null, ReaderTextPassage? passage = null,
         ListboxSelectionContext? listboxSelection = null)
     {
-        lock (_timelineLock)
+        _readerCapture.Retain(() =>
         {
-            if (_timeline.Count >= _maxTimelineEvents)
+            lock (_timelineLock)
             {
-                TimelineTruncated = true;
-                return;
+                if (_timeline.Count >= _maxTimelineEvents)
+                {
+                    TimelineTruncated = true;
+                    return;
+                }
+                if (frame is null && nodeId is not null)
+                {
+                    var frameId = _snapshot?.Nodes.FirstOrDefault(node => node.Id == nodeId)?.FrameId;
+                    if (frameId is not null) frame = _snapshot?.Frames.FirstOrDefault(item => item.FrameId == frameId);
+                }
+                _timeline.Add(new(++_eventSequence, _commandSequence,
+                    _time.GetElapsedTime(_started).TotalMilliseconds, kind, _command,
+                    _snapshot?.DocumentId, nodeId, detail, previousNodeId, liveRegion, frame,
+                    _snapshot?.Nodes.FirstOrDefault(node => node.Id == nodeId)?.Range,
+                    _snapshot?.Nodes.FirstOrDefault(node => node.Id == nodeId)?.HierarchyLevel,
+                    _snapshot?.Nodes.FirstOrDefault(node => node.Id == nodeId)?.Table, passage,
+                    listboxSelection ?? ListboxSelectionContext.Observe(_snapshot, _snapshot?.Nodes.FirstOrDefault(node => node.Id == nodeId))));
             }
-            if (frame is null && nodeId is not null)
-            {
-                var frameId = _snapshot?.Nodes.FirstOrDefault(node => node.Id == nodeId)?.FrameId;
-                if (frameId is not null) frame = _snapshot?.Frames.FirstOrDefault(item => item.FrameId == frameId);
-            }
-            _timeline.Add(new(++_eventSequence, _commandSequence,
-                _time.GetElapsedTime(_started).TotalMilliseconds, kind, _command,
-                _snapshot?.DocumentId, nodeId, detail, previousNodeId, liveRegion, frame,
-                _snapshot?.Nodes.FirstOrDefault(node => node.Id == nodeId)?.Range,
-                _snapshot?.Nodes.FirstOrDefault(node => node.Id == nodeId)?.HierarchyLevel,
-                _snapshot?.Nodes.FirstOrDefault(node => node.Id == nodeId)?.Table, passage,
-                listboxSelection ?? ListboxSelectionContext.Observe(_snapshot, _snapshot?.Nodes.FirstOrDefault(node => node.Id == nodeId))));
-        }
+        });
     }
 
     private string Describe(AccessibleNode? node)
@@ -586,6 +599,7 @@ public sealed partial class ScreenReaderSession : IDisposable
     {
         if (_disposed) return;
         _disposed = true;
+        _readerCapture.Close();
         _inputGate.Dispose();
     }
 
@@ -599,29 +613,37 @@ public sealed partial class ScreenReaderSession : IDisposable
             throw new ArgumentOutOfRangeException(nameof(options), "Observation bounds must be positive.");
         using var deadline = new CancellationTokenSource(options.Duration, _time);
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, deadline.Token);
+        var streamEpoch = _readerCapture.Status.Epoch;
         var captures = 0;
         while (captures < options.MaxCaptures)
         {
+            _readerCapture.EnsurePermitted(streamEpoch);
             ReaderObservationBatch batch;
             try
             {
-                if (captures > 0) await Task.Delay(options.PollInterval, _time, linked.Token).ConfigureAwait(false);
-                await _inputGate.WaitAsync(linked.Token).ConfigureAwait(false);
-                try
+                batch = await _readerCapture.RunAsync(async () =>
                 {
-                    linked.Token.ThrowIfCancellationRequested();
-                    if (_commandsUsed >= _maxCommands)
-                        batch = new(ObservationStreamStatus.CommandBudgetExceeded, captures, []);
-                    else if (TimelineTruncated)
-                        batch = new(ObservationStreamStatus.TimelineTruncated, captures, []);
-                    else
+                    using var interrupted = CancellationTokenSource.CreateLinkedTokenSource(linked.Token, _readerCapture.Interruption);
+                    if (captures > 0) await Task.Delay(options.PollInterval, _time, interrupted.Token).ConfigureAwait(false);
+                    await _inputGate.WaitAsync(linked.Token).ConfigureAwait(false);
+                    try
                     {
-                        _commandsUsed++;
-                        batch = await CaptureObservationAsync(captures, linked.Token, cancellationToken).ConfigureAwait(false);
-                        captures = batch.Captures;
+                        _readerCapture.EnsurePermitted();
+                        linked.Token.ThrowIfCancellationRequested();
+                        if (_commandsUsed >= _maxCommands)
+                            return new ReaderObservationBatch(ObservationStreamStatus.CommandBudgetExceeded, captures, []);
+                        else if (TimelineTruncated)
+                            return new ReaderObservationBatch(ObservationStreamStatus.TimelineTruncated, captures, []);
+                        else
+                        {
+                            _commandsUsed++;
+                            var observation = await CaptureObservationAsync(captures, linked.Token, cancellationToken).ConfigureAwait(false);
+                            captures = observation.Captures;
+                            return observation;
+                        }
                     }
-                }
-                finally { _inputGate.Release(); }
+                    finally { _inputGate.Release(); }
+                }).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (linked.IsCancellationRequested)
             {
@@ -631,6 +653,7 @@ public sealed partial class ScreenReaderSession : IDisposable
             yield return batch;
             if (batch.Status != ObservationStreamStatus.Observed) yield break;
         }
+        _readerCapture.EnsurePermitted(streamEpoch);
         yield return new(ObservationStreamStatus.CaptureLimitReached, captures, []);
     }
 

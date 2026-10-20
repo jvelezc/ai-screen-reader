@@ -6,15 +6,15 @@ The user has deferred public MCP hosting, Claude setup and official plugin publi
 
 | Original milestone | Status | Delivered | Remaining gate |
 | --- | --- | --- | --- |
-| 0: core assumptions | Partial | Real Chromium semantics, separate cursor/focus, bounded keyboard input, same-context capture exclusion and controlled video canaries | Complete command/persistence exclusion, Xvfb takeover and authenticated remote handshake |
+| 0: core assumptions | Partial | Real Chromium semantics, separate cursor/focus, bounded keyboard input, same-context browser/reader exclusion and controlled video canaries | Scan-wide persistence exclusion, Xvfb takeover and authenticated remote handshake |
 | 1: local screen reader | Substantial local implementation | Reader profile v13, fixtures, bounded events/observations, policy checks and CI | Capture/privacy feasibility remains a prerequisite to editable entry and recording; broader supported-control scope is explicit |
 | 2: evidence-backed workflow | In progress | Bounded routes, append-only JSON, node/edge reports, controlled recording canaries, 20-marker timing proof and original route media with capture/action/event intervals and passive local viewer | Diagnostic feature provenance and separate eligible replay results |
-| 3: intervention and isolation | Partial | Exact public-host policy and independent Linux egress fence | Capture exclusion, headed Xvfb/private viewer and exclusive input ownership with expiring controller leases |
+| 3: intervention and isolation | Partial | Exact public-host policy and independent Linux egress fence | Scan-wide capture/persistence fencing, headed Xvfb/private viewer and exclusive input ownership with expiring controller leases |
 | 4: durable hosted execution | Planned | Local append-only receipts are a starting contract | Supabase authorization, durable attempt storage, pgmq idempotency/fencing, private S3 finalization and failure/recovery tests |
 | 5: hosted pilot | Deferred | Existing local stdio adapter | Public HTTPS endpoint, remote authorization, operations, client acceptance and hosted report |
 | 6: measured extensions | Later | Bounded reader improvements through v13 | Broader validated widgets and compatible-run comparisons; public plugins remain deferred |
 
-## Next: reader-wide capture exclusion
+## Next: diagnostic feature provenance
 
 The [capture admission protocol](decisions/0019-capture-admission.md) fences observations and both keyboard paths, drains actual operations after caller cancellation, requires AX stop acknowledgement, preserves the same context, and resets the reader baseline across epochs. Failed or stalled transitions remain closed. The [controlled collector probe](decisions/0020-capture-collector-feasibility.md) adds separately opted-in synthetic recording segments with pending-write drain, decoded video/JPEG canaries, staging inspection, artifact hashes and explicit failure stages. Default sessions start no recording collector.
 
@@ -22,7 +22,7 @@ The [20-marker synchronization probe](decisions/0021-recording-synchronization.m
 
 The [recorded traversal slice](decisions/0022-traversal-recording-evidence.md) now attaches original permitted video and calibrated capture/action/event intervals to four fresh input-free synthetic routes. Run `dotnet run --project src/HeadlessScreenReader.Cli -c Release -- --traversal-recording` and open its printed index. Source/result observations, actual keys, goal verification and video timing remain separate. Missing/partial media never changes a barrier assessment.
 
-The [passive local viewer](decisions/0023-passive-evidence-viewer.md) now supports node/action/event selection, original-video seeking and related timeline highlights, native keyboard operation and explicit unavailable/partial states. Selection sends no live input. **[NEXT: close the reader-wide capture exclusion gap](decisions/0023-passive-evidence-viewer.md#next-reader-wide-capture-exclusion).** Drain complete reader commands and retained evidence before acknowledging exclusion; validate cancellation, stalled work and same-context resume. General recordings, complete reader-command/persistence exclusion, credential entry, a human takeover lease and a private remote viewer remain separate work. The privacy probe remains available with `--capture-probe`.
+The [passive local viewer](decisions/0023-passive-evidence-viewer.md) now supports node/action/event selection, original-video seeking and related timeline highlights, native keyboard operation and explicit unavailable/partial states. Selection sends no live input. The [reader-owned exclusion fence](decisions/0024-reader-capture-exclusion.md) now drains complete commands and idle sampling, blocks late results/timeline retention, rejects stale iterators and preserves same-context resume with a fresh baseline. **[NEXT: add diagnostic feature provenance](decisions/0024-reader-capture-exclusion.md#next-diagnostic-feature-provenance).** Bind diagnostic candidates to observed document/node evidence and authored paths while preserving unnamed reader semantics. General recordings, scan-wide persistence exclusion, credential entry, a human takeover lease and a private remote viewer remain separate work. The privacy probe remains available with `--capture-probe`.
 
 ```mermaid
 flowchart LR
@@ -31,16 +31,17 @@ flowchart LR
     Privacy --> Timing[20-marker synchronization]
     Timing --> Recording[Original route recordings and frame links]
     Recording --> Viewer[Passive local playback viewer]
-    Viewer --> Next[NEXT: reader-wide capture exclusion]
+    Viewer --> ReaderGate[Reader-owned exclusion fence]
+    ReaderGate --> Next[NEXT: diagnostic feature provenance]
     Next --> Control[Exclusive input and private viewer]
     Control --> Durable[Durable hosted execution]
     classDef done fill:#dcfce7,stroke:#166534,color:#14532d
     classDef next fill:#dbeafe,stroke:#1d4ed8,color:#1e3a8a
     classDef planned fill:#f3f4f6,stroke:#6b7280,color:#374151
-    class Reader,Trace,Privacy,Timing,Recording,Viewer done
+    class Reader,Trace,Privacy,Timing,Recording,Viewer,ReaderGate done
     class Next next
     class Control,Durable planned
-    click Next "decisions/0023-passive-evidence-viewer.md#next-reader-wide-capture-exclusion"
+    click Next "decisions/0024-reader-capture-exclusion.md#next-diagnostic-feature-provenance"
 ```
 
 Green means an implemented, locally validated bounded capability; blue is the next increment; gray is planned. These are not full milestone-completion labels. CI, deployment and assistive-technology gates remain separate.

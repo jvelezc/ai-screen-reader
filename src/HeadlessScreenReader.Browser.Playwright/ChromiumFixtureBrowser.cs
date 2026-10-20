@@ -9,7 +9,7 @@ namespace HeadlessScreenReader.Browser.Playwright;
 public enum BundledFixture { Foundation, Widgets, LiveRegions, Semantics, Landmarks, Text, Frames, Ranges, Composites, Tables, Paragraphs, Multiselect, Typeahead, Traversal, CapturePrivacy, RecordingMarkers, TraversalRecording }
 
 /// <summary>Chromium observations for fixtures and isolation-gated HTTPS pages. Egress enforcement is external.</summary>
-public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, IAsyncDisposable
+public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, ICaptureControl, IAsyncDisposable
 {
     private readonly IPlaywright _playwright;
     private readonly IBrowser _browser;
