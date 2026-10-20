@@ -9,6 +9,16 @@ namespace HeadlessScreenReader.Tests;
 public sealed class ChromiumCaptureProbeTests
 {
     [Fact]
+    public async Task NativeDecoder_InvalidMediaFailsWithSanitizedCode()
+    {
+        var invalid = await Assert.ThrowsAsync<BrowserOperationException>(() => PlaywrightVideoFrames.DecodeAsync([0, 1, 2, 3]));
+        Assert.Equal("CAPTURE_DECODE_FAILED", invalid.Code);
+        Assert.Null(invalid.InnerException);
+        var empty = await Assert.ThrowsAsync<BrowserOperationException>(() => PlaywrightVideoFrames.DecodeAsync([]));
+        Assert.Equal("CAPTURE_MEDIA_SIZE_INVALID", empty.Code);
+    }
+
+    [Fact]
     public async Task VideoDecoder_InspectsActualFirstAndLastFramesWithIndependentSolidColorControl()
     {
         var folder = Path.GetFullPath(Path.Combine("artifacts", "capture-decoder-controls", Guid.NewGuid().ToString("N")));
