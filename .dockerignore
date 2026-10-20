@@ -8,6 +8,14 @@
 !ops/
 !ops/prototype/
 !ops/prototype/**
+!artifacts/headed-build/
+!artifacts/headed-build/cli/
+!artifacts/headed-build/cli/**
+!ops/headed/
+!ops/headed/**
+artifacts/headed-build/cli/.playwright/node/darwin-*/
+artifacts/headed-build/cli/.playwright/node/win32_*/
+artifacts/headed-build/cli/.playwright/node/linux-arm64/
 artifacts/isolated/server/.playwright/node/darwin-*/
 artifacts/isolated/server/.playwright/node/win32_*/
 artifacts/isolated/server/.playwright/node/linux-arm64/

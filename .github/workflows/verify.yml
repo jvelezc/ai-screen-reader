@@ -9,6 +9,29 @@ permissions:
   contents: read
 
 jobs:
+  headed-session:
+    name: Headed Chromium and Xvfb (Linux)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - name: Prove headed process continuity and owned cleanup
+        run: pwsh -NoProfile -File scripts/Test-HeadedSession.ps1 -Runtime docker
+      - name: Retain headed acceptance receipts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: headed-session-linux
+          path: artifacts/headed-linux/
+          retention-days: 7
   isolated-prototype:
     name: Isolated public MCP prototype (Linux)
     runs-on: ubuntu-24.04

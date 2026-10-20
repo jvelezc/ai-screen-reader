@@ -1,0 +1,8 @@
+FROM mcr.microsoft.com/playwright/dotnet:v1.63.0-noble@sha256:4bb37fb71e75c18b6f8b8e4230139c7654de3dd39e55b66e84392c93933fed4e
+USER root
+COPY artifacts/headed-build/cli/ /app/cli/
+COPY ops/headed/run-proof.sh /app/run-proof.sh
+RUN chmod 0555 /app/run-proof.sh /app/cli/.playwright/node/linux-x64/node
+USER 1001:1001
+WORKDIR /tmp
+ENTRYPOINT ["/bin/bash", "/app/run-proof.sh"]
