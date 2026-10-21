@@ -1,6 +1,7 @@
-param([ValidateSet('podman','docker')][string]$Runtime='podman')
+param([ValidateSet('podman','docker')][string]$Runtime='podman', [switch]$PublishRelease)
 $ErrorActionPreference='Stop'
 $repoRoot=Split-Path $PSScriptRoot -Parent
+$sourceCommit=(& git -C $repoRoot rev-parse HEAD).Trim()
 Import-Module (Join-Path $PSScriptRoot 'ReaderIsolation.psm1') -Force -DisableNameChecking
 $owner=[Guid]::NewGuid().ToString('N'); $name="hsr-worker-db-$owner"; $image="localhost/hsr-worker-proof:$owner"
 $folder=Join-Path $repoRoot "artifacts/worker-linux/$owner"
@@ -8,8 +9,9 @@ New-Item -ItemType Directory -Path $folder | Out-Null
 $postgres='public.ecr.aws/supabase/postgres@sha256:16c0944c77885446d4f2ebbb2191b357feeb3b1295bde2fb1978c113129dbeb4'
 $created=$false; $built=$false; $removed=$false; $imageRemoved=$false; $ready=$false; $stage='publish'; $errorCode=$null
 $cases=[Collections.Generic.List[string]]::new()
+$releaseCreated=$false
 $script:executed=0; $script:failed=0
-$expected=if($IsLinux){17}else{15}; $linuxSignalPerformed=$false
+$expected=if($IsLinux){21}else{19}; $linuxSignalPerformed=$false
 $recoveryResources=[Collections.Generic.List[string]]::new()
 $names=@('POSTGRES_PASSWORD','HSR_WORKER_DATABASE','HSR_WORKER_IMAGE','HSR_WORKER_EVIDENCE','HSR_WORKER_RUNTIME','HSR_WORKER_SECCOMP')
 $prior=@{}; foreach($key in $names){$prior[$key]=[Environment]::GetEnvironmentVariable($key)}
@@ -62,6 +64,20 @@ try {
     $env:HSR_WORKER_DATABASE="Host=127.0.0.1;Port=$($Matches[1]);Username=hsr_proof_worker;Password=$password;Database=postgres;SSL Mode=Disable"
     $env:HSR_WORKER_IMAGE=$imageId; $env:HSR_WORKER_RUNTIME=$Runtime; $env:HSR_WORKER_EVIDENCE=Join-Path $folder 'evidence'
     $env:HSR_WORKER_SECCOMP=Join-Path $repoRoot 'ops/prototype/playwright-seccomp.json'
+    $realConnection=$env:HSR_WORKER_DATABASE
+    $env:HSR_WORKER_DATABASE='deliberately invalid database configuration'
+    $probeOutput=@(& dotnet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --check-runtime 2>&1)
+    $probeExit=$LASTEXITCODE; $runtimeProbe=($probeOutput -join "`n") | ConvertFrom-Json
+    Assert-Proof ($probeExit -eq 0 -and $runtimeProbe.Schema -eq 'hsr-runtime-readiness-v1' -and $runtimeProbe.State -eq 'RuntimeReady' -and $runtimeProbe.Image -eq $imageId -and $runtimeProbe.ObservedNodes -gt 0 -and $runtimeProbe.Sha256 -cmatch '^[a-f0-9]{64}$' -and -not $runtimeProbe.DatabaseAccessed -and -not $runtimeProbe.ObservationPersisted -and $runtimeProbe.DispatchedInputs -eq 0 -and -not $runtimeProbe.GoalVerified) 'RuntimeReadinessExecutesActualChromiumWithoutDatabaseConfiguration'
+    $probeFacts=(Invoke-ProofSql "select json_build_object('attempts',(select count(*) from hsr.job_attempts),'queue',(select count(*) from pgmq.q_hsr_scan_jobs),'state',(select state from hsr.scans where id='$($job.scan_id)'))") | ConvertFrom-Json
+    Assert-Proof ($probeFacts.attempts -eq 0 -and $probeFacts.queue -eq 1 -and $probeFacts.state -eq 'queued' -and @(Get-ChildItem $env:HSR_WORKER_EVIDENCE -Recurse -Filter 'observation.json').Count -eq 0) 'RuntimeReadinessCannotAdmitClaimOrPersistAnObservation'
+    $probeRemaining=Invoke-ReaderRuntime $Runtime @('ps','--all','--filter','name=^hsr-observation-','--format','{{.ID}}')
+    Assert-Proof ([string]::IsNullOrWhiteSpace($probeRemaining.Text)) 'RuntimeReadinessConfirmsActualOwnedContainerAbsence'
+    $env:HSR_WORKER_IMAGE='sha256:'+('f'*64)
+    $probeOutput=@(& dotnet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --check-runtime 2>&1)
+    $probeExit=$LASTEXITCODE
+    Assert-Proof ($probeExit -eq 3 -and ($probeOutput -join "`n").Trim() -eq 'WORKER_STOPPED_UNCONFIRMED') 'MissingImmutableRuntimeImageCannotProduceReady'
+    $env:HSR_WORKER_DATABASE=$realConnection; $env:HSR_WORKER_IMAGE=$imageId
     $output=@(& dotnet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --once 2>&1)
     $workerExit=$LASTEXITCODE
     $output | Set-Content (Join-Path $folder 'worker.log') -Encoding utf8NoBOM
@@ -150,6 +166,27 @@ try {
     $failedRecoveryExit=$LASTEXITCODE
     $unowned=((Invoke-ReaderRuntime $Runtime @('inspect',$badTarget)).Text|ConvertFrom-Json)[0]
     Assert-Proof ($failedRecoveryExit -eq 3 -and $unowned.State.Running -and (Test-Path $badPath)) 'MismatchedNativeOwnerFailsClosedAndRetainsIntent'
+    if($PublishRelease){
+        $stage='release-bundle'
+        if(@(& git -C $repoRoot status --porcelain).Count -ne 0){throw 'WORKER_RELEASE_REQUIRES_COMMITTED_SOURCE'}
+        if((& git -C $repoRoot rev-parse HEAD).Trim() -ne $sourceCommit){throw 'WORKER_RELEASE_SOURCE_CHANGED'}
+        $releaseRoot=Join-Path $repoRoot 'artifacts/private-worker-release'
+        if(Test-Path $releaseRoot){throw 'WORKER_RELEASE_OUTPUT_EXISTS'}
+        $content=Join-Path $releaseRoot 'content'
+        New-Item -ItemType Directory -Path $content | Out-Null
+        $archive=Join-Path $content 'fixture.tar'
+        $saveArgs=if($Runtime -eq 'podman'){@('save','--format','docker-archive','--output',$archive,$imageId)}else{@('save','--output',$archive,$imageId)}
+        $null=Invoke-ReaderRuntime $Runtime $saveArgs
+        $testedWorker=Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0'
+        $releaseWorker=Join-Path $content 'worker'
+        New-Item -ItemType Directory -Path $releaseWorker | Out-Null
+        foreach($file in Get-ChildItem -LiteralPath $testedWorker){Copy-Item -LiteralPath $file.FullName -Destination $releaseWorker -Recurse}
+        $commit=$sourceCommit
+        $pythonCommand=if($IsWindows){'python'}else{'python3'}
+        & $pythonCommand (Join-Path $repoRoot 'ops/worker/build_release.py') --stage $content --output (Join-Path $releaseRoot 'release.tar.gz') --commit $commit --image $imageId --tested-worker $testedWorker
+        if($LASTEXITCODE -ne 0){throw 'WORKER_RELEASE_BINDING_UNCONFIRMED'}
+        $releaseCreated=$true
+    }
     $stage='completed'; $ready=$true
 } catch {
     $errorCode="WORKER_$($stage.ToUpperInvariant())_UNCONFIRMED"
@@ -177,7 +214,7 @@ try {
         if($item.Config.Labels.'hsr.worker.proof' -eq $owner){$delete=Invoke-ReaderRuntime $Runtime @('image','rm',$image) -AllowFailure; $imageRemoved=$delete.Code -eq 0}
     }
 }
-$receipt=@{Schema='hsr-observation-worker-proof-v1';Ready=$ready;Stage=$stage;ErrorCode=$errorCode;Runtime=$Runtime;Expected=$expected;Discovered=$expected;Executed=$script:executed;Passed=$cases.Count;Failed=$script:failed;Unconfirmed=$expected-$script:executed;Skipped=0;Cases=@($cases);DatabaseRemoved=$removed;ImageRemoved=$imageRemoved;LinuxSignalPerformed=$linuxSignalPerformed;HostedProjectChanged=$false;Folder=$folder}
+$receipt=@{Schema='hsr-observation-worker-proof-v1';Ready=$ready;Stage=$stage;ErrorCode=$errorCode;Runtime=$Runtime;Expected=$expected;Discovered=$expected;Executed=$script:executed;Passed=$cases.Count;Failed=$script:failed;Unconfirmed=$expected-$script:executed;Skipped=0;Cases=@($cases);DatabaseRemoved=$removed;ImageRemoved=$imageRemoved;LinuxSignalPerformed=$linuxSignalPerformed;HostedProjectChanged=$false;ReleaseBundleCreated=$releaseCreated;Folder=$folder}
 $receipt | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $folder 'run.json') -Encoding utf8NoBOM
 $receipt | ConvertTo-Json -Depth 4
 if(-not $ready -or -not $removed -or -not $imageRemoved -or $cases.Count -ne $expected){exit 1}

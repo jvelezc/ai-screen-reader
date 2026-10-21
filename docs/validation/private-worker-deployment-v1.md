@@ -1,0 +1,28 @@
+# Private worker deployment validation
+
+Current source has local acceptance. Remote CI, host provisioning and live deployment have not yet been performed for this increment. The original proposal under outputs/ is unchanged.
+
+| Requirement | Evidence |
+| --- | --- |
+| Actual isolated Chromium readiness without a usable database configuration | RuntimeReadinessExecutesActualChromiumWithoutDatabaseConfiguration |
+| Canary cannot admit/claim a job or save an observation, and a missing image cannot become ready | RuntimeReadinessCannotAdmitClaimOrPersistAnObservation; RuntimeReadinessConfirmsActualOwnedContainerAbsence; MissingImmutableRuntimeImageCannotProduceReady |
+| Exact tested binaries/image survive artifact transport | test_exact_tested_worker_and_image_roundtrip_through_compressed_bundle; test_untested_worker_byte_change_cannot_enter_release; test_worker_dependency_missing_from_tested_closure_cannot_enter_release; test_omitted_tested_dependency_cannot_create_an_incomplete_release |
+| Image identity comes from actual archive bytes rather than a cached image | test_actual_image_configuration_hash_matches_declared_immutable_id; test_different_archive_cannot_reuse_an_image_already_cached_on_the_host |
+| Paths, file types, byte budgets, file lists and digests fail closed | test_paths_cannot_escape_or_rename_operator_resources; test_links_directories_devices_and_fifo_never_authorize_extraction; test_total_budget_accepts_boundary_and_rejects_one_byte_over; test_changed_bytes_cannot_match_the_retained_manifest |
+| Stop/recovery/probe precede activation; unknown cleanup prevents rollback restart | test_activation_requires_stop_recovery_and_runtime_probe_before_switch; test_failed_new_start_drains_both_scopes_before_rollback; test_unknown_failed_native_cleanup_cannot_restart_previous_release; test_unknown_failed_probe_cleanup_cannot_restore_previous_release |
+| Pointer/receipt failures retain honest outcomes and preserve other resources | test_pointer_flush_failure_after_rename_still_recovers_and_removes_first_pointer; test_ready_receipt_write_failure_still_stops_and_recovers_before_rollback; test_atomic_install_preserves_original_when_replace_fails |
+| Operator subprocess cancellation stops only the new owned group | test_timeout_stops_and_joins_only_the_new_owned_process_group |
+| Private child environment and exact readiness facts | test_operator_environment_is_closed_to_database_and_management_credentials; test_recovery_uses_fixed_narrow_mode_and_never_passes_database_arguments; test_unconfirmed_readiness_facts_cannot_become_healthy |
+| Database readiness requires a fresh live invocation | test_database_readiness_uses_only_fresh_invocation_and_current_service; test_changed_invocation_cannot_reuse_an_earlier_empty_receipt; test_process_exit_after_empty_receipt_cannot_be_reported_ready; test_missing_database_receipt_times_out_without_a_stub_health_claim |
+| Bootstrap cannot adopt another account, trust root or symlink target | test_existing_account_requires_managed_nonroot_identity_and_exact_home; test_unpinned_certificate_cannot_weaken_database_trust; test_private_directory_ownership_uses_actual_open_directory_and_rejects_symlinks |
+| Promotion requires every named CI gate and exact source provenance | test_every_existing_acceptance_job_is_required; test_failed_incomplete_forked_or_other_branch_run_cannot_promote; test_superseded_successful_source_is_skipped_without_selecting_an_artifact; test_expired_missing_ambiguous_or_invalid_artifact_is_rejected |
+
+Local Windows Release regression discovered/executed/passed1,352; failed/skipped0. All preceding1,352 identities remain. Strict nonincremental build passes with zero warnings/errors. Receipt: artifacts/worker-validation/private-deployment-regression.trx. The formatter caught only new initializer whitespace; that was corrected, the build passed and full formatting verification is clean.
+
+Real Windows-launched Linux/Podman worker acceptance passes19/19, failed/skipped/unconfirmed0, including the four new runtime canary cases and all prior15. Owned database/image removal is confirmed. Receipt: artifacts/worker-linux/44cf9d75f7864059822726687e4110f8/run.json. Linux CI additionally runs actual SIGTERM and competing coordinator processes, for21 checks. The controlled retained-intent sleeper remains a native recovery witness, not a claimed Chromium crash.
+
+Operational unit validation passes82/82 on the actual local Linux VM, failed/skipped0. Receipt: artifacts/deployment-validation/unit.json. It uses real private files, symlinks, atomic pointer replacement and owned subprocess groups. systemd/account/remote command calls are simulated in unit tests; they do not establish hosted acceptance. Windows lacks the required symlink privilege for this Linux deployment suite; those tests were retained and executed on Linux rather than skipped or weakened. The runner rejects zero/incomplete discovery and records actual successful test IDs.
+
+The pinned Playwright base image is3,579,514,131 bytes before the fixture payload. Each allowed release file has a4GiB ceiling and total contents6GiB; these are artifact transport bounds, separate from unchanged1GiB browser memory,2 CPU,256-task and native shutdown limits.
+
+The preceding [CI39687306453](https://github.com/jvelezc/ai-screen-reader/actions/runs/39687306453) passed all nine jobs with Windows/Ubuntu1,352 each, SQL161 and worker17. That gate was accepted before this deployment increment began. The new artifact export/promotion path requires its own accepted CI and actual host verification. No VPS writes, runtime database login, hosted native job, app JWT, S3 finalization or human/AT acceptance is implied by local checks.

@@ -1,0 +1,86 @@
+name: Deploy private worker
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      ci_run_id:
+        description: Successful main CI run containing the exact tested release
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: private-observation-worker
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: vars.HSR_DEPLOY_ENABLED == 'true' && (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Verify exact successful main CI provenance
+        id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN: ${{ github.event.workflow_run.id || inputs.ci_run_id }}
+        run: python3 ops/worker/ci_release.py --repository "$GITHUB_REPOSITORY" --run "$SOURCE_RUN" --output "$GITHUB_OUTPUT"
+      - name: Download the exact tested worker and image
+        if: steps.source.outputs.deploy == 'true'
+        uses: actions/download-artifact@v8
+        with:
+          artifact-ids: ${{ steps.source.outputs.artifact }}
+          github-token: ${{ github.token }}
+          run-id: ${{ github.event.workflow_run.id || inputs.ci_run_id }}
+          path: ${{ runner.temp }}/hsr-private-release
+          merge-multiple: true
+      - name: Promote through the restricted private SSH account
+        if: steps.source.outputs.deploy == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ steps.source.outputs.sha }}
+          HSR_DEPLOY_PRIVATE_KEY: ${{ secrets.HSR_DEPLOY_PRIVATE_KEY }}
+          HSR_DEPLOY_HOST: ${{ vars.HSR_DEPLOY_HOST }}
+          HSR_DEPLOY_USER: ${{ vars.HSR_DEPLOY_USER }}
+          HSR_DEPLOY_KNOWN_HOSTS: ${{ vars.HSR_DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          head=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
+          if [[ "$head" != "$RELEASE_SHA" ]]; then
+            echo 'Main advanced; this release is superseded and was not deployed.'
+            exit 0
+          fi
+          test -n "$HSR_DEPLOY_PRIVATE_KEY"
+          test -n "$HSR_DEPLOY_HOST"
+          test "$HSR_DEPLOY_USER" = 'hsr-deploy'
+          test -n "$HSR_DEPLOY_KNOWN_HOSTS"
+          key="$RUNNER_TEMP/hsr-private-deploy-key"
+          hosts="$RUNNER_TEMP/hsr-private-known-hosts"
+          trap 'rm -f -- "$key"' EXIT
+          umask 077
+          printf '%s\n' "$HSR_DEPLOY_PRIVATE_KEY" > "$key"
+          printf '%s\n' "$HSR_DEPLOY_KNOWN_HOSTS" > "$hosts"
+          ssh -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$hosts" -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=4 \
+            "$HSR_DEPLOY_USER@$HSR_DEPLOY_HOST" "deploy $RELEASE_SHA" \
+            < "$RUNNER_TEMP/hsr-private-release/release.tar.gz" > "$RUNNER_TEMP/private-deployment.json"
+          python3 -c 'import json,os; p=json.load(open(os.environ["RUNNER_TEMP"]+"/private-deployment.json")); assert p["State"]=="Ready" and p["Commit"]==os.environ["RELEASE_SHA"]; print("Private worker ready at accepted commit "+p["Commit"])'
+      - name: Retain safe deployment receipt
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: private-deployment-receipt
+          path: ${{ runner.temp }}/private-deployment.json
+          retention-days: 7
+          if-no-files-found: ignore
