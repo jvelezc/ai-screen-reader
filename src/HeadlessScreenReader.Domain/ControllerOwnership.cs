@@ -18,4 +18,5 @@ public sealed record ControllerStatus(string ScanId, ControllerPhase Phase, long
 {
     public string Schema => "hsr-local-controller-v1";
     public ControllerRole? Role { get; init; }
+    public BrowserShutdownStatus? Shutdown { get; init; }
 }

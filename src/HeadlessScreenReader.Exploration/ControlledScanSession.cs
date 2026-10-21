@@ -57,7 +57,7 @@ public sealed partial class ControlledScanSession : IAsyncDisposable
                 ExpireIfNeeded();
                 ObserveOwnedFault();
                 return new(_owned.Status.ScanId, _phase, _generation, _lease?.ExpiresAt, _active, _fault, [.. _events], _truncated, _owned.Status)
-                { Role = _lease?.Role };
+                { Role = _lease?.Role, Shutdown = (_browser as IBrowserShutdownDiagnostics)?.ShutdownStatus };
             }
         }
     }

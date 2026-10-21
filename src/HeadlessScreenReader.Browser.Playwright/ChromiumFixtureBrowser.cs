@@ -34,6 +34,7 @@ public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, ICapt
     {
         _playwright = playwright;
         _browser = browser;
+        _shutdown = new(() => context.CloseAsync(), () => browser.CloseAsync(), playwright.Dispose, stopCollectors: () => _stopProbeCollector());
         _context = context;
         _page = page;
         _cdp = cdp;
@@ -390,29 +391,4 @@ public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, ICapt
         return properties;
     }
 
-    public async ValueTask DisposeAsync()
-    {
-        if (_disposed)
-            return;
-        _disposed = true;
-        try
-        {
-            await _captureAdmission.CloseAsync(async () =>
-            {
-                try { await _stopProbeCollector().WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false); }
-                finally { await _context.CloseAsync().ConfigureAwait(false); }
-            }).ConfigureAwait(false);
-        }
-        finally
-        {
-            try
-            {
-                await _browser.CloseAsync().ConfigureAwait(false);
-            }
-            finally
-            {
-                _playwright.Dispose();
-            }
-        }
-    }
 }

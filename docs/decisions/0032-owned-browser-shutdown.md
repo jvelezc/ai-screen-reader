@@ -1,0 +1,21 @@
+# Owned browser shutdown and failure receipts
+
+The private-viewer main push exposed a Windows shutdown failure in the earlier controller CLI. [CI 39521143289](https://github.com/jvelezc/ai-screen-reader/actions/runs/39521143289) passed all 1,065 tests on both Windows and Ubuntu, but Windows then failed the controller demonstration with CONTROL_CLOSE_UNCONFIRMED. Its retained files show three stored commands, final acknowledged exclusion and OWNED_CLOSE_STARTED, with no Closed journal. The exact SDK shutdown call was not recorded. Ubuntu, both headed Linux/Docker cases and public isolation passed; the overall run was failed, not accepted.
+
+Source inspection found two hazards: context close could wait indefinitely before whole-browser close was attempted, and a repeated adapter DisposeAsync could return merely because disposal had started. The repair removes those hazards and records sanitized shutdown stages if another failure occurs. It does not claim the unrecorded SDK stage was empirically identified.
+
+## Shutdown sequence
+
+Admission closes before shutdown. The adapter caches one actual disposal task, including reentrant callers. Collector stop retains its existing five-second acknowledgement bound and actual task. A failed or timed-out collector stop still leads to native cleanup, but remains a failure even if Chromium closes or the collector eventually acknowledges.
+
+After collector stop, context close has a one-second soft budget. Missing or failed context acknowledgement triggers whole-browser close, which has a three-second bounded wait. This is escalation against the privately owned browser instance, not a process-name/PID kill. Owned transport disposal then settles outstanding protocol callbacks. Every actual collector/context/browser task remains joined; a timed-out wait cannot release actual work. Browser/transport failures remain faulted after late acknowledgements. A settled per-context failure may be superseded by acknowledged whole-browser closure; both facts remain visible.
+
+The existing five-second controller/owned close deadlines are unchanged. If actual shutdown cannot finish within the owning deadline, the owner remains faulted and cannot grant a replacement controller. A late native close does not recover it. A hung native call remains visible and keeps the actual disposal task pending.
+
+## Evidence and limits
+
+Optional platform-independent BrowserShutdownStatus records phase, actual pending count, each call's settled/acknowledged state, transport disposal, context escalation and a fixed safe error code. It includes no exception text, command line, URL, bearer or screenshot. It is diagnostic evidence, not reader-visible semantics or an accessibility-barrier classification.
+
+The controller CLI now keeps execution and cleanup failures separately in controller-demo.json and prints an explicit unsuccessful summary. Its original controller.json retains the hsr-local-controller-v1 shape with additive shutdown diagnostics. A minimal internal workflow seam reuses IScreenReaderBrowser and IOwnedEvidenceStore; production still creates real Chromium and real owned files. Deterministic failure tests use in-memory dependencies without environment/console mutation or filesystem I/O. Real Chromium disposal and the full acceptance demos remain separate checks.
+
+SDK acknowledgement and actual process exit remain separate. The headed/private-viewer proofs continue to verify process exit and task-owned cleanup explicitly. This repair adds no OS-level process killing, privileges, arbitrary target or public viewer. The [next feature](0031-private-read-only-viewer.md#next-private-pixel-viewer-feasibility) remains private pixel-viewer feasibility after all CI gates pass. See [shutdown validation](../validation/browser-shutdown-v1.md).
