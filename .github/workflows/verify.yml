@@ -10,14 +10,14 @@ permissions:
 
 jobs:
   durable-database:
-    name: Tenant scan admission and pgmq (Linux)
+    name: Durable scan admission and worker leases (Linux)
     runs-on: ubuntu-24.04
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - name: Prove tenant isolation, atomic enqueue and restart persistence
+      - name: Prove tenant isolation, fenced leases and durable queue transactions
         shell: pwsh
         run: pwsh -NoProfile -File scripts/Test-DurableDatabase.ps1 -Runtime docker
       - name: Retain database acceptance receipts

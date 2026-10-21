@@ -76,9 +76,18 @@ try {
     $null = Invoke-ReaderRuntime $Runtime @('start', $name)
     Wait-DatabaseReady
     $stage = 'migration'
-    Invoke-DatabaseFile 'supabase/migrations/20261021194000_tenant_scan_queue.sql' 'migration' -Atomic
+    $migrations = @(Get-ChildItem (Join-Path $repoRoot 'supabase/migrations') -Filter '*.sql' | Sort-Object Name)
+    if ($migrations.Count -eq 0) { throw 'DATABASE_MIGRATIONS_MISSING' }
+    foreach ($migration in $migrations) {
+        if ($migration.Name -notmatch '^[0-9]{14}_[a-z0-9_]+\.sql$') { throw 'DATABASE_MIGRATION_NAME_INVALID' }
+        Invoke-DatabaseFile "supabase/migrations/$($migration.Name)" "migration-$($migration.BaseName)" -Atomic
+    }
     $stage = 'authorization'
     Invoke-DatabaseFile 'tests/database/tenant-scan-queue.sql' 'authorization' -Expected 41
+    $stage = 'leases'
+    Invoke-DatabaseFile 'tests/database/worker-leases.sql' 'leases' -Expected 101 -User 'supabase_admin'
+    $stage = 'concurrent-leases'
+    Invoke-DatabaseFile 'tests/database/concurrent-worker-leases.sql' 'concurrent-leases' -Expected 10 -User 'supabase_admin'
     $stage = 'persist'
     Invoke-DatabaseFile 'tests/database/before-restart.sql' 'persist' -Atomic
     $stage = 'restart'
@@ -90,7 +99,7 @@ try {
     $stage = 'completed'
     $ready = $true
 } catch {
-    $errorCode = "DATABASE_$($stage.ToUpperInvariant())_UNCONFIRMED"
+    $errorCode = "DATABASE_$($stage.ToUpperInvariant().Replace('-','_'))_UNCONFIRMED"
     $_.Exception.Message | Set-Content (Join-Path $folder 'failure.log') -Encoding utf8NoBOM
 } finally {
     $env:POSTGRES_PASSWORD = $oldPassword
@@ -110,13 +119,13 @@ try {
 }
 $receipt = [pscustomobject]@{
     Schema = 'hsr-database-admission-proof-v1'; Ready = $ready; Stage = $stage; ErrorCode = $errorCode
-    Runtime = $Runtime; Image = $image; Expected = 50; Discovered = $script:discovered
+    Runtime = $Runtime; Image = $image; Expected = 161; Discovered = $script:discovered
     Executed = $script:executed; Passed = $cases.Count; Failed = $script:failed
-    Unconfirmed = [Math]::Max(0, 50 - $script:executed); Skipped = 0; Cases = @($cases)
+    Unconfirmed = [Math]::Max(0, 161 - $script:executed); Skipped = 0; Cases = @($cases)
     ContainerRemoved = $removed; HostedProjectChanged = $false; WorkerExecutionPerformed = $false
     Folder = $folder
 }
 $receipt | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $folder 'run.json') -Encoding utf8NoBOM
 $receipt | ConvertTo-Json -Depth 4
-if (-not $ready -or -not $removed -or $cases.Count -ne 50 -or $script:discovered -ne 50 `
-    -or $script:executed -ne 50 -or $script:failed -ne 0) { exit 1 }
+if (-not $ready -or -not $removed -or $cases.Count -ne 161 -or $script:discovered -ne 161 `
+    -or $script:executed -ne 161 -or $script:failed -ne 0) { exit 1 }

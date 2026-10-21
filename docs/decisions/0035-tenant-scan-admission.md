@@ -14,6 +14,8 @@ The test-only concurrency coordinator uses the disposable image's `supabase_admi
 
 The selected hosted project is `gpnijaxrgtwzwtrqsbcu`. Before deployment, inspect its existing schema, queue names, grants, migration history and extension version; resolve any collision explicitly. Apply the migration transactionally through the project's migration mechanism. Do not run the test fixtures or concurrency coordinator against the hosted database.
 
+Admission deployment completed after CI39665891030 passed all eight jobs. Supabase recorded version20261021201121; the repository filename was aligned without changing SQL bytes. Readback confirmed four RLS-enabled admission tables, denied anonymous access and an empty queue with no app users or scans. The [lease protocol](0036-fenced-observation-worker-leases.md) remains a separate increment.
+
 The user selected an existing shared Contabo VPS. SSH read-only inspection confirmed Podman4.9.3, active Caddy and existing applications on loopback8080/8081/8082/8083/8085. No host service or Caddy configuration was changed. Deployment must use separate resources and an available loopback port, with dedicated CI authorization and a tested rollback. Public MCP hosting/plugins remain deferred.
 
 Remaining gates are live project access and identity acceptance, a narrow worker capability, expiring fenced leases, durable attempt/action records, stage completion/deduplication and crash recovery, private object finalization and actual deployment. A queued job is not an executed scan or verified reader goal.
