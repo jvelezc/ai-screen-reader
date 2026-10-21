@@ -264,10 +264,13 @@ public sealed partial class ControlledScanSession : IAsyncDisposable
         var result = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously); result.SetResult(); return result;
     }
     private sealed class FencedBrowser(ControlledScanSession owner, IScreenReaderBrowser browser, ICaptureControl control)
-        : IScreenReaderBrowser, ICaptureControl, IAsyncDisposable
+        : IScreenReaderBrowser, ICaptureControl, IPrivatePixelCapture, IAsyncDisposable
     {
         public CaptureStatus CaptureStatus => control.CaptureStatus;
         public Task<AccessibilitySnapshot> CaptureAsync(CancellationToken cancellationToken = default) => browser.CaptureAsync(cancellationToken);
+        public Task<BrowserPixelFrame> CapturePixelsAsync(long epoch, string documentId, CancellationToken cancellationToken = default)
+            => browser is IPrivatePixelCapture pixels ? pixels.CapturePixelsAsync(epoch, documentId, cancellationToken)
+                : throw new BrowserOperationException("OWNED_VIEW_UNAVAILABLE");
         public Task PressKeyAsync(string key, CancellationToken cancellationToken = default) => owner.Dispatch(() => browser.PressKeyAsync(key, cancellationToken));
         public Task PressListboxKeyAsync(ListboxKeyInput input, CancellationToken cancellationToken = default) => owner.Dispatch(() => browser.PressListboxKeyAsync(input, cancellationToken));
         public Task<CaptureExclusionLease> ExcludeCaptureAsync() => control.ExcludeCaptureAsync();

@@ -1,0 +1,25 @@
+@baseAddress = http://127.0.0.1:REPLACE_WITH_EPHEMERAL_PORT
+@identity = REPLACE_WITH_PROCESS_PROVISIONED_CREDENTIAL
+@scanId = REPLACE_WITH_EXACT_SCAN_ID
+@sessionId = REPLACE_WITH_EXACT_SESSION_ID
+@connectionId = REPLACE_WITH_EXCHANGED_CONNECTION_ID
+@connectionToken = REPLACE_WITH_EXCHANGED_CONNECTION_TOKEN
+
+### Trusted host must opt into the fixed pixel fixture and optional service.
+### These placeholders are documentation; the finite --private-pixels proof closes its server.
+GET {{baseAddress}}/viewer/{{scanId}}/{{sessionId}}/pixels?epoch=1
+Authorization: Bearer {{identity}}
+X-Viewer-Id: {{connectionId}}
+X-Viewer-Token: {{connectionToken}}
+
+### Expected 405. No input is accepted or forwarded.
+POST {{baseAddress}}/viewer/{{scanId}}/{{sessionId}}/pixels?epoch=1
+Authorization: Bearer {{identity}}
+X-Viewer-Id: {{connectionId}}
+X-Viewer-Token: {{connectionToken}}
+
+### Expected 404. There is no clipboard read or write endpoint.
+POST {{baseAddress}}/viewer/{{scanId}}/{{sessionId}}/clipboard
+Authorization: Bearer {{identity}}
+X-Viewer-Id: {{connectionId}}
+X-Viewer-Token: {{connectionToken}}

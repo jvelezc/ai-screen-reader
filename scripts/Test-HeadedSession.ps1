@@ -1,5 +1,5 @@
 param([ValidateSet('podman', 'docker')][string]$Runtime = 'podman', [switch]$SkipBuild,
-    [ValidateSet('controller', 'synthetic-handoff')][string]$Scenario = 'controller')
+    [ValidateSet('controller', 'synthetic-handoff', 'private-pixels')][string]$Scenario = 'controller')
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path $PSScriptRoot -Parent
 Import-Module (Join-Path $PSScriptRoot 'ReaderIsolation.psm1') -Force -DisableNameChecking
@@ -55,7 +55,8 @@ try {
         -and $receipt.Kernel.Restricted -eq $true -and @($constraints.SecurityOptions | Where-Object { $_ -like 'no-new-privileges*' }).Count -eq 1 `
         -and $constraints.MemoryBytes -gt 0 -and $constraints.MemoryBytes -le 1073741824 `
         -and $constraints.PidsLimit -gt 0 -and $constraints.PidsLimit -le 256 -and $constraints.HostBindMounts -eq 0
-    $expectedSchema = if ($Scenario -eq 'synthetic-handoff') { 'hsr-synthetic-handoff-proof-v1' } else { 'hsr-headed-session-proof-v1' }
+    $expectedSchema = if ($Scenario -eq 'private-pixels') { 'hsr-private-pixel-proof-v1' }
+        elseif ($Scenario -eq 'synthetic-handoff') { 'hsr-synthetic-handoff-proof-v1' } else { 'hsr-headed-session-proof-v1' }
     $ready = $item.State.ExitCode -eq 0 -and $limitsObserved -and $receipt.Schema -eq $expectedSchema `
         -and $receipt.Ready -eq $true -and $cleanup.displayCleanupConfirmed -eq $true `
         -and $cleanup.commandExitCode -eq 0 -and $receipt.BrowserCloseConfirmed -eq $true
@@ -94,7 +95,8 @@ try {
 }
 $result = [pscustomobject]@{ Schema = 'hsr-headed-runtime-v1'; RunId = $runId; Runtime = $Runtime; Ready = $ready;
     Scenario = $Scenario;
-    CaseName = $(if ($Scenario -eq 'synthetic-handoff') { 'SyntheticHandoff_ActualInputIsExcludedFromOwnedFilesAndOriginalMedia' }
+    CaseName = $(if ($Scenario -eq 'private-pixels') { 'PrivatePixels_ActualReadOnlyRelayExcludesSyntheticGapAndRevokesOwnedDelivery' }
+        elseif ($Scenario -eq 'synthetic-handoff') { 'SyntheticHandoff_ActualInputIsExcludedFromOwnedFilesAndOriginalMedia' }
         else { 'HeadedChromium_TwoControllerGenerationsPreserveProcessContextAndCleanOwnedDisplay' });
     Stage = $stage; ErrorCode = $errorCode; EvidenceCopied = $copied; ContainerRemoved = $removed; ImageRemoved = $imageRemoved;
     ProofStage = $proofStage; ProofErrorCode = $proofErrorCode; ObservedConstraints = $constraints;

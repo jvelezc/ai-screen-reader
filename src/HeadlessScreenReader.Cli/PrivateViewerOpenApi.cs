@@ -3,6 +3,16 @@ namespace HeadlessScreenReader.Cli;
 /// <summary>Fixed proof protocol. No general discovery or public authorization-server metadata.</summary>
 internal static class PrivateViewerOpenApi
 {
+    public static string ForPixels(bool enabled)
+    {
+        if (!enabled) return Document;
+        var root = System.Text.Json.Nodes.JsonNode.Parse(Document)!;
+        root["info"]!["version"] = "1.1.0";
+        root["paths"]!["/viewer/{scanId}/{sessionId}/pixels"] = System.Text.Json.Nodes.JsonNode.Parse("""
+            {"get":{"operationId":"ReadPrivateViewerPixels","summary":"Fresh opted-in fixed-fixture PNG; not a retained observation or goal verification","security":[{"ProcessIdentity":[],"ConnectionId":[],"ConnectionToken":[]}],"parameters":[{"$ref":"#/components/parameters/ScanId"},{"$ref":"#/components/parameters/SessionId"},{"name":"epoch","in":"query","required":true,"schema":{"type":"integer","minimum":1}}],"responses":{"200":{"description":"320x240 PNG, at most 4 MiB. X-Viewer-Epoch, X-Viewer-Baseline-Ordinal, X-Viewer-Document-Sha256 and X-Viewer-Simulated-Assistance bind actual pixels to the owner baseline. No input or clipboard endpoint.","content":{"image/png":{"schema":{"type":"string","contentEncoding":"binary"}}}},"400":{"description":"Invalid or stale epoch, query or body"},"401":{"description":"Identity or scoped connection denied"},"403":{"description":"Client context denied"},"409":{"description":"Capture excluded, busy, stale or unavailable"}}}}
+            """);
+        return root.ToJsonString();
+    }
     // Explicit protocol document avoids adding an OpenAPI generator package to the pinned prototype.
     public const string Document = """
     {

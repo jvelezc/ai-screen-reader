@@ -32,4 +32,6 @@ See [validation](../validation/private-viewer-v1.md) for exact cases, Windows/Ub
 
 ## Next: private pixel viewer feasibility
 
+This next-step contract is now implemented in the [private pixel relay](0033-private-pixel-viewer.md). Its [current next increment](0033-private-pixel-viewer.md#next-accessible-private-viewing-client) is an accessible private viewing client; human control remains separate. The original contract follows for traceability.
+
 Prove a private, read-only pixel transport on the existing headed Linux/Xvfb session. Reject keyboard, pointer, clipboard and browser-control messages at the actual relay boundary, keep raw VNC/CDP endpoints private, and bind viewing to scoped expiring/revocable authority. Test connection shutdown and owned cleanup with actual pixels before introducing any human input lease. Accessible controls, supported remote authentication, actual human/AT acceptance, hosted membership and real credential entry remain separate gates. Public MCP hosting and official plugins stay deferred.

@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        scenario: [controller, synthetic-handoff]
+        scenario: [controller, synthetic-handoff, private-pixels]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     defaults:
@@ -163,6 +163,8 @@ jobs:
           dotnet run --project src/HeadlessScreenReader.Cli -c Release --no-build -- --synthetic-handoff | Tee-Object -FilePath artifacts/synthetic-handoff.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           dotnet run --project src/HeadlessScreenReader.Cli -c Release --no-build -- --private-viewer | Tee-Object -FilePath artifacts/private-viewer.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run --project src/HeadlessScreenReader.Cli -c Release --no-build -- --private-pixels | Tee-Object -FilePath artifacts/private-pixels.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           dotnet run --project src/HeadlessScreenReader.Cli -c Release --no-build -- --owned-scan | Tee-Object -FilePath artifacts/owned-scan.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

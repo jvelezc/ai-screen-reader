@@ -6,6 +6,10 @@
 <span id="tick"></span>
 <script>
 window.contextMarker = Math.random().toString(36);
+window.viewerInputCounts = { keys: 0, pointers: 0, clipboard: 0 };
+document.addEventListener('keydown', () => window.viewerInputCounts.keys++);
+document.addEventListener('pointerdown', () => window.viewerInputCounts.pointers++);
+for (const kind of ['copy', 'cut', 'paste']) document.addEventListener(kind, () => window.viewerInputCounts.clipboard++);
 let tick = 0;
 setInterval(() => document.querySelector('#tick').textContent = ++tick, 40);
 document.querySelector('#synthetic-sensitive').addEventListener('input', event => {

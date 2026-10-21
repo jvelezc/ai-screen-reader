@@ -63,6 +63,21 @@ public sealed class PrivateViewerBroker : IAsyncDisposable
     public Task DeliverAsync(Guid authenticatedSubject, ViewerScope scope, Guid connectionId, string secret, long epoch,
         Func<Func<RetainedViewerObservation, Task>, CancellationToken, Task> source,
         Func<RetainedViewerObservation, CancellationToken, Task> deliver, CancellationToken cancellationToken = default)
+        => DeliverScopedAsync(authenticatedSubject, scope, connectionId, secret, epoch, source, deliver,
+            observation => observation is not null && observation.Ordinal >= 0 && observation.ScanId == _scope.ScanId && observation.Epoch == epoch
+                && observation.Snapshot is not null && observation.Snapshot.CaptureEpoch == epoch && observation.Snapshot.DocumentUrl is null, cancellationToken);
+
+    /// <summary>Same scoped read admission and actual delivery drain as semantic viewing. Pixels require separate host opt-in.</summary>
+    public Task DeliverPixelsAsync(Guid authenticatedSubject, ViewerScope scope, Guid connectionId, string secret, long epoch,
+        Func<Func<ViewerPixelFrame, Task>, CancellationToken, Task> source,
+        Func<ViewerPixelFrame, CancellationToken, Task> deliver, CancellationToken cancellationToken = default)
+        => DeliverScopedAsync(authenticatedSubject, scope, connectionId, secret, epoch, source, deliver,
+            frame => frame is not null && frame.ScanId == _scope.ScanId && frame.Epoch == epoch && frame.BaselineOrdinal >= 0
+                && !string.IsNullOrEmpty(frame.DocumentId) && frame.DocumentId.Length <= 1024 && ViewerPixelFrame.HasBoundedPngEnvelope(frame.Png), cancellationToken);
+
+    private Task DeliverScopedAsync<T>(Guid authenticatedSubject, ViewerScope scope, Guid connectionId, string secret, long epoch,
+        Func<Func<T, Task>, CancellationToken, Task> source, Func<T, CancellationToken, Task> deliver,
+        Func<T, bool> validate, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(source); ArgumentNullException.ThrowIfNull(deliver);
         cancellationToken.ThrowIfCancellationRequested();
@@ -74,11 +89,11 @@ public sealed class PrivateViewerBroker : IAsyncDisposable
             if (state.Reads != 0 || _reads >= 4) throw new BrowserOperationException("VIEWER_READ_BUSY");
             state.Reads++; _reads++; state.Drained = new(TaskCreationOptions.RunContinuationsAsynchronously);
         }
-        return DeliverCoreAsync(state, epoch, source, deliver, cancellationToken);
+        return DeliverCoreAsync(state, source, deliver, validate, cancellationToken);
     }
-    private async Task DeliverCoreAsync(ConnectionState state, long epoch,
-        Func<Func<RetainedViewerObservation, Task>, CancellationToken, Task> source,
-        Func<RetainedViewerObservation, CancellationToken, Task> deliver, CancellationToken caller)
+    private async Task DeliverCoreAsync<T>(ConnectionState state,
+        Func<Func<T, Task>, CancellationToken, Task> source,
+        Func<T, CancellationToken, Task> deliver, Func<T, bool> validate, CancellationToken caller)
     {
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(caller, state.Stop.Token);
         var publications = 0;
@@ -95,8 +110,7 @@ public sealed class PrivateViewerBroker : IAsyncDisposable
                         Expire(state);
                         if (_closed || state.Phase != ViewerConnectionPhase.Active || sourceSettled) Denied();
                         linked.Token.ThrowIfCancellationRequested();
-                        if (++publications != 1 || observation is null || observation.Ordinal < 0 || observation.ScanId != _scope.ScanId || observation.Epoch != epoch
-                            || observation.Snapshot is null || observation.Snapshot.CaptureEpoch != epoch || observation.Snapshot.DocumentUrl is not null)
+                        if (++publications != 1 || !validate(observation))
                             throw new BrowserOperationException("VIEWER_SOURCE_INVALID");
                         // Check and actual transport-dispatch start share one lock. Revocation drains this actual task.
                         return dispatched = deliver(observation, linked.Token);

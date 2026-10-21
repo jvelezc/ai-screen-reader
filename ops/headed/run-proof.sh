@@ -6,6 +6,7 @@ cd /tmp/hsr-headed-proof
 case "${HSR_HEADED_CASE:-controller}" in
   controller) proof_command=--headed-session ;;
   synthetic-handoff) proof_command=--headed-synthetic-handoff ;;
+  private-pixels) proof_command=--headed-private-pixels ;;
   *) exit 2 ;;
 esac
 set +e

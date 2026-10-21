@@ -80,7 +80,7 @@ public sealed class PrivateViewerServer : IAsyncDisposable
     public Uri BaseAddress { get; }
     private PrivateViewerServer(WebApplication application, Uri address) { _application = application; BaseAddress = address; }
     public static async Task<PrivateViewerServer> StartAsync(IPrivateViewerIdentity identity, IPrivateViewerService service,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default, IPrivatePixelViewerService? pixels = null)
     {
         ArgumentNullException.ThrowIfNull(identity); ArgumentNullException.ThrowIfNull(service);
         var builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions
@@ -135,7 +135,7 @@ public sealed class PrivateViewerServer : IAsyncDisposable
             catch (JsonException) { await FailAsync(context, 400, "VIEWER_REQUEST_INVALID"); }
             catch { await FailAsync(context, 503, "VIEWER_OPERATION_UNCONFIRMED"); }
         });
-        app.MapPrivateViewer();
+        app.MapPrivateViewer(pixels);
         try
         {
             await app.StartAsync(cancellationToken).ConfigureAwait(false);
@@ -167,12 +167,12 @@ public sealed class PrivateViewerServer : IAsyncDisposable
 
 internal static class PrivateViewerEndpoints
 {
-    public static void MapPrivateViewer(this WebApplication app)
+    public static void MapPrivateViewer(this WebApplication app, IPrivatePixelViewerService? pixels = null)
     {
         app.MapGet("/openapi/v1.json", (HttpContext context, CancellationToken token) =>
         {
             NoQuery(context);
-            return TypedResults.Text(PrivateViewerOpenApi.Document, "application/json");
+            return TypedResults.Text(PrivateViewerOpenApi.ForPixels(pixels is not null), "application/json");
         }).WithName("PrivateViewerOpenApi").WithSummary("Describe the bounded loopback-only proof protocol");
         app.MapPost("/viewer/exchange", async (HttpContext context, IPrivateViewerService service, CancellationToken token) =>
         {
@@ -192,6 +192,17 @@ internal static class PrivateViewerEndpoints
             await service.DeliverAsync(Subject(context), new(scanId, sessionId), id, secret, epoch, context.Response, token);
         }).WithName("ReadPrivateViewerObservation").WithSummary("Deliver the last acknowledged permitted observation without input or new capture")
             .Produces<ViewerObservationResponse>().ProducesProblem(400).ProducesProblem(401).ProducesProblem(403).ProducesProblem(409);
+        if (pixels is not null)
+            app.MapGet("/viewer/{scanId}/{sessionId}/pixels", async (HttpContext context, string scanId, string sessionId, CancellationToken token) =>
+            {
+                if (context.Request.ContentLength is > 0 || context.Request.Headers.ContainsKey("Transfer-Encoding")
+                    || context.Request.Query.Count != 1 || context.Request.Query["epoch"].Count != 1
+                    || !long.TryParse(context.Request.Query["epoch"][0], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var epoch))
+                    throw new BadHttpRequestException("VIEWER_REQUEST_INVALID");
+                var (id, secret) = Connection(context);
+                await pixels.DeliverPixelsAsync(Subject(context), new(scanId, sessionId), id, secret, epoch, context.Response, token);
+            }).WithName("ReadPrivateViewerPixels").WithSummary("Fresh opted-in fixed-fixture PNG pixels; no input or clipboard authority")
+                .Produces(200, contentType: "image/png").ProducesProblem(400).ProducesProblem(401).ProducesProblem(403).ProducesProblem(409);
         app.MapPost("/viewer/{scanId}/{sessionId}/revoke", async (HttpContext context, IPrivateViewerService service, string scanId, string sessionId, CancellationToken token) =>
         {
             NoQuery(context);
