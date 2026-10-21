@@ -9,7 +9,8 @@ $postgres='public.ecr.aws/supabase/postgres@sha256:16c0944c77885446d4f2ebbb2191b
 $created=$false; $built=$false; $removed=$false; $imageRemoved=$false; $ready=$false; $stage='publish'; $errorCode=$null
 $cases=[Collections.Generic.List[string]]::new()
 $script:executed=0; $script:failed=0
-$expected=if($IsLinux){12}else{11}; $linuxSignalPerformed=$false
+$expected=if($IsLinux){17}else{15}; $linuxSignalPerformed=$false
+$recoveryResources=[Collections.Generic.List[string]]::new()
 $names=@('POSTGRES_PASSWORD','HSR_WORKER_DATABASE','HSR_WORKER_IMAGE','HSR_WORKER_EVIDENCE','HSR_WORKER_RUNTIME','HSR_WORKER_SECCOMP')
 $prior=@{}; foreach($key in $names){$prior[$key]=[Environment]::GetEnvironmentVariable($key)}
 function Assert-Proof([bool]$condition,[string]$case){$script:executed++;if(-not $condition){$script:failed++;throw "WORKER_CASE_UNCONFIRMED_$case"};$cases.Add($case)}
@@ -98,6 +99,9 @@ try {
             if(-not $process.Start()){throw 'WORKER_POLL_START_UNCONFIRMED'}
             $line=$process.StandardOutput.ReadLineAsync()
             if(-not $line.Wait(10000) -or ($line.Result|ConvertFrom-Json).State -ne 'Empty'){throw 'WORKER_POLL_READY_UNCONFIRMED'}
+            $second=@(& dotnet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --recover 2>&1)
+            $secondExit=$LASTEXITCODE
+            Assert-Proof ($secondExit -eq 3 -and -not $process.HasExited) 'ConcurrentNativeCoordinatorCannotAcquireRetainedOwnership'
             & /bin/kill -TERM -- $process.Id
             if($LASTEXITCODE -ne 0){throw 'WORKER_SIGNAL_UNCONFIRMED'}
             $exited=$process.WaitForExit(5000)
@@ -108,12 +112,58 @@ try {
             $process.Dispose()
         }
     }
+    $stage='native-recovery'
+    $env:HSR_WORKER_IMAGE=$imageId
+    $env:HSR_WORKER_EVIDENCE=Join-Path $folder 'recovery-evidence'
+    $intentRoot=Join-Path $env:HSR_WORKER_EVIDENCE '.runtime/intents'
+    New-Item -ItemType Directory -Force $intentRoot | Out-Null
+    $nativeOwner=[Guid]::NewGuid(); $target="hsr-observation-$($nativeOwner.ToString('N'))"; $sentinel="hsr-worker-sentinel-$owner"
+    $descriptor=@{OrganizationId="$org";ScanId="$([Guid]::NewGuid())";JobId="$([Guid]::NewGuid())";Generation=1}
+    $intent=@{Schema='hsr-native-ownership-v1';Owner="$nativeOwner";Job=$descriptor;Runtime=$Runtime;Image=$imageId}
+    $intentPath=Join-Path $intentRoot "$($nativeOwner.ToString('N')).json"
+    $intent|ConvertTo-Json -Depth 4|Set-Content $intentPath -Encoding utf8NoBOM
+    $targetLabels=@('--label',"hsr.observation.owner=$($nativeOwner.ToString('N'))",'--label',"hsr.observation.organization=$($org.ToString('N'))",'--label',"hsr.observation.scan=$($descriptor.ScanId.Replace('-',''))",'--label',"hsr.observation.job=$($descriptor.JobId.Replace('-',''))",'--label','hsr.observation.generation=1')
+    foreach($resource in @($target,$sentinel)){
+        $labels=if($resource -eq $target){$targetLabels}else{@()}
+        $null=Invoke-ReaderRuntime $Runtime (@('create','--name',$resource,'--network','none','--user','1001:1001','--read-only','--cap-drop','ALL','--security-opt','no-new-privileges','--label',"hsr.worker.proof=$owner",'--entrypoint','/bin/sh')+$labels+@($imageId,'-c','sleep 120'))
+        $recoveryResources.Add($resource);$null=Invoke-ReaderRuntime $Runtime @('start',$resource)
+    }
+    $database=$env:HSR_WORKER_DATABASE;$env:HSR_WORKER_DATABASE=$null
+    try {
+        $output=@(& dotnet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --recover 2>&1)
+        $recoveryExit=$LASTEXITCODE;$result=($output -join "`n")|ConvertFrom-Json
+    } finally {$env:HSR_WORKER_DATABASE=$database}
+    $targetGone=Invoke-ReaderRuntime $Runtime @('ps','--all','--filter',"name=^$target`$",'--format','{{.ID}}')
+    $unrelated=((Invoke-ReaderRuntime $Runtime @('inspect',$sentinel)).Text|ConvertFrom-Json)[0]
+    Assert-Proof ($recoveryExit -eq 0 -and $result.State -eq 'Recovered' -and $result.Recovered -eq 1 -and [string]::IsNullOrWhiteSpace($targetGone.Text) -and $unrelated.State.Running) 'RetainedNativeIntentRecoveryRemovesOnlyItsBoundContainer'
+    $removal=Get-Content (Join-Path $env:HSR_WORKER_EVIDENCE ".runtime/removals/$($nativeOwner.ToString('N')).json") -Raw|ConvertFrom-Json
+    Assert-Proof (-not (Test-Path $intentPath) -and $removal.ContainerAbsenceConfirmed -and $removal.RecoveredAfterRestart -and $removal.Intent.Job.JobId -eq $descriptor.JobId) 'RecoveryPersistsActualAbsenceBeforeRetiringIntent'
+    $unchanged=(Invoke-ProofSql "select json_build_object('jobs',(select count(*) from hsr.scan_jobs),'attempts',(select count(*) from hsr.job_attempts),'completed',(select count(*) from hsr.attempt_events where kind='Completed'),'queue',(select count(*) from pgmq.q_hsr_scan_jobs))")|ConvertFrom-Json
+    Assert-Proof ($unchanged.jobs -eq 2 -and $unchanged.attempts -eq 2 -and $unchanged.completed -eq 1 -and $unchanged.queue -eq 0 -and @(Get-ChildItem $env:HSR_WORKER_EVIDENCE -Recurse -Filter observation.json).Count -eq 0) 'NativeRecoveryNeedsNoDatabaseCredentialAndCannotInventObservation'
+    # A retained intent never authorizes deleting a same-name container with another owner.
+    $badOwner=[Guid]::NewGuid();$badTarget="hsr-observation-$($badOwner.ToString('N'))"
+    $intent.Owner="$badOwner"; $badPath=Join-Path $intentRoot "$($badOwner.ToString('N')).json"
+    $intent|ConvertTo-Json -Depth 4|Set-Content $badPath -Encoding utf8NoBOM
+    $null=Invoke-ReaderRuntime $Runtime @('create','--name',$badTarget,'--network','none','--user','1001:1001','--label',"hsr.worker.proof=$owner",'--label',"hsr.observation.owner=$([Guid]::NewGuid().ToString('N'))",'--entrypoint','/bin/sh',$imageId,'-c','sleep 120')
+    $recoveryResources.Add($badTarget);$null=Invoke-ReaderRuntime $Runtime @('start',$badTarget)
+    $output=@(& dotnet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --recover 2>&1)
+    $failedRecoveryExit=$LASTEXITCODE
+    $unowned=((Invoke-ReaderRuntime $Runtime @('inspect',$badTarget)).Text|ConvertFrom-Json)[0]
+    Assert-Proof ($failedRecoveryExit -eq 3 -and $unowned.State.Running -and (Test-Path $badPath)) 'MismatchedNativeOwnerFailsClosedAndRetainsIntent'
     $stage='completed'; $ready=$true
 } catch {
     $errorCode="WORKER_$($stage.ToUpperInvariant())_UNCONFIRMED"
     $_.Exception.Message | Set-Content (Join-Path $folder 'failure.log') -Encoding utf8NoBOM
 } finally {
     foreach($key in $names){[Environment]::SetEnvironmentVariable($key,$prior[$key])}
+    foreach($resource in $recoveryResources){
+        $probe=Invoke-ReaderRuntime $Runtime @('inspect',$resource) -AllowFailure
+        if($probe.Code -eq 0){
+            $item=($probe.Text|ConvertFrom-Json)[0]
+            if($item.Config.Labels.'hsr.worker.proof' -ne $owner){throw 'WORKER_PROOF_CLEANUP_OWNER_MISMATCH'}
+            $null=Invoke-ReaderRuntime $Runtime @('rm','--force','--volumes',$resource)
+        }
+    }
     if($created){
         $item=((Invoke-ReaderRuntime $Runtime @('inspect',$name)).Text | ConvertFrom-Json)[0]
         if($item.Config.Labels.'hsr.worker.proof' -eq $owner){

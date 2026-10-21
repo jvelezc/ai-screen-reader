@@ -35,7 +35,9 @@ public sealed class ObservationCoordinator(IWorkerLeases leases, IFixtureExecuto
         }
         catch (Exception exception)
         {
-            error = exception is BrowserOperationException { Code: "WORKER_CONTAINER_CLEANUP_UNCONFIRMED" }
+            error = exception is BrowserOperationException { Code: "WORKER_NATIVE_OWNERSHIP_UNCONFIRMED" }
+                ? "WORKER_NATIVE_OWNERSHIP_UNCONFIRMED"
+                : exception is BrowserOperationException { Code: "WORKER_CONTAINER_CLEANUP_UNCONFIRMED" }
                 ? "OWNED_BROWSER_CLOSE_UNCONFIRMED"
                 : token.IsCancellationRequested ? "WORKER_STOP_REQUESTED" : "FIXTURE_OBSERVATION_UNCONFIRMED";
         }
@@ -47,7 +49,7 @@ public sealed class ObservationCoordinator(IWorkerLeases leases, IFixtureExecuto
         if (error is not null)
         {
             // Never release a job as safely stopped while owned cleanup is uncertain.
-            if (error == "OWNED_BROWSER_CLOSE_UNCONFIRMED") return new("Unconfirmed", lease.Job.JobId, ErrorCode: error);
+            if (error is "OWNED_BROWSER_CLOSE_UNCONFIRMED" or "WORKER_NATIVE_OWNERSHIP_UNCONFIRMED") return new("Unconfirmed", lease.Job.JobId, ErrorCode: error);
             bool blocked;
             try { blocked = await leases.BlockAsync(lease, error, finish.Token); }
             catch (Exception) { return new("Unconfirmed", lease.Job.JobId, ErrorCode: "WORKER_BLOCK_UNCONFIRMED"); }

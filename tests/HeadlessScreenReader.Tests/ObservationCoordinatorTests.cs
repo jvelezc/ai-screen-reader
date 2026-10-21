@@ -132,6 +132,15 @@ public sealed class ObservationCoordinatorTests
         Assert.Equal(0, executor.Calls); Assert.Equal(0, database.Completes); Assert.Empty(database.Blocks);
     }
     [Fact]
+    public async Task NativeOwnershipWriteFailureCannotReleaseAJobAsSafelyStopped()
+    {
+        var lease = new WorkerLease(FixtureWorkerTests.Job(), Guid.NewGuid(), Guid.NewGuid()); var database = new Leases(lease);
+        var executor = new Executor((_, _) => Task.FromException<byte[]>(new BrowserOperationException("WORKER_NATIVE_OWNERSHIP_UNCONFIRMED")));
+        var result = await new ObservationCoordinator(database, executor, new("unused")).RunOnceAsync(lease.WorkerId, CancellationToken.None);
+        Assert.Equal("Unconfirmed", result.State); Assert.Equal("WORKER_NATIVE_OWNERSHIP_UNCONFIRMED", result.ErrorCode);
+        Assert.Empty(database.Blocks); Assert.Equal(0, database.Completes); Assert.Null(result.Reference);
+    }
+    [Fact]
     public async Task RequestedStopWaitsForActualCleanupBeforeRecordingSafeBlock()
     {
         var lease = new WorkerLease(FixtureWorkerTests.Job(), Guid.NewGuid(), Guid.NewGuid()); var database = new Leases(lease);

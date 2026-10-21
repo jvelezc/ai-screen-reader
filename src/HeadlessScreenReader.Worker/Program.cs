@@ -2,9 +2,9 @@ using System.Text.Json;
 using System.Runtime.InteropServices;
 using HeadlessScreenReader.Worker;
 
-if (args.Length != 1 || args[0] is not ("--once" or "--poll"))
+if (args.Length != 1 || args[0] is not ("--once" or "--poll" or "--recover"))
 {
-    Console.Error.WriteLine("Usage: HeadlessScreenReader.Worker --once | --poll. Operator configuration is supplied through the private service environment.");
+    Console.Error.WriteLine("Usage: HeadlessScreenReader.Worker --once | --poll | --recover. Operator configuration is supplied through the private service environment.");
     return 2;
 }
 using var stop = new CancellationTokenSource();
@@ -13,13 +13,20 @@ using var termination = OperatingSystem.IsWindows() ? null : PosixSignalRegistra
     context => { context.Cancel = true; stop.Cancel(); });
 try
 {
-    var connection = Environment.GetEnvironmentVariable("HSR_WORKER_DATABASE") ?? throw new InvalidOperationException();
     var image = Environment.GetEnvironmentVariable("HSR_WORKER_IMAGE") ?? throw new InvalidOperationException();
     var evidence = Environment.GetEnvironmentVariable("HSR_WORKER_EVIDENCE") ?? throw new InvalidOperationException();
     var runtime = Environment.GetEnvironmentVariable("HSR_WORKER_RUNTIME") ?? "podman";
+    var journal = new OwnershipJournal(Path.Combine(evidence, ".runtime"));
+    using var exclusive = journal.AcquireExclusive();
+    var executor = new IsolatedFixtureExecutor(runtime, image, Environment.GetEnvironmentVariable("HSR_WORKER_SECCOMP"), journal);
+    var recovered = await executor.RecoverAsync();
+    if (args[0] == "--recover")
+    {
+        Console.WriteLine(JsonSerializer.Serialize(new { State = "Recovered", Recovered = recovered })); return 0;
+    }
+    var connection = Environment.GetEnvironmentVariable("HSR_WORKER_DATABASE") ?? throw new InvalidOperationException();
     await using var leases = new PostgresWorkerLeases(connection);
-    var coordinator = new ObservationCoordinator(leases,
-        new IsolatedFixtureExecutor(runtime, image, Environment.GetEnvironmentVariable("HSR_WORKER_SECCOMP")), new(evidence));
+    var coordinator = new ObservationCoordinator(leases, executor, new(evidence));
     var worker = Guid.NewGuid();
     string? previousState = null;
     do

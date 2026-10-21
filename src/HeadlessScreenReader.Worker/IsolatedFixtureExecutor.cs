@@ -11,12 +11,14 @@ public sealed partial class IsolatedFixtureExecutor : IFixtureExecutor
     private readonly string _runtime;
     private readonly string _image;
     private readonly string? _seccomp;
-    public IsolatedFixtureExecutor(string runtime, string image, string? seccomp = null)
+    private readonly OwnershipJournal _journal;
+    public IsolatedFixtureExecutor(string runtime, string image, string? seccomp = null, OwnershipJournal? journal = null)
     {
         if (runtime is not ("podman" or "docker") || !ImageId().IsMatch(image))
             throw new ArgumentException("WORKER_RUNTIME_CONFIGURATION_INVALID");
         if (runtime == "docker" && (seccomp is null || !File.Exists(seccomp)))
             throw new ArgumentException("WORKER_SECCOMP_REQUIRED");
+        _journal = journal ?? throw new ArgumentException("WORKER_OWNERSHIP_JOURNAL_REQUIRED");
         _runtime = runtime; _image = image; _seccomp = seccomp is null ? null : Path.GetFullPath(seccomp);
     }
     [GeneratedRegex("^sha256:[a-f0-9]{64}$", RegexOptions.CultureInvariant)] private static partial Regex ImageId();
@@ -33,15 +35,22 @@ public sealed partial class IsolatedFixtureExecutor : IFixtureExecutor
     public async Task<byte[]> ExecuteAsync(FixtureJob job, CancellationToken token)
     {
         job.Validate();
-        var owner = Guid.NewGuid().ToString("N");
-        var name = "hsr-observation-" + owner;
+        NativeOwnership intent;
+        try { intent = await _journal.BeginAsync(job, _runtime, _image, token); }
+        catch (Exception) { throw new BrowserOperationException("WORKER_NATIVE_OWNERSHIP_UNCONFIRMED"); }
+        var owner = intent.Owner.ToString("N");
+        var name = intent.ContainerName;
         try
         {
             List<string> create = ["create", "--pull", "never", "--interactive", "--name", name, "--network", "none", "--user", "1001:1001",
                 "--read-only", "--cap-drop", "ALL", "--cap-add", "SYS_CHROOT", "--security-opt", "no-new-privileges",
                 "--memory", "1024m", "--cpus", "2", "--pids-limit", "256", "--shm-size", "256m",
                 "--tmpfs", "/tmp:rw,nosuid,size=256m,mode=1777", "--tmpfs", "/home/pwuser:rw,nosuid,size=64m,mode=1777",
-                "--label", "hsr.observation.owner=" + owner];
+                "--label", "hsr.observation.owner=" + owner,
+                "--label", "hsr.observation.organization=" + job.OrganizationId.ToString("N"),
+                "--label", "hsr.observation.scan=" + job.ScanId.ToString("N"),
+                "--label", "hsr.observation.job=" + job.JobId.ToString("N"),
+                "--label", "hsr.observation.generation=" + job.Generation.ToString(System.Globalization.CultureInfo.InvariantCulture)];
             if (_runtime == "docker") create.AddRange(["--security-opt", "seccomp=" + _seccomp]);
             create.Add(_image);
             if ((await InvokeAsync(create, null, token)).Code != 0) throw new InvalidDataException("WORKER_CONTAINER_CREATE_UNCONFIRMED");
@@ -70,20 +79,41 @@ public sealed partial class IsolatedFixtureExecutor : IFixtureExecutor
         finally
         {
             // Do not let caller cancellation cancel owned cleanup. Every command remains bounded.
-            if (!await RemoveOwnedAsync(name, owner)) throw new BrowserOperationException("WORKER_CONTAINER_CLEANUP_UNCONFIRMED");
+            if (!await RemoveOwnedAsync(intent)) throw new BrowserOperationException("WORKER_CONTAINER_CLEANUP_UNCONFIRMED");
+            try { await _journal.RecordRemovalAsync(intent, false, CancellationToken.None); }
+            catch (Exception) { throw new BrowserOperationException("WORKER_NATIVE_OWNERSHIP_UNCONFIRMED"); }
         }
     }
 
-    private async Task<bool> RemoveOwnedAsync(string name, string owner)
+    public async Task<int> RecoverAsync()
+    {
+        var intents = _journal.ReadPending();
+        if (intents.Any(intent => intent.Runtime != _runtime)) throw new BrowserOperationException("WORKER_RECOVERY_RUNTIME_MISMATCH");
+        foreach (var intent in intents)
+        {
+            if (!await RemoveOwnedAsync(intent)) throw new BrowserOperationException("WORKER_CONTAINER_CLEANUP_UNCONFIRMED");
+            await _journal.RecordRemovalAsync(intent, true, CancellationToken.None);
+        }
+        return intents.Count;
+    }
+
+    private async Task<bool> RemoveOwnedAsync(NativeOwnership intent)
     {
         try
         {
+            var name = intent.ContainerName;
             var inspect = await InvokeAsync(["inspect", name], null, CancellationToken.None);
             if (inspect.Code == 0)
             {
                 using var document = JsonDocument.Parse(inspect.Bytes);
-                if (document.RootElement[0].GetProperty("Config").GetProperty("Labels")
-                    .GetProperty("hsr.observation.owner").GetString() != owner) return false;
+                var item = document.RootElement[0];
+                var labels = item.GetProperty("Config").GetProperty("Labels");
+                if (labels.GetProperty("hsr.observation.owner").GetString() != intent.Owner.ToString("N")
+                    || labels.GetProperty("hsr.observation.organization").GetString() != intent.Job.OrganizationId.ToString("N")
+                    || labels.GetProperty("hsr.observation.scan").GetString() != intent.Job.ScanId.ToString("N")
+                    || labels.GetProperty("hsr.observation.job").GetString() != intent.Job.JobId.ToString("N")
+                    || labels.GetProperty("hsr.observation.generation").GetString() != intent.Job.Generation.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                    || item.GetProperty("Image").GetString()?.Replace("sha256:", "", StringComparison.Ordinal) != intent.Image[7..]) return false;
                 if ((await InvokeAsync(["rm", "--force", "--volumes", name], null, CancellationToken.None)).Code != 0) return false;
             }
             var remaining = await InvokeAsync(["ps", "--all", "--filter", "name=^" + name + "$", "--format", "{{.ID}}"], null, CancellationToken.None);
