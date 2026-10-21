@@ -28,6 +28,12 @@ public sealed class ChromiumCaptureProbeTests
         await page.SetViewportSizeAsync(320, 240);
         // Deliberately recorded positive control, separate from the exclusion probe's artifacts.
         await page.EvaluateAsync("() => { document.documentElement.style.background = document.body.style.background = '#e41a3d'; }");
+        // A DOM style acknowledgement does not prove that Chromium has painted it.
+        // Screenshot forces an actual composited frame before the new screencast starts.
+        // Do not trim/retry the original video's first frame to hide a stale paint.
+        var painted = await page.ScreenshotAsync(new() { Type = Microsoft.Playwright.ScreenshotType.Jpeg });
+        var paintedControl = await CaptureProbeDecoder.InspectAsync(page, painted, video: false);
+        Assert.True(paintedControl.CanaryPixels > 320 * 240 / 2, JsonSerializer.Serialize(paintedControl));
         var first = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var last = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var frames = 0;
@@ -52,7 +58,7 @@ public sealed class ChromiumCaptureProbeTests
         await page.Screencast.StopAsync();
         var decoded = await CaptureProbeDecoder.InspectAsync(page, await File.ReadAllBytesAsync(video), video: true);
         Assert.True(decoded.Frames > 1);
-        Assert.True(decoded.FirstFrameCanaryPixels > 320 * 240 / 2);
+        Assert.True(decoded.FirstFrameCanaryPixels > 320 * 240 / 2, JsonSerializer.Serialize(decoded));
         Assert.Equal(0, decoded.LastFrameCanaryPixels);
         Assert.True(decoded.CanaryPixels >= decoded.FirstFrameCanaryPixels);
     }
