@@ -2,6 +2,8 @@
 
 The failed Windows controller CLI in CI39521143289 is catalogued in [the decision](../decisions/0032-owned-browser-shutdown.md). Both operating systems passed 1,065 tests, but the overall run failed. Native shutdown watchdog/actual-task joining and failure receipts repair that gate; the private pixel increment remains on hold until remote CI passes.
 
+The first repair run, [CI39525280615](https://github.com/jvelezc/ai-screen-reader/actions/runs/39525280615), also failed overall. Ubuntu passed 1,085/1,085 and all three independent Linux jobs passed. Windows executed all 1,085 tests: 1,080 passed and five failed (fixture load, recording calibration, and three unconfirmed native shutdowns). The suite previously ran two real Chromium collections concurrently. Collection execution is now sequential to remove competition between native browsers and media encoders on the same hosted runner. This is a test scheduling repair, with all assertions, explicit task-concurrency tests and production deadlines preserved. Contention is a hypothesis; the failures did not measure a common native cause. Replacement local and CI results must be recorded before this gate is accepted.
+
 | Requirement | Evidence |
 | --- | --- |
 | Normal context/browser/transport order and one actual shutdown task | NormalShutdown_AcknowledgesContextThenBrowserDisposesTransportAndSharesActualTask |
@@ -25,3 +27,5 @@ Final controller CLI passed at artifacts/controller/4e452340e17341689f0ed23670e7
 Local Linux/Podman passed both headed scenarios separately: controller continuity at artifacts/headed-linux/ad2f99dc5a2c49bf98977d911f5dcbd6/runtime.json and synthetic input/media handoff at artifacts/headed-linux/a1e7d894bbc34db48ffb7ad396a97e82/runtime.json. Each confirmed browser/display shutdown and matching container/image removal. No local Linux full-suite result is claimed. The Windows build was restored after these Linux publishes.
 
 No deployment, real human/AT, Claude-client or remote identity-provider acceptance is claimed.
+
+Sequential local Windows revalidation: 1,085 discovered/executed/passed, zero failed/skipped; all 1,085 prior identities preserved. Receipt: artifacts/recording-validation/shutdown-serialized-full.trx. Release solution tests built successfully under warnings-as-errors; formatting verification passed. Remote CI remains the acceptance gate.
