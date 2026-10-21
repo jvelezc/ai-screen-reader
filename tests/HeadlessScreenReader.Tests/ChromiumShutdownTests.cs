@@ -25,7 +25,14 @@ public sealed class ChromiumShutdownTests
         var first = shutdown.CloseAsync(); Assert.Same(first, shutdown.CloseAsync()); await first;
         Assert.Equal(new[] { "context", "browser", "transport" }, order);
         Assert.Equal(new BrowserShutdownStatus(BrowserShutdownPhase.Closed, 0, true, true, true, true, true, false, null)
-        { CollectorCallSettled = true, CollectorStopAcknowledged = true, BrowserCloseAcknowledgedBeforeTransport = true, NativeElapsedMilliseconds = 0 }, shutdown.Status);
+        {
+            CollectorCallSettled = true,
+            CollectorStopAcknowledged = true,
+            BrowserCloseAcknowledgedBeforeTransport = true,
+            NativeElapsedMilliseconds = 0,
+            TransportCallSettled = true,
+            TransportStopDurationMilliseconds = 0
+        }, shutdown.Status);
     }
 
     [Fact]
@@ -84,7 +91,7 @@ public sealed class ChromiumShutdownTests
         var time = new FakeTimeProvider(); var browser = Signal(); var disposed = Signal();
         var shutdown = new ChromiumShutdown(() => Task.CompletedTask, () => browser.Task, () => disposed.SetResult(), time);
         var actual = shutdown.CloseAsync(); time.Advance(TimeSpan.FromMilliseconds(3999)); Assert.False(disposed.Task.IsCompleted);
-        time.Advance(TimeSpan.FromMilliseconds(1)); await disposed.Task;
+        time.Advance(TimeSpan.FromMilliseconds(1)); await disposed.Task; await NativeShutdownTestSync.UntilAsync(() => shutdown.Status.TransportCallSettled);
         Assert.False(actual.IsCompleted); Assert.Equal(BrowserShutdownPhase.Faulted, shutdown.Status.Phase); Assert.Equal(1, shutdown.Status.ActiveCalls);
         Assert.True(shutdown.Status.TransportDisposed); browser.SetResult();
         var error = await Assert.ThrowsAsync<BrowserOperationException>(() => actual);
@@ -104,7 +111,7 @@ public sealed class ChromiumShutdownTests
         var shutdown = new ChromiumShutdown(() => context.Task, () => Task.CompletedTask, () => disposed.SetResult(), time);
         var actual = shutdown.CloseAsync(); using var wait = new CancellationTokenSource(); var caller = actual.WaitAsync(wait.Token); wait.Cancel();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => caller);
-        time.Advance(TimeSpan.FromSeconds(1)); await disposed.Task;
+        time.Advance(TimeSpan.FromSeconds(1)); await disposed.Task; await NativeShutdownTestSync.UntilAsync(() => shutdown.Status.TransportCallSettled);
         Assert.False(actual.IsCompleted); Assert.Equal(1, shutdown.Status.ActiveCalls);
         Assert.True(shutdown.Status.BrowserCloseAcknowledged); Assert.Equal(BrowserShutdownPhase.DrainingCalls, shutdown.Status.Phase);
         context.SetResult(); await actual; Assert.Equal(0, shutdown.Status.ActiveCalls); Assert.Equal(BrowserShutdownPhase.Closed, shutdown.Status.Phase);
@@ -137,7 +144,7 @@ public sealed class ChromiumShutdownTests
         var actual = shutdown.CloseAsync(); time.Advance(TimeSpan.FromMilliseconds(contextMilliseconds)); context.SetResult();
         await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
         time.Advance(TimeSpan.FromMilliseconds(3999 - contextMilliseconds)); Assert.False(disposed.Task.IsCompleted);
-        time.Advance(TimeSpan.FromMilliseconds(1)); await disposed.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        time.Advance(TimeSpan.FromMilliseconds(1)); await disposed.Task.WaitAsync(TimeSpan.FromSeconds(5)); await NativeShutdownTestSync.UntilAsync(() => shutdown.Status.TransportCallSettled);
         Assert.False(actual.IsCompleted); Assert.True(shutdown.Status.BrowserDeadlineExceeded); Assert.Equal(1, shutdown.Status.ActiveCalls);
         browser.SetResult(); var error = await Assert.ThrowsAsync<BrowserOperationException>(() => actual);
         Assert.Equal("CHROMIUM_BROWSER_CLOSE_UNCONFIRMED", error.Code); Assert.Equal(BrowserShutdownPhase.Faulted, shutdown.Status.Phase);
@@ -176,7 +183,7 @@ public sealed class ChromiumShutdownTests
             stopCollectors: () => collector.Task);
         var actual = shutdown.CloseAsync(); time.Advance(TimeSpan.FromMilliseconds(4999));
         Assert.False(disposed.Task.IsCompleted); Assert.Equal(BrowserShutdownPhase.StoppingCollectors, shutdown.Status.Phase);
-        time.Advance(TimeSpan.FromMilliseconds(1)); await disposed.Task;
+        time.Advance(TimeSpan.FromMilliseconds(1)); await disposed.Task; await NativeShutdownTestSync.UntilAsync(() => shutdown.Status.TransportCallSettled);
         Assert.False(actual.IsCompleted); Assert.Equal(1, shutdown.Status.ActiveCalls); Assert.True(shutdown.Status.BrowserCloseAcknowledged);
         Assert.Equal(BrowserShutdownPhase.Faulted, shutdown.Status.Phase); collector.SetResult();
         await Assert.ThrowsAsync<BrowserOperationException>(() => actual);

@@ -13,10 +13,14 @@ public sealed record BrowserShutdownStatus(BrowserShutdownPhase Phase, int Activ
     public bool ProcessExitConfirmed { get; init; }
     public bool ProcessCallSettled { get; init; }
     public bool TransportEscalatedAfterProcessExit { get; init; }
-    /// <summary>Transport stop began before exit confirmation; this does not measure the kernel exit time.</summary>
+    /// <summary>Transport escalation was chosen while exit confirmation was unavailable; this does not measure kernel exit time.</summary>
     public bool TransportEscalatedBeforeProcessExit { get; init; }
     public bool BrowserCloseAcknowledgedBeforeTransport { get; init; }
     public double? NativeElapsedMilliseconds { get; init; }
+    public bool TransportCallSettled { get; init; }
+    public double? TransportStopDurationMilliseconds { get; init; }
+    /// <summary>Observed OS-exit confirmation relative to native shutdown start, not exact kernel exit time.</summary>
+    public double? ProcessExitConfirmationMilliseconds { get; init; }
 }
 public interface IBrowserShutdownDiagnostics
 {

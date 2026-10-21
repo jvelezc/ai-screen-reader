@@ -21,7 +21,7 @@ public sealed class ChromiumTransportEscalationTests
         var actual = shutdown.CloseAsync(); time.Advance(TimeSpan.FromMilliseconds(contextTime)); context.SetResult();
         await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
         time.Advance(TimeSpan.FromMilliseconds(1999 - contextTime)); Assert.False(stopped.Task.IsCompleted); Assert.False(actual.IsCompleted);
-        time.Advance(TimeSpan.FromMilliseconds(1)); await stopped.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        time.Advance(TimeSpan.FromMilliseconds(1)); await stopped.Task.WaitAsync(TimeSpan.FromSeconds(5)); await NativeShutdownTestSync.UntilAsync(() => shutdown.Status.TransportCallSettled);
         Assert.True(shutdown.Status.TransportDisposed); Assert.True(shutdown.Status.TransportEscalatedBeforeProcessExit);
         Assert.False(shutdown.Status.ProcessExitConfirmed); Assert.False(shutdown.Status.BrowserDeadlineExceeded); Assert.False(actual.IsCompleted);
         time.Advance(TimeSpan.FromMilliseconds(1999)); Assert.False(actual.IsCompleted); process.SetResult(); await actual;
@@ -45,13 +45,14 @@ public sealed class ChromiumTransportEscalationTests
         Assert.Equal(fails ? BrowserShutdownPhase.Faulted : BrowserShutdownPhase.Closed, shutdown.Status.Phase);
         Assert.Equal(fails, shutdown.Status.BrowserDeadlineExceeded); Assert.Equal(2000d + stopCost, shutdown.Status.NativeElapsedMilliseconds);
         Assert.True(shutdown.Status.ProcessExitConfirmed); Assert.Equal(0, shutdown.Status.ActiveCalls);
+        Assert.Equal(2000d + stopCost, shutdown.Status.ProcessExitConfirmationMilliseconds);
     }
     [Fact]
     public async Task OwnedTransport_CancelledCallerCannotAcknowledgeTheStillPendingProcessWatch()
     {
         var time = new FakeTimeProvider(); var process = Signal(); var stopped = Signal();
         var shutdown = new ChromiumShutdown(() => Task.CompletedTask, () => Task.CompletedTask, () => stopped.SetResult(), time, waitProcessExit: () => process.Task);
-        var actual = shutdown.CloseAsync(); time.Advance(TimeSpan.FromSeconds(2)); await stopped.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        var actual = shutdown.CloseAsync(); time.Advance(TimeSpan.FromSeconds(2)); await stopped.Task.WaitAsync(TimeSpan.FromSeconds(5)); await NativeShutdownTestSync.UntilAsync(() => shutdown.Status.TransportCallSettled);
         using var caller = new CancellationTokenSource(); var wait = actual.WaitAsync(caller.Token); caller.Cancel();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => wait);
         Assert.False(actual.IsCompleted); Assert.False(shutdown.Status.ProcessExitConfirmed); Assert.Equal(1, shutdown.Status.ActiveCalls);
@@ -99,7 +100,7 @@ public sealed class ChromiumTransportEscalationTests
         var shutdown = new ChromiumShutdown(() => context.Task, () => { started.SetResult(); return browser.Task; },
             () => { browser.SetResult(); process.SetResult(); stopped.SetResult(); }, time, waitProcessExit: () => process.Task);
         var actual = shutdown.CloseAsync(); time.Advance(TimeSpan.FromSeconds(1)); await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        time.Advance(TimeSpan.FromSeconds(1)); await stopped.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        time.Advance(TimeSpan.FromSeconds(1)); await stopped.Task.WaitAsync(TimeSpan.FromSeconds(5)); await NativeShutdownTestSync.UntilAsync(() => shutdown.Status.TransportCallSettled);
         Assert.False(actual.IsCompleted); Assert.False(shutdown.Status.ContextCallSettled);
         context.SetException(new IOException("private-context-interrupted")); await actual;
         Assert.True(shutdown.Status.ContextEscalated); Assert.True(shutdown.Status.ContextCallSettled); Assert.False(shutdown.Status.ContextCloseAcknowledged);
