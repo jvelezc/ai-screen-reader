@@ -6,6 +6,8 @@
       <_ForbiddenProjectReference Include="@(ProjectReference)"
           Condition="'$(MSBuildProjectName)' == 'HeadlessScreenReader.Domain'" />
       <_ForbiddenProjectReference Include="@(ProjectReference)"
+          Condition="'$(MSBuildProjectName)' == 'HeadlessScreenReader.Worker' And '%(ProjectReference.Filename)' != 'HeadlessScreenReader.Domain'" />
+      <_ForbiddenProjectReference Include="@(ProjectReference)"
           Condition="('$(MSBuildProjectName)' == 'HeadlessScreenReader.ScreenReader' Or '$(MSBuildProjectName)' == 'HeadlessScreenReader.Browser.Playwright') And '%(ProjectReference.Filename)' != 'HeadlessScreenReader.Domain'" />
       <_ForbiddenPackageReference Include="@(PackageReference)"
           Condition="'$(MSBuildProjectName)' == 'HeadlessScreenReader.Domain' Or '$(MSBuildProjectName)' == 'HeadlessScreenReader.ScreenReader' Or '$(MSBuildProjectName)' == 'HeadlessScreenReader.Exploration'" />

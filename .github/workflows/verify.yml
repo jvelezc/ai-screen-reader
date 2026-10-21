@@ -9,6 +9,27 @@ permissions:
   contents: read
 
 jobs:
+  observation-worker:
+    name: Leased observation worker (Linux)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - name: Execute actual admitted job through credential-free Chromium
+        shell: pwsh
+        run: pwsh -NoProfile -File scripts/Test-ObservationWorker.ps1 -Runtime docker
+      - name: Retain worker acceptance receipts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: observation-worker-linux
+          path: artifacts/worker-linux/
+          retention-days: 7
   durable-database:
     name: Durable scan admission and worker leases (Linux)
     runs-on: ubuntu-24.04

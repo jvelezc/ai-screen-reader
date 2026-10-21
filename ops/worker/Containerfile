@@ -1,0 +1,7 @@
+FROM mcr.microsoft.com/playwright/dotnet:v1.63.0-noble@sha256:4bb37fb71e75c18b6f8b8e4230139c7654de3dd39e55b66e84392c93933fed4e
+USER root
+COPY artifacts/worker-build/cli/ /app/cli/
+RUN chmod 0555 /app/cli/.playwright/node/linux-x64/node
+USER 1001:1001
+WORKDIR /tmp
+ENTRYPOINT ["dotnet", "/app/cli/HeadlessScreenReader.Cli.dll", "--worker-fixture"]

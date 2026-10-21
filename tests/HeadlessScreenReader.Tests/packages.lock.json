@@ -427,6 +427,13 @@
           "HeadlessScreenReader.Domain": "[1.0.0, )"
         }
       },
+      "headlessscreenreader.worker": {
+        "type": "Project",
+        "dependencies": {
+          "HeadlessScreenReader.Domain": "[1.0.0, )",
+          "Npgsql": "[10.0.3, )"
+        }
+      },
       "Microsoft.Extensions.Hosting": {
         "type": "CentralTransitive",
         "requested": "[10.0.13, )",
@@ -476,6 +483,15 @@
           "Microsoft.Extensions.Caching.Abstractions": "10.0.10",
           "Microsoft.Extensions.Hosting.Abstractions": "10.0.10",
           "ModelContextProtocol.Core": "[2.2.0]"
+        }
+      },
+      "Npgsql": {
+        "type": "CentralTransitive",
+        "requested": "[10.0.3, )",
+        "resolved": "10.0.3",
+        "contentHash": "7nb5YzXuvWWJxB0J8DiyL3we+X4FOctZrt0fIBnucOIaIevFEEwGQVZKtiu9olXdlNAK1eNgqSral6r/jlhI4w==",
+        "dependencies": {
+          "Microsoft.Extensions.Logging.Abstractions": "10.0.0"
         }
       }
     }

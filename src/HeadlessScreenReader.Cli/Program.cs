@@ -7,6 +7,9 @@ using HeadlessScreenReader.Domain;
 using HeadlessScreenReader.ScreenReader;
 using Microsoft.Playwright;
 
+if (args.SequenceEqual(["--worker-fixture"]))
+    return await FixtureWorker.RunAsync(Console.OpenStandardInput(), Console.OpenStandardOutput());
+
 if (args.Contains("--help", StringComparer.Ordinal))
 {
     Console.WriteLine("HeadlessScreenReader. Usage: --view-fixture | --private-client | --headed-private-client | --private-pixels | --headed-private-pixels | --private-viewer | --synthetic-handoff | --headed-synthetic-handoff | --headed-session | --controller | --owned-scan | --replay | --features | --traversal-recording | --recording-sync | --capture-probe | [--traversal | --widgets | --observe-live | --text | --frames | --ranges | --composites | --tables | --paragraphs | --multiselect | --typeahead] [--headed] | --reference-template | --reference-case <id> | --assess-reference <file>");
