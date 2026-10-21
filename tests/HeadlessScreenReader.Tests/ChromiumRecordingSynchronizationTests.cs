@@ -34,7 +34,18 @@ public sealed class ChromiumRecordingSynchronizationTests
         Assert.True(receipt.Shutdown.ProcessExitConfirmed);
         Assert.Equal(0, receipt.Shutdown.ActiveCalls);
         Assert.Equal("Complete", receipt.Stage);
-        Assert.Equal(SynchronizationVerification.Verified, receipt.Synchronization!.Verification);
+        Assert.True(receipt.Synchronization!.Verification == SynchronizationVerification.Verified, JsonSerializer.Serialize(new
+        {
+            Result = receipt.Synchronization,
+            receipt.ClockSamples,
+            receipt.ReaderOriginUncertaintyMilliseconds,
+            receipt.Actions,
+            SourceFrameCount = receipt.Media!.Source.Length,
+            VideoFrameCount = receipt.Media.Video.Length,
+            FirstVideoMarker = receipt.Media.Video.FirstOrDefault()?.Marker,
+            SourceObjectives = receipt.Media.Source.GroupBy(f => f.Marker?.Objective).Select(g => new { Objective = g.Key, Frames = g.Count() }),
+            VideoObjectives = receipt.Media.Video.GroupBy(f => f.Marker?.Objective).Select(g => new { Objective = g.Key, Frames = g.Count() })
+        }));
         Assert.Equal(250, receipt.Synchronization.TargetMilliseconds);
         Assert.Equal(20, receipt.Synchronization.Markers.Length);
         Assert.All(receipt.Synchronization.Markers, m =>

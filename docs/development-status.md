@@ -14,9 +14,9 @@ The user has deferred public MCP hosting, Claude setup and official plugin publi
 | 5: hosted pilot | Deferred | Existing local stdio adapter | Public HTTPS endpoint, remote authorization, operations, client acceptance and hosted report |
 | 6: measured extensions | Later | Bounded reader improvements through v13 | Broader validated widgets and compatible-run comparisons; public plugins remain deferred |
 
-## Next: pass the Windows shutdown gate, then build the private viewing client
+## Next: pass the Windows recording timing gate, then build the private viewing client
 
-The immediate gate is the [owned browser shutdown repair](validation/browser-shutdown-v1.md). CI39539944407 passed all five Linux jobs, including Ubuntu1,171/1,171 and all demos, but Windows passed1,169/1,171 with two native shutdown deadlines. The repair now stops its privately owned transport after two seconds without root-exit confirmation, then still requires actual process-exit confirmation within the unchanged four-second native wait and joins every actual callback. The five-second outer ownership deadline remains unchanged. Local checks and replacement six-job CI must pass before the accessible viewing client begins. The original native cause remains unmeasured; no late cleanup is counted as success.
+The immediate gate is [Windows recording synchronization](validation/recording-synchronization-v1.md). CI39542303437 passed every shutdown case on Windows, including the real owned-driver escalation proof, and all five Linux jobs with Ubuntu1,186/1,186. Windows passed1,185/1,186: the twenty-action recording returned Unknown instead of Verified. The failed assertion did not retain its reason; the fixed-fixture timing receipt was outside the uploaded artifact directory. Failure diagnostics and JSON-only timing receipt retention now preserve the evidence. The250ms target, twenty actual actions and uncertainty rules remain unchanged. Replacement six-job CI must pass before the viewing client begins. The original native-stall cause remains unmeasured; successful shutdown in this run is not a universal timing guarantee.
 
 The [capture admission protocol](decisions/0019-capture-admission.md) fences observations and both keyboard paths, drains actual operations after caller cancellation, requires AX stop acknowledgement, preserves the same context, and resets the reader baseline across epochs. Failed or stalled transitions remain closed. The [controlled collector probe](decisions/0020-capture-collector-feasibility.md) adds separately opted-in synthetic recording segments with pending-write drain, decoded video/JPEG canaries, staging inspection, artifact hashes and explicit failure stages. Default sessions start no recording collector.
 
@@ -42,7 +42,7 @@ flowchart LR
     Headed --> Handoff[Synthetic excluded-input handoff]
     Handoff --> PrivateViewer[Scoped private semantic viewing]
     PrivateViewer --> Pixels[Private read-only pixel relay]
-    Pixels --> Gate[NEXT: pass Windows shutdown CI]
+    Pixels --> Gate[NEXT: verify Windows recording timing]
     Gate --> Next[Accessible private viewing client]
     Next --> ViewerControl[Human takeover acceptance]
     ViewerControl --> Durable[Durable hosted execution]
@@ -52,7 +52,7 @@ flowchart LR
     class Reader,Trace,Privacy,Timing,Recording,Viewer,ReaderGate,Features,Replay,Owned,Controller,Headed,Handoff,PrivateViewer,Pixels done
     class Gate next
     class Next,ViewerControl,Durable planned
-    click Gate "validation/browser-shutdown-v1.md"
+    click Gate "validation/recording-synchronization-v1.md"
     click Next "decisions/0033-private-pixel-viewer.md#next-accessible-private-viewing-client"
 ```
 

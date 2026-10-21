@@ -191,3 +191,11 @@ jobs:
           path: artifacts/
           retention-days: 7
           if-no-files-found: warn
+      - name: Retain synthetic timing measurements without media
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: recording-timing-${{ matrix.os }}
+          path: tests/HeadlessScreenReader.Tests/bin/Release/net10.0/artifacts/recording-sync-tests/**/receipt.json
+          retention-days: 7
+          if-no-files-found: warn
