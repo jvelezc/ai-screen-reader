@@ -238,9 +238,10 @@ public sealed class ChromiumMcpTests
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         var result = await client.CallToolAsync(tool, arguments, cancellationToken: timeout.Token);
-        Assert.Equal(error, result.IsError ?? false);
         var text = Assert.IsType<TextContentBlock>(Assert.Single(result.Content)).Text;
         using var document = JsonDocument.Parse(text);
+        var code = document.RootElement.TryGetProperty("errorCode", out var errorCode) ? errorCode.GetString() : null;
+        Assert.True(error == (result.IsError ?? false), $"{tool}: expected IsError={error}; actual IsError={result.IsError ?? false}; errorCode={code ?? "none"}.");
         Assert.Equal(document.RootElement.GetRawText(), result.StructuredContent?.GetRawText());
         return document.RootElement.Clone();
     }
