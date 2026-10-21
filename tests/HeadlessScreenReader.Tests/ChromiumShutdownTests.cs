@@ -68,12 +68,14 @@ public sealed class ChromiumShutdownTests
         var shutdown = new ChromiumShutdown(() => Task.CompletedTask,
             () => failure == "browser-sync" ? throw new IOException("private-close") : failure == "browser-async" ? Task.FromException(new IOException("private-close")) : Task.CompletedTask,
             () => { transportCalled = true; if (failure == "transport") throw new IOException("private-close"); });
-        var actual = shutdown.CloseAsync(); await Assert.ThrowsAsync<BrowserOperationException>(() => actual);
+        var actual = shutdown.CloseAsync(); var error = await Assert.ThrowsAsync<BrowserOperationException>(() => actual);
         Assert.Same(actual, shutdown.CloseAsync()); Assert.Equal(BrowserShutdownPhase.Faulted, shutdown.Status.Phase);
         Assert.Equal(0, shutdown.Status.ActiveCalls); Assert.True(transportCalled);
         Assert.Equal(failure == "transport", shutdown.Status.BrowserCloseAcknowledged);
         Assert.Equal(failure != "transport", shutdown.Status.TransportDisposed);
         Assert.DoesNotContain("private-close", JsonSerializer.Serialize(shutdown.Status));
+        Assert.DoesNotContain("private-close", error.ToString());
+        Assert.Equal(failure != "transport", shutdown.Status.BrowserCallRejected); Assert.False(shutdown.Status.BrowserDeadlineExceeded);
     }
 
     [Fact]
@@ -81,11 +83,16 @@ public sealed class ChromiumShutdownTests
     {
         var time = new FakeTimeProvider(); var browser = Signal(); var disposed = Signal();
         var shutdown = new ChromiumShutdown(() => Task.CompletedTask, () => browser.Task, () => disposed.SetResult(), time);
-        var actual = shutdown.CloseAsync(); time.Advance(TimeSpan.FromMilliseconds(2999)); Assert.False(disposed.Task.IsCompleted);
+        var actual = shutdown.CloseAsync(); time.Advance(TimeSpan.FromMilliseconds(3999)); Assert.False(disposed.Task.IsCompleted);
         time.Advance(TimeSpan.FromMilliseconds(1)); await disposed.Task;
         Assert.False(actual.IsCompleted); Assert.Equal(BrowserShutdownPhase.Faulted, shutdown.Status.Phase); Assert.Equal(1, shutdown.Status.ActiveCalls);
         Assert.True(shutdown.Status.TransportDisposed); browser.SetResult();
-        Assert.Equal("CHROMIUM_BROWSER_CLOSE_UNCONFIRMED", (await Assert.ThrowsAsync<BrowserOperationException>(() => actual)).Code);
+        var error = await Assert.ThrowsAsync<BrowserOperationException>(() => actual);
+        Assert.Equal("CHROMIUM_BROWSER_CLOSE_UNCONFIRMED", error.Code);
+        Assert.True(shutdown.Status.BrowserDeadlineExceeded); Assert.False(shutdown.Status.BrowserCallRejected);
+        Assert.Contains("\"BrowserDeadlineExceeded\":true", error.InnerException!.Message);
+        Assert.Contains("\"Phase\":\"Faulted\"", error.InnerException.Message);
+        Assert.Contains("\"NativeElapsedMilliseconds\":4000", error.InnerException.Message);
         Assert.True(shutdown.Status.BrowserCloseAcknowledged); Assert.Equal(0, shutdown.Status.ActiveCalls);
         Assert.Equal(BrowserShutdownPhase.Faulted, shutdown.Status.Phase);
     }
@@ -103,6 +110,50 @@ public sealed class ChromiumShutdownTests
         context.SetResult(); await actual; Assert.Equal(0, shutdown.Status.ActiveCalls); Assert.Equal(BrowserShutdownPhase.Closed, shutdown.Status.Phase);
     }
     private static TaskCompletionSource Signal() => new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(250)]
+    [InlineData(1000)]
+    public async Task SharedNativeBudget_BorrowsUnusedContextTimeAndAcceptsActualBrowserCloseBeforeFourSeconds(int contextMilliseconds)
+    {
+        var time = new FakeTimeProvider(); var context = Signal(); var browser = Signal(); var started = Signal(); var disposed = false;
+        var shutdown = new ChromiumShutdown(() => context.Task, () => { started.SetResult(); return browser.Task; }, () => disposed = true, time);
+        var actual = shutdown.CloseAsync(); time.Advance(TimeSpan.FromMilliseconds(contextMilliseconds)); context.SetResult();
+        await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        time.Advance(TimeSpan.FromMilliseconds(3999 - contextMilliseconds)); Assert.False(disposed); Assert.False(actual.IsCompleted);
+        browser.SetResult(); await actual;
+        Assert.True(disposed); Assert.Equal(BrowserShutdownPhase.Closed, shutdown.Status.Phase); Assert.Equal(0, shutdown.Status.ActiveCalls);
+        Assert.True(shutdown.Status.ContextCloseAcknowledged); Assert.True(shutdown.Status.BrowserCloseAcknowledged);
+        Assert.False(shutdown.Status.BrowserDeadlineExceeded); Assert.False(shutdown.Status.BrowserCallRejected);
+    }
+    [Theory]
+    [InlineData(250)]
+    [InlineData(1000)]
+    public async Task SharedNativeBudget_DoesNotRestartFourSecondsAfterAContextDelayOrRecoverLateClosure(int contextMilliseconds)
+    {
+        var time = new FakeTimeProvider(); var context = Signal(); var browser = Signal(); var started = Signal(); var disposed = Signal();
+        var shutdown = new ChromiumShutdown(() => context.Task, () => { started.SetResult(); return browser.Task; }, () => disposed.SetResult(), time);
+        var actual = shutdown.CloseAsync(); time.Advance(TimeSpan.FromMilliseconds(contextMilliseconds)); context.SetResult();
+        await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        time.Advance(TimeSpan.FromMilliseconds(3999 - contextMilliseconds)); Assert.False(disposed.Task.IsCompleted);
+        time.Advance(TimeSpan.FromMilliseconds(1)); await disposed.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.False(actual.IsCompleted); Assert.True(shutdown.Status.BrowserDeadlineExceeded); Assert.Equal(1, shutdown.Status.ActiveCalls);
+        browser.SetResult(); var error = await Assert.ThrowsAsync<BrowserOperationException>(() => actual);
+        Assert.Equal("CHROMIUM_BROWSER_CLOSE_UNCONFIRMED", error.Code); Assert.Equal(BrowserShutdownPhase.Faulted, shutdown.Status.Phase);
+        Assert.True(shutdown.Status.BrowserCloseAcknowledged); Assert.Equal(0, shutdown.Status.ActiveCalls);
+    }
+    [Fact]
+    public async Task ExhaustedNativeBudget_CannotAcknowledgeEvenSynchronouslyCompletedLateCalls()
+    {
+        var time = new FakeTimeProvider(); var transport = false;
+        var shutdown = new ChromiumShutdown(() => { time.Advance(TimeSpan.FromSeconds(4)); return Task.CompletedTask; },
+            () => Task.CompletedTask, () => transport = true, time);
+        var error = await Assert.ThrowsAsync<BrowserOperationException>(() => shutdown.CloseAsync());
+        Assert.Equal("CHROMIUM_BROWSER_CLOSE_UNCONFIRMED", error.Code); Assert.True(transport);
+        Assert.True(shutdown.Status.BrowserDeadlineExceeded); Assert.False(shutdown.Status.BrowserCallRejected);
+        Assert.True(shutdown.Status.BrowserCloseAcknowledged); Assert.Equal(BrowserShutdownPhase.Faulted, shutdown.Status.Phase);
+    }
 
     [Fact]
     public async Task CollectorFailure_CannotBeErasedByAcknowledgedBrowserShutdown()

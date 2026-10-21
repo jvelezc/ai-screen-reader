@@ -23,6 +23,7 @@ public sealed record PrivatePixelProof(string ScanId, bool Ready, string Stage, 
     public bool HumanAcceptancePerformed => false;
     public bool RemoteIdentityProviderValidated => false;
     public bool PublicListenerEnabled => false;
+    public BrowserShutdownStatus? Shutdown { get; init; }
 }
 public static class PrivatePixelDemo
 {
@@ -146,7 +147,8 @@ public static class PrivatePixelDemo
             && (!headed || display is { PrivateAuthority: true, TcpDisabled: true } && kernel is { Restricted: true });
         if (ready) stage = "completed"; else error ??= "PRIVATE_PIXEL_ACCEPTANCE_UNCONFIRMED";
         var proof = new PrivatePixelProof(store.ScanId, ready, stage, error, headed, pixelsVerified, denied, noInput, positive, gap, stale, revoked,
-            same, absent, hostClosed, browserClosed, firstColors, lastColors, firstHash, lastHash, display, kernel, before, after, Path.Combine(store.Folder, "index.md"));
+            same, absent, hostClosed, browserClosed, firstColors, lastColors, firstHash, lastHash, display, kernel, before, after, Path.Combine(store.Folder, "index.md"))
+        { Shutdown = control?.Status.Shutdown };
         await TraversalArtifactWriter.WriteNewAsync(Path.Combine(store.Folder, "pixel-proof.json"), JsonSerializer.Serialize(proof, TraversalDemo.JsonOptions));
         await TraversalArtifactWriter.WriteNewAsync(proof.Report, "# Private pixel relay proof\n\nInspect pixel-proof.json and the separate owned intent/completion/lifecycle records. "
             + "Actual delivered PNGs decode to green before assistance and blue after a cleared, excluded synthetic gap. A separate memory-only red positive control was never delivered. "

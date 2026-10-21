@@ -8,6 +8,8 @@ public sealed record BrowserShutdownStatus(BrowserShutdownPhase Phase, int Activ
 {
     public bool CollectorStopAcknowledged { get; init; }
     public bool CollectorCallSettled { get; init; }
+    public bool BrowserDeadlineExceeded { get; init; }
+    public bool BrowserCallRejected { get; init; }
 }
 public interface IBrowserShutdownDiagnostics
 {

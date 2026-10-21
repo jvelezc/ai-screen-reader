@@ -12,6 +12,7 @@ internal sealed class ChromiumShutdown(Func<Task> closeContext, Func<Task> close
     private BrowserShutdownPhase _phase;
     private bool _contextStarted, _browserStarted, _contextSettled, _browserSettled, _contextAck, _browserAck, _disposed, _escalated;
     private bool _collectorStarted, _collectorSettled, _collectorAck;
+    private bool _browserDeadline, _browserRejected;
     private string? _error;
     public BrowserShutdownStatus Status
     {
@@ -20,7 +21,12 @@ internal sealed class ChromiumShutdown(Func<Task> closeContext, Func<Task> close
             lock (_sync) return new(_phase, (_collectorStarted && !_collectorSettled ? 1 : 0)
                 + (_contextStarted && !_contextSettled ? 1 : 0) + (_browserStarted && !_browserSettled ? 1 : 0),
                 _contextAck, _browserAck, _contextSettled, _browserSettled, _disposed, _escalated, _error)
-            { CollectorStopAcknowledged = _collectorAck, CollectorCallSettled = _collectorSettled };
+            {
+                CollectorStopAcknowledged = _collectorAck,
+                CollectorCallSettled = _collectorSettled,
+                BrowserDeadlineExceeded = _browserDeadline,
+                BrowserCallRejected = _browserRejected
+            };
         }
     }
     public Task CloseAsync()
@@ -38,6 +44,7 @@ internal sealed class ChromiumShutdown(Func<Task> closeContext, Func<Task> close
     private async Task CloseCoreAsync(TaskCompletionSource completion)
     {
         Task<bool>? collector = null, context = null, browser = null;
+        long? nativeStarted = null;
         try
         {
             lock (_sync) { _phase = BrowserShutdownPhase.StoppingCollectors; _collectorStarted = true; }
@@ -47,6 +54,7 @@ internal sealed class ChromiumShutdown(Func<Task> closeContext, Func<Task> close
                 if (!await collector.WaitAsync(TimeSpan.FromSeconds(5), _time).ConfigureAwait(false)) Fail("CHROMIUM_COLLECTOR_STOP_UNCONFIRMED");
             }
             catch (TimeoutException) { Fail("CHROMIUM_COLLECTOR_STOP_UNCONFIRMED"); }
+            nativeStarted = _time.GetTimestamp();
             lock (_sync) { if (_error is null) _phase = BrowserShutdownPhase.ClosingContext; _contextStarted = true; }
             context = TrackAsync(closeContext, ShutdownCall.Context);
             try
@@ -59,10 +67,19 @@ internal sealed class ChromiumShutdown(Func<Task> closeContext, Func<Task> close
             browser = TrackAsync(closeBrowser, ShutdownCall.Browser);
             try
             {
-                if (!await browser.WaitAsync(TimeSpan.FromSeconds(3), _time).ConfigureAwait(false))
+                // Context and browser share the same four-second native budget. Unused context time is not discarded.
+                var remaining = TimeSpan.FromSeconds(4) - _time.GetElapsedTime(nativeStarted.Value);
+                if (remaining <= TimeSpan.Zero)
+                {
+                    lock (_sync) _browserDeadline = true;
                     Fail("CHROMIUM_BROWSER_CLOSE_UNCONFIRMED");
+                }
+                else if (!await browser.WaitAsync(remaining, _time).ConfigureAwait(false))
+                {
+                    Fail("CHROMIUM_BROWSER_CLOSE_UNCONFIRMED");
+                }
             }
-            catch (TimeoutException) { Fail("CHROMIUM_BROWSER_CLOSE_UNCONFIRMED"); }
+            catch (TimeoutException) { lock (_sync) _browserDeadline = true; Fail("CHROMIUM_BROWSER_CLOSE_UNCONFIRMED"); }
         }
         catch { Fail("CHROMIUM_SHUTDOWN_UNCONFIRMED"); }
         finally
@@ -78,7 +95,16 @@ internal sealed class ChromiumShutdown(Func<Task> closeContext, Func<Task> close
             {
                 if (!_collectorAck || !_collectorSettled || !_browserAck || !_contextSettled || !_browserSettled || !_disposed) Fail("CHROMIUM_SHUTDOWN_UNCONFIRMED");
                 if (_error is null) { _phase = BrowserShutdownPhase.Closed; completion.TrySetResult(); }
-                else { _phase = BrowserShutdownPhase.Faulted; completion.TrySetException(new BrowserOperationException(_error)); }
+                else
+                {
+                    _phase = BrowserShutdownPhase.Faulted;
+                    var facts = System.Text.Json.JsonSerializer.Serialize(new
+                    {
+                        Shutdown = Status,
+                        NativeElapsedMilliseconds = nativeStarted is { } start ? _time.GetElapsedTime(start).TotalMilliseconds : (double?)null
+                    }, new System.Text.Json.JsonSerializerOptions { Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } });
+                    completion.TrySetException(new BrowserOperationException(_error, new InvalidOperationException(facts)));
+                }
             }
         }
     }
@@ -94,7 +120,7 @@ internal sealed class ChromiumShutdown(Func<Task> closeContext, Func<Task> close
             {
                 if (call == ShutdownCall.Collector) { _collectorSettled = true; _collectorAck = acknowledged; }
                 else if (call == ShutdownCall.Context) { _contextSettled = true; _contextAck = acknowledged; }
-                else { _browserSettled = true; _browserAck = acknowledged; }
+                else { _browserSettled = true; _browserAck = acknowledged; _browserRejected = !acknowledged; }
             }
         }
     }
