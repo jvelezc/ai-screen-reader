@@ -7,6 +7,28 @@ namespace HeadlessScreenReader.Tests;
 public sealed class ChromiumShutdownIntegrationTests
 {
     [Fact]
+    public async Task ActualOwnedExitWatch_ConfirmsKernelExitOutsideSharedThreadPoolAndPreservesAnotherBrowser()
+    {
+        await using var other = await ChromiumFixtureBrowser.LaunchAsync();
+        var otherIdentity = await other.CaptureFixtureProcessIdentityAsync();
+        using var playwright = await Microsoft.Playwright.Playwright.CreateAsync();
+        await using var browser = await playwright.Chromium.LaunchAsync(new() { Headless = true, ChromiumSandbox = true });
+        using var watch = await OwnedChromiumProcess.AttachAsync(browser);
+        using var independent = System.Diagnostics.Process.GetProcessById(watch.ProcessId);
+        _ = independent.Handle;
+        Assert.False(watch.Exited.IsCompleted);
+        var witness = watch.Exited.ContinueWith(actual =>
+            (Succeeded: actual.IsCompletedSuccessfully, Pool: Thread.CurrentThread.IsThreadPoolThread,
+                KernelExited: independent.HasExited), CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+        await browser.CloseAsync();
+        var receipt = await witness.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.True(receipt.Succeeded); Assert.False(receipt.Pool); Assert.True(receipt.KernelExited);
+        Assert.Equal(otherIdentity, await other.CaptureFixtureProcessIdentityAsync());
+        Assert.NotEmpty((await other.CaptureAsync()).Nodes);
+    }
+
+    [Fact]
     public async Task ActualOwnedRootCapability_ConfirmsExitAndLeavesAnotherPrivateBrowserAlive()
     {
         await using var other = await ChromiumFixtureBrowser.LaunchAsync();

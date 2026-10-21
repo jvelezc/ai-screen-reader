@@ -8,17 +8,22 @@ namespace HeadlessScreenReader.Browser.Playwright;
 internal sealed class OwnedChromiumProcess : IDisposable
 {
     private readonly Process _process;
-    private readonly TaskCompletionSource _exited = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly Task _exited;
     private OwnedChromiumProcess(Process process)
     {
         _process = process;
         // Retain the process handle for the lifetime of this CDP-discovered root watch.
         _ = process.Handle;
-        process.Exited += OnExited;
-        process.EnableRaisingEvents = true;
-        if (process.HasExited) _exited.TrySetResult();
+        // Process.Exited uses the shared thread pool. Under contention its callback and
+        // an asynchronous TCS continuation can observe exit after our native deadline.
+        // Wait on the retained kernel handle on a dedicated thread instead. The task
+        // permits the shutdown observer to run inline on that thread after actual exit.
+        _exited = Task.Factory.StartNew(process.WaitForExit, CancellationToken.None,
+            TaskCreationOptions.LongRunning | TaskCreationOptions.DenyChildAttach, TaskScheduler.Default);
+        _ = _exited.ContinueWith(t => _ = t.Exception, CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
     }
-    public Task Exited => _exited.Task;
+    public Task Exited => _exited;
     public int ProcessId => _process.Id;
     public Func<Task>? WindowsRootStop => OperatingSystem.IsWindows() ? StopWindowsRootAsync : null;
     private Task StopWindowsRootAsync()
@@ -26,10 +31,9 @@ internal sealed class OwnedChromiumProcess : IDisposable
         if (!OperatingSystem.IsWindows()) throw new BrowserOperationException("CHROMIUM_ROOT_STOP_UNSUPPORTED");
         // Process.Handle was retained at attachment. Windows Kill() reuses that exact handle,
         // without reopening a PID or enumerating a process tree. A return is not exit proof.
-        if (!_exited.Task.IsCompleted) _process.Kill();
+        if (!_exited.IsCompleted) _process.Kill();
         return Task.CompletedTask;
     }
-    private void OnExited(object? sender, EventArgs args) => _exited.TrySetResult();
     public static async Task<OwnedChromiumProcess> AttachAsync(IBrowser browser)
     {
         var session = await browser.NewBrowserCDPSessionAsync().ConfigureAwait(false);
@@ -58,5 +62,5 @@ internal sealed class OwnedChromiumProcess : IDisposable
         }
         catch { if (watch is not null) watch.Dispose(); else process?.Dispose(); throw new BrowserOperationException("CHROMIUM_PROCESS_WATCH_UNCONFIRMED"); }
     }
-    public void Dispose() { _process.Exited -= OnExited; _process.Dispose(); }
+    public void Dispose() { _process.Dispose(); }
 }
