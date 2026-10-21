@@ -32,6 +32,7 @@ try {
     if($imageId -match '^[a-f0-9]{64}$'){$imageId='sha256:'+$imageId}
     if($imageId -notmatch '^sha256:[a-f0-9]{64}$'){throw 'WORKER_IMAGE_ID_UNCONFIRMED'}
     $stage='database'
+    $postgres=Resolve-ReaderDatabaseImage $Runtime
     $env:POSTGRES_PASSWORD=[Guid]::NewGuid().ToString('N')
     $null=Invoke-ReaderRuntime $Runtime @('create','--name',$name,'--publish','127.0.0.1::5432','--memory','768m','--cpus','2','--pids-limit','128','--label',"hsr.worker.proof=$owner",'--env','POSTGRES_PASSWORD',$postgres)
     $created=$true; $env:POSTGRES_PASSWORD=$prior['POSTGRES_PASSWORD']

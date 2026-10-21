@@ -61,6 +61,7 @@ function Invoke-DatabaseFile {
 }
 
 try {
+    $image = Resolve-ReaderDatabaseImage $Runtime
     # Process-local random initialization password; no host service credentials.
     $env:POSTGRES_PASSWORD = [Guid]::NewGuid().ToString('N')
     $null = Invoke-ReaderRuntime $Runtime @('create', '--name', $name, '--network', 'none',

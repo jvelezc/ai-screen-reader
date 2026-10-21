@@ -1,5 +1,24 @@
 $ErrorActionPreference = 'Stop'
 
+function Resolve-ReaderDatabaseImage {
+    param([ValidateSet('podman','docker')][string]$Runtime)
+    # Both publisher registries serve this exact verified manifest, not merely the same tag.
+    $digest='sha256:16c0944c77885446d4f2ebbb2191b357feeb3b1295bde2fb1978c113129dbeb4'
+    $images=@("public.ecr.aws/supabase/postgres@$digest", "docker.io/supabase/postgres@$digest")
+    foreach($image in $images){
+        $cached=Invoke-ReaderRuntime $Runtime @('image','inspect',$image) -AllowFailure
+        if($cached.Code -eq 0){return $image}
+    }
+    foreach($image in $images){
+        $pull=Invoke-ReaderRuntime $Runtime @('pull',$image) -AllowFailure
+        if($pull.Code -eq 0){
+            $confirmed=Invoke-ReaderRuntime $Runtime @('image','inspect',$image) -AllowFailure
+            if($confirmed.Code -eq 0){return $image}
+        }
+    }
+    throw 'DATABASE_PINNED_IMAGE_ACQUISITION_UNCONFIRMED'
+}
+
 function Invoke-ReaderRuntime {
     param([string]$Runtime, [string[]]$Arguments, [switch]$AllowFailure)
     $lines = @(& $Runtime @Arguments 2>&1)
@@ -122,4 +141,4 @@ function Start-ReaderIsolation {
     }
 }
 
-Export-ModuleMember -Function Start-ReaderIsolation, Stop-ReaderIsolation, Get-ReaderWorkerArguments, Invoke-ReaderRuntime
+Export-ModuleMember -Function Start-ReaderIsolation, Stop-ReaderIsolation, Get-ReaderWorkerArguments, Invoke-ReaderRuntime, Resolve-ReaderDatabaseImage
