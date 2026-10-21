@@ -75,7 +75,16 @@ jobs:
             -o UserKnownHostsFile="$hosts" -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=4 \
             "$HSR_DEPLOY_USER@$HSR_DEPLOY_HOST" "deploy $RELEASE_SHA" \
             < "$RUNNER_TEMP/hsr-private-release/release.tar.gz" > "$RUNNER_TEMP/private-deployment.json"
-          python3 -c 'import json,os; p=json.load(open(os.environ["RUNNER_TEMP"]+"/private-deployment.json")); assert p["State"]=="Ready" and p["Commit"]==os.environ["RELEASE_SHA"]; print("Private worker ready at accepted commit "+p["Commit"])'
+          python3 - <<'PY'
+          import json, os, re
+          with open(os.environ["RUNNER_TEMP"] + "/private-deployment.json") as source:
+              receipt = json.load(source)
+          if (receipt.get("Schema") != "hsr-private-deployment-v1" or receipt.get("State") != "Ready"
+              or receipt.get("Commit") != os.environ["RELEASE_SHA"]
+              or not isinstance(receipt.get("Run"), str) or re.fullmatch(r"[a-f0-9]{32}", receipt["Run"]) is None):
+              raise SystemExit("PRIVATE_DEPLOYMENT_RECEIPT_UNCONFIRMED")
+          print("Private worker ready at accepted commit " + receipt["Commit"])
+          PY
       - name: Retain safe deployment receipt
         if: always()
         uses: actions/upload-artifact@v7
