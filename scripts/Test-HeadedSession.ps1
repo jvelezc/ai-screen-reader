@@ -1,5 +1,5 @@
 param([ValidateSet('podman', 'docker')][string]$Runtime = 'podman', [switch]$SkipBuild,
-    [ValidateSet('controller', 'synthetic-handoff', 'private-pixels')][string]$Scenario = 'controller')
+    [ValidateSet('controller', 'synthetic-handoff', 'private-pixels', 'private-client')][string]$Scenario = 'controller')
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path $PSScriptRoot -Parent
 Import-Module (Join-Path $PSScriptRoot 'ReaderIsolation.psm1') -Force -DisableNameChecking
@@ -11,6 +11,7 @@ New-Item -ItemType Directory -Path $folder | Out-Null
 $stage = 'publish'; $errorCode = $null; $copied = $false; $created = $false; $removed = $false; $ready = $false
 $built = $false; $imageRemoved = $false
 $constraints = $null; $proofStage = $null; $proofErrorCode = $null
+$taskLimit = if ($Scenario -eq 'private-client') { 512 } else { 256 }
 try {
     if (-not $SkipBuild) {
         dotnet publish (Join-Path $repoRoot 'src/HeadlessScreenReader.Cli/HeadlessScreenReader.Cli.csproj') -c Release `
@@ -26,7 +27,7 @@ try {
     $security = @()
     if ($Runtime -eq 'docker') { $security = @('--security-opt', "seccomp=$(Join-Path $repoRoot 'ops/prototype/playwright-seccomp.json')") }
     $arguments = @('create', '--name', $name, '--network', 'none', '--user', '1001:1001', '--cap-drop', 'ALL', '--cap-add', 'SYS_CHROOT',
-        '--security-opt', 'no-new-privileges', '--memory', '1024m', '--cpus', '2', '--pids-limit', '256', '--shm-size', '256m',
+        '--security-opt', 'no-new-privileges', '--memory', '1024m', '--cpus', '2', '--pids-limit', "$taskLimit", '--shm-size', '256m',
         '--label', "hsr.headed.owner=$runId", '--env', "HSR_HEADED_CASE=$Scenario") + $security + @($image)
     $null = Invoke-ReaderRuntime $Runtime $arguments
     $created = $true
@@ -54,8 +55,9 @@ try {
     $limitsObserved = $constraints.NetworkMode -eq 'none' -and $constraints.User -eq '1001:1001' -and -not $constraints.Privileged `
         -and $receipt.Kernel.Restricted -eq $true -and @($constraints.SecurityOptions | Where-Object { $_ -like 'no-new-privileges*' }).Count -eq 1 `
         -and $constraints.MemoryBytes -gt 0 -and $constraints.MemoryBytes -le 1073741824 `
-        -and $constraints.PidsLimit -gt 0 -and $constraints.PidsLimit -le 256 -and $constraints.HostBindMounts -eq 0
-    $expectedSchema = if ($Scenario -eq 'private-pixels') { 'hsr-private-pixel-proof-v1' }
+        -and $constraints.PidsLimit -eq $taskLimit -and $constraints.HostBindMounts -eq 0
+    $expectedSchema = if ($Scenario -eq 'private-client') { 'hsr-private-view-client-v1' }
+        elseif ($Scenario -eq 'private-pixels') { 'hsr-private-pixel-proof-v1' }
         elseif ($Scenario -eq 'synthetic-handoff') { 'hsr-synthetic-handoff-proof-v1' } else { 'hsr-headed-session-proof-v1' }
     $ready = $item.State.ExitCode -eq 0 -and $limitsObserved -and $receipt.Schema -eq $expectedSchema `
         -and $receipt.Ready -eq $true -and $cleanup.displayCleanupConfirmed -eq $true `
@@ -95,7 +97,8 @@ try {
 }
 $result = [pscustomobject]@{ Schema = 'hsr-headed-runtime-v1'; RunId = $runId; Runtime = $Runtime; Ready = $ready;
     Scenario = $Scenario;
-    CaseName = $(if ($Scenario -eq 'private-pixels') { 'PrivatePixels_ActualReadOnlyRelayExcludesSyntheticGapAndRevokesOwnedDelivery' }
+    CaseName = $(if ($Scenario -eq 'private-client') { 'PrivateClient_ReadOnlyPixelsPauseExclusionRevocationAndOwnedCleanup' }
+        elseif ($Scenario -eq 'private-pixels') { 'PrivatePixels_ActualReadOnlyRelayExcludesSyntheticGapAndRevokesOwnedDelivery' }
         elseif ($Scenario -eq 'synthetic-handoff') { 'SyntheticHandoff_ActualInputIsExcludedFromOwnedFilesAndOriginalMedia' }
         else { 'HeadedChromium_TwoControllerGenerationsPreserveProcessContextAndCleanOwnedDisplay' });
     Stage = $stage; ErrorCode = $errorCode; EvidenceCopied = $copied; ContainerRemoved = $removed; ImageRemoved = $imageRemoved;

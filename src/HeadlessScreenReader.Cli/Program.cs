@@ -9,7 +9,7 @@ using Microsoft.Playwright;
 
 if (args.Contains("--help", StringComparer.Ordinal))
 {
-    Console.WriteLine("HeadlessScreenReader. Usage: --private-pixels | --headed-private-pixels | --private-viewer | --synthetic-handoff | --headed-synthetic-handoff | --headed-session | --controller | --owned-scan | --replay | --features | --traversal-recording | --recording-sync | --capture-probe | [--traversal | --widgets | --observe-live | --text | --frames | --ranges | --composites | --tables | --paragraphs | --multiselect | --typeahead] [--headed] | --reference-template | --reference-case <id> | --assess-reference <file>");
+    Console.WriteLine("HeadlessScreenReader. Usage: --view-fixture | --private-client | --headed-private-client | --private-pixels | --headed-private-pixels | --private-viewer | --synthetic-handoff | --headed-synthetic-handoff | --headed-session | --controller | --owned-scan | --replay | --features | --traversal-recording | --recording-sync | --capture-probe | [--traversal | --widgets | --observe-live | --text | --frames | --ranges | --composites | --tables | --paragraphs | --multiselect | --typeahead] [--headed] | --reference-template | --reference-case <id> | --assess-reference <file>");
     foreach (var item in ReferenceValidation.Cases) Console.WriteLine($"  {item.Id}: {item.Task}");
     return 0;
 }
@@ -35,9 +35,9 @@ if (args.Length == 2 && args[0] == "--assess-reference")
 }
 var referenceCase = args.Length == 2 && args[0] == "--reference-case"
     ? ReferenceValidation.FindCase(args[1]) : null;
-if (referenceCase is null && (args.Any(arg => arg is not "--private-pixels" and not "--headed-private-pixels" and not "--private-viewer" and not "--synthetic-handoff" and not "--headed-synthetic-handoff" and not "--headed-session" and not "--controller" and not "--owned-scan" and not "--replay" and not "--features" and not "--traversal-recording" and not "--recording-sync" and not "--capture-probe" and not "--headed" and not "--traversal" and not "--widgets" and not "--observe-live" and not "--text" and not "--frames" and not "--ranges" and not "--composites" and not "--tables" and not "--paragraphs" and not "--multiselect" and not "--typeahead")
-    || args.Count(arg => arg is "--private-pixels" or "--headed-private-pixels" or "--private-viewer" or "--synthetic-handoff" or "--headed-synthetic-handoff" or "--headed-session" or "--controller" or "--owned-scan" or "--replay" or "--features" or "--traversal-recording" or "--recording-sync" or "--capture-probe" or "--traversal" or "--widgets" or "--observe-live" or "--text" or "--frames" or "--ranges" or "--composites" or "--tables" or "--paragraphs" or "--multiselect" or "--typeahead") > 1
-    || args.Any(arg => arg is "--private-pixels" or "--headed-private-pixels" or "--private-viewer" or "--synthetic-handoff" or "--headed-synthetic-handoff" or "--headed-session" or "--controller" or "--owned-scan" or "--replay" or "--features" or "--traversal-recording" or "--capture-probe" or "--recording-sync") && args.Length != 1))
+if (referenceCase is null && (args.Any(arg => arg is not "--headed-private-client" and not "--view-fixture" and not "--private-client" and not "--private-pixels" and not "--headed-private-pixels" and not "--private-viewer" and not "--synthetic-handoff" and not "--headed-synthetic-handoff" and not "--headed-session" and not "--controller" and not "--owned-scan" and not "--replay" and not "--features" and not "--traversal-recording" and not "--recording-sync" and not "--capture-probe" and not "--headed" and not "--traversal" and not "--widgets" and not "--observe-live" and not "--text" and not "--frames" and not "--ranges" and not "--composites" and not "--tables" and not "--paragraphs" and not "--multiselect" and not "--typeahead")
+    || args.Count(arg => arg is "--headed-private-client" or "--view-fixture" or "--private-client" or "--private-pixels" or "--headed-private-pixels" or "--private-viewer" or "--synthetic-handoff" or "--headed-synthetic-handoff" or "--headed-session" or "--controller" or "--owned-scan" or "--replay" or "--features" or "--traversal-recording" or "--recording-sync" or "--capture-probe" or "--traversal" or "--widgets" or "--observe-live" or "--text" or "--frames" or "--ranges" or "--composites" or "--tables" or "--paragraphs" or "--multiselect" or "--typeahead") > 1
+    || args.Any(arg => arg is "--headed-private-client" or "--view-fixture" or "--private-client" or "--private-pixels" or "--headed-private-pixels" or "--private-viewer" or "--synthetic-handoff" or "--headed-synthetic-handoff" or "--headed-session" or "--controller" or "--owned-scan" or "--replay" or "--features" or "--traversal-recording" or "--capture-probe" or "--recording-sync") && args.Length != 1))
 {
     Console.Error.WriteLine("Invalid arguments or unknown reference case. Use --help; only bundled fixtures are supported.");
     return 2;
@@ -48,6 +48,10 @@ Console.CancelKeyPress += (_, e) => { e.Cancel = true; cancellation.Cancel(); };
 var json = new JsonSerializerOptions { Converters = { new JsonStringEnumConverter() } };
 try
 {
+    if (args.Contains("--headed-private-client", StringComparer.Ordinal))
+        return await PrivateClientDemo.RunAsync(false, cancellation.Token, true);
+    if (args.Contains("--view-fixture", StringComparer.Ordinal) || args.Contains("--private-client", StringComparer.Ordinal))
+        return await PrivateClientDemo.RunAsync(args.Contains("--view-fixture", StringComparer.Ordinal), cancellation.Token);
     if (args.Contains("--private-pixels", StringComparer.Ordinal) || args.Contains("--headed-private-pixels", StringComparer.Ordinal))
         return await PrivatePixelDemo.RunAsync(args.Contains("--headed-private-pixels", StringComparer.Ordinal), cancellation.Token);
     if (args.Contains("--private-viewer", StringComparer.Ordinal))

@@ -1,0 +1,17 @@
+# Private fixture viewing client
+
+Status: implemented locally; final Windows/Linux and remote acceptance tracked in [validation](../validation/private-fixture-client-v1.md).
+
+The scoped semantic and PNG gateway previously required a header-capable caller. The new client displays those responses in a separate fixed Chromium window. Launch `dotnet run --project src/HeadlessScreenReader.Cli -c Release -- --view-fixture` for a bounded two-minute session, or `--private-client` for its finite automated proof. The target remains the bundled synthetic fixture. End, window closure, Ctrl+C or the lifetime bound closes owned resources.
+
+The native `PrivateViewerHttpClient` exchanges the one-use bootstrap and owns identity/connection headers. It accepts only an exact IPv4 loopback root and GUID scan/session scope, disables cookies/proxy/redirects, bounds actual response bytes, and checks response epoch, document digest, baseline, observation kind, media type and prior simulated-assistance binding. No new HTTP endpoints or Origin exceptions are added. An access denial means Ended; it does not invent whether expiry, revocation or another authorization check caused it.
+
+`ChromiumPrivateViewer` has no target input contract. It launches a separate owned root/context, aborts network requests, hashes its fixed embedded script/style in CSP, and renders data through arguments and text nodes. Credentials and target URLs never enter that page. Fixed native buttons only Pause/Resume, Refresh and End viewing. The page immediately clears images/text and increments a revision before calling its narrow binding; late render results cannot repopulate a paused, ended or newer revision. Blob URLs are revoked on clear. Navigation ends the surface. Actual admitted Evaluate tasks remain tracked after cancellation and are joined when the owned window/root closes.
+
+`PrivateViewerRefresh` reads retained semantics then fresh PNGs sequentially. It rechecks local controller role/generation, capture epoch/phase and viewer revision before publication. Pausing sends no read. Local capture exclusion, observed protocol failures and access denials clear displayed content. The footer explicitly says that already received bytes cannot be recalled. This is observed clearing, not instant remote revocation of a browser's memory.
+
+Fresh pixels and retained observations are labeled separately; neither establishes a goal. Domain presentation limits the display to128 nodes,80-character roles and512-character names, with explicit truncation. Safe text rendering preserves exposed markup as text. Native buttons, headings, skip navigation, visible focus, live state and a320px stacked layout support evaluation; these mechanisms are not a human/AT acceptance claim.
+
+The headed harness adds a private-client scenario with two Chromium roots. Its measured256-task failure recorded221 denied task creations, peak256 and zero OOM kills. That scenario now has an explicit512-task budget; other scenarios retain256. It retains1GiB memory,2 CPUs, no external network, non-root identity, no-new-privileges and the restricted capability probe. Safe cgroup counters preserve unavailable values as null. Raw browser exception logging used during diagnosis is not shipped.
+
+Public MCP/plugin publication remains deferred. Human target-input authority, credentials, remote identity-provider acceptance, hosted persistence and deployed customer acceptance remain separate gates. The original architecture proposal under outputs/ is preserved.

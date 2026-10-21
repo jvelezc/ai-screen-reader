@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        scenario: [controller, synthetic-handoff, private-pixels]
+        scenario: [controller, synthetic-handoff, private-pixels, private-client]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     defaults:
@@ -132,6 +132,8 @@ jobs:
       - name: Exercise CLI
         run: |
           New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          dotnet run --project src/HeadlessScreenReader.Cli -c Release --no-build -- --private-client | Tee-Object -FilePath artifacts/private-client.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           dotnet run --project src/HeadlessScreenReader.Cli -c Release --no-build | Tee-Object -FilePath artifacts/demo.jsonl
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           dotnet run --project src/HeadlessScreenReader.Cli -c Release --no-build -- --widgets | Tee-Object -FilePath artifacts/widgets.jsonl
