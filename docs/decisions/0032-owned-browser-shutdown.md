@@ -12,6 +12,16 @@ After collector stop, context close has a one-second soft budget. Missing or fai
 
 The existing five-second controller/owned close deadlines are unchanged. If actual shutdown cannot finish within the owning deadline, the owner remains faulted and cannot grant a replacement controller. A late native close does not recover it. A hung native call remains visible and keeps the actual disposal task pending.
 
+## Independent owned process exit
+
+CI39534740390 measured three Windows native-deadline failures at final elapsed times of 4,101 to 5,515 ms. Context calls had acknowledged without escalation, browser calls eventually acknowledged, and no SDK call was rejected. The exact browser-process exit time was still unmeasured. Sharing the wait budget did not eliminate the failures.
+
+Each fixture/public browser factory now obtains the root PID from its own Chromium CDP SystemInfo response and retains a read-only Process handle and OS exit notification. It looks up no process by name, kills no process and deletes no directory. The handle is released before actual adapter disposal completes. Normal launches cannot substitute a caller-provided PID or exit assertion.
+
+Native shutdown now supervises SDK response and independently confirmed root-process exit under the same four-second wait budget. If positive OS exit precedes the SDK's final response, it can stop its own Playwright transport and join every actual context/browser/process callback. SDK acknowledgement alone cannot release a still-pending exit watch. A rejected SDK call, failed process watch, expired deadline or unsettled callback remains failed; positive late exit cannot recover it. Existing collector/evidence-write acknowledgements and the five-second outer ownership deadline remain required.
+
+ProcessExitConfirmed, ProcessCallSettled, TransportEscalatedAfterProcessExit and BrowserCloseAcknowledgedBeforeTransport preserve these separate facts. This certifies root-process exit, API transport disposal and actual protocol-call drain. It does not certify SDK temporary-directory erasure or all descendant/driver process cleanup outside the disposable Linux container. Credential entry and general recording remain gated; container/display/image cleanup continues to have independent receipts.
+
 ## Evidence and limits
 
 Optional platform-independent BrowserShutdownStatus records phase, actual pending count, each call's settled/acknowledged state, transport disposal, context escalation and a fixed safe error code. It includes no exception text, command line, URL, bearer or screenshot. It is diagnostic evidence, not reader-visible semantics or an accessibility-barrier classification.
@@ -20,4 +30,4 @@ Additive BrowserDeadlineExceeded and BrowserCallRejected facts distinguish a dea
 
 The controller CLI now keeps execution and cleanup failures separately in controller-demo.json and prints an explicit unsuccessful summary. Its original controller.json retains the hsr-local-controller-v1 shape with additive shutdown diagnostics. A minimal internal workflow seam reuses IScreenReaderBrowser and IOwnedEvidenceStore; production still creates real Chromium and real owned files. Deterministic failure tests use in-memory dependencies without environment/console mutation or filesystem I/O. Real Chromium disposal and the full acceptance demos remain separate checks.
 
-SDK acknowledgement and actual process exit remain separate. The headed/private-viewer proofs continue to verify process exit and task-owned cleanup explicitly. This repair adds no OS-level process killing, privileges, arbitrary target or public viewer. The [next feature](0031-private-read-only-viewer.md#next-private-pixel-viewer-feasibility) remains private pixel-viewer feasibility after all CI gates pass. See [shutdown validation](../validation/browser-shutdown-v1.md).
+SDK acknowledgement and actual process exit remain separate. The headed/private-viewer proofs also verify process exit and task-owned cleanup explicitly. This repair adds no OS-level process killing, privileges, arbitrary target or public viewer. The [pixel relay](0033-private-pixel-viewer.md) is implemented locally; its six-job remote acceptance must pass before the [accessible viewing client](0033-private-pixel-viewer.md#next-accessible-private-viewing-client). See [shutdown validation](../validation/browser-shutdown-v1.md).

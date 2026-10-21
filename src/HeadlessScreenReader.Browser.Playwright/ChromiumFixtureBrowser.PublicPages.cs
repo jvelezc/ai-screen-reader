@@ -15,6 +15,7 @@ public sealed partial class ChromiumFixtureBrowser
         token.ThrowIfCancellationRequested();
         var playwright = await Microsoft.Playwright.Playwright.CreateAsync().ConfigureAwait(false);
         IBrowser? browser = null;
+        OwnedChromiumProcess? nativeProcess = null;
         try
         {
             browser = await playwright.Chromium.LaunchAsync(new()
@@ -61,12 +62,14 @@ public sealed partial class ChromiumFixtureBrowser
             var cdp = await context.NewCDPSessionAsync(page).ConfigureAwait(false);
             await cdp.SendAsync("Accessibility.enable").ConfigureAwait(false);
             token.ThrowIfCancellationRequested();
-            return new(playwright, browser, context, page, cdp, null, false, new(), policy, blocked, page.Url);
+            nativeProcess = await OwnedChromiumProcess.AttachAsync(browser).ConfigureAwait(false);
+            token.ThrowIfCancellationRequested();
+            return new(playwright, browser, context, page, cdp, null, false, new(), nativeProcess, policy, blocked, page.Url);
         }
         catch
         {
-            if (browser is not null) await browser.CloseAsync().ConfigureAwait(false);
-            playwright.Dispose();
+            try { if (browser is not null) await browser.CloseAsync().ConfigureAwait(false); }
+            finally { try { playwright.Dispose(); } finally { nativeProcess?.Dispose(); } }
             throw;
         }
     }

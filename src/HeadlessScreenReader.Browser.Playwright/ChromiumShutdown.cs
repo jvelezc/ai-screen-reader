@@ -4,7 +4,7 @@ namespace HeadlessScreenReader.Browser.Playwright;
 
 /// <summary>Escalates a stalled context close, then joins every actual native call. Wait timeouts do not drain work.</summary>
 internal sealed class ChromiumShutdown(Func<Task> closeContext, Func<Task> closeBrowser, Action disposeTransport, TimeProvider? timeProvider = null,
-    Func<Task>? stopCollectors = null)
+    Func<Task>? stopCollectors = null, Func<Task>? waitProcessExit = null)
 {
     private readonly object _sync = new();
     private readonly TimeProvider _time = timeProvider ?? TimeProvider.System;
@@ -13,19 +13,25 @@ internal sealed class ChromiumShutdown(Func<Task> closeContext, Func<Task> close
     private bool _contextStarted, _browserStarted, _contextSettled, _browserSettled, _contextAck, _browserAck, _disposed, _escalated;
     private bool _collectorStarted, _collectorSettled, _collectorAck;
     private bool _browserDeadline, _browserRejected;
+    private bool _processStarted, _processSettled, _processAck, _transportEscalated, _browserAckBeforeTransport;
     private string? _error;
     public BrowserShutdownStatus Status
     {
         get
         {
             lock (_sync) return new(_phase, (_collectorStarted && !_collectorSettled ? 1 : 0)
-                + (_contextStarted && !_contextSettled ? 1 : 0) + (_browserStarted && !_browserSettled ? 1 : 0),
+                + (_contextStarted && !_contextSettled ? 1 : 0) + (_browserStarted && !_browserSettled ? 1 : 0)
+                + (_processStarted && !_processSettled ? 1 : 0),
                 _contextAck, _browserAck, _contextSettled, _browserSettled, _disposed, _escalated, _error)
             {
                 CollectorStopAcknowledged = _collectorAck,
                 CollectorCallSettled = _collectorSettled,
                 BrowserDeadlineExceeded = _browserDeadline,
-                BrowserCallRejected = _browserRejected
+                BrowserCallRejected = _browserRejected,
+                ProcessExitConfirmed = _processAck,
+                ProcessCallSettled = _processSettled,
+                TransportEscalatedAfterProcessExit = _transportEscalated,
+                BrowserCloseAcknowledgedBeforeTransport = _browserAckBeforeTransport
             };
         }
     }
@@ -43,7 +49,7 @@ internal sealed class ChromiumShutdown(Func<Task> closeContext, Func<Task> close
     }
     private async Task CloseCoreAsync(TaskCompletionSource completion)
     {
-        Task<bool>? collector = null, context = null, browser = null;
+        Task<bool>? collector = null, context = null, browser = null, process = null;
         long? nativeStarted = null;
         try
         {
@@ -55,6 +61,11 @@ internal sealed class ChromiumShutdown(Func<Task> closeContext, Func<Task> close
             }
             catch (TimeoutException) { Fail("CHROMIUM_COLLECTOR_STOP_UNCONFIRMED"); }
             nativeStarted = _time.GetTimestamp();
+            if (waitProcessExit is not null)
+            {
+                lock (_sync) _processStarted = true;
+                process = TrackAsync(waitProcessExit, ShutdownCall.Process);
+            }
             lock (_sync) { if (_error is null) _phase = BrowserShutdownPhase.ClosingContext; _contextStarted = true; }
             context = TrackAsync(closeContext, ShutdownCall.Context);
             try
@@ -74,9 +85,25 @@ internal sealed class ChromiumShutdown(Func<Task> closeContext, Func<Task> close
                     lock (_sync) _browserDeadline = true;
                     Fail("CHROMIUM_BROWSER_CLOSE_UNCONFIRMED");
                 }
-                else if (!await browser.WaitAsync(remaining, _time).ConfigureAwait(false))
+                else if (process is null)
                 {
-                    Fail("CHROMIUM_BROWSER_CLOSE_UNCONFIRMED");
+                    if (!await browser.WaitAsync(remaining, _time).ConfigureAwait(false)) Fail("CHROMIUM_BROWSER_CLOSE_UNCONFIRMED");
+                }
+                else
+                {
+                    var first = await Task.WhenAny(browser, process).WaitAsync(remaining, _time).ConfigureAwait(false);
+                    if (first == browser && !await browser.ConfigureAwait(false))
+                    { Fail("CHROMIUM_BROWSER_CLOSE_UNCONFIRMED"); return; }
+                    // SDK acknowledgement alone is not process exit. The OS watch remains actual work too.
+                    remaining = TimeSpan.FromSeconds(4) - _time.GetElapsedTime(nativeStarted.Value);
+                    if (remaining <= TimeSpan.Zero) throw new TimeoutException();
+                    if (!await process.WaitAsync(remaining, _time).ConfigureAwait(false)) Fail("CHROMIUM_PROCESS_EXIT_UNCONFIRMED");
+                    lock (_sync)
+                    {
+                        if (_browserRejected) Fail("CHROMIUM_BROWSER_CLOSE_UNCONFIRMED");
+                        // Positive kernel exit permits stopping our driver before its SDK finalization response.
+                        _transportEscalated = _processAck && !browser.IsCompleted;
+                    }
                 }
             }
             catch (TimeoutException) { lock (_sync) _browserDeadline = true; Fail("CHROMIUM_BROWSER_CLOSE_UNCONFIRMED"); }
@@ -84,6 +111,7 @@ internal sealed class ChromiumShutdown(Func<Task> closeContext, Func<Task> close
         catch { Fail("CHROMIUM_SHUTDOWN_UNCONFIRMED"); }
         finally
         {
+            lock (_sync) _browserAckBeforeTransport = _browserAck;
             try { disposeTransport(); lock (_sync) _disposed = true; }
             catch { Fail("CHROMIUM_TRANSPORT_CLOSE_UNCONFIRMED"); }
             lock (_sync) if (_error is null) _phase = BrowserShutdownPhase.DrainingCalls;
@@ -91,9 +119,12 @@ internal sealed class ChromiumShutdown(Func<Task> closeContext, Func<Task> close
             if (collector is not null) await collector.ConfigureAwait(false);
             if (context is not null) await context.ConfigureAwait(false);
             if (browser is not null) await browser.ConfigureAwait(false);
+            if (process is not null) await process.ConfigureAwait(false);
             lock (_sync)
             {
-                if (!_collectorAck || !_collectorSettled || !_browserAck || !_contextSettled || !_browserSettled || !_disposed) Fail("CHROMIUM_SHUTDOWN_UNCONFIRMED");
+                if (_browserRejected) Fail("CHROMIUM_BROWSER_CLOSE_UNCONFIRMED");
+                if (!_collectorAck || !_collectorSettled || !_browserAck || !_contextSettled || !_browserSettled || !_disposed
+                    || process is not null && (!_processAck || !_processSettled)) Fail("CHROMIUM_SHUTDOWN_UNCONFIRMED");
                 if (_error is null) { _phase = BrowserShutdownPhase.Closed; completion.TrySetResult(); }
                 else
                 {
@@ -108,7 +139,7 @@ internal sealed class ChromiumShutdown(Func<Task> closeContext, Func<Task> close
             }
         }
     }
-    private enum ShutdownCall { Collector, Context, Browser }
+    private enum ShutdownCall { Collector, Context, Browser, Process }
     private async Task<bool> TrackAsync(Func<Task> operation, ShutdownCall call)
     {
         var acknowledged = false;
@@ -120,7 +151,8 @@ internal sealed class ChromiumShutdown(Func<Task> closeContext, Func<Task> close
             {
                 if (call == ShutdownCall.Collector) { _collectorSettled = true; _collectorAck = acknowledged; }
                 else if (call == ShutdownCall.Context) { _contextSettled = true; _contextAck = acknowledged; }
-                else { _browserSettled = true; _browserAck = acknowledged; _browserRejected = !acknowledged; }
+                else if (call == ShutdownCall.Browser) { _browserSettled = true; _browserAck = acknowledged; _browserRejected = !acknowledged; }
+                else { _processSettled = true; _processAck = acknowledged; }
             }
         }
     }

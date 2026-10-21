@@ -25,7 +25,7 @@ public sealed class ChromiumShutdownTests
         var first = shutdown.CloseAsync(); Assert.Same(first, shutdown.CloseAsync()); await first;
         Assert.Equal(new[] { "context", "browser", "transport" }, order);
         Assert.Equal(new BrowserShutdownStatus(BrowserShutdownPhase.Closed, 0, true, true, true, true, true, false, null)
-        { CollectorCallSettled = true, CollectorStopAcknowledged = true }, shutdown.Status);
+        { CollectorCallSettled = true, CollectorStopAcknowledged = true, BrowserCloseAcknowledgedBeforeTransport = true }, shutdown.Status);
     }
 
     [Fact]

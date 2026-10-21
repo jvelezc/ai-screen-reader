@@ -10,6 +10,10 @@ public sealed record BrowserShutdownStatus(BrowserShutdownPhase Phase, int Activ
     public bool CollectorCallSettled { get; init; }
     public bool BrowserDeadlineExceeded { get; init; }
     public bool BrowserCallRejected { get; init; }
+    public bool ProcessExitConfirmed { get; init; }
+    public bool ProcessCallSettled { get; init; }
+    public bool TransportEscalatedAfterProcessExit { get; init; }
+    public bool BrowserCloseAcknowledgedBeforeTransport { get; init; }
 }
 public interface IBrowserShutdownDiagnostics
 {

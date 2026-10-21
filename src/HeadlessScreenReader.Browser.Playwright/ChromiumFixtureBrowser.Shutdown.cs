@@ -23,11 +23,14 @@ public sealed partial class ChromiumFixtureBrowser : IBrowserShutdownDiagnostics
     }
     private async Task DisposeCoreAsync(TaskCompletionSource completion)
     {
+        Exception? failure = null;
         try
         {
             await _captureAdmission.CloseAsync(_shutdown.CloseAsync).ConfigureAwait(false);
-            completion.TrySetResult();
         }
-        catch (Exception exception) { completion.TrySetException(exception); }
+        catch (Exception exception) { failure = exception; }
+        try { _nativeProcess.Dispose(); }
+        catch { failure ??= new BrowserOperationException("CHROMIUM_PROCESS_WATCH_RELEASE_UNCONFIRMED"); }
+        if (failure is null) completion.TrySetResult(); else completion.TrySetException(failure);
     }
 }

@@ -12,6 +12,7 @@ public enum BundledFixture { Foundation, Widgets, LiveRegions, Semantics, Landma
 public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, ICaptureControl, IAsyncDisposable
 {
     private readonly IPlaywright _playwright;
+    private readonly OwnedChromiumProcess _nativeProcess;
     private readonly IBrowser _browser;
     private readonly IBrowserContext _context;
     private readonly IPage _page;
@@ -29,12 +30,14 @@ public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, ICapt
 
     private ChromiumFixtureBrowser(
         IPlaywright playwright, IBrowser browser, IBrowserContext context, IPage page, ICDPSession cdp,
-        BundledFixture? fixture, bool headed, FrameCaptureOptions frameOptions,
+        BundledFixture? fixture, bool headed, FrameCaptureOptions frameOptions, OwnedChromiumProcess nativeProcess,
         PublicTargetPolicy? publicPolicy = null, HashSet<string>? blockedOrigins = null, string? sourceUrl = null)
     {
         _playwright = playwright;
+        _nativeProcess = nativeProcess;
         _browser = browser;
-        _shutdown = new(() => context.CloseAsync(), () => browser.CloseAsync(), playwright.Dispose, stopCollectors: () => _stopProbeCollector());
+        _shutdown = new(() => context.CloseAsync(), () => browser.CloseAsync(), playwright.Dispose, stopCollectors: () => _stopProbeCollector(),
+            waitProcessExit: () => nativeProcess.Exited);
         _context = context;
         _page = page;
         _cdp = cdp;
@@ -66,6 +69,7 @@ public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, ICapt
         cancellationToken.ThrowIfCancellationRequested();
         var playwright = await Microsoft.Playwright.Playwright.CreateAsync().ConfigureAwait(false);
         IBrowser? browser = null;
+        OwnedChromiumProcess? nativeProcess = null;
         try
         {
             browser = await playwright.Chromium.LaunchAsync(new()
@@ -90,13 +94,14 @@ public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, ICapt
             var cdp = await context.NewCDPSessionAsync(page).ConfigureAwait(false);
             await cdp.SendAsync("Accessibility.enable").ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
-            return new(playwright, browser, context, page, cdp, fixture, headed, frameOptions);
+            nativeProcess = await OwnedChromiumProcess.AttachAsync(browser).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            return new(playwright, browser, context, page, cdp, fixture, headed, frameOptions, nativeProcess);
         }
         catch
         {
-            if (browser is not null)
-                await browser.CloseAsync().ConfigureAwait(false);
-            playwright.Dispose();
+            try { if (browser is not null) await browser.CloseAsync().ConfigureAwait(false); }
+            finally { try { playwright.Dispose(); } finally { nativeProcess?.Dispose(); } }
             throw;
         }
     }

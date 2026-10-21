@@ -29,7 +29,7 @@ public sealed class ChromiumPrivatePixelTests
         Assert.True(proof.Shutdown is
         {
             Phase: BrowserShutdownPhase.Closed, ActiveCalls: 0, BrowserCloseAcknowledged: true,
-            BrowserDeadlineExceeded: false, BrowserCallRejected: false, TransportDisposed: true
+            BrowserDeadlineExceeded: false, BrowserCallRejected: false, TransportDisposed: true, ProcessExitConfirmed: true, ProcessCallSettled: true
         });
         Assert.NotEqual(proof.BeforeSha256, proof.AfterSha256); Assert.Matches("^[a-f0-9]{64}$", proof.BeforeSha256!);
         Assert.True(proof.BeforePixels is { Red: 0, Green: > 38400, Width: 320, Height: 240 });
