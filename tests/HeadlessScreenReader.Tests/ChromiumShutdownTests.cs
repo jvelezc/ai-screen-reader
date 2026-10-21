@@ -21,11 +21,11 @@ public sealed class ChromiumShutdownTests
     {
         var order = new List<string>();
         var shutdown = new ChromiumShutdown(() => { order.Add("context"); return Task.CompletedTask; },
-            () => { order.Add("browser"); return Task.CompletedTask; }, () => order.Add("transport"));
+            () => { order.Add("browser"); return Task.CompletedTask; }, () => order.Add("transport"), new FakeTimeProvider());
         var first = shutdown.CloseAsync(); Assert.Same(first, shutdown.CloseAsync()); await first;
         Assert.Equal(new[] { "context", "browser", "transport" }, order);
         Assert.Equal(new BrowserShutdownStatus(BrowserShutdownPhase.Closed, 0, true, true, true, true, true, false, null)
-        { CollectorCallSettled = true, CollectorStopAcknowledged = true, BrowserCloseAcknowledgedBeforeTransport = true }, shutdown.Status);
+        { CollectorCallSettled = true, CollectorStopAcknowledged = true, BrowserCloseAcknowledgedBeforeTransport = true, NativeElapsedMilliseconds = 0 }, shutdown.Status);
     }
 
     [Fact]

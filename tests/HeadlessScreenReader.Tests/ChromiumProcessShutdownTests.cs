@@ -65,6 +65,7 @@ public sealed class ChromiumProcessShutdownTests
         Assert.False(shutdown.Status.ProcessExitConfirmed); process.SetResult();
         Assert.Equal("CHROMIUM_BROWSER_CLOSE_UNCONFIRMED", (await Assert.ThrowsAsync<BrowserOperationException>(() => actual)).Code);
         Assert.True(shutdown.Status.ProcessExitConfirmed); Assert.Equal(0, shutdown.Status.ActiveCalls); Assert.Equal(BrowserShutdownPhase.Faulted, shutdown.Status.Phase);
+        Assert.Equal(4000d, shutdown.Status.NativeElapsedMilliseconds);
     }
     [Fact]
     public async Task NeitherProcessNorSdkAcknowledges_TimeoutStillJoinsBothActualCalls()

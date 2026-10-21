@@ -89,7 +89,9 @@ public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, ICapt
             await context.RouteAsync("**/*", route => route.AbortAsync()).ConfigureAwait(false);
             var page = await context.NewPageAsync().ConfigureAwait(false);
             page.SetDefaultTimeout(5_000);
-            await page.SetContentAsync(BundledFixtureCatalog.ReadHtml(fixture))
+            // Startup includes child documents and embedded resources. It has the launch budget,
+            // independently of the shorter interactive-command timeout configured above.
+            await page.SetContentAsync(BundledFixtureCatalog.ReadHtml(fixture), new() { Timeout = 15_000 })
                 .ConfigureAwait(false);
             var cdp = await context.NewCDPSessionAsync(page).ConfigureAwait(false);
             await cdp.SendAsync("Accessibility.enable").ConfigureAwait(false);

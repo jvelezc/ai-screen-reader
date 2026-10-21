@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Text.Json;
 using HeadlessScreenReader.Cli;
 using HeadlessScreenReader.Domain;
 
@@ -19,6 +20,7 @@ public sealed class ChromiumRecordingSynchronizationTests
         Assert.Null(receipt.Media);
         Assert.Empty(receipt.Actions);
         Assert.Empty(receipt.Timeline);
+        Assert.Null(receipt.Shutdown);
         Assert.True(File.Exists(Path.Combine(receipt.Folder, "receipt.json")));
         Assert.Contains("No original recording finalized", File.ReadAllText(Path.Combine(receipt.Folder, "index.md")));
     }
@@ -27,7 +29,10 @@ public sealed class ChromiumRecordingSynchronizationTests
     public async Task TwentyActualReaderActions_AlignOriginalVideoWithinTargetIncludingUncertainty()
     {
         var receipt = await RecordingSynchronizationDemo.RunAsync(Path.Combine("artifacts", "recording-sync-tests"));
-        Assert.Null(receipt.ErrorCode);
+        Assert.True(receipt.ErrorCode is null, receipt.ErrorCode + ": " + JsonSerializer.Serialize(receipt.Shutdown));
+        Assert.Equal(BrowserShutdownPhase.Closed, receipt.Shutdown!.Phase);
+        Assert.True(receipt.Shutdown.ProcessExitConfirmed);
+        Assert.Equal(0, receipt.Shutdown.ActiveCalls);
         Assert.Equal("Complete", receipt.Stage);
         Assert.Equal(SynchronizationVerification.Verified, receipt.Synchronization!.Verification);
         Assert.Equal(250, receipt.Synchronization.TargetMilliseconds);

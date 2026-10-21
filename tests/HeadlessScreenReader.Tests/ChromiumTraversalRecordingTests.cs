@@ -21,7 +21,11 @@ public sealed class ChromiumTraversalRecordingTests
     {
         var folder = NewFolder();
         var result = await TraversalRecordingDemo.RunRouteAsync(Path.Combine(folder, "route-1-media"), TraversalDemo.Plans[route]);
-        Assert.Null(result.Recording.ErrorCode);
+        Assert.True(result.Recording.ErrorCode is null, result.Recording.ErrorCode + ": " + JsonSerializer.Serialize(result.Recording.Shutdown));
+        Assert.Equal(BrowserShutdownPhase.Closed, result.Recording.Shutdown!.Phase);
+        Assert.True(result.Recording.Shutdown.ProcessExitConfirmed);
+        Assert.Equal(0, result.Recording.Shutdown.ActiveCalls);
+        Assert.InRange(result.Recording.Shutdown.NativeElapsedMilliseconds!.Value, 0, double.MaxValue);
         Assert.Equal("Complete", result.Recording.Stage);
         var receipt = Assert.IsType<TraversalReceipt>(result.Receipt);
         Assert.Equal(reachability, receipt.Reachability);

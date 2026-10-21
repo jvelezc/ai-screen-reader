@@ -15,6 +15,7 @@ internal sealed class ChromiumShutdown(Func<Task> closeContext, Func<Task> close
     private bool _browserDeadline, _browserRejected;
     private bool _processStarted, _processSettled, _processAck, _transportEscalated, _browserAckBeforeTransport;
     private string? _error;
+    private double? _nativeElapsedMilliseconds;
     public BrowserShutdownStatus Status
     {
         get
@@ -31,7 +32,8 @@ internal sealed class ChromiumShutdown(Func<Task> closeContext, Func<Task> close
                 ProcessExitConfirmed = _processAck,
                 ProcessCallSettled = _processSettled,
                 TransportEscalatedAfterProcessExit = _transportEscalated,
-                BrowserCloseAcknowledgedBeforeTransport = _browserAckBeforeTransport
+                BrowserCloseAcknowledgedBeforeTransport = _browserAckBeforeTransport,
+                NativeElapsedMilliseconds = _nativeElapsedMilliseconds
             };
         }
     }
@@ -122,6 +124,7 @@ internal sealed class ChromiumShutdown(Func<Task> closeContext, Func<Task> close
             if (process is not null) await process.ConfigureAwait(false);
             lock (_sync)
             {
+                _nativeElapsedMilliseconds = nativeStarted is { } nativeStart ? _time.GetElapsedTime(nativeStart).TotalMilliseconds : null;
                 if (_browserRejected) Fail("CHROMIUM_BROWSER_CLOSE_UNCONFIRMED");
                 if (!_collectorAck || !_collectorSettled || !_browserAck || !_contextSettled || !_browserSettled || !_disposed
                     || process is not null && (!_processAck || !_processSettled)) Fail("CHROMIUM_SHUTDOWN_UNCONFIRMED");

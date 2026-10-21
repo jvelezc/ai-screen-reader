@@ -12,6 +12,7 @@ public sealed record TraversalRecordingEvidence(string Stage, string? ErrorCode,
     RecordingProbeMedia? Media, CaptureStatus? CaptureLifecycle)
 {
     public double? RunnerOriginHostMilliseconds { get; init; }
+    public BrowserShutdownStatus? Shutdown { get; init; }
 }
 public sealed record RecordedTraversalResult(TraversalReceipt? Receipt, TraversalRecordingEvidence Recording,
     FixtureBrowserEnvironment? Environment);
@@ -77,7 +78,7 @@ public static class TraversalRecordingDemo
         catch (Exception exception) when (exception is PlaywrightException or IOException or TimeoutException or UnauthorizedAccessException)
         { error = "TRAVERSAL_RECORDING_FAILED"; }
         return new(receipt, new(stage, error, alignment, samples.ToImmutable(), media, ownedProbe?.CaptureStatus)
-        { RunnerOriginHostMilliseconds = runnerOriginHostMilliseconds }, environment);
+        { RunnerOriginHostMilliseconds = runnerOriginHostMilliseconds, Shutdown = ownedProbe?.ShutdownStatus }, environment);
     }
 
     public static async Task<int> RunAsync(string outputRoot, CancellationToken cancellationToken = default)

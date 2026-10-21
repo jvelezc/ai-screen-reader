@@ -13,7 +13,10 @@ public sealed record RecordingSynchronizationReceipt(string Schema, string Folde
     RecordingSynchronizationResult? Synchronization, ImmutableArray<ClockRoundTrip> ClockSamples,
     double ReaderOriginUncertaintyMilliseconds, ImmutableArray<RecordedActionMarker> Actions,
     ImmutableArray<ReaderStep> Steps, ImmutableArray<ReaderEvent> Timeline, RecordingProbeMedia? Media,
-    CaptureStatus? CaptureLifecycle, FixtureBrowserEnvironment? Environment);
+    CaptureStatus? CaptureLifecycle, FixtureBrowserEnvironment? Environment)
+{
+    public BrowserShutdownStatus? Shutdown { get; init; }
+}
 
 public static class RecordingSynchronizationDemo
 {
@@ -101,7 +104,8 @@ public static class RecordingSynchronizationDemo
         { error = "RECORDING_PROBE_FAILED"; }
         finally { lifecycle = ownedProbe?.CaptureStatus; }
         var receipt = new RecordingSynchronizationReceipt("recording-synchronization-v1", folder, stage, error,
-            analysis, samples.ToImmutable(), originUncertainty, actions, steps.ToImmutable(), timeline, media, lifecycle, environment);
+            analysis, samples.ToImmutable(), originUncertainty, actions, steps.ToImmutable(), timeline, media, lifecycle, environment)
+        { Shutdown = ownedProbe?.ShutdownStatus };
         Directory.CreateDirectory(folder);
         await WriteNewAsync(Path.Combine(folder, "receipt.json"), JsonSerializer.Serialize(receipt, TraversalDemo.JsonOptions)).ConfigureAwait(false);
         var recordingLink = !File.Exists(Path.Combine(folder, "original.webm")) ? "No original recording finalized."

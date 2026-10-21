@@ -18,7 +18,7 @@ public sealed class ChromiumEvidenceViewerTests
     {
         var folder = NewFolder();
         var result = await TraversalRecordingDemo.RunRouteAsync(Path.Combine(folder, "route-1-media"), TraversalDemo.Plans[route]);
-        Assert.Null(result.Recording.ErrorCode);
+        Assert.True(result.Recording.ErrorCode is null, result.Recording.ErrorCode + ": " + JsonSerializer.Serialize(result.Recording.Shutdown));
         var receipt = result.Receipt!;
         await TraversalArtifactWriter.WriteAsync(folder, 1, receipt, result.Environment, result.Recording);
         var original = Path.Combine(folder, "route-1-media", "original.webm");

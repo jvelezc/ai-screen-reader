@@ -14,6 +14,7 @@ public sealed record BrowserShutdownStatus(BrowserShutdownPhase Phase, int Activ
     public bool ProcessCallSettled { get; init; }
     public bool TransportEscalatedAfterProcessExit { get; init; }
     public bool BrowserCloseAcknowledgedBeforeTransport { get; init; }
+    public double? NativeElapsedMilliseconds { get; init; }
 }
 public interface IBrowserShutdownDiagnostics
 {

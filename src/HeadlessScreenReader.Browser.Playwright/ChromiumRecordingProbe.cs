@@ -30,6 +30,7 @@ public sealed class ChromiumRecordingProbe : IAsyncDisposable
     public IScreenReaderBrowser Browser => _browser;
     public FixtureBrowserEnvironment Environment => _browser.Environment;
     public CaptureStatus CaptureStatus => _browser.CaptureStatus;
+    public BrowserShutdownStatus ShutdownStatus => _browser.ShutdownStatus;
 
     public Task<double> ReadBrowserClockAsync() => _browser.DiagnosticPage.EvaluateAsync<double>(
         "() => performance.timeOrigin + performance.now()");
