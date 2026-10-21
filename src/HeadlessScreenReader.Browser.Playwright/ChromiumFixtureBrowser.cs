@@ -37,7 +37,7 @@ public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, ICapt
         _nativeProcess = nativeProcess;
         _browser = browser;
         _shutdown = new(() => context.CloseAsync(), () => browser.CloseAsync(), playwright.Dispose, stopCollectors: () => _stopProbeCollector(),
-            waitProcessExit: () => nativeProcess.Exited);
+            waitProcessExit: () => nativeProcess.Exited, stopOwnedProcess: nativeProcess.WindowsRootStop);
         _context = context;
         _page = page;
         _cdp = cdp;

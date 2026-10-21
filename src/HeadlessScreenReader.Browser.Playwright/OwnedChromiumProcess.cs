@@ -4,7 +4,7 @@ using Microsoft.Playwright;
 
 namespace HeadlessScreenReader.Browser.Playwright;
 
-/// <summary>Observes one privately launched browser process. No process-name lookup, kill or directory deletion.</summary>
+/// <summary>Observes one privately launched root; Windows stop uses its retained handle. No name lookup, tree walk or directory deletion.</summary>
 internal sealed class OwnedChromiumProcess : IDisposable
 {
     private readonly Process _process;
@@ -20,6 +20,15 @@ internal sealed class OwnedChromiumProcess : IDisposable
     }
     public Task Exited => _exited.Task;
     public int ProcessId => _process.Id;
+    public Func<Task>? WindowsRootStop => OperatingSystem.IsWindows() ? StopWindowsRootAsync : null;
+    private Task StopWindowsRootAsync()
+    {
+        if (!OperatingSystem.IsWindows()) throw new BrowserOperationException("CHROMIUM_ROOT_STOP_UNSUPPORTED");
+        // Process.Handle was retained at attachment. Windows Kill() reuses that exact handle,
+        // without reopening a PID or enumerating a process tree. A return is not exit proof.
+        if (!_exited.Task.IsCompleted) _process.Kill();
+        return Task.CompletedTask;
+    }
     private void OnExited(object? sender, EventArgs args) => _exited.TrySetResult();
     public static async Task<OwnedChromiumProcess> AttachAsync(IBrowser browser)
     {
@@ -37,6 +46,12 @@ internal sealed class OwnedChromiumProcess : IDisposable
                 if (pid is <= 0 or > int.MaxValue) throw new InvalidOperationException();
                 process = Process.GetProcessById((int)pid);
                 watch = new(process);
+                // Reconfirm through the same owned browser after taking the handle. A root that
+                // vanished before attachment cannot lend stop authority to a reused numeric PID.
+                var confirmation = await session.SendAsync("SystemInfo.getProcessInfo").ConfigureAwait(false);
+                var confirmedPid = confirmation!.Value.GetProperty("processInfo").EnumerateArray()
+                    .Single(item => item.GetProperty("type").GetString() == "browser").GetProperty("id").GetInt64();
+                if (confirmedPid != pid || watch.Exited.IsCompleted) throw new InvalidOperationException();
             }
             finally { await session.DetachAsync().ConfigureAwait(false); }
             return watch;

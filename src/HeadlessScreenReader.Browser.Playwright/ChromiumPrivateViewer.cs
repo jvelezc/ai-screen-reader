@@ -21,7 +21,8 @@ public sealed class ChromiumPrivateViewer : IAsyncDisposable, IBrowserShutdownDi
     private ChromiumPrivateViewer(IPlaywright playwright, IBrowser browser, IBrowserContext context, IPage page, OwnedChromiumProcess process)
     {
         _page = page; _process = process;
-        _shutdown = new(() => context.CloseAsync(), () => browser.CloseAsync(), playwright.Dispose, waitProcessExit: () => process.Exited);
+        _shutdown = new(() => context.CloseAsync(), () => browser.CloseAsync(), playwright.Dispose, waitProcessExit: () => process.Exited,
+            stopOwnedProcess: process.WindowsRootStop);
         page.Close += (_, _) => _ended.TrySetResult(); browser.Disconnected += (_, _) => _ended.TrySetResult();
         page.FrameNavigated += (_, _) => { lock (_sync) { _intent = new(PrivateViewAction.End, _intent.Revision); _ended.TrySetResult(); } };
     }

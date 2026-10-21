@@ -9,6 +9,31 @@ namespace HeadlessScreenReader.Tests;
 public sealed class ControllerShutdownDiagnosticsTests
 {
     [Fact]
+    public async Task TimelyRootExit_CannotRecoverTheControllerDeadlineWhileActualOwnedStopIsPending()
+    {
+        var time = new FakeTimeProvider(); var context = Signal(); context.SetResult(); var transport = Signal(); var started = Signal(); var stop = Signal(); var process = Signal();
+        var browser = new ClosingBrowser(time, context, transport, () => process.Task,
+            stopOwnedProcess: () => { started.SetResult(); return stop.Task; });
+        var control = new ControlledScanSession(browser, new RecordingStore(), time); var close = control.DisposeAsync().AsTask();
+        try
+        {
+            time.Advance(TimeSpan.FromSeconds(2)); await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            time.Advance(TimeSpan.FromMilliseconds(500)); process.SetResult();
+            await NativeShutdownTestSync.UntilAsync(() => browser.Native.Status is { Phase: BrowserShutdownPhase.DrainingCalls, TransportCallSettled: true });
+            time.Advance(TimeSpan.FromMilliseconds(2499)); Assert.False(close.IsCompleted);
+            Assert.True(control.Status.Shutdown!.ProcessExitConfirmed); Assert.Equal(1, control.Status.Shutdown.ActiveCalls);
+            Assert.False(control.Status.Shutdown.OwnedProcessStopCallSettled);
+            time.Advance(TimeSpan.FromMilliseconds(1));
+            Assert.Equal("CONTROL_CLOSE_UNCONFIRMED", (await Assert.ThrowsAsync<BrowserOperationException>(() => close)).Code);
+            Assert.Equal(ControllerPhase.Faulted, control.Status.Phase); Assert.False(browser.Native.Status.BrowserDeadlineExceeded);
+        }
+        finally { stop.TrySetResult(); }
+        await browser.Native.CloseAsync(); Assert.True(control.Status.Shutdown!.OwnedProcessStopAcknowledged);
+        Assert.Equal(BrowserShutdownPhase.Closed, control.Status.Shutdown.Phase); Assert.Equal(0, control.Status.Shutdown.ActiveCalls);
+        Assert.Equal(ControllerPhase.Faulted, control.Status.Phase);
+        await Assert.ThrowsAsync<BrowserOperationException>(() => control.AcquireAsync(TimeSpan.FromMinutes(1)));
+    }
+    [Fact]
     public async Task TimelyRootExit_CannotRecoverTheFiveSecondControllerDeadlineWhileActualTransportStopIsPending()
     {
         var time = new FakeTimeProvider(); var context = Signal(); context.SetResult(); var started = Signal(); var process = Signal();
@@ -65,8 +90,9 @@ public sealed class ControllerShutdownDiagnosticsTests
         private readonly OwnedBrowser _inner = new();
         public ChromiumShutdown Native { get; }
         public ClosingBrowser(TimeProvider time, TaskCompletionSource context, TaskCompletionSource transport,
-            Func<Task>? processExit = null, Action? stopTransport = null) =>
-            Native = new(() => context.Task, () => _inner.DisposeAsync().AsTask(), stopTransport ?? (() => transport.SetResult()), time, waitProcessExit: processExit);
+            Func<Task>? processExit = null, Action? stopTransport = null, Func<Task>? stopOwnedProcess = null) =>
+            Native = new(() => context.Task, () => _inner.DisposeAsync().AsTask(), stopTransport ?? (() => transport.SetResult()), time,
+                waitProcessExit: processExit, stopOwnedProcess: stopOwnedProcess);
         public BrowserShutdownStatus ShutdownStatus => Native.Status;
         public CaptureStatus CaptureStatus => _inner.CaptureStatus;
         public Task<AccessibilitySnapshot> CaptureAsync(CancellationToken cancellationToken = default) => _inner.CaptureAsync(cancellationToken);

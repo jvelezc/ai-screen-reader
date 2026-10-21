@@ -21,6 +21,10 @@ public sealed record BrowserShutdownStatus(BrowserShutdownPhase Phase, int Activ
     public double? TransportStopDurationMilliseconds { get; init; }
     /// <summary>Observed OS-exit confirmation relative to native shutdown start, not exact kernel exit time.</summary>
     public double? ProcessExitConfirmationMilliseconds { get; init; }
+    public bool OwnedProcessStopRequested { get; init; }
+    public bool OwnedProcessStopCallSettled { get; init; }
+    public bool OwnedProcessStopAcknowledged { get; init; }
+    public double? OwnedProcessStopDurationMilliseconds { get; init; }
 }
 public interface IBrowserShutdownDiagnostics
 {

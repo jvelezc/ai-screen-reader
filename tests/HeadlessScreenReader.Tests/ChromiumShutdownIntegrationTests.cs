@@ -7,6 +7,35 @@ namespace HeadlessScreenReader.Tests;
 public sealed class ChromiumShutdownIntegrationTests
 {
     [Fact]
+    public async Task ActualOwnedRootCapability_ConfirmsExitAndLeavesAnotherPrivateBrowserAlive()
+    {
+        await using var other = await ChromiumFixtureBrowser.LaunchAsync();
+        var otherIdentity = await other.CaptureFixtureProcessIdentityAsync();
+        using var playwright = await Microsoft.Playwright.Playwright.CreateAsync();
+        await using var browser = await playwright.Chromium.LaunchAsync(new() { Headless = true, ChromiumSandbox = true });
+        var context = await browser.NewContextAsync(); var page = await context.NewPageAsync();
+        await page.SetContentAsync("<h1>Separate owned root stop fixture</h1>");
+        using var watch = await OwnedChromiumProcess.AttachAsync(browser);
+        var pending = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        // Only the SDK-response callback is fault-injected. Context, retained handle, native stop and OS watch are real.
+        var shutdown = new ChromiumShutdown(() => context.CloseAsync(), () => pending.Task,
+            () => { playwright.Dispose(); pending.TrySetResult(); }, waitProcessExit: () => watch.Exited, stopOwnedProcess: watch.WindowsRootStop);
+        try
+        {
+            Assert.Equal(OperatingSystem.IsWindows(), watch.WindowsRootStop is not null);
+            await shutdown.CloseAsync().WaitAsync(TimeSpan.FromSeconds(8));
+            Assert.True(watch.Exited.IsCompletedSuccessfully); Assert.True(shutdown.Status.ProcessExitConfirmed);
+            Assert.Equal(OperatingSystem.IsWindows(), shutdown.Status.OwnedProcessStopRequested);
+            Assert.Equal(OperatingSystem.IsWindows(), shutdown.Status.OwnedProcessStopAcknowledged);
+            Assert.Equal(OperatingSystem.IsWindows(), shutdown.Status.OwnedProcessStopCallSettled);
+            Assert.Equal(!OperatingSystem.IsWindows(), shutdown.Status.TransportEscalatedBeforeProcessExit);
+            Assert.InRange(shutdown.Status.ProcessExitConfirmationMilliseconds!.Value, 0, 3999.9999);
+            Assert.Equal(BrowserShutdownPhase.Closed, shutdown.Status.Phase); Assert.Equal(0, shutdown.Status.ActiveCalls);
+            Assert.Equal(otherIdentity, await other.CaptureFixtureProcessIdentityAsync()); Assert.NotEmpty((await other.CaptureAsync()).Nodes);
+        }
+        finally { pending.TrySetResult(); await browser.CloseAsync(); }
+    }
+    [Fact]
     public async Task ActualOwnedDriverStop_ConfirmsChromiumRootExitWithAnInjectedStalledCloseCallback()
     {
         using var playwright = await Microsoft.Playwright.Playwright.CreateAsync();

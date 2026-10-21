@@ -14,9 +14,9 @@ The user has deferred public MCP hosting, Claude setup and official plugin publi
 | 5: hosted pilot | Deferred | Existing local stdio adapter | Public HTTPS endpoint, remote authorization, operations, client acceptance and hosted report |
 | 6: measured extensions | Later | Bounded reader improvements through v13 | Broader validated widgets and compatible-run comparisons; public plugins remain deferred |
 
-## Next: accept the private viewing client, then provision the hosted foundation
+## Next: verify Windows owned-root shutdown, then provision the hosted foundation
 
-The shutdown gate passed all six jobs in [CI39548114638](https://github.com/jvelezc/ai-screen-reader/actions/runs/39548114638) at b336876. The [private fixture viewing client](decisions/0034-private-fixture-viewing-client.md) now displays scoped pixels and retained semantics in a separate fixed Chromium window, with native Pause/Resume, Refresh and End controls. Its focused44-case suite, full Windows1,234/1,234 regression and Linux/Podman headed proof passed; replacement seven-job CI is the immediate gate. The next product gates are actual human/AT acceptance before target-input authority, and the Supabase project plus deployment host for durable execution. Public MCP/plugin publication remains deferred.
+The shutdown gate passed all six jobs in [CI39548114638](https://github.com/jvelezc/ai-screen-reader/actions/runs/39548114638) at b336876. The [private fixture viewing client](decisions/0034-private-fixture-viewing-client.md) now displays scoped pixels and retained semantics in a separate fixed Chromium window, with native Pause/Resume, Refresh and End controls. Its focused44-case suite, full local Windows1,234/1,234 regression and Linux/Podman headed proof passed. CI39655895713 passed all six Linux jobs and Ubuntu1,234/1,234, but Windows1,233/1,234 failed one existing fixture with root exit confirmed at5,138ms. The repair adds a Windows-only stop through the already-held owned-root handle and still requires actual exit before4,000ms plus actual callback drain; the5,000ms ownership deadline stays unchanged. Replacement seven-job CI is the immediate gate. The next product gates are actual human/AT acceptance before target-input authority, and the Supabase project plus deployment host for durable execution. Public MCP/plugin publication remains deferred.
 
 Try `dotnet run --project src/HeadlessScreenReader.Cli -c Release -- --view-fixture`. It opens a read-only synthetic fixture viewer for up to two minutes. Pause must clear both panes; Resume must restore them; End or closing the window must clean up both owned browsers. This is a manual acceptance task, not a completed human validation. The finite automated counterpart is `--private-client`; [the matrix](validation/private-fixture-client-v1.md) distinguishes actual browser/HTTP proofs from remaining hosted and human gates.
 
@@ -44,7 +44,7 @@ flowchart LR
     Headed --> Handoff[Synthetic excluded-input handoff]
     Handoff --> PrivateViewer[Scoped private semantic viewing]
     PrivateViewer --> Pixels[Private read-only pixel relay]
-    Pixels --> Gate[NEXT: private viewing client acceptance]
+    Pixels --> Gate[NEXT: verify Windows owned-root shutdown]
     Gate --> Next[Human and hosted foundation gates]
     Next --> ViewerControl[Human takeover acceptance]
     ViewerControl --> Durable[Durable hosted execution]
@@ -54,7 +54,7 @@ flowchart LR
     class Reader,Trace,Privacy,Timing,Recording,Viewer,ReaderGate,Features,Replay,Owned,Controller,Headed,Handoff,PrivateViewer,Pixels done
     class Gate next
     class Next,ViewerControl,Durable planned
-    click Gate "validation/private-fixture-client-v1.md"
+    click Gate "validation/browser-shutdown-v1.md"
     click Next "decisions/0034-private-fixture-viewing-client.md"
 ```
 
