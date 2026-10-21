@@ -16,6 +16,12 @@
   </ItemGroup>
   <ItemGroup><Using Include="Xunit" /></ItemGroup>
   <ItemGroup>
+    <!-- Launch the MCP application's own dependency closure. ASP.NET framework pruning in the
+         test host must not turn copied application DLLs into a broken standalone deployment. -->
+    <AssemblyMetadata Include="McpServerAssembly"
+      Value="$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../src/HeadlessScreenReader.Mcp/bin/$(Configuration)/$(TargetFramework)/HeadlessScreenReader.Mcp.dll'))" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\..\src\HeadlessScreenReader.Mcp\HeadlessScreenReader.Mcp.csproj" />
     <ProjectReference Include="..\..\src\HeadlessScreenReader.Egress\HeadlessScreenReader.Egress.csproj" />
   </ItemGroup>

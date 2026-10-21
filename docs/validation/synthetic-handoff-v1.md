@@ -24,4 +24,6 @@ Local Linux/Podman headed acceptance passed separately at artifacts/headed-linux
 | Missing positive control cannot turn safe-looking media into acceptance | MissingActualCanaryControl_CannotTurnEmptySafeLookingSegmentsIntoAcceptance |
 | Headed Linux combined proof preserves process/context/document and cleans actual browser/display/resources | SyntheticHandoff_ActualInputIsExcludedFromOwnedFilesAndOriginalMedia in scripts/Test-HeadedSession.ps1 and CLI receipt |
 
+Remote CI [39517114713](https://github.com/jvelezc/ai-screen-reader/actions/runs/39517114713) passed all five jobs on main: Windows and Ubuntu each passed 982/982 with zero failed/skipped, demos and packaging; both independent headed Linux/Docker scenarios and public-reader isolation passed. Downloaded TRX and headed handoff receipts confirmed actual results. The headed CI handoff inspected all 17 original/staging media artifacts and confirmed same-context resume plus owned cleanup. Local Windows, local Linux/Podman and remote CI remain distinct evidence.
+
 No local Linux full-suite, deployment, fresh NVDA, actual human, Claude-client, private remote-viewer or real credential-entry acceptance is claimed. The next increment is [private viewer authorization and read-only transport](../decisions/0030-synthetic-excluded-input-handoff.md#next-private-viewer-authorization-and-read-only-transport).

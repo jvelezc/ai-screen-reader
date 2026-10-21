@@ -216,13 +216,19 @@ public sealed class ChromiumMcpTests
         await CallAsync(client, "reader_close", new() { ["sessionId"] = id });
     }
 
-    private static Task<McpClient> ConnectAsync() => McpClient.CreateAsync(new StdioClientTransport(new()
+    private static Task<McpClient> ConnectAsync()
     {
-        Command = Environment.GetEnvironmentVariable("DOTNET_HOST_PATH") ?? "dotnet",
-        Arguments = [typeof(ReaderTools).Assembly.Location],
-        WorkingDirectory = AppContext.BaseDirectory,
-        Name = "HeadlessScreenReader integration"
-    }));
+        var server = typeof(ChromiumMcpTests).Assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyMetadataAttribute), false)
+            .Cast<System.Reflection.AssemblyMetadataAttribute>().Single(a => a.Key == "McpServerAssembly").Value!;
+        Assert.True(File.Exists(server), "The referenced MCP application's own build output must exist.");
+        return McpClient.CreateAsync(new StdioClientTransport(new()
+        {
+            Command = Environment.GetEnvironmentVariable("DOTNET_HOST_PATH") ?? "dotnet",
+            Arguments = [server],
+            WorkingDirectory = Path.GetDirectoryName(server),
+            Name = "HeadlessScreenReader integration"
+        }));
+    }
 
     private static Task<JsonElement> Execute(McpClient client, string session, string document, string command) =>
         CallAsync(client, "reader_execute", new() { ["sessionId"] = session, ["documentId"] = document, ["command"] = command });

@@ -32,4 +32,4 @@ This is a fixed synthetic feasibility experiment on a trusted fixture. It does n
 
 ## Next: private viewer authorization and read-only transport
 
-Build a bounded authenticated private-viewer experiment with short-lived single-exchange bootstrap, explicit scan/session binding and revocation at the actual connection boundary. Keep observation and input authority separate. Prove rejected identity/scope, stale grants, reconnect/replay, expiry and revocation before adding a human input path. The existing offline evidence viewer remains available. Public MCP hosting and plugin publication stay deferred.
+This increment is now implemented as [scoped private semantic viewing](0031-private-read-only-viewer.md): process-provisioned identity, single-exchange bootstrap, exact owned scan/session binding, expiry and actual delivery revocation/drain. The [validation](../validation/private-viewer-v1.md) distinguishes its loopback-only proof from remote identity-provider, pixel-viewer and actual human acceptance. The current next step is private pixel-viewer feasibility. The existing offline evidence viewer remains available; public MCP hosting and plugins stay deferred.

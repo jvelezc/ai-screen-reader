@@ -1,0 +1,32 @@
+# Protocol examples for an in-process proof host. Values are supplied only by its trusted composer.
+# The --private-viewer command exercises these requests and closes the host; it prints no credentials.
+@baseUrl = http://127.0.0.1:5000
+@identity = PROCESS_SCOPED_SECRET
+@bootstrap = SINGLE_EXCHANGE_SECRET
+@scanId = EXACT_SCAN_ID
+@sessionId = EXACT_SESSION_ID
+@connectionId = EXCHANGED_CONNECTION_ID
+@connectionToken = EXCHANGED_READ_SECRET
+
+### Authenticated protocol description
+GET {{baseUrl}}/openapi/v1.json
+Authorization: Bearer {{identity}}
+
+### Exchange once; replay returns 401
+POST {{baseUrl}}/viewer/exchange
+Authorization: Bearer {{identity}}
+Content-Type: application/json
+
+{"ScanId":"{{scanId}}","SessionId":"{{sessionId}}","Bootstrap":"{{bootstrap}}"}
+
+### Retained observation; stale epoch returns 400 and excluded capture returns 409
+GET {{baseUrl}}/viewer/{{scanId}}/{{sessionId}}/observation?epoch=1
+Authorization: Bearer {{identity}}
+X-Viewer-Id: {{connectionId}}
+X-Viewer-Token: {{connectionToken}}
+
+### Revoke and acknowledge actual drain; subsequent read returns 401
+POST {{baseUrl}}/viewer/{{scanId}}/{{sessionId}}/revoke
+Authorization: Bearer {{identity}}
+X-Viewer-Id: {{connectionId}}
+X-Viewer-Token: {{connectionToken}}

@@ -159,6 +159,12 @@ public sealed partial class OwnedScanSession : IAsyncDisposable
                 catch { Fault("OWNED_COMPLETION_UNCONFIRMED"); throw new BrowserOperationException("OWNED_COMPLETION_UNCONFIRMED"); }
                 lock (_sync) Ensure(epoch);
                 if (intentWrite is null) throw new BrowserOperationException("OWNED_WRITE_UNCONFIRMED");
+                lock (_sync)
+                {
+                    Ensure(epoch);
+                    if (state == OwnedCompletionState.ResultStored && evidence?.Snapshot is { } retained)
+                        _viewerObservation = new(_store.ScanId, epoch, intent.Ordinal, retained, _simulationIntroduced);
+                }
                 return new(completion, evidence, intentWrite, resultWrite, completionWrite);
             }
             finally { _commands.Release(); }
@@ -187,6 +193,7 @@ public sealed partial class OwnedScanSession : IAsyncDisposable
     private void Apply(CaptureLifecycleEvent item)
     {
         _phase = item.Phase;
+        if (_phase != CapturePhase.Permitted) _viewerObservation = null;
         if (_events.Count == 256) { _events.Dequeue(); _truncated = true; }
         _events.Enqueue(item);
     }
@@ -269,7 +276,11 @@ public sealed partial class OwnedScanSession : IAsyncDisposable
                 CaptureLifecycleEvent permitted;
                 lock (_sync) { _epoch = baseline.CaptureEpoch; permitted = NewEvent(CapturePhase.Permitted); }
                 await Journal(permitted).WaitAsync(TransitionTimeout, _time).ConfigureAwait(false);
-                lock (_sync) { Apply(permitted); _readerLease = null; _token = Guid.Empty; }
+                lock (_sync)
+                {
+                    Apply(permitted); _readerLease = null; _token = Guid.Empty;
+                    _viewerObservation = new(_store.ScanId, _epoch, 0, record.Snapshot, _simulationIntroduced);
+                }
                 return record.Snapshot;
             }
             catch { Fault("OWNED_RESUME_UNCONFIRMED"); throw new BrowserOperationException("OWNED_RESUME_UNCONFIRMED"); }

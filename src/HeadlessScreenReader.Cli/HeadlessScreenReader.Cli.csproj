@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>
+  <ItemGroup><FrameworkReference Include="Microsoft.AspNetCore.App" /></ItemGroup>
   <ItemGroup><EmbeddedResource Include="Viewer/*.css;Viewer/*.js" /></ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../HeadlessScreenReader.ScreenReader/HeadlessScreenReader.ScreenReader.csproj" />
