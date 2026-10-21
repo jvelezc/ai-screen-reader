@@ -39,7 +39,15 @@ On Linux, install Chromium's system dependencies with the same Playwright comman
 dotnet run --project src/HeadlessScreenReader.Cli -c Release --no-build -- --headed
 ```
 
-The demo prints JSON lines. It reads a heading, finds a button with the virtual cursor, reports FocusRequired when browser focus differs, tabs to that button, and presses Enter. The final line must contain FixtureGoalReached: true. The fixture itself changes focus to its revealed heading, just as a website can.
+To see the new read-only viewer, run this separately when you are ready to watch its window:
+
+```powershell
+dotnet run --project src/HeadlessScreenReader.Cli -c Release --no-build -- --view-fixture
+```
+
+The window shows a bundled synthetic page's pixels beside the reader's last acknowledged semantics. It closes after two minutes. Pause clears both panes, Resume restores permitted content, Refresh requests a new view, and End closes the session. These controls operate the viewing session; they do not control the displayed website. Closing the window or pressing Ctrl+C also ends the demo. No account is needed. See [the client validation and remaining gates](docs/validation/private-fixture-client-v1.md).
+
+The ordinary demo prints JSON lines. It reads a heading, finds a button with the virtual cursor, reports FocusRequired when browser focus differs, tabs to that button, and presses Enter. The final line must contain FixtureGoalReached: true. The fixture itself changes focus to its revealed heading, just as a website can.
 
 The widget demo opens and closes a modal, checks terms, selects a radio option and delivery region, and waits for a delayed save heading. It then reports the observed disabled payment control. Its final line must contain both FixtureGoalReached: true and BlockedRouteObserved: true. Each Event line links an observation or action to its command sequence and monotonic elapsed time. Step lines report the command result; events are exported in sequence after the workflow.
 
