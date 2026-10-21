@@ -16,9 +16,15 @@ $oldPassword = $env:POSTGRES_PASSWORD
 function Wait-DatabaseReady {
     $clock = [Diagnostics.Stopwatch]::StartNew()
     do {
-        $probe = Invoke-ReaderRuntime $Runtime @('exec', $name, 'pg_isready', '-U', 'postgres', '-d', 'postgres') -AllowFailure
-        if ($probe.Code -eq 0) { return }
-        if ($clock.Elapsed.TotalSeconds -ge 30) { throw 'DATABASE_START_TIMEOUT' }
+        # pg_isready also accepts the entrypoint's temporary initialization server.
+        # PID1 executes postgres only after all image initialization scripts finish.
+        # Nix truncates its executable comm name, so inspect argv0 rather than comm.
+        $root = Invoke-ReaderRuntime $Runtime @('exec', $name, 'cat', '/proc/1/cmdline') -AllowFailure
+        if ($root.Code -eq 0 -and $root.Text.Split([char]0)[0] -match '(^|/)postgres$') {
+            $probe = Invoke-ReaderRuntime $Runtime @('exec', $name, 'pg_isready', '-U', 'postgres', '-d', 'postgres') -AllowFailure
+            if ($probe.Code -eq 0) { return }
+        }
+        if ($clock.Elapsed.TotalSeconds -ge 60) { throw 'DATABASE_START_TIMEOUT' }
         Start-Sleep -Milliseconds 250
     } while ($true)
 }
@@ -66,6 +72,7 @@ try {
     if ($item.HostConfig.NetworkMode -ne 'none' -or $item.HostConfig.Privileged `
         -or @($item.Mounts | Where-Object { $_.Type -eq 'bind' }).Count -ne 0 `
         -or @($item.HostConfig.PortBindings.PSObject.Properties).Count -ne 0) { throw 'DATABASE_ISOLATION_UNCONFIRMED' }
+    $stage = 'start'
     $null = Invoke-ReaderRuntime $Runtime @('start', $name)
     Wait-DatabaseReady
     $stage = 'migration'
