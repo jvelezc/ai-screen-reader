@@ -15,7 +15,7 @@ public sealed class ChromiumPortalTests
     [InlineData(320)]
     public async Task NativeKeyboardSignInRunVerifiedResultAndSignOutWorkWithoutCredentialPersistence(int width)
     {
-        var root = Path.GetFullPath(Path.Combine("artifacts", "portal-validation", "browser-" + width));
+        var root = Path.Combine(RepositoryRoot(), "artifacts", "portal-validation", "browser-" + width);
         Directory.CreateDirectory(root);
         var job = new FixtureJob(PortalProjectClientTests.Organization, PortalProjectClientTests.Scan, Guid.NewGuid(), 1);
         var observed = await FixtureWorker.ObserveAsync(job);
@@ -59,7 +59,8 @@ public sealed class ChromiumPortalTests
         Assert.Contains("(unnamed)", await page.Locator("#nodes").InnerTextAsync());
         Assert.DoesNotContain("Unnamed control", await page.Locator("#nodes").InnerTextAsync());
         await page.ScreenshotAsync(new() { Path = Path.Combine(root, "result.png"), FullPage = true });
-        Assert.False(await page.EvaluateAsync<bool>("document.documentElement.scrollWidth > innerWidth"));
+        Assert.False(await page.EvaluateAsync<bool>("document.documentElement.scrollWidth > innerWidth"),
+            await LayoutFacts(page));
         Assert.Equal("", await page.Locator("#password").InputValueAsync());
         Assert.Equal(1, authCalls); Assert.Equal(1, project.CreateCalls);
         var downloadTask = page.WaitForDownloadAsync(); await page.Locator("#download").ClickAsync();
@@ -73,6 +74,24 @@ public sealed class ChromiumPortalTests
         Assert.Equal(0, await page.EvaluateAsync<int>("localStorage.length + sessionStorage.length"));
         Assert.All(urls, url => { Assert.DoesNotContain("synthetic-login-only", url); Assert.DoesNotContain(PortalProjectClientTests.Bearer, url); });
         Assert.Empty(await page.Context.CookiesAsync()); Assert.Empty(errors);
+    }
+
+    [Fact]
+    public async Task NarrowViewportPreservesProductNameWhenTextIsEnlarged()
+    {
+        await using var server = await PortalHttpTests.Start(new());
+        using var playwright = await Playwright.CreateAsync();
+        await using var browser = await playwright.Chromium.LaunchAsync(new() { Headless = true, ChromiumSandbox = true });
+        var page = await browser.NewPageAsync(new() { ViewportSize = new() { Width = 320, Height = 900 } });
+        // A user-selected larger base font stresses the same unbreakable product title
+        // across platform font metrics, without relaxing CSP or hiding any text.
+        await page.RouteAsync("**/portal.css", route => route.FulfillAsync(new()
+        { ContentType = "text/css", Body = PortalAssets.Css + "\n:root{font-size:20px}" }));
+        await page.GotoAsync(server.BaseAddress.ToString());
+        await Assertions.Expect(page.Locator("#login")).ToBeEnabledAsync();
+        Assert.False(await page.EvaluateAsync<bool>("document.documentElement.scrollWidth > innerWidth"), await LayoutFacts(page));
+        Assert.Equal("HeadlessScreenReader", await page.Locator("h1").InnerTextAsync());
+        Assert.True(await page.Locator("h1").EvaluateAsync<bool>("e => e.getBoundingClientRect().height > parseFloat(getComputedStyle(e).lineHeight)"));
     }
 
     [Fact]
@@ -160,5 +179,16 @@ public sealed class ChromiumPortalTests
         await Assertions.Expect(page.Locator("#error")).ToContainTextAsync("sign in again", new() { IgnoreCase = true });
         Assert.Empty(await page.Locator("#runs").InnerTextAsync());
         Assert.Empty(await page.Locator("#nodes").InnerTextAsync());
+    }
+    private static Task<string> LayoutFacts(IPage page) => page.EvaluateAsync<string>("""
+        () => JSON.stringify({viewport:innerWidth,document:document.documentElement.scrollWidth,
+          elements:[...document.querySelectorAll('main *')].filter(e=>e.scrollWidth>e.clientWidth+1)
+            .map(e=>({tag:e.tagName,id:e.id,scroll:e.scrollWidth,client:e.clientWidth,font:getComputedStyle(e).font}))})
+        """);
+    private static string RepositoryRoot()
+    {
+        for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
+            if (File.Exists(Path.Combine(directory.FullName, "HeadlessScreenReader.slnx"))) return directory.FullName;
+        throw new InvalidOperationException("TEST_REPOSITORY_ROOT_UNCONFIRMED");
     }
 }
