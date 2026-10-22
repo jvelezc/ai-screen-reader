@@ -10,6 +10,9 @@ using Microsoft.Playwright;
 if (args.SequenceEqual(["--worker-fixture"]))
     return await FixtureWorker.RunAsync(Console.OpenStandardInput(), Console.OpenStandardOutput());
 
+if (args.SequenceEqual(["--reader-fixture"]))
+    return await FixtureReaderWorker.RunAsync(Console.OpenStandardInput(), Console.OpenStandardOutput(), Console.Error);
+
 if (args.SequenceEqual(["--hosted-control"]))
     return await HeadlessScreenReader.Cli.HostedControl.HostedControlDemo.RunAsync();
 

@@ -1,7 +1,10 @@
 # Next: isolated hosted reader sessions
 
-Status: planned. The signed-in shop run and its private S3 report are accepted;
-the persistent hosted reader described here is not implemented or deployed yet.
+Status: in progress. The signed-in shop run and its private S3 report are
+accepted. The first delivery step now implements the persistent fixed-fixture
+child and strict framed protocol; see [its contract](decisions/0045-persistent-fixture-reader-worker.md).
+Hosted container supervision, separate recovery ownership and authenticated
+session acceptance remain unimplemented gates.
 
 The next increment lets an authorized API consumer open one reader, inspect the
 same page more than once, and close it reliably. The browser runs in its own
@@ -10,18 +13,22 @@ This is the foundation for later reader navigation and command timelines.
 
 ## What we will build
 
-1. Add a fixed Foundation-fixture child mode with a bounded, versioned
+1. **Implemented; validation tracked below:** fixed Foundation-fixture child mode with a bounded, versioned
    open/capture/close exchange. Validate response identity, sequence and size;
    unexpected or incomplete output is an execution failure. No URL, credential
    entry, keyboard commands or recording is admitted in this increment.
 2. Connect the existing tenant-owned HTTP session registry to that child.
    Subject ownership and fresh workspace authorization remain in the trusted
    API. Preserve two-minute expiry, capacity and observation limits, cancellation
-   drain and quarantine after uncertain shutdown.
+   drain and quarantine after uncertain shutdown. Reserve ownership/capacity
+   before native launch; a failed launch with unconfirmed cleanup must retain
+   its reservation and recovery intent even if no open response was returned.
 3. Reuse the existing native ownership journal, container inspection, resource
    limits and recovery. Use a closed child environment, no network and no secret
    or host-directory mounts. Keep Domain and ScreenReader independent of the
-   process/container transport.
+   process/container transport. Use a separate reader journal, not the queue
+   worker's exclusively owned journal; recovery must drain the API before
+   inspecting either scope.
 4. Extend packaging and readiness to execute the actual packaged child in
    isolation. Retain compatibility with the previous accepted release and its
    rollback/recovery protocol. Stop the API before native recovery; allow only
@@ -48,6 +55,16 @@ This is the foundation for later reader navigation and command timelines.
 The existing local Chromium lifecycle tests are useful regression evidence, but
 they do not establish the new worker boundary or deployed readiness. The
 accepted shop/S3 run is also a separate one-shot workflow.
+
+## First delivery step validation
+
+The focused worker suite passes **95/95 locally on Windows**, including the
+actual CLI closure and real Chromium. The full Windows solution passes
+**1,702/1,702**, with zero failures/skips, a nonincremental Release build with
+zero warnings/errors and format verification. Current-source Windows/Linux CI
+and any subsequent deployment remain separate gates, recorded when accepted.
+The new worker is not connected to hosted HTTP sessions. Next, add the isolated
+supervisor and its separate recovery journal before changing that composition.
 
 After this gate, add document-fenced reader navigation and timeline operations.
 An approved authenticated Edge-to-core network path is still needed for the

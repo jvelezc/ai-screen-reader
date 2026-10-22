@@ -21,6 +21,8 @@
          test host must not turn copied application DLLs into a broken standalone deployment. -->
     <AssemblyMetadata Include="McpServerAssembly"
       Value="$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../src/HeadlessScreenReader.Mcp/bin/$(Configuration)/$(TargetFramework)/HeadlessScreenReader.Mcp.dll'))" />
+    <AssemblyMetadata Include="ReaderWorkerAssembly"
+      Value="$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../src/HeadlessScreenReader.Cli/bin/$(Configuration)/$(TargetFramework)/HeadlessScreenReader.Cli.dll'))" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\HeadlessScreenReader.Mcp\HeadlessScreenReader.Mcp.csproj" />

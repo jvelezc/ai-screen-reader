@@ -25,6 +25,17 @@ navigation or recording. This adds no public endpoint or arbitrary target.
 Open [the next increment and its six delivery steps](next-isolated-reader-sessions.md)
 for the implementation scope and exact completion gates.
 
+**First delivery step implemented:** the fixed Foundation worker now holds one
+Chromium context for bounded Open/Observe/Close exchanges, with strict framed
+JSON and actual native shutdown acknowledgement. Its focused 95-case suite
+passes locally on Windows, including the real CLI subprocess. See
+[the worker protocol](decisions/0045-persistent-fixture-reader-worker.md).
+The full Windows solution passes 1,702/1,702 with zero failures/skips;
+nonincremental Release build and format verification pass. This increment's
+Windows/Linux CI and any private promotion are separate from that local result.
+Next, connect isolated supervision and a separate reader recovery journal;
+the hosted registry still requires that boundary before deployment acceptance.
+
 <a id="next-signed-in-hosted-fixture-and-s3-acceptance"></a>
 
 **Just accepted:** a real signed-in application user admitted a tenant shop run;
