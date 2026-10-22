@@ -37,7 +37,17 @@ public sealed class ChromiumTraversalRecordingTests
         Assert.Equal(BundledFixture.TraversalRecording, result.Environment!.Content!.Fixture);
         Assert.Equal(14, result.Recording.ClockSamples.Length);
         Assert.True(result.Recording.RunnerOriginHostMilliseconds > 0);
-        Assert.True(result.Recording.Alignment!.Calibrated);
+        Assert.True(result.Recording.Alignment!.Calibrated, JsonSerializer.Serialize(new
+        {
+            Route = route,
+            result.Recording.Alignment,
+            result.Recording.ClockSamples,
+            result.Recording.RunnerOriginHostMilliseconds,
+            SourceFrameCount = result.Recording.Media!.Source.Length,
+            VideoFrameCount = result.Recording.Media.Video.Length,
+            FirstVideoMarker = result.Recording.Media.Video.FirstOrDefault()?.Marker,
+            SourceMarkers = result.Recording.Media.Source.Select(frame => new { frame.PresentationUnixMilliseconds, frame.Marker })
+        }));
         Assert.All(result.Recording.Alignment.Cues, cue =>
         {
             Assert.Equal(RecordingCueCoverage.Covered, cue.Coverage);
