@@ -33,6 +33,10 @@ passes locally on Windows, including the real CLI subprocess. See
 The full Windows solution passes 1,702/1,702 with zero failures/skips;
 nonincremental Release build and format verification pass. This increment's
 Windows/Linux CI and any private promotion are separate from that local result.
+The first CI run passed eight jobs and all 95 worker cases on both OSes, but
+failed one existing Windows transport timing test. Its test-clock registration
+race and repair are [catalogued here](validation/persistent-reader-worker-v1.md);
+replacement CI remains required before promotion.
 Next, connect isolated supervision and a separate reader recovery journal;
 the hosted registry still requires that boundary before deployment acceptance.
 

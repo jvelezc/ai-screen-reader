@@ -15,11 +15,14 @@ public sealed class ChromiumTransportEscalationTests
     [InlineData(1000, true)]
     public async Task OwnedTransport_StopsAtTwoSecondsOfTotalNativeTimeAndStillRequiresActualExit(int contextTime, bool sdkAcknowledged)
     {
-        var time = new FakeTimeProvider(); var context = Signal(); var browser = Signal(); var process = Signal(); var stopped = Signal(); var started = Signal(); var stops = 0;
+        var time = new GraceTimerTimeProvider(); var context = Signal(); var browser = Signal(); var process = Signal(); var stopped = Signal(); var started = Signal(); var stops = 0;
         var shutdown = new ChromiumShutdown(() => context.Task, () => { started.SetResult(); return sdkAcknowledged ? Task.CompletedTask : browser.Task; },
             () => { stops++; browser.TrySetResult(); stopped.SetResult(); }, time, waitProcessExit: () => process.Task);
         var actual = shutdown.CloseAsync(); time.Advance(TimeSpan.FromMilliseconds(contextTime)); context.SetResult();
         await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        // The callback starts before WaitAsync registers its relative timer. Advancing
+        // fake time in that gap would move the deadline; wait for the actual timer.
+        await time.GraceTimerArmed.WaitAsync(TimeSpan.FromSeconds(5));
         time.Advance(TimeSpan.FromMilliseconds(1999 - contextTime)); Assert.False(stopped.Task.IsCompleted); Assert.False(actual.IsCompleted);
         time.Advance(TimeSpan.FromMilliseconds(1)); await stopped.Task.WaitAsync(TimeSpan.FromSeconds(5)); await NativeShutdownTestSync.UntilAsync(() => shutdown.Status.TransportCallSettled);
         Assert.True(shutdown.Status.TransportDisposed); Assert.True(shutdown.Status.TransportEscalatedBeforeProcessExit);
@@ -96,10 +99,11 @@ public sealed class ChromiumTransportEscalationTests
     [Fact]
     public async Task OwnedTransport_ProcessExitDoesNotReleaseAnUnsettledContextCallback()
     {
-        var time = new FakeTimeProvider(); var context = Signal(); var browser = Signal(); var process = Signal(); var started = Signal(); var stopped = Signal();
+        var time = new GraceTimerTimeProvider(); var context = Signal(); var browser = Signal(); var process = Signal(); var started = Signal(); var stopped = Signal();
         var shutdown = new ChromiumShutdown(() => context.Task, () => { started.SetResult(); return browser.Task; },
             () => { browser.SetResult(); process.SetResult(); stopped.SetResult(); }, time, waitProcessExit: () => process.Task);
         var actual = shutdown.CloseAsync(); time.Advance(TimeSpan.FromSeconds(1)); await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await time.GraceTimerArmed.WaitAsync(TimeSpan.FromSeconds(5));
         time.Advance(TimeSpan.FromSeconds(1)); await stopped.Task.WaitAsync(TimeSpan.FromSeconds(5)); await NativeShutdownTestSync.UntilAsync(() => shutdown.Status.TransportCallSettled);
         Assert.False(actual.IsCompleted); Assert.False(shutdown.Status.ContextCallSettled);
         context.SetException(new IOException("private-context-interrupted")); await actual;
@@ -117,5 +121,24 @@ public sealed class ChromiumTransportEscalationTests
         Assert.Equal("CHROMIUM_COLLECTOR_STOP_UNCONFIRMED", error.Code); Assert.DoesNotContain("private-collector-error", error.ToString());
         Assert.True(shutdown.Status.ProcessExitConfirmed); Assert.False(shutdown.Status.CollectorStopAcknowledged);
         Assert.Equal(BrowserShutdownPhase.Faulted, shutdown.Status.Phase); Assert.Equal(0, shutdown.Status.ActiveCalls);
+    }
+
+    private sealed class GraceTimerTimeProvider : TimeProvider
+    {
+        private readonly FakeTimeProvider _clock = new();
+        private readonly TaskCompletionSource _armed = Signal();
+        private readonly DateTimeOffset _deadline;
+        public GraceTimerTimeProvider() => _deadline = _clock.GetUtcNow() + TimeSpan.FromSeconds(2);
+        public Task GraceTimerArmed => _armed.Task;
+        public override long TimestampFrequency => _clock.TimestampFrequency;
+        public override long GetTimestamp() => _clock.GetTimestamp();
+        public override DateTimeOffset GetUtcNow() => _clock.GetUtcNow();
+        public void Advance(TimeSpan amount) => _clock.Advance(amount);
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+        {
+            var timer = _clock.CreateTimer(callback, state, dueTime, period);
+            if (_clock.GetUtcNow() + dueTime == _deadline) _armed.TrySetResult();
+            return timer;
+        }
     }
 }
