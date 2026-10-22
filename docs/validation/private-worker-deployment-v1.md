@@ -1,6 +1,6 @@
 # Private worker deployment validation
 
-Current source has local acceptance. Remote CI, host provisioning and live deployment have not yet been performed for this increment. The original proposal under outputs/ is unchanged.
+Current source has local acceptance. CI39696722349 passed all Linux jobs but failed two Windows viewer cases; host provisioning and live deployment are held pending a replacement accepted run. The original proposal under outputs/ is unchanged.
 
 | Requirement | Evidence |
 | --- | --- |
@@ -28,3 +28,5 @@ The pinned Playwright base image is3,579,514,131 bytes before the fixture payloa
 The preceding [CI39687306453](https://github.com/jvelezc/ai-screen-reader/actions/runs/39687306453) passed all nine jobs with Windows/Ubuntu1,352 each, SQL161 and worker17. That gate was accepted before this deployment increment began. The new artifact export/promotion path requires its own accepted CI and actual host verification. No VPS writes, runtime database login, hosted native job, app JWT, S3 finalization or human/AT acceptance is implied by local checks.
 
 Actual clean-commit release export at39b9da3 passes19/19 worker checks with both database/image cleanup and ReleaseBundleCreated confirmed. Receipt: artifacts/worker-linux/7ea532c27de24bc39c2a96f8a499c65e/run.json. The3,849,205,760-byte actual fixture image archive is bound into a1,853,211,780-byte compressed release. A separate Linux readback streamed and rehashed every file, independently verified the image configuration ID and removed its owned temporary directory. Receipt: artifacts/deployment-validation/local-package.json. These are actual producer/consumer byte checks; they do not claim hosted execution. The subsequent edit only strengthens workflow receipt validation and records this evidence.
+
+CI39696722349: Ubuntu1,352/1,352, SQL161/161, actual worker21/21 (owned cleanup and ReleaseBundleCreated true), and Linux operational82/82 passed. Windows passed1,350/1,352: one generic recording failure (stage unknown in the old assertion) and one file report navigation timeout waiting for full load. The repair synchronizes document startup separately from native media readiness and retains a safe per-recording stage/shutdown receipt in CI. A focused local run exposed CSP-unsafe string evaluation in the old WaitForFunction waits; direct function invocation now observes actual media events within the original5s bounds. CSP is unchanged, as are native playback/seek/hash/no-live-input assertions. The cause of the generic recording failure remains unconfirmed until fresh receipts establish it. Focused viewer validation:7 passed,0 failed/skipped in viewer-native-events.trx.

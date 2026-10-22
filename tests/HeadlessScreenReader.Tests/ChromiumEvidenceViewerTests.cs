@@ -18,7 +18,7 @@ public sealed class ChromiumEvidenceViewerTests
     {
         var folder = NewFolder();
         var result = await TraversalRecordingDemo.RunRouteAsync(Path.Combine(folder, "route-1-media"), TraversalDemo.Plans[route]);
-        Assert.True(result.Recording.ErrorCode is null, result.Recording.ErrorCode + ": " + JsonSerializer.Serialize(result.Recording.Shutdown));
+        await AssertRecordingAsync(result.Recording, folder);
         var receipt = result.Receipt!;
         await TraversalArtifactWriter.WriteAsync(folder, 1, receipt, result.Environment, result.Recording);
         var original = Path.Combine(folder, "route-1-media", "original.webm");
@@ -34,8 +34,8 @@ public sealed class ChromiumEvidenceViewerTests
         var externalRequests = new List<string>();
         page.PageError += (_, message) => errors.Add(message);
         page.Request += (_, request) => { if (request.Url.StartsWith("http", StringComparison.OrdinalIgnoreCase)) externalRequests.Add(request.Url); };
-        await page.GotoAsync(new Uri(Path.Combine(folder, "route-1.html")).AbsoluteUri);
-        await page.WaitForFunctionAsync("document.querySelector('#recording').readyState >= 2");
+        await OpenReportAsync(page, Path.Combine(folder, "route-1.html"));
+        await WaitForMediaAsync(page, "ready");
         Assert.Contains("Destination " + outcome, await page.Locator(".outcome").InnerTextAsync());
         Assert.Equal(320, await page.Locator("video").EvaluateAsync<int>("v => v.videoWidth"));
         Assert.Equal(receipt.Observations.Length + receipt.Attempts.Length, await page.Locator(".trace button[data-evidence]").CountAsync());
@@ -49,8 +49,8 @@ public sealed class ChromiumEvidenceViewerTests
         }
         var attempt = receipt.Attempts[^1];
         // Native Tab/Enter reaches the actual report control; focus is not injected.
-        await page.ReloadAsync();
-        await page.WaitForFunctionAsync("document.querySelector('#recording').readyState >= 2");
+        await page.ReloadAsync(new() { WaitUntil = WaitUntilState.DOMContentLoaded, Timeout = 15_000 });
+        await WaitForMediaAsync(page, "ready");
         var focused = false;
         for (var i = 0; i < 40; i++)
         {
@@ -83,26 +83,26 @@ public sealed class ChromiumEvidenceViewerTests
     {
         var folder = NewFolder();
         var result = await TraversalRecordingDemo.RunRouteAsync(Path.Combine(folder, "route-1-media"), TraversalDemo.Plans[0]);
-        Assert.Null(result.Recording.ErrorCode);
+        await AssertRecordingAsync(result.Recording, folder);
         await TraversalArtifactWriter.WriteAsync(folder, 1, result.Receipt!, result.Environment, result.Recording);
         using var playwright = await Playwright.CreateAsync();
         await using var browser = await playwright.Chromium.LaunchAsync(new() { Headless = true, ChromiumSandbox = true });
         var page = await browser.NewPageAsync();
         page.SetDefaultTimeout(5000);
-        await page.GotoAsync(new Uri(Path.Combine(folder, "route-1.html")).AbsoluteUri);
-        await page.WaitForFunctionAsync("document.querySelector('video').readyState >= 2 && !document.querySelector('video').seeking");
+        await OpenReportAsync(page, Path.Combine(folder, "route-1.html"));
+        await WaitForMediaAsync(page, "ready");
         Assert.Contains("ready and paused", await page.Locator("#media-status").InnerTextAsync());
         // Use the real media API and its native events, rather than dispatching synthetic events.
         await page.Locator("video").EvaluateAsync("v => v.play()");
-        await page.WaitForFunctionAsync("document.querySelector('#media-status').textContent.startsWith('Playing')");
+        await Assertions.Expect(page.Locator("#media-status")).ToContainTextAsync("Playing");
         Assert.False(await page.Locator("video").EvaluateAsync<bool>("v => v.paused"));
         await page.Locator("video").EvaluateAsync("v => v.pause()");
-        await page.WaitForFunctionAsync("document.querySelector('#media-status').textContent.includes('ready and paused')");
+        await Assertions.Expect(page.Locator("#media-status")).ToContainTextAsync("ready and paused");
         await page.Locator("video").EvaluateAsync("v => { v.currentTime = Math.max(0, v.duration - 0.08); return v.play(); }");
-        await page.WaitForFunctionAsync("() => document.querySelector('video').ended");
+        await WaitForMediaAsync(page, "ended");
         Assert.Contains("recording ended", await page.Locator("#media-status").InnerTextAsync());
         await page.Locator("[data-evidence=o1]").ClickAsync();
-        await page.WaitForFunctionAsync("() => !document.querySelector('video').seeking && !document.querySelector('video').ended");
+        await WaitForMediaAsync(page, "selected");
         Assert.Contains("ready and paused", await page.Locator("#media-status").InnerTextAsync());
     }
 
@@ -111,7 +111,7 @@ public sealed class ChromiumEvidenceViewerTests
     {
         var folder = NewFolder();
         var result = await TraversalRecordingDemo.RunRouteAsync(Path.Combine(folder, "route-1-media"), TraversalDemo.Plans[0]);
-        Assert.Null(result.Recording.ErrorCode);
+        await AssertRecordingAsync(result.Recording, folder);
         var receipt = result.Receipt!;
         var first = result.Recording.Alignment!.Cues.Single(c => c.EvidenceId == "o1");
         using var playwright = await Playwright.CreateAsync();
@@ -129,8 +129,8 @@ public sealed class ChromiumEvidenceViewerTests
             };
             var path = Path.Combine(folder, coverage + ".html");
             await File.WriteAllTextAsync(path, TraversalEvidenceViewer.Render(receipt, 1, recording));
-            await page.GotoAsync(new Uri(path).AbsoluteUri);
-            await page.WaitForFunctionAsync("document.querySelector('#recording').readyState >= 2");
+            await OpenReportAsync(page, path);
+            await WaitForMediaAsync(page, "ready");
             await page.Locator("[data-evidence=o1]").ClickAsync();
             Assert.Contains(coverage.ToString(), await page.Locator("#selected-interval").InnerTextAsync());
             if (coverage != RecordingCueCoverage.Partial)
@@ -138,8 +138,8 @@ public sealed class ChromiumEvidenceViewerTests
         }
         var missing = Path.Combine(folder, "missing.html");
         await File.WriteAllTextAsync(missing, TraversalEvidenceViewer.Render(receipt, 2, result.Recording));
-        await page.GotoAsync(new Uri(missing).AbsoluteUri);
-        await page.WaitForFunctionAsync("document.querySelector('#recording').hidden");
+        await OpenReportAsync(page, missing);
+        await WaitForMediaAsync(page, "hidden");
         Assert.Contains("Original video could not be loaded", await page.Locator("#media-status").InnerTextAsync());
         await page.Locator("[data-evidence=a2]").ClickAsync();
         Assert.Contains("Playback is unavailable", await page.Locator("#selected-interval").InnerTextAsync());
@@ -164,7 +164,7 @@ public sealed class ChromiumEvidenceViewerTests
         var page = await browser.NewPageAsync();
         var requests = new List<string>();
         page.Request += (_, request) => { if (request.Url.StartsWith("http", StringComparison.OrdinalIgnoreCase)) requests.Add(request.Url); };
-        await page.GotoAsync(new Uri(path).AbsoluteUri);
+        await OpenReportAsync(page, path);
         Assert.False(await page.EvaluateAsync<bool>("() => !!window.injected"));
         Assert.Equal(0, await page.Locator("img,iframe,form").CountAsync());
         Assert.Empty(requests);
@@ -175,9 +175,62 @@ public sealed class ChromiumEvidenceViewerTests
         Assert.Contains("Destination Unknown", await page.Locator(".outcome").InnerTextAsync());
     }
 
+    private static Task<IResponse?> OpenReportAsync(IPage page, string path) =>
+        // Document startup uses the existing fixture startup allowance. Media readiness
+        // and all native interaction/seek assertions remain separate, with their original bounds.
+        page.GotoAsync(new Uri(path).AbsoluteUri, new() { WaitUntil = WaitUntilState.DOMContentLoaded, Timeout = 15_000 });
+
+    private static async Task AssertRecordingAsync(TraversalRecordingEvidence recording, string folder)
+    {
+        var safe = new
+        {
+            recording.Stage,
+            recording.ErrorCode,
+            recording.Shutdown,
+            recording.CaptureLifecycle,
+            Calibrated = recording.Alignment?.Calibrated,
+            AlignmentCode = recording.Alignment?.ReasonCode
+        };
+        Directory.CreateDirectory(folder);
+        var json = JsonSerializer.Serialize(safe);
+        await File.WriteAllTextAsync(Path.Combine(folder, "recording-receipt.json"), json);
+        Assert.True(recording.ErrorCode is null, json);
+    }
+
+    private static async Task WaitForMediaAsync(IPage page, string state, double? expected = null)
+    {
+        // Direct function invocation respects the report CSP. Observe actual native media
+        // events; WaitForFunction's string evaluation requires forbidden unsafe-eval.
+        var reached = await page.Locator("video").EvaluateAsync<bool>("""
+            (video, {state, expected}) => new Promise(resolve => {
+                const matches = () => {
+                    switch (state) {
+                        case 'ready': return video.readyState >= 2 && !video.seeking;
+                        case 'ended': return video.ended;
+                        case 'selected': return !video.seeking && !video.ended;
+                        case 'hidden': return video.hidden;
+                        case 'seek': return Math.abs(video.currentTime - expected) < 0.045;
+                        default: throw new Error('Unknown media condition');
+                    }
+                };
+                const events = ['loadeddata', 'canplay', 'seeked', 'timeupdate', 'ended', 'error'];
+                const finish = value => {
+                    clearTimeout(timer);
+                    for (const event of events) video.removeEventListener(event, check);
+                    resolve(value);
+                };
+                const check = () => { if (matches()) finish(true); };
+                const timer = setTimeout(() => finish(matches()), 5000);
+                for (const event of events) video.addEventListener(event, check);
+                check();
+            })
+            """, new { state, expected });
+        Assert.True(reached, "Native media condition was not observed within 5000ms: " + state);
+    }
+
     private static async Task AssertSeek(IPage page, TraversalRecordingCue cue)
     {
-        await page.WaitForFunctionAsync("expected => Math.abs(document.querySelector('video').currentTime - expected) < 0.045", cue.StartSeconds);
+        await WaitForMediaAsync(page, "seek", cue.StartSeconds);
         Assert.True(await page.Locator("video").EvaluateAsync<bool>("v => v.paused"));
         Assert.Contains(cue.Coverage.ToString(), await page.Locator("#selected-interval").InnerTextAsync());
     }
