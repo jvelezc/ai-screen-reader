@@ -156,14 +156,8 @@ internal static class PortalEndpoints
         app.MapGet("/internal/ready", (HttpContext context, CancellationToken token) =>
         {
             HostedControlServer.NoQuery(context);
-            return TypedResults.Json(new
-            {
-                Schema = "hsr-control-readiness-v1",
-                State = "Listening",
-                ReleaseCommit = options.ReleaseCommit,
-                AppJwtValidated = false,
-                PublicMcpEnabled = false
-            });
+            return TypedResults.Json(new PortalReadinessResponse("hsr-control-readiness-v1", "Listening",
+                options.ReleaseCommit, false, false), PortalJson.Options);
         }).WithName("PortalReadiness").WithSummary("Actual loopback listener readiness; not a tenant sign-in assertion");
         app.MapGet("/api/session", (HttpContext context, CancellationToken token) =>
         {

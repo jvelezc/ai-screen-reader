@@ -1,8 +1,8 @@
 # Original development goals and next step
 
-Updated October 21, 2026. The original proposal under `outputs/` remains unchanged. This status document tracks implementation against its acceptance gates.
+Updated October 22, 2026. The original proposal under `outputs/` remains unchanged. This status document tracks implementation against its acceptance gates.
 
-The user has deferred public MCP hosting, Claude setup and official plugin publication. Continue the independent screen reader and evidence-backed workflow.
+Prioritize an independently usable core API and MCP. The Lovable UI consumes this service through Edge Functions in existing Supabase project `gpnijaxrgtwzwtrqsbcu`. Public MCP hosting and official plugin publication remain separate from implementing the core protocols.
 
 | Original milestone | Status | Delivered | Remaining gate |
 | --- | --- | --- | --- |
@@ -10,17 +10,42 @@ The user has deferred public MCP hosting, Claude setup and official plugin publi
 | 1: local screen reader | Substantial local implementation | Reader profile v13, fixtures, bounded events/observations, policy checks and CI | Capture/privacy feasibility remains a prerequisite to editable entry and recording; broader supported-control scope is explicit |
 | 2: evidence-backed workflow | In progress | Bounded routes, append-only JSON, node/edge reports, controlled recording canaries, 20-marker timing proof and original route media with capture/action/event intervals and passive local viewer; bounded diagnostic provenance, explicit fresh-run replay and owned evidence writes | Broader workflow acceptance and diagnostics/search coverage |
 | 3: intervention and isolation | Partial | Exact public-host policy, independent Linux egress fence and exclusive local controller leases, headed Xvfb continuity and explicitly simulated excluded input and scoped loopback semantic and pixel viewing | Actual human/AT acceptance and hosted identity/capture/persistence fencing |
-| 4: durable hosted execution | In progress | Admission and fenced leases installed; exact accepted worker deployed through restricted SSH, actual guarded rollback and normal promotion verified; private workspace/report implementation and196 local PostgreSQL/pgmq cases | Portal artifact/service deployment, actual app-user JWT and admitted hosted result, private S3 finalization |
+| 4: durable hosted execution | In progress | Admission and fenced leases installed; exact accepted worker deployed through restricted SSH, actual guarded rollback and normal promotion verified; private workspace/report implementation and196 local PostgreSQL/pgmq cases | Current-source promotion, actual app-user JWT and admitted hosted result, private S3 provider acceptance |
 | 5: public MCP pilot | Deferred | Existing local stdio adapter | Public MCP HTTPS endpoint, client onboarding, plugin and pilot operations; private report remains active milestone4 work |
 | 6: measured extensions | Later | Bounded reader improvements through v13 | Broader validated widgets and compatible-run comparisons; public plugins remain deferred |
 
-## Next: deploy the private workspace and verify a signed-in fixture result
+## Next: core API and MCP contract parity
+
+[Core HTTP contract 1.0.0](decisions/0043-core-http-contract.md) now describes the
+existing authenticated workspace, fixed-fixture admission and evidence-report API
+with DTO-derived response schemas, explicit errors/headers and report consistency
+constraints. This is source implementation, not a new deployed API or a complete
+interactive-reader HTTP surface. The existing local stdio MCP implementation stays
+in the core repository.
+
+**Next action:** inventory the existing MCP reader operations against the HTTP
+surface, then deliver the next shared core capability with an independent consumer
+acceptance path. Define gateway authentication/tenant delegation and an approved
+Edge-to-core network path before wiring Supabase Edge Functions or expanding the
+Lovable screens. The UI is a third-party consumer even though we own both repos.
+
+The prior core source at `72eee77` passed all nine jobs in
+[CI 39730233830](https://github.com/jvelezc/ai-screen-reader/actions/runs/39730233830).
+The schema increment passes local Windows 1,560/1,560 tests, including 34 new
+contract cases, and format verification. Its own fresh CI remains required. Live readback on
+October 22 still identifies private release `91b36777472e6ddc31ed56c17d08382a02e1c012`,
+with listening readiness and both application-user validation and public MCP flags
+false. No promotion or exposure change occurs here. Private S3 provider acceptance,
+real signed-in tenant execution and human/AT acceptance remain distinct gates.
+
+## Hosted user acceptance gate (historical implementation evidence)
+
 
 The worker deployment and controlled rollback are accepted. [CI39703752558](https://github.com/jvelezc/ai-screen-reader/actions/runs/39703752558) passed all nine jobs: Windows/Ubuntu1,352 each, SQL161, actual Linux worker21 and operational86. Release5b7d826 is live after [normal promotion39705338724](https://github.com/jvelezc/ai-screen-reader/actions/runs/39705338724). A deliberate target-start failure first restored the prior accepted release with a fresh database-ready service invocation; independent host readback verified the actual worker, hashes, runtime cleanup and unchanged shared Caddy/public listeners. That proves private worker operations, not a tenant scan or app-user JWT.
 
 The [private workspace control implementation](decisions/0040-private-workspace-control.md) adds confirmed-user sign-in, atomic personal workspace creation, fixed shop admission and exact hash/identity-verified reports. Its repaired source passed all nine jobs in [CI39715558383](https://github.com/jvelezc/ai-screen-reader/actions/runs/39715558383), including Windows/Ubuntu1,450 each and SQL196. The [private control deployment increment](decisions/0041-private-control-deployment.md) now packages the complete executed CLI closure, checks actual Kestrel/configuration/401/shutdown, and adds ordered service stop/readiness with worker-only rollback compatibility. Local Windows passes1,453; Linux operational checks113 and the Windows-launched Podman harness20 pass. Current-source remote CI and actual hosted installation remain required. The hosted personal-workspace migration has not been applied. See [deployment validation](validation/private-control-deployment-v1.md).
 
-Next action: accept the deployment increment in all nine CI jobs, install the accepted helper/configuration upgrade, then promote the exact artifact on VPS loopback8086 through a local6086 SSH forward. Actual signup/email confirmation, user JWT, fixture admission and report delivery follow on the concrete portal. Keep public MCP/plugin work deferred. Private S3, broader intervention and human/AT acceptance remain open original gates.
+The deployment increment's original acceptance path was to pass all nine CI jobs, install the accepted helper/configuration upgrade, then promote the exact artifact on VPS loopback8086 through a local6086 SSH forward. Actual signup/email confirmation, user JWT, fixture admission and report delivery follow on the concrete portal. Keep public MCP/plugin work deferred. Private S3, broader intervention and human/AT acceptance remain open original gates.
 
 ### Prior worker implementation evidence
 
@@ -65,7 +90,7 @@ flowchart LR
     Admission --> Leases[Hosted fenced job leases]
     Leases --> Worker[Accepted private VPS worker and rollback]
     Worker --> Portal[Private workspace and report implementation]
-    Portal --> Next[NEXT: deploy portal and verify signed-in run]
+    Portal --> Next[NEXT: core API and MCP contract parity]
     Next --> Durable[Durable hosted scan jobs and recovery]
     Client --> ViewerControl[Human takeover acceptance]
     classDef done fill:#dcfce7,stroke:#166534,color:#14532d
@@ -77,7 +102,7 @@ flowchart LR
     click Client "validation/private-fixture-client-v1.md"
     click Worker "validation/observation-worker-v1.md"
     click Portal "decisions/0040-private-workspace-control.md"
-    click Next "#next-deploy-the-private-workspace-and-verify-a-signed-in-fixture-result"
+    click Next "#next-core-api-and-mcp-contract-parity"
 ```
 
 Green means an implemented, locally validated bounded capability; blue is the next increment; gray is planned. These are not full milestone-completion labels. CI, deployment and assistive-technology gates remain separate.

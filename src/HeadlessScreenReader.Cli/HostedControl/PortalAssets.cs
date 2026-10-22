@@ -1,5 +1,3 @@
-using System.Text.Json;
-
 namespace HeadlessScreenReader.Cli.HostedControl;
 
 internal static class PortalAssets
@@ -60,76 +58,5 @@ internal static class PortalAssets
         </main></body></html>
         """;
 
-    public static string OpenApi => JsonSerializer.Serialize(new
-    {
-        openapi = "3.1.0",
-        info = new { title = "Private reader workspace", version = "1", description = "Fixed fixture admission and tenant-scoped verified reports. Public MCP is deferred." },
-        paths = new Dictionary<string, object>
-        {
-            ["/"] = new { get = Operation("PortalHome", "Read the private workspace page", false) },
-            ["/portal.js"] = new { get = Operation("PortalScript", "Read the workspace script", false) },
-            ["/portal.css"] = new { get = Operation("PortalStyles", "Read the workspace styles", false) },
-            ["/openapi/v1.json"] = new { get = Operation("PortalOpenApi", "Read this protocol description", false) },
-            ["/api/config"] = new { get = Operation("PortalConfiguration", "Read public Auth configuration", false) },
-            ["/internal/ready"] = new { get = Operation("PortalReadiness", "Actual loopback listener readiness, not a tenant JWT assertion", false) },
-            ["/api/session"] = new { get = Operation("PortalSession", "Read Auth-server-validated current identity", true) },
-            ["/api/workspace"] = new { post = Operation("EnsurePersonalWorkspace", "Idempotently create or resume this subject's personal workspace", true, "EmptyRequest", 201) },
-            ["/api/workspaces/{organization}"] = new { get = Operation("GetPortalWorkspace", "Read a currently authorized workspace", true, organization: true) },
-            ["/api/workspaces/{organization}/scans"] = new
-            {
-                get = Operation("ListPortalScans", "Read recent runs with an explicit hasMore flag", true, organization: true),
-                post = Operation("CreatePortalScan", "Admit the fixed shop fixture; Location identifies the report", true, "CreateScan", 201, true)
-            },
-            ["/api/workspaces/{organization}/scans/{scan}"] = new
-            { get = Operation("GetPortalReport", "Read exact hash- and identity-verified evidence; missing evidence remains explicit", true, organization: true, scan: true) }
-        },
-        components = new
-        {
-            securitySchemes = new { bearerAuth = new { type = "http", scheme = "bearer", bearerFormat = "JWT" } },
-            schemas = new Dictionary<string, object>
-            {
-                ["EmptyRequest"] = new { type = "object", additionalProperties = false },
-                ["CreateScan"] = new
-                {
-                    type = "object",
-                    additionalProperties = false,
-                    required = new[] { "requestId" },
-                    properties = new { requestId = new { type = "string", format = "uuid", description = "Reuse this ID after an unconfirmed admission" } }
-                }
-            }
-        }
-    });
-
-    private static object Operation(string id, string summary, bool authenticated, string? body = null,
-        int success = 200, bool organization = false, bool scan = false)
-    {
-        var operation = new Dictionary<string, object>
-        {
-            ["operationId"] = id,
-            ["summary"] = summary,
-            ["responses"] = new Dictionary<string, object>
-            {
-                [success.ToString(System.Globalization.CultureInfo.InvariantCulture)] = new { description = success == 201 ? "Created or idempotently replayed resource; Location header identifies it" : "Successful scoped response" },
-                ["400"] = new { description = "Invalid request" },
-                ["401"] = new { description = "Authentication required" },
-                ["403"] = new { description = "Current authorization denied" },
-                ["404"] = new { description = "Resource not visible" },
-                ["409"] = new { description = "Request identity conflict" },
-                ["503"] = new { description = "Operation or evidence unconfirmed" }
-            }
-        };
-        if (id == "EnsurePersonalWorkspace")
-            ((Dictionary<string, object>)operation["responses"])["200"] = new { description = "Existing personal workspace resumed" };
-        if (authenticated) operation["security"] = new[] { new Dictionary<string, string[]> { ["bearerAuth"] = [] } };
-        if (body is not null) operation["requestBody"] = new
-        {
-            required = true,
-            content = new Dictionary<string, object> { ["application/json"] = new { schema = new Dictionary<string, string> { ["$ref"] = "#/components/schemas/" + body } } }
-        };
-        var parameters = new List<object>();
-        if (organization) parameters.Add(new { name = "organization", @in = "path", required = true, schema = new { type = "string", format = "uuid" } });
-        if (scan) parameters.Add(new { name = "scan", @in = "path", required = true, schema = new { type = "string", format = "uuid" } });
-        if (parameters.Count > 0) operation["parameters"] = parameters;
-        return operation;
-    }
+    public static string OpenApi => PortalOpenApi.Document;
 }

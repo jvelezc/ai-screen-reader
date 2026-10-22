@@ -18,6 +18,13 @@ Work inside this checkout and preserve the existing architecture plan under outp
 - Preserve uncertainty: attempted input, successful input, observed state, and goal verification are different facts.
 - An engine error or policy denial is not an accessibility barrier. Human assistance must remain explicit when it is introduced.
 
+## External consumers
+
+- This repository owns the independently usable API and MCP implementation. The Lovable UI at `jvelezc/ai-screen-reader-ui` is one third-party consumer.
+- Lovable application API calls go through Edge Functions in existing Supabase project `gpnijaxrgtwzwtrqsbcu`. The functions consume the published core API; they do not implement reader, queue or evidence logic.
+- Prioritize core API/MCP readiness before expanding UI features. Preserve caller/tenant scope and keep upstream credentials server-side. Direct UI-to-core fetches, Vite proxies and frontend server proxies are not the integration architecture.
+- Private SSH deployment remains in effect. Core protocol implementation, authenticated hosted reachability, Edge Function deployment and public MCP/plugin publication are distinct gates.
+
 ## Validation
 
 Use the repository-pinned SDK and central package versions. Build with warnings as errors. Verify project dependencies through Directory.Build.targets; the arch-check skill's Roslyn MCP server is currently unavailable.

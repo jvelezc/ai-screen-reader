@@ -55,6 +55,9 @@ internal sealed class PortalIdentity(Guid userId, string email, string token)
 
 /// <summary>Public settings needed to sign in directly with the selected Auth provider.</summary>
 internal sealed record PortalConfigurationResponse(string ProjectUrl, string PublishableKey, string Fixture, string ReaderProfile);
+/// <summary>Actual private listener readiness; never an application-user or public-MCP acceptance assertion.</summary>
+internal sealed record PortalReadinessResponse(string Schema, string State, string ReleaseCommit,
+    bool AppJwtValidated, bool PublicMcpEnabled);
 /// <summary>Current Auth-server-verified identity, separate from project administration login.</summary>
 internal sealed record PortalSessionResponse(Guid UserId, string Email);
 /// <summary>A currently visible tenant workspace.</summary>

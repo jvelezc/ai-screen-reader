@@ -1,0 +1,48 @@
+# Core-side requests. Lovable application traffic must instead invoke Supabase Edge Functions.
+# These examples describe source contract 1.0.0; an older live deployment may expose older metadata.
+# Set accessToken only in your HTTP client's private local environment; never commit a real JWT.
+@baseUrl = http://localhost:6086
+@accessToken =
+@organization = 11111111-1111-4111-8111-111111111111
+@scan = 22222222-2222-4222-8222-222222222222
+# Generate once for a new admission; reuse after an unconfirmed response.
+@requestId = 33333333-3333-4333-8333-333333333333
+
+### Published protocol; anonymous, no secrets
+GET {{baseUrl}}/openapi/v1.json
+
+### Actual listener readiness; not proof of user sign-in or public MCP
+GET {{baseUrl}}/internal/ready
+
+### Current server-verified user
+GET {{baseUrl}}/api/session
+Authorization: Bearer {{accessToken}}
+
+### Idempotently create or resume this subject's workspace
+POST {{baseUrl}}/api/workspace
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{}
+
+### Read a currently visible workspace
+GET {{baseUrl}}/api/workspaces/{{organization}}
+Authorization: Bearer {{accessToken}}
+
+### At most fifty recent runs; check hasMore
+GET {{baseUrl}}/api/workspaces/{{organization}}/scans
+Authorization: Bearer {{accessToken}}
+
+### Admit only the server-selected, input-free fixture
+POST {{baseUrl}}/api/workspaces/{{organization}}/scans
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"requestId":"{{requestId}}"}
+
+### Report: execution and evidence availability are separate facts
+GET {{baseUrl}}/api/workspaces/{{organization}}/scans/{{scan}}
+Authorization: Bearer {{accessToken}}
+
+### Expected 401; no user credential supplied
+GET {{baseUrl}}/api/session
