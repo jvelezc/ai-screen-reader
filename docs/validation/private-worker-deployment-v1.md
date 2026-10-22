@@ -1,6 +1,12 @@
 # Private worker deployment validation
 
-Current source has local acceptance. CI39696722349 passed all Linux jobs but failed two Windows viewer cases; host provisioning and live deployment are held pending a replacement accepted run. The original proposal under outputs/ is unchanged.
+CI39699418253 accepted the private release pipeline in all nine jobs. Private VPS provisioning is complete. First deployment39700964862 passed isolated Chromium readiness, then stopped safely before its first service start. The cold-start repair requires replacement CI and hosted acceptance. The original proposal under outputs/ is unchanged.
+
+[CI39699418253](https://github.com/jvelezc/ai-screen-reader/actions/runs/39699418253) passed at464e2e6: Windows/Ubuntu1,352 each, SQL161, real Linux worker21 and operational82, with0 failures/skips. Both TRX reports and native cleanup/export receipts were read back. Local viewer regression also passed1,352/1,352; all preceding executed case names were retained, including repeated display names.
+
+Private provisioning installed dedicated accounts, a four-function worker database login and restricted CI access. The temporary local deployment key was removed after verified upload. Existing Caddy configuration and public listeners were unchanged. [Deployment39700964862](https://github.com/jvelezc/ai-screen-reader/actions/runs/39700964862) verified the actual bundle and passed its native Chromium canary. At Starting, systemd rejected reset-failed for a never-started inactive unit after it unloaded; this was reproduced on the actual target. Recovery drained both owned scopes, removed the first current pointer and left no incoming staging directory. The worker remains stopped. No database readiness or hosted tenant job is claimed, and automatic promotion is held until repair acceptance.
+
+The repair reads ActiveState, starts inactive units directly, resets only failed units and rejects running/pending/unknown states. The four new regression cases below failed against the old implementation and pass after the correction. Linux operational validation now passes86/86, preserving all preceding82 test identities with0 failures/skips. Fresh invocation, active PID and actual database receipt remain required. These unit tests simulate systemd; replacement CI and an actual host start/rollback remain acceptance gates. Formatting verification passed; .NET source is unchanged from the accepted1,352-case baseline.
 
 | Requirement | Evidence |
 | --- | --- |
@@ -16,6 +22,7 @@ Current source has local acceptance. CI39696722349 passed all Linux jobs but fai
 | Database readiness requires a fresh live invocation | test_database_readiness_uses_only_fresh_invocation_and_current_service; test_changed_invocation_cannot_reuse_an_earlier_empty_receipt; test_process_exit_after_empty_receipt_cannot_be_reported_ready; test_missing_database_receipt_times_out_without_a_stub_health_claim |
 | Bootstrap cannot adopt another account, trust root or symlink target | test_existing_account_requires_managed_nonroot_identity_and_exact_home; test_unpinned_certificate_cannot_weaken_database_trust; test_private_directory_ownership_uses_actual_open_directory_and_rejects_symlinks |
 | Promotion requires every named CI gate and exact source provenance | test_every_existing_acceptance_job_is_required; test_failed_incomplete_forked_or_other_branch_run_cannot_promote; test_superseded_successful_source_is_skipped_without_selecting_an_artifact; test_expired_missing_ambiguous_or_invalid_artifact_is_rejected |
+| First inactive unit starts directly; failed units reset before start; running or unknown states remain closed | test_first_inactive_service_starts_without_resetting_an_unloaded_unit; test_failed_service_resets_failed_state_before_starting_a_fresh_invocation; test_running_pending_or_unknown_service_never_starts_again; test_failed_state_reset_failure_cannot_start_a_service |
 
 Local Windows Release regression discovered/executed/passed1,352; failed/skipped0. All preceding1,352 identities remain. Strict nonincremental build passes with zero warnings/errors. Receipt: artifacts/worker-validation/private-deployment-regression.trx. The formatter caught only new initializer whitespace; that was corrected, the build passed and full formatting verification is clean.
 

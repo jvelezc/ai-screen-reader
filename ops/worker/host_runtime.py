@@ -117,7 +117,12 @@ class HostRuntime:
         run_checked(["/usr/bin/systemctl", "enable", UNIT])
 
     def start_ready(self):
-        run_checked(["/usr/bin/systemctl", "reset-failed", UNIT])
+        state = run_checked(["/usr/bin/systemctl", "show", UNIT, "--property=ActiveState", "--value"])
+        require(state in ("inactive", "failed"), "DEPLOY_START_STATE_UNCONFIRMED")
+        # A never-started inactive unit can be unloaded between systemctl calls.
+        # reset-failed rejects that valid first-start state; start loads it normally.
+        if state == "failed":
+            run_checked(["/usr/bin/systemctl", "reset-failed", UNIT])
         run_checked(["/usr/bin/systemctl", "start", UNIT])
         invocation = run_checked(["/usr/bin/systemctl", "show", UNIT, "--property=InvocationID", "--value"])
         require(re.fullmatch(r"[a-f0-9]{32}", invocation) is not None, "DEPLOY_INVOCATION_UNCONFIRMED")

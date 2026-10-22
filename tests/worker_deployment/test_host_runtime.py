@@ -112,10 +112,50 @@ class HostRuntimeTests(unittest.TestCase):
                     self.runtime.stop()
                 self.assertEqual("DEPLOY_STOP_UNCONFIRMED", str(caught.exception))
 
+    def test_first_inactive_service_starts_without_resetting_an_unloaded_unit(self):
+        invocation = "d" * 32
+        status = "InvocationID=" + invocation + "\nActiveState=active\nMainPID=123"
+        with patch("host_runtime.run_checked", side_effect=["inactive", "", invocation, "active", '{"State":"Empty"}', status]) as run:
+            self.runtime.start_ready()
+        commands = [call.args[0] for call in run.call_args_list]
+        self.assertEqual(["/usr/bin/systemctl", "show", "hsr-observation.service", "--property=ActiveState", "--value"], commands[0])
+        self.assertEqual(["/usr/bin/systemctl", "start", "hsr-observation.service"], commands[1])
+        self.assertFalse(any("reset-failed" in command for command in commands))
+        self.assertIn("_SYSTEMD_INVOCATION_ID=" + invocation, commands[4])
+        self.assertEqual(6, len(commands))
+
+    def test_failed_service_resets_failed_state_before_starting_a_fresh_invocation(self):
+        invocation = "d" * 32
+        status = "InvocationID=" + invocation + "\nActiveState=active\nMainPID=123"
+        with patch("host_runtime.run_checked", side_effect=["failed", "", "", invocation, "active", '{"State":"Empty"}', status]) as run:
+            self.runtime.start_ready()
+        commands = [call.args[0] for call in run.call_args_list]
+        self.assertEqual(["/usr/bin/systemctl", "reset-failed", "hsr-observation.service"], commands[1])
+        self.assertEqual(["/usr/bin/systemctl", "start", "hsr-observation.service"], commands[2])
+        self.assertIn("_SYSTEMD_INVOCATION_ID=" + invocation, commands[5])
+        self.assertEqual(7, len(commands))
+
+    def test_running_pending_or_unknown_service_never_starts_again(self):
+        for state in ("active", "activating", "deactivating", "unknown", ""):
+            with self.subTest(case=state or "empty"), patch("host_runtime.run_checked", return_value=state) as run:
+                with self.assertRaises(ReleaseError) as caught:
+                    self.runtime.start_ready()
+                self.assertEqual("DEPLOY_START_STATE_UNCONFIRMED", str(caught.exception))
+                self.assertEqual(1, run.call_count)
+                self.assertEqual(["/usr/bin/systemctl", "show", "hsr-observation.service", "--property=ActiveState", "--value"], run.call_args.args[0])
+
+    def test_failed_state_reset_failure_cannot_start_a_service(self):
+        with patch("host_runtime.run_checked", side_effect=["failed", ReleaseError("DEPLOY_COMMAND_FAILED")]) as run:
+            with self.assertRaises(ReleaseError) as caught:
+                self.runtime.start_ready()
+        self.assertEqual("DEPLOY_COMMAND_FAILED", str(caught.exception))
+        self.assertEqual(2, run.call_count)
+        self.assertEqual(["/usr/bin/systemctl", "reset-failed", "hsr-observation.service"], run.call_args.args[0])
+
     def test_database_readiness_uses_only_fresh_invocation_and_current_service(self):
         invocation = "d" * 32
         status = "InvocationID=" + invocation + "\nActiveState=active\nMainPID=123"
-        with patch("host_runtime.run_checked", side_effect=["", "", invocation, "active", '{"State":"Empty"}', status]) as run:
+        with patch("host_runtime.run_checked", side_effect=["inactive", "", invocation, "active", '{"State":"Empty"}', status]) as run:
             self.runtime.start_ready()
         self.assertIn("_SYSTEMD_INVOCATION_ID=" + invocation, run.call_args_list[4].args[0])
         self.assertEqual(["/usr/bin/systemctl", "show", "hsr-observation.service", "--property=InvocationID",
@@ -124,7 +164,7 @@ class HostRuntimeTests(unittest.TestCase):
 
     def test_changed_invocation_cannot_reuse_an_earlier_empty_receipt(self):
         status = "InvocationID=" + "e" * 32 + "\nActiveState=active\nMainPID=123"
-        with patch("host_runtime.run_checked", side_effect=["", "", "d" * 32, "active", '{"State":"Empty"}', status]):
+        with patch("host_runtime.run_checked", side_effect=["inactive", "", "d" * 32, "active", '{"State":"Empty"}', status]):
             with self.assertRaises(ReleaseError) as caught:
                 self.runtime.start_ready()
         self.assertEqual("DEPLOY_INVOCATION_CHANGED", str(caught.exception))
@@ -133,20 +173,20 @@ class HostRuntimeTests(unittest.TestCase):
         for label, state, pid in [("exited", "inactive", "0"), ("missing_pid", "active", "0")]:
             status = "InvocationID=" + "d" * 32 + "\nActiveState=" + state + "\nMainPID=" + pid
             with self.subTest(case=label), patch("host_runtime.run_checked",
-                    side_effect=["", "", "d" * 32, "active", '{"State":"Empty"}', status]):
+                    side_effect=["inactive", "", "d" * 32, "active", '{"State":"Empty"}', status]):
                 with self.assertRaises(ReleaseError) as caught:
                     self.runtime.start_ready()
                 self.assertEqual("DEPLOY_SERVICE_UNCONFIRMED", str(caught.exception))
 
     def test_missing_database_receipt_times_out_without_a_stub_health_claim(self):
-        with patch("host_runtime.run_checked", side_effect=["", "", "d" * 32]), \
+        with patch("host_runtime.run_checked", side_effect=["inactive", "", "d" * 32]), \
                 patch("host_runtime.time.monotonic", side_effect=[0, 31]):
             with self.assertRaises(ReleaseError) as caught:
                 self.runtime.start_ready()
         self.assertEqual("DEPLOY_DATABASE_READINESS_UNCONFIRMED", str(caught.exception))
 
     def test_failed_service_cannot_be_healthy_from_old_journal_output(self):
-        with patch("host_runtime.run_checked", side_effect=["", "", "d" * 32, "failed"]) as run:
+        with patch("host_runtime.run_checked", side_effect=["inactive", "", "d" * 32, "failed"]) as run:
             with self.assertRaises(ReleaseError) as caught:
                 self.runtime.start_ready()
         self.assertEqual("DEPLOY_SERVICE_UNCONFIRMED", str(caught.exception))
