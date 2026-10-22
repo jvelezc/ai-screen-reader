@@ -27,7 +27,8 @@ internal static class S3ProofDemo
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(120));
             var job = new FixtureJob(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 1);
             var bytes = await executor.ExecuteAsync(job, timeout.Token).ConfigureAwait(false);
-            var cases = await S3LocalProof.RunAsync(port, owner, root, job, bytes, timeout.Token).ConfigureAwait(false);
+            var cases = await S3LocalProof.RunAsync(port, owner, root, job, bytes, timeout.Token,
+                Environment.GetEnvironmentVariable("HSR_S3_PROOF_HOST") ?? "127.0.0.1").ConfigureAwait(false);
             Console.WriteLine(JsonSerializer.Serialize(new
             {
                 Schema = "hsr-local-s3-proof-v1",

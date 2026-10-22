@@ -1,4 +1,6 @@
 using System.Text.RegularExpressions;
+using System.Net;
+using System.Net.Sockets;
 using Amazon;
 using Amazon.Runtime;
 using Amazon.Runtime.Signing;
@@ -27,11 +29,17 @@ public sealed class S3EvidenceConfiguration
             "hsr-evidence", access, secret);
     }
 
-    /// <summary>Only fixed disposable credentials can use the explicit loopback proof endpoint.</summary>
-    public static S3EvidenceConfiguration LocalProof(int port, Guid owner)
+    /// <summary>Only fixed disposable credentials can use the loopback or isolated private IPv4 proof endpoint.</summary>
+    public static S3EvidenceConfiguration LocalProof(int port, Guid owner, string host = "127.0.0.1")
     {
-        if (port is < 1 or > 65535 || owner == Guid.Empty) throw new ArgumentException("EVIDENCE_S3_PROOF_CONFIGURATION_INVALID");
-        return new(new($"http://127.0.0.1:{port}/"), "hsr-proof-" + owner.ToString("N"),
+        if (port is < 1 or > 65535 || owner == Guid.Empty || !IPAddress.TryParse(host, out var address)
+            || address.AddressFamily != AddressFamily.InterNetwork || address.ToString() != host)
+            throw new ArgumentException("EVIDENCE_S3_PROOF_CONFIGURATION_INVALID");
+        var octets = address.GetAddressBytes();
+        if (!(host == "127.0.0.1" || octets[0] == 10 || octets[0] == 172 && octets[1] is >= 16 and <= 31
+            || octets[0] == 192 && octets[1] == 168))
+            throw new ArgumentException("EVIDENCE_S3_PROOF_CONFIGURATION_INVALID");
+        return new(new($"http://{host}:{port}/"), "hsr-proof-" + owner.ToString("N"),
             "hsr-local-proof-access", "hsr-local-proof-secret-synthetic-only");
     }
 

@@ -14,8 +14,9 @@ New-Item -ItemType Directory -Path $folderPath|Out-Null
 $server='docker.io/rustfs/rustfs@sha256:128220dc9382bac81940a1a9616ee8c274a3f3b8f647eedbeb50df5bb8b49922'
 $created=$false;$networkCreated=$false;$removed=$false;$networkRemoved=$false;$ready=$false;$nativeRecovered=$false
 $stage='server';$errorCode=$null;$proof=$null
+$reason=$null;$lastStatus=$null;$lastFailure=$null;$publishedPortAvailable=$false;$directInternal=$false;$serverState=$null
 $keys=@('HSR_WORKER_DATABASE','HSR_WORKER_IMAGE','HSR_WORKER_RUNTIME','HSR_WORKER_EVIDENCE','HSR_WORKER_SECCOMP',
-    'HSR_S3_PROOF_IMAGE','HSR_S3_PROOF_RUNTIME','HSR_S3_PROOF_SECCOMP','HSR_S3_PROOF_EVIDENCE')
+    'HSR_S3_PROOF_IMAGE','HSR_S3_PROOF_RUNTIME','HSR_S3_PROOF_SECCOMP','HSR_S3_PROOF_EVIDENCE','HSR_S3_PROOF_HOST')
 $prior=@{};foreach($key in $keys){$prior[$key]=[Environment]::GetEnvironmentVariable($key)}
 try {
     $null=Invoke-ReaderRuntime $Runtime @('network','create','--internal','--label',"hsr.s3.proof=$owner",$network)
@@ -24,19 +25,34 @@ try {
         '--label',"hsr.s3.proof=$owner",'--env','RUSTFS_ACCESS_KEY=hsr-local-proof-access',
         '--env','RUSTFS_SECRET_KEY=hsr-local-proof-secret-synthetic-only',$server)
     $created=$true;$null=Invoke-ReaderRuntime $Runtime @('start',$name)
-    $port=(Invoke-ReaderRuntime $Runtime @('port',$name,'9000/tcp')).Text.Trim()
-    if($port -notmatch '^127\.0\.0\.1:([0-9]+)$'){throw 'S3_SERVER_LOOPBACK_UNCONFIRMED'}
-    $portNumber=[int]$Matches[1]
+    $serverInfo=((Invoke-ReaderRuntime $Runtime @('inspect',$name)).Text|ConvertFrom-Json)[0]
+    if($serverInfo.Config.Labels.'hsr.s3.proof' -ne $owner){throw 'S3_SERVER_OWNER_MISMATCH'}
+    $bindings=@($serverInfo.NetworkSettings.Ports.'9000/tcp'|Where-Object {$null -ne $_})
+    $proofAddress='127.0.0.1'
+    if($bindings.Count -eq 1 -and $bindings[0].HostIp -eq '127.0.0.1' -and $bindings[0].HostPort -match '^[0-9]+$'){
+        $portNumber=[int]$bindings[0].HostPort;$publishedPortAvailable=$true
+    }
+    elseif($Runtime -eq 'docker' -and $IsLinux -and $bindings.Count -eq 0){
+        # Docker drops published ports on an internal-only bridge. The Linux host can reach its owned bridge directly.
+        $networkInfo=((Invoke-ReaderRuntime $Runtime @('network','inspect',$network)).Text|ConvertFrom-Json)[0]
+        if($serverInfo.Config.Labels.'hsr.s3.proof' -ne $owner -or $networkInfo.Labels.'hsr.s3.proof' -ne $owner -or -not $networkInfo.Internal){throw 'S3_INTERNAL_OWNER_UNCONFIRMED'}
+        $proofAddress=[string]$serverInfo.NetworkSettings.Networks.$network.IPAddress
+        $parsedProofAddress=$null
+        if($proofAddress -notmatch '^(10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.)' -or -not [Net.IPAddress]::TryParse($proofAddress,[ref]$parsedProofAddress) -or $parsedProofAddress.ToString() -cne $proofAddress){throw 'S3_INTERNAL_ADDRESS_UNCONFIRMED'}
+        $portNumber=9000;$directInternal=$true
+    }else{throw 'S3_SERVER_LOOPBACK_UNCONFIRMED'}
     $clock=[Diagnostics.Stopwatch]::StartNew()
     do {
-        try {$response=Invoke-WebRequest -Uri "http://127.0.0.1:$portNumber/" -NoProxy -TimeoutSec 2 -SkipHttpErrorCheck
+        try {$response=Invoke-WebRequest -Uri "http://${proofAddress}:$portNumber/" -NoProxy -TimeoutSec 2 -SkipHttpErrorCheck
+            $lastStatus=[int]$response.StatusCode
             if([int]$response.StatusCode -in @(401,403)){break}}
-        catch { }
+        catch {$lastFailure=$_.Exception.GetType().Name}
         if($clock.Elapsed.TotalSeconds -gt 40){throw 'S3_SERVER_START_UNCONFIRMED'}
         Start-Sleep -Milliseconds 200
     }while($true)
     $stage='native-and-s3'
     $env:HSR_WORKER_DATABASE=$null
+    $env:HSR_S3_PROOF_HOST=$proofAddress
     $env:HSR_S3_PROOF_IMAGE=$Image;$env:HSR_S3_PROOF_RUNTIME=$Runtime
     $env:HSR_S3_PROOF_SECCOMP=Join-Path $repoRoot 'ops/prototype/playwright-seccomp.json'
     $env:HSR_S3_PROOF_EVIDENCE=Join-Path $folderPath 'evidence'
@@ -50,7 +66,7 @@ try {
         $proof.DispatchedInputs -ne 0 -or $proof.GoalVerified){throw 'S3_NATIVE_RECEIPT_UNCONFIRMED'}
     $proof|ConvertTo-Json -Depth 4|Set-Content (Join-Path $folderPath 'protocol.json') -Encoding utf8NoBOM
     $ready=$true;$stage='completed'
-} catch {$errorCode="S3_$($stage.ToUpperInvariant())_UNCONFIRMED"}
+} catch {$errorCode="S3_$($stage.ToUpperInvariant())_UNCONFIRMED"; $reason=if($_.Exception.Message -cmatch '^[A-Z][A-Z0-9_]{2,100}$'){$_.Exception.Message}else{$_.Exception.GetType().Name}}
 finally {
     if(Test-Path -LiteralPath (Join-Path $folderPath 'evidence/.runtime')){
         $env:HSR_WORKER_DATABASE=$null;$env:HSR_WORKER_IMAGE=$Image;$env:HSR_WORKER_RUNTIME=$Runtime
@@ -64,6 +80,7 @@ finally {
         $logs=Invoke-ReaderRuntime $Runtime @('logs',$name) -AllowFailure
         $logs.Text|Set-Content (Join-Path $folderPath 'server.log') -Encoding utf8NoBOM
         $item=((Invoke-ReaderRuntime $Runtime @('inspect',$name)).Text|ConvertFrom-Json)[0]
+        $serverState=[pscustomobject]@{Status=$item.State.Status;Running=$item.State.Running;ExitCode=$item.State.ExitCode;OomKilled=$item.State.OOMKilled}
         if($item.Config.Labels.'hsr.s3.proof' -ne $owner){throw 'S3_SERVER_OWNER_MISMATCH'}
         $delete=Invoke-ReaderRuntime $Runtime @('rm','--force','--volumes',$name) -AllowFailure
         $remaining=Invoke-ReaderRuntime $Runtime @('inspect',$name) -AllowFailure
@@ -80,7 +97,9 @@ finally {
 }
 $receipt=[pscustomobject]@{Schema='hsr-owned-s3-proof-v1';Ready=($ready -and $removed -and $networkRemoved -and $nativeRecovered);
     Stage=$stage;ErrorCode=$errorCode;Passed=if($proof){$proof.Passed}else{0};Cases=if($proof){$proof.Cases}else{@()};
-    ServerRemoved=$removed;NetworkRemoved=$networkRemoved;NativeOwnershipRecovered=$nativeRecovered;HostedProjectChanged=$false}
+    ServerRemoved=$removed;NetworkRemoved=$networkRemoved;NativeOwnershipRecovered=$nativeRecovered;HostedProjectChanged=$false;
+    Reason=$reason;LastHttpStatus=$lastStatus;LastConnectionFailure=$lastFailure;PublishedLoopbackAvailable=$publishedPortAvailable;
+    DirectOwnedInternalBridge=$directInternal;ServerState=$serverState}
 $receipt|ConvertTo-Json -Depth 4|Set-Content (Join-Path $folderPath 'run.json') -Encoding utf8NoBOM
 if(-not $receipt.Ready){throw 'OWNED_S3_ACCEPTANCE_UNCONFIRMED'}
 $receipt

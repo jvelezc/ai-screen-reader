@@ -91,6 +91,30 @@ public sealed class S3ObservationArchiveTests
         Assert.Throws<ArgumentException>(() => S3EvidenceConfiguration.LocalProof(12345, Guid.Empty));
     }
 
+    [Theory]
+    [InlineData("10.0.0.2", true)]
+    [InlineData("172.16.0.2", true)]
+    [InlineData("172.31.255.254", true)]
+    [InlineData("192.168.0.2", true)]
+    [InlineData("172.15.0.2", false)]
+    [InlineData("172.32.0.2", false)]
+    [InlineData("8.8.8.8", false)]
+    [InlineData("localhost", false)]
+    [InlineData("::1", false)]
+    [InlineData("127.1", false)]
+    public void DisposableProofCanReachOnlyLoopbackOrLiteralPrivateIpv4WithoutChangingProductionAuthority(string host, bool allowed)
+    {
+        if (allowed)
+        {
+            var configuration = S3EvidenceConfiguration.LocalProof(9000, Guid.NewGuid(), host);
+            Assert.Equal(host, configuration.Endpoint.Host); Assert.Equal("http", configuration.Endpoint.Scheme);
+            Assert.Equal(9000, configuration.Endpoint.Port);
+        }
+        else Assert.Throws<ArgumentException>(() => S3EvidenceConfiguration.LocalProof(9000, Guid.NewGuid(), host));
+        Assert.Equal("https://gpnijaxrgtwzwtrqsbcu.storage.supabase.co/storage/v1/s3/",
+            S3EvidenceConfiguration.Optional(Access, Secret)!.Endpoint.AbsoluteUri);
+    }
+
     [Fact]
     public async Task MissingObjectRequiresSignedUploadAndActualExactReadback()
     {

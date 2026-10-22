@@ -7,17 +7,18 @@ using HeadlessScreenReader.Domain;
 
 namespace HeadlessScreenReader.Worker;
 
-/// <summary>Actual S3 protocol proof using only fixed disposable credentials and a loopback endpoint.</summary>
+/// <summary>Actual S3 protocol proof using only disposable credentials and an isolated local service.</summary>
 public static class S3LocalProof
 {
-    public static async Task<string[]> RunAsync(int port, Guid owner, string localRoot, FixtureJob job, byte[] bytes, CancellationToken token)
+    public static async Task<string[]> RunAsync(int port, Guid owner, string localRoot, FixtureJob job, byte[] bytes, CancellationToken token,
+        string host = "127.0.0.1")
     {
         var cases = new List<string>();
         void Check(bool condition, string name)
         { if (!condition) throw new InvalidDataException("S3_PROOF_" + name); cases.Add(name); }
         var observation = ObservationStore.Validate(bytes, job);
         Check(observation.DispatchedInputs == 0 && !observation.GoalVerified, "NativeFixtureAndCleanupConfirmed");
-        var configuration = S3EvidenceConfiguration.LocalProof(port, owner);
+        var configuration = S3EvidenceConfiguration.LocalProof(port, owner, host);
         using var client = configuration.CreateClient();
         using var archive = new S3ObservationArchive(configuration);
         var bucket = new Uri(configuration.Endpoint, configuration.Bucket);
