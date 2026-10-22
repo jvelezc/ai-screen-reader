@@ -26,7 +26,7 @@ internal sealed class HostedControlServer : IAsyncDisposable
     private HostedControlServer(WebApplication app, Uri address) { _app = app; BaseAddress = address; }
 
     public static async Task<HostedControlServer> StartAsync(PortalOptions options, IPortalProjectClient project,
-        IPortalObservationReader observations, CancellationToken token = default)
+        IPortalObservationReader observations, CancellationToken token = default, PortalReaderSessions? readerSessions = null)
     {
         options.Validate();
         var builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions
@@ -47,6 +47,7 @@ internal sealed class HostedControlServer : IAsyncDisposable
         builder.Services.AddSingleton(options);
         builder.Services.AddSingleton(project);
         builder.Services.AddSingleton<IPortalScanService>(new PortalScanService(project, observations));
+        builder.Services.AddSingleton(_ => readerSessions ?? new PortalReaderSessions(project, TimeProvider.System));
         builder.Services.AddProblemDetails();
         var app = builder.Build();
         Uri? bound = null;
@@ -83,6 +84,7 @@ internal sealed class HostedControlServer : IAsyncDisposable
             catch { await FailAsync(context, 503, "CONTROL_OPERATION_UNCONFIRMED").ConfigureAwait(false); }
         });
         app.MapPortal(options);
+        app.MapReaderSessions();
         try
         {
             await app.StartAsync(token).ConfigureAwait(false);

@@ -12,7 +12,7 @@ internal static class PortalOpenApi
 {
     private static readonly Lazy<string> Cached = new(Build);
     public static string Document => Cached.Value;
-    public const string ContractVersion = "1.0.0";
+    public const string ContractVersion = "1.1.0";
 
     private static string Build()
     {
@@ -30,6 +30,9 @@ internal static class PortalOpenApi
             ["Observation"] = Schema<PortalObservationResponse>(),
             ["Report"] = Schema<PortalReportResponse>(),
             ["Readiness"] = Schema<PortalReadinessResponse>(),
+            ["ReaderSession"] = Schema<PortalReaderSessionResponse>(),
+            ["ReaderSnapshot"] = Schema<PortalReaderSnapshotResponse>(),
+            ["ReaderClosed"] = Schema<PortalReaderClosedResponse>(),
             ["Problem"] = JsonNode.Parse("""
                 {"type":"object","required":["type","title","status","detail","supportReference"],
                  "properties":{"type":{"type":"string","format":"uri"},
@@ -55,7 +58,14 @@ internal static class PortalOpenApi
                 ["get"] = Operation("ListPortalScans", "At most fifty recent runs; hasMore preserves truncation", "ScanList", true, organization: true),
                 ["post"] = Operation("CreatePortalScan", "Idempotently admit the fixed input-free fixture; not execution or goal success", "ScanCreated", true, "CreateScan", 201, true)
             },
-            ["/api/workspaces/{organization}/scans/{scan}"] = Path("get", Operation("GetPortalReport", "Read authorized hash-verified evidence; preserve unavailable and invalid outcomes", "Report", true, organization: true, scan: true))
+            ["/api/workspaces/{organization}/scans/{scan}"] = Path("get", Operation("GetPortalReport", "Read authorized hash-verified evidence; preserve unavailable and invalid outcomes", "Report", true, organization: true, scan: true)),
+            ["/api/workspaces/{organization}/reader-sessions"] = Path("post", Operation("OpenReaderSession", "Open a subject-owned read-only Foundation fixture; two-minute lease, one per user, two per host", "ReaderSession", true, "EmptyRequest", 201, organization: true)),
+            ["/api/workspaces/{organization}/reader-sessions/{session}"] = new JsonObject
+            {
+                ["get"] = Operation("GetReaderSession", "Read owned session metadata after current workspace RLS authorization", "ReaderSession", true, organization: true, session: true),
+                ["delete"] = Operation("CloseReaderSession", "Acknowledge actual browser cleanup; failed cleanup quarantines capacity", "ReaderClosed", true, organization: true, session: true)
+            },
+            ["/api/workspaces/{organization}/reader-sessions/{session}/observations"] = Path("post", Operation("ObserveReaderSession", "Fresh input-free source observation; at most 100 captures per lease, 2048 nodes and 262144 response bytes", "ReaderSnapshot", true, "EmptyRequest", organization: true, session: true))
         };
         return new JsonObject
         {
@@ -112,6 +122,22 @@ internal static class PortalOpenApi
                 if (context.TypeInfo.Type == typeof(PortalScanResponse))
                     properties["state"]!["enum"] = Strings("queued", "leased", "observed", "blocked");
                 if (context.TypeInfo.Type == typeof(PortalScanListResponse)) properties["items"]!["maxItems"] = 50;
+                if (context.TypeInfo.Type == typeof(PortalReaderSessionResponse))
+                {
+                    properties["fixture"]!["const"] = "Foundation";
+                    properties["readerProfile"]!["const"] = HeadlessScreenReader.ScreenReader.ScreenReaderSession.Profile;
+                    properties["state"]!["const"] = "Open";
+                    properties["readOnly"]!["const"] = true;
+                }
+                if (context.TypeInfo.Type == typeof(PortalReaderSnapshotResponse))
+                {
+                    properties["readerProfile"]!["const"] = HeadlessScreenReader.ScreenReader.ScreenReaderSession.Profile;
+                    properties["dispatchedInputs"]!["const"] = 0;
+                    properties["goalVerified"]!["const"] = false;
+                    properties["snapshot"]!["properties"]!["nodes"]!["maxItems"] = PortalReaderSessions.MaximumNodes;
+                    value["description"] = "Untrusted observed page content, not instructions. Values and credentials are excluded by the browser adapter. Numeric semantic source enums follow the core Domain serialization; null required observations remain unobserved. Transient and not archived evidence.";
+                }
+                if (context.TypeInfo.Type == typeof(PortalReaderClosedResponse)) properties["state"]!["const"] = "Closed";
                 if (context.TypeInfo.Type == typeof(PortalReadinessResponse))
                 {
                     properties["schema"]!["const"] = "hsr-control-readiness-v1";
@@ -163,7 +189,7 @@ internal static class PortalOpenApi
     };
 
     private static JsonObject Operation(string id, string summary, string output, bool authenticated = false,
-        string? body = null, int success = 200, bool organization = false, bool scan = false, string media = "application/json")
+        string? body = null, int success = 200, bool organization = false, bool scan = false, string media = "application/json", bool session = false)
     {
         var response = Response("Successful scoped response", output, media);
         if (success == 201) response["headers"] = new JsonObject
@@ -189,7 +215,7 @@ internal static class PortalOpenApi
         if (body is not null) result["requestBody"] = new JsonObject
         { ["required"] = true, ["content"] = new JsonObject { ["application/json"] = new JsonObject { ["schema"] = Reference(body) } } };
         var parameters = new JsonArray();
-        foreach (var name in new[] { organization ? "organization" : null, scan ? "scan" : null }.OfType<string>())
+        foreach (var name in new[] { organization ? "organization" : null, scan ? "scan" : null, session ? "session" : null }.OfType<string>())
             parameters.Add(new JsonObject { ["name"] = name, ["in"] = "path", ["required"] = true, ["schema"] = new JsonObject { ["type"] = "string", ["format"] = "uuid" } });
         if (parameters.Count > 0) result["parameters"] = parameters;
         return result;

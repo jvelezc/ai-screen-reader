@@ -23,16 +23,25 @@ constraints. This is source implementation, not a new deployed API or a complete
 interactive-reader HTTP surface. The existing local stdio MCP implementation stays
 in the core repository.
 
-**Next action:** inventory the existing MCP reader operations against the HTTP
-surface, then deliver the next shared core capability with an independent consumer
-acceptance path. Define gateway authentication/tenant delegation and an approved
+[Tenant-owned reader sessions](decisions/0044-tenant-reader-sessions.md) now add
+core HTTP open/read/observe/close operations with subject and current workspace
+authorization, monotonic expiry, capacity limits, actual cancellation drain and
+quarantined cleanup failures. Contract 1.1.0 describes their real response shapes.
+Only the bundled Foundation fixture is admitted; no browser input or recording is
+enabled. A real Chromium/Kestrel consumer test exercises the lifecycle.
+
+**Next action:** adapt shared reader navigation and timeline to owned HTTP
+sessions with stale-document checks and explicit input outcomes. Define gateway
+authentication/tenant delegation and an approved
 Edge-to-core network path before wiring Supabase Edge Functions or expanding the
 Lovable screens. The UI is a third-party consumer even though we own both repos.
 
-The prior core source at `72eee77` passed all nine jobs in
-[CI 39730233830](https://github.com/jvelezc/ai-screen-reader/actions/runs/39730233830).
-The schema increment passes local Windows 1,560/1,560 tests, including 34 new
-contract cases, and format verification. Its own fresh CI remains required. Live readback on
+The prior core source at `c7daaeb` passed all nine jobs in
+[CI 39834402446](https://github.com/jvelezc/ai-screen-reader/actions/runs/39834402446),
+including Windows and Linux 1,560/1,560 each. The tenant reader-session increment
+passes local Windows 1,599/1,599, including 39 new cases, and full format
+verification. Its focused lifecycle, HTTP and schema run passes 73/73; its own
+fresh CI remains required. Live readback on
 October 22 still identifies private release `91b36777472e6ddc31ed56c17d08382a02e1c012`,
 with listening readiness and both application-user validation and public MCP flags
 false. No promotion or exposure change occurs here. Private S3 provider acceptance,
@@ -90,18 +99,20 @@ flowchart LR
     Admission --> Leases[Hosted fenced job leases]
     Leases --> Worker[Accepted private VPS worker and rollback]
     Worker --> Portal[Private workspace and report implementation]
-    Portal --> Next[NEXT: core API and MCP contract parity]
+    Portal --> Sessions[Tenant-owned read-only fixture sessions]
+    Sessions --> Next[NEXT: document-fenced navigation and timeline]
     Next --> Durable[Durable hosted scan jobs and recovery]
     Client --> ViewerControl[Human takeover acceptance]
     classDef done fill:#dcfce7,stroke:#166534,color:#14532d
     classDef next fill:#dbeafe,stroke:#1d4ed8,color:#1e3a8a
     classDef planned fill:#f3f4f6,stroke:#6b7280,color:#374151
-    class Reader,Trace,Privacy,Timing,Recording,Viewer,ReaderGate,Features,Replay,Owned,Controller,Headed,Handoff,PrivateViewer,Pixels,Client,Admission,Leases,Worker,Portal done
+    class Reader,Trace,Privacy,Timing,Recording,Viewer,ReaderGate,Features,Replay,Owned,Controller,Headed,Handoff,PrivateViewer,Pixels,Client,Admission,Leases,Worker,Portal,Sessions done
     class Next next
     class ViewerControl,Durable planned
     click Client "validation/private-fixture-client-v1.md"
     click Worker "validation/observation-worker-v1.md"
     click Portal "decisions/0040-private-workspace-control.md"
+    click Sessions "decisions/0044-tenant-reader-sessions.md"
     click Next "#next-core-api-and-mcp-contract-parity"
 ```
 

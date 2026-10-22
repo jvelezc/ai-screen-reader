@@ -11,6 +11,36 @@ namespace HeadlessScreenReader.Tests;
 public sealed class PortalOpenApiTests
 {
     [Fact]
+    public async Task ReaderLifecycleHttpPayloadsMatchPublishedContractsAndTruthConstraints()
+    {
+        var project = new ReaderProjectStub();
+        var readers = new PortalReaderSessions(project, TimeProvider.System,
+            () => Task.FromResult<IPortalReaderBrowser>(new ReaderBrowserStub()));
+        await using var server = await PortalReaderHttpTests.Start(project, readers);
+        using var http = PortalReaderHttpTests.Client(server);
+        using var spec = JsonDocument.Parse(await http.GetStringAsync("/openapi/v1.json"));
+        using var created = await http.PostAsync(PortalReaderHttpTests.Collection, Json("{}"));
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        using var opened = JsonDocument.Parse(await created.Content.ReadAsStringAsync());
+        Assert.True(Matches(opened.RootElement, Component(spec.RootElement, "ReaderSession"), spec.RootElement));
+        using var captured = await http.PostAsync(created.Headers.Location + "/observations", Json("{}"));
+        Assert.Equal(HttpStatusCode.OK, captured.StatusCode);
+        using var snapshot = JsonDocument.Parse(await captured.Content.ReadAsStringAsync());
+        Assert.True(Matches(snapshot.RootElement, Component(spec.RootElement, "ReaderSnapshot"), spec.RootElement));
+        var forged = JsonNode.Parse(snapshot.RootElement.GetRawText())!;
+        forged["goalVerified"] = true;
+        using var invalid = JsonDocument.Parse(forged.ToJsonString());
+        Assert.False(Matches(invalid.RootElement, Component(spec.RootElement, "ReaderSnapshot"), spec.RootElement));
+        using var closed = await http.DeleteAsync(created.Headers.Location);
+        Assert.Equal(HttpStatusCode.OK, closed.StatusCode);
+        using var receipt = JsonDocument.Parse(await closed.Content.ReadAsStringAsync());
+        Assert.True(Matches(receipt.RootElement, Component(spec.RootElement, "ReaderClosed"), spec.RootElement));
+        var parameters = spec.RootElement.GetProperty("paths").GetProperty("/api/workspaces/{organization}/reader-sessions/{session}")
+            .GetProperty("get").GetProperty("parameters");
+        Assert.Equal(new[] { "organization", "session" }, parameters.EnumerateArray().Select(value => value.GetProperty("name").GetString()));
+    }
+
+    [Fact]
     public async Task PublishedContractIncludesEveryConsumerResponseAndAuthenticationBoundary()
     {
         await using var server = await PortalHttpTests.Start(new());
@@ -22,7 +52,7 @@ public sealed class PortalOpenApiTests
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         var spec = document.RootElement;
         Assert.Equal("3.1.0", spec.GetProperty("openapi").GetString());
-        Assert.Equal("1.0.0", spec.GetProperty("info").GetProperty("version").GetString());
+        Assert.Equal("1.1.0", spec.GetProperty("info").GetProperty("version").GetString());
         Assert.Equal("https://json-schema.org/draft/2020-12/schema", spec.GetProperty("jsonSchemaDialect").GetString());
         Assert.Equal("http", spec.GetProperty("components").GetProperty("securitySchemes").GetProperty("bearerAuth").GetProperty("type").GetString());
         var operations = new[]
@@ -34,7 +64,11 @@ public sealed class PortalOpenApiTests
             ("/api/workspaces/{organization}", "get", "200", "Workspace", true),
             ("/api/workspaces/{organization}/scans", "get", "200", "ScanList", true),
             ("/api/workspaces/{organization}/scans", "post", "201", "ScanCreated", true),
-            ("/api/workspaces/{organization}/scans/{scan}", "get", "200", "Report", true)
+            ("/api/workspaces/{organization}/scans/{scan}", "get", "200", "Report", true),
+            ("/api/workspaces/{organization}/reader-sessions", "post", "201", "ReaderSession", true),
+            ("/api/workspaces/{organization}/reader-sessions/{session}", "get", "200", "ReaderSession", true),
+            ("/api/workspaces/{organization}/reader-sessions/{session}", "delete", "200", "ReaderClosed", true),
+            ("/api/workspaces/{organization}/reader-sessions/{session}/observations", "post", "200", "ReaderSnapshot", true)
         };
         foreach (var (path, method, status, schema, authenticated) in operations)
         {

@@ -19,8 +19,8 @@ This core owns both the HTTP API and MCP implementation. The separate
 through Edge Functions in existing Supabase project `gpnijaxrgtwzwtrqsbcu`; it is one
 third-party consumer. Reader, jobs and evidence logic stay here.
 
-The current bounded workspace/report API publishes
-[contract 1.0.0](docs/decisions/0043-core-http-contract.md) at `/openapi/v1.json`,
+The current bounded workspace/report API and [tenant-owned read-only fixture sessions](docs/decisions/0044-tenant-reader-sessions.md) publish
+[contract 1.1.0](docs/decisions/0043-core-http-contract.md) at `/openapi/v1.json`,
 including response schemas and safe errors. See [HTTP examples](docs/protocol/core-api.http)
 and [the next core acceptance step](docs/development-status.md#next-core-api-and-mcp-contract-parity).
 The private listener is not a public deployment, and the current HTTP surface does
