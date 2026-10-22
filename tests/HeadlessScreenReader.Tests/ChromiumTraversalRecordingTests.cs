@@ -46,7 +46,9 @@ public sealed class ChromiumTraversalRecordingTests
             SourceFrameCount = result.Recording.Media!.Source.Length,
             VideoFrameCount = result.Recording.Media.Video.Length,
             FirstVideoMarker = result.Recording.Media.Video.FirstOrDefault()?.Marker,
-            SourceMarkers = result.Recording.Media.Source.Select(frame => new { frame.PresentationUnixMilliseconds, frame.Marker })
+            SourceMarkers = result.Recording.Media.Source.Select(frame => new { frame.PresentationUnixMilliseconds, frame.Marker }),
+            VideoTransitions = result.Recording.Media.Video.Where((frame, index) => index == 0 || frame.Marker != result.Recording.Media.Video[index - 1].Marker)
+                .Select(frame => new { frame.Index, frame.PresentationMilliseconds, frame.Marker })
         }));
         Assert.All(result.Recording.Alignment.Cues, cue =>
         {

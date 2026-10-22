@@ -66,6 +66,63 @@ public sealed class TraversalRecordingTests
     }
 
     [Theory]
+    [InlineData(1)]
+    [InlineData(5)]
+    [InlineData(29)]
+    public async Task MissingLeadingSourceFrames_UseObservedOverlapAndItsVideoPosition(int firstSharedFrame)
+    {
+        var receipt = await Receipt();
+        // Tick values identify pixels; their differences are not a clock or frame count.
+        var video = Enumerable.Range(0, 30).Select(i => new VideoMarkerFrame(i, i * 40,
+            new(0, i == 0 ? 7 : i + 9))).ToImmutableArray();
+        var frame = video[firstSharedFrame];
+        var source = ImmutableArray.Create(new SourceMarkerFrame("observed.jpg", Epoch + frame.PresentationMilliseconds, frame.Marker));
+        var result = TraversalRecording.Align(receipt, new(Epoch, 0), 100, "doc", Hash, source, video);
+        Assert.True(result.Calibrated, result.ReasonCode);
+        Assert.Equal(Epoch, result.AnchorUnixMilliseconds);
+        Assert.Equal(41, result.UncertaintyMilliseconds);
+        var cue = result.Cues.Single(c => c.EvidenceId == "o1");
+        Assert.Equal(0.159, cue.StartSeconds); Assert.Equal(0.261, cue.EndSeconds);
+        Assert.Equal(3, cue.FirstFrame); Assert.Equal(6, cue.LastFrame);
+        Assert.Equal(TraversalReachability.Unknown, receipt.Reachability);
+        Assert.Equal(TraversalBarrier.NoneObserved, receipt.Barrier);
+    }
+
+    [Fact]
+    public async Task ConflictingLaterOverlap_CannotHideBehindAnAccurateFirstMarker()
+    {
+        var receipt = await Receipt();
+        var video = Enumerable.Range(0, 30).Select(i => new VideoMarkerFrame(i, i * 40, new(0, i + 7))).ToImmutableArray();
+        var result = TraversalRecording.Align(receipt, new(Epoch, 0), 100, "doc", Hash,
+            Source.Add(new("conflicting.jpg", Epoch + 1000, new(0, 8))), video);
+        Assert.False(result.Calibrated);
+        Assert.Equal("TRAVERSAL_RECORDING_UNCERTAINTY_EXCEEDS_TARGET", result.ReasonCode);
+        Assert.Empty(result.Cues); Assert.Null(result.AnchorUnixMilliseconds);
+    }
+
+    [Fact]
+    public async Task HeldLaterMarker_UsesItsVisibleTransitionRatherThanEncoderPadding()
+    {
+        var receipt = await Receipt();
+        var result = TraversalRecording.Align(receipt, new(Epoch, 0), 100, "doc", Hash,
+            [new("observed.jpg", Epoch + 40, new(0, 8))], Video());
+        Assert.True(result.Calibrated, result.ReasonCode);
+        Assert.Equal(Epoch, result.AnchorUnixMilliseconds);
+        Assert.Equal(41, result.UncertaintyMilliseconds);
+    }
+
+    [Fact]
+    public async Task ReappearingMarker_RetainsEveryPossibleTransitionInItsUncertainty()
+    {
+        var receipt = await Receipt();
+        var result = TraversalRecording.Align(receipt, new(Epoch, 0), 100, "doc", Hash,
+            Source, Video().SetItem(29, new(29, 1160, new(0, 7))));
+        Assert.False(result.Calibrated);
+        Assert.Equal("TRAVERSAL_RECORDING_UNCERTAINTY_EXCEEDS_TARGET", result.ReasonCode);
+        Assert.Empty(result.Cues); Assert.Null(result.UncertaintyMilliseconds);
+    }
+
+    [Theory]
     [InlineData(41, 50, RecordingCueCoverage.Covered)]
     [InlineData(40.999, 50, RecordingCueCoverage.Partial)]
     [InlineData(350, 359, RecordingCueCoverage.Covered)]

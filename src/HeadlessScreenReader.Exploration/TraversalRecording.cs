@@ -31,10 +31,25 @@ public static class TraversalRecording
             || video.Where((f, i) => f.Index != i || f.PresentationMilliseconds != i * 40
                 || f.Marker is not { Objective: 0, Tick: >= 0 and <= 255 }).Any())
             return Unknown("TRAVERSAL_RECORDING_FRAME_EVIDENCE_INVALID");
-        var matches = source.Where(f => f.Marker == video[0].Marker).ToArray();
-        if (matches.Length == 0) return Unknown("TRAVERSAL_RECORDING_ANCHOR_MISSING");
-        var low = matches.Min(f => f.PresentationUnixMilliseconds);
-        var high = matches.Max(f => f.PresentationUnixMilliseconds);
+        // A source collector can miss the first encoded frame. Each observed matching
+        // marker still bounds video time zero after subtracting its actual CFR position.
+        // An unchanged CFR image can be encoder padding, not a new capture. Anchor
+        // the first frame of each visible marker run and keep every matching source
+        // time; reappearing ticks and conflicting evidence must widen uncertainty.
+        var low = double.PositiveInfinity;
+        var high = double.NegativeInfinity;
+        for (var index = 0; index < video.Length; index++)
+        {
+            var frame = video[index];
+            if (index > 0 && frame.Marker == video[index - 1].Marker) continue;
+            foreach (var observed in source)
+                if (observed.Marker == frame.Marker)
+                {
+                    var offset = observed.PresentationUnixMilliseconds - frame.PresentationMilliseconds;
+                    low = Math.Min(low, offset); high = Math.Max(high, offset);
+                }
+        }
+        if (double.IsPositiveInfinity(low)) return Unknown("TRAVERSAL_RECORDING_ANCHOR_MISSING");
         var anchor = (low + high) / 2;
         var uncertainty = (high - low) / 2 + 40 + clock.UncertaintyMilliseconds + 1;
         if (!double.IsFinite(anchor) || !double.IsFinite(uncertainty) || uncertainty > RecordingSynchronization.TargetMilliseconds)
