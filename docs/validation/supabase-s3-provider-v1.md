@@ -54,8 +54,11 @@ Independent readback found both services active and the private listener reporti
 release `d0cc99f` and HTTP contract 1.1.0. Process-environment inspection reported
 only presence flags: both trusted services have the S3 pair; only the worker has
 the database credential; neither has a management token. No environment values
-were exposed. GitHub automatic deployment remains disabled, and public MCP stays
-disabled. Shared Caddy was not modified by the application provisioning code.
+were exposed. GitHub automatic deployment was held during this promotion and
+the first signed-in acceptance. After that gate passed, the existing restricted
+CI deployment pipeline was re-enabled; each new promotion still requires every
+CI job to pass for the exact current main revision. Public MCP stays disabled.
+Shared Caddy was not modified by the application provisioning code.
 
 ## Signed-in tenant acceptance
 
