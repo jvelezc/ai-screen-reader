@@ -44,7 +44,7 @@
       try { value = await response.json(); } catch { value = {}; }
       if (revision !== epoch) throw aborted();
       if (!response.ok) {
-        if (response.status === 401 || response.status === 403) {
+        if (response.status === 401 || response.status === 403 || response.status === 404) {
           clearSession(); state('Sign in', 'Your current session or workspace access is no longer available.');
         }
         const descriptions = {

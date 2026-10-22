@@ -13,7 +13,7 @@ import uuid
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from activation import activate
-from host_runtime import HostRuntime
+from control_runtime import DeploymentRuntime
 from release_bundle import MAX_TOTAL, ReleaseError, extract_verified, require, verify_directory
 
 BASE = Path("/srv/headless-screen-reader")
@@ -93,7 +93,7 @@ def main():
                     os.fsync(descriptor)
                 finally:
                     os.close(descriptor)
-            runtime = HostRuntime(BASE)
+            runtime = DeploymentRuntime(BASE)
             runtime.prepare(commit)
             receipt.record("ImageLoaded")
             result = activate(BASE, commit, runtime, receipt.record)

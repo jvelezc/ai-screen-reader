@@ -11,9 +11,10 @@ $created=$false; $built=$false; $removed=$false; $imageRemoved=$false; $ready=$f
 $cases=[Collections.Generic.List[string]]::new()
 $releaseCreated=$false
 $script:executed=0; $script:failed=0
-$expected=if($IsLinux){21}else{19}; $linuxSignalPerformed=$false
+$expected=if($IsLinux){22}else{20}; $linuxSignalPerformed=$false
 $recoveryResources=[Collections.Generic.List[string]]::new()
-$names=@('POSTGRES_PASSWORD','HSR_WORKER_DATABASE','HSR_WORKER_IMAGE','HSR_WORKER_EVIDENCE','HSR_WORKER_RUNTIME','HSR_WORKER_SECCOMP')
+$names=@('POSTGRES_PASSWORD','HSR_WORKER_DATABASE','HSR_WORKER_IMAGE','HSR_WORKER_EVIDENCE','HSR_WORKER_RUNTIME','HSR_WORKER_SECCOMP',
+    'HSR_CONTROL_PUBLISHABLE_KEY','HSR_CONTROL_EVIDENCE','HSR_CONTROL_PORT','HSR_CONTROL_ORIGIN','HSR_RELEASE_COMMIT')
 $prior=@{}; foreach($key in $names){$prior[$key]=[Environment]::GetEnvironmentVariable($key)}
 function Assert-Proof([bool]$condition,[string]$case){$script:executed++;if(-not $condition){$script:failed++;throw "WORKER_CASE_UNCONFIRMED_$case"};$cases.Add($case)}
 function Invoke-ProofSql([string]$query){
@@ -27,6 +28,19 @@ try {
     if($LASTEXITCODE -ne 0){throw 'WORKER_FIXTURE_PUBLISH_FAILED'}
     dotnet build (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/HeadlessScreenReader.Worker.csproj') -c Release -p:RestoreLockedMode=true | Out-Null
     if($LASTEXITCODE -ne 0){throw 'WORKER_BUILD_FAILED'}
+    $stage='control-runtime'
+    $testedControl=Join-Path $repoRoot 'artifacts/worker-build/cli'
+    $env:HSR_CONTROL_PUBLISHABLE_KEY='sb_publishable_runtime_probe_only'
+    $env:HSR_CONTROL_EVIDENCE=Join-Path $folder 'unused-control-evidence'
+    $env:HSR_CONTROL_PORT='8086'; $env:HSR_CONTROL_ORIGIN='http://localhost:6086'; $env:HSR_RELEASE_COMMIT=$sourceCommit
+    $controlText=@(& dotnet (Join-Path $testedControl 'HeadlessScreenReader.Cli.dll') --check-control 2>&1)
+    if($LASTEXITCODE -ne 0){throw 'CONTROL_RUNTIME_PROBE_FAILED'}
+    $control=$controlText -join "`n" | ConvertFrom-Json
+    Assert-Proof ($control.Schema -eq 'hsr-control-runtime-proof-v1' -and $control.State -eq 'ControlRuntimeReady' -and
+        $control.ReleaseCommit -eq $sourceCommit -and $control.PublicConfigurationRead -eq $true -and
+        $control.UnauthenticatedSessionDenied -eq $true -and $control.ServerCloseConfirmed -eq $true -and
+        $control.AppJwtValidated -eq $false -and $control.PublicMcpEnabled -eq $false) 'PublishedControlRuntimeChecksHttpGuardAndJoinsStopWithoutTenantClaim'
+    $control | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $folder 'control-runtime.json') -Encoding utf8NoBOM
     $stage='image'
     $build=Invoke-ReaderRuntime $Runtime @('build','--tag',$image,'--label',"hsr.worker.proof=$owner",'--file',(Join-Path $repoRoot 'ops/worker/Containerfile'),$repoRoot) -AllowFailure
     $build.Text | Set-Content (Join-Path $folder 'build.log') -Encoding utf8NoBOM
@@ -181,9 +195,12 @@ try {
         $releaseWorker=Join-Path $content 'worker'
         New-Item -ItemType Directory -Path $releaseWorker | Out-Null
         foreach($file in Get-ChildItem -LiteralPath $testedWorker){Copy-Item -LiteralPath $file.FullName -Destination $releaseWorker -Recurse}
+        $releaseControl=Join-Path $content 'control'
+        New-Item -ItemType Directory -Path $releaseControl | Out-Null
+        foreach($file in Get-ChildItem -LiteralPath $testedControl -Force){Copy-Item -LiteralPath $file.FullName -Destination $releaseControl -Recurse -Force}
         $commit=$sourceCommit
         $pythonCommand=if($IsWindows){'python'}else{'python3'}
-        & $pythonCommand (Join-Path $repoRoot 'ops/worker/build_release.py') --stage $content --output (Join-Path $releaseRoot 'release.tar.gz') --commit $commit --image $imageId --tested-worker $testedWorker
+        & $pythonCommand (Join-Path $repoRoot 'ops/worker/build_release.py') --stage $content --output (Join-Path $releaseRoot 'release.tar.gz') --commit $commit --image $imageId --tested-worker $testedWorker --tested-control $testedControl
         if($LASTEXITCODE -ne 0){throw 'WORKER_RELEASE_BINDING_UNCONFIRMED'}
         $releaseCreated=$true
     }

@@ -58,7 +58,7 @@ class HostRuntime:
         path = root / "manifest.json"
         require(path.stat().st_size <= 1024**2, "RELEASE_MANIFEST_INVALID")
         data = json.loads(path.read_text(), object_pairs_hook=unique_object)
-        require(data["commit"] == commit and data["schema"] == "hsr-worker-release-v1"
+        require(data["commit"] == commit and data["schema"] in ("hsr-worker-release-v1", "hsr-worker-control-release-v2")
                 and IMAGE.fullmatch(data["image"]) is not None, "RELEASE_IDENTITY_MISMATCH")
         return data
 

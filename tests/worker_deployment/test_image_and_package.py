@@ -90,6 +90,61 @@ class ImageAndPackageTests(unittest.TestCase):
         self.assertEqual(manifest, verify_directory(destination, COMMIT))
         verify_image_archive(destination / "fixture.tar", IMAGE)
 
+    def add_control(self):
+        control = self.stage / "control"
+        tested = self.root / "tested-control"
+        for root in (control, tested):
+            (root / "nested").mkdir(parents=True)
+            for name, data in {"HeadlessScreenReader.Cli.dll": b"executed portal",
+                "HeadlessScreenReader.Cli.runtimeconfig.json": b"{}", "HeadlessScreenReader.Cli.deps.json": b"{}",
+                "nested/required.dll": b"executed dependency"}.items():
+                (root / name).write_bytes(data)
+        return control, tested
+
+    def test_v2_binds_every_executed_control_byte_and_keeps_v1_worker_compatible(self):
+        control, tested = self.add_control()
+        receipt = package(self.stage, self.output, COMMIT, IMAGE, self.tested, tested)
+        self.assertEqual("hsr-worker-control-release-v2", receipt["schema"])
+        target = self.root / "readback"
+        target.mkdir()
+        with self.output.open("rb") as source:
+            self.assertEqual(receipt, extract_verified(source, target, COMMIT))
+        for path in control.rglob("*"):
+            if path.is_file():
+                self.assertEqual(path.read_bytes(), (target / "control" / path.relative_to(control)).read_bytes())
+        self.assertEqual(receipt, verify_directory(target, COMMIT))
+
+    def test_control_cannot_enter_a_bundle_without_an_executed_closure(self):
+        self.add_control()
+        with self.assertRaises(ReleaseError) as caught:
+            package(self.stage, self.output, COMMIT, IMAGE, self.tested)
+        self.assertEqual("RELEASE_CONTROL_NOT_TESTED", str(caught.exception))
+        self.assertFalse(self.output.exists())
+
+    def test_changed_control_dependency_cannot_enter_release(self):
+        control, tested = self.add_control()
+        (control / "nested" / "required.dll").write_bytes(b"untested change")
+        with self.assertRaises(ReleaseError) as caught:
+            package(self.stage, self.output, COMMIT, IMAGE, self.tested, tested)
+        self.assertEqual("RELEASE_TESTED_CONTROL_MISMATCH", str(caught.exception))
+        self.assertFalse(self.output.exists())
+
+    def test_omitted_executed_control_dependency_cannot_create_an_incomplete_release(self):
+        control, tested = self.add_control()
+        (control / "nested" / "required.dll").unlink()
+        with self.assertRaises(ReleaseError) as caught:
+            package(self.stage, self.output, COMMIT, IMAGE, self.tested, tested)
+        self.assertEqual("RELEASE_TESTED_CONTROL_CLOSURE_MISMATCH", str(caught.exception))
+        self.assertFalse(self.output.exists())
+
+    def test_unexecuted_control_dependency_cannot_be_added(self):
+        control, tested = self.add_control()
+        (control / "unexecuted.dll").write_bytes(b"unexpected dependency")
+        with self.assertRaises(ReleaseError) as caught:
+            package(self.stage, self.output, COMMIT, IMAGE, self.tested, tested)
+        self.assertEqual("RELEASE_TESTED_CONTROL_MISSING", str(caught.exception))
+        self.assertFalse(self.output.exists())
+
     def test_untested_worker_byte_change_cannot_enter_release(self):
         (self.worker / "HeadlessScreenReader.Worker.dll").write_bytes(b"untested replacement")
         with self.assertRaises(ReleaseError) as caught:

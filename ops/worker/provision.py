@@ -17,7 +17,7 @@ LIB = Path("/usr/local/libexec/headless-screen-reader")
 MARKER = "headless-screen-reader:gpnijaxrgtwzwtrqsbcu:v1"
 CA_SHA = "700723581420dd1ac98fd7e9ac529f0ef210eadcaf87fc868a3ad7d114c2f3b7"
 MODULES = {"activation.py", "deploy.py", "host_runtime.py", "image_archive.py",
-           "release_bundle.py", "worker_start.py"}
+           "release_bundle.py", "worker_start.py", "control_runtime.py", "control_start.py"}
 
 
 class ProvisionError(Exception):
@@ -30,7 +30,10 @@ def require(condition):
 
 
 def validate(config, sources):
-    require(isinstance(config, dict) and set(config) == {"Project", "Commit", "PublicKey", "Password", "Ca"})
+    required = {"Project", "Commit", "PublicKey", "Password", "Ca"}
+    require(isinstance(config, dict) and set(config) in (required, required | {"PortalKey"}))
+    if "PortalKey" in config:
+        require(public_portal_key(config["PortalKey"]))
     require(config["Project"] == "gpnijaxrgtwzwtrqsbcu"
             and isinstance(config["Commit"], str) and re.fullmatch(r"[a-f0-9]{40}", config["Commit"]) is not None
             and isinstance(config["Password"], str) and re.fullmatch(r"[a-f0-9]{64}", config["Password"]) is not None)
@@ -47,6 +50,26 @@ def validate(config, sources):
         require(isinstance(source, str) and 0 < len(source.encode("utf-8")) <= 128 * 1024)
         compile(source, name, "exec")
     return certificate
+
+
+def public_portal_key(key):
+    # Bootstrap is standalone: the newly supplied modules are not installed yet.
+    if not isinstance(key, str) or not 20 <= len(key) <= 4096 or re.fullmatch(r"[A-Za-z0-9_.-]+", key) is None:
+        return False
+    if key.startswith("sb_publishable_"):
+        return True
+    try:
+        parts = key.split(".")
+        if len(parts) != 3:
+            return False
+        def unique(pairs):
+            require(len(pairs) == len(dict(pairs)))
+            return dict(pairs)
+        value = json.loads(base64.b64decode(parts[1] + "=" * (-len(parts[1]) % 4), altchars=b"-_", validate=True),
+                           object_pairs_hook=unique)
+        return isinstance(value, dict) and value.get("role") == "anon" and value.get("ref") == "gpnijaxrgtwzwtrqsbcu"
+    except (ValueError, UnicodeError, ProvisionError):
+        return False
 
 
 def account_valid(account, name, home, managed):
@@ -112,12 +135,16 @@ def provision(config, sources):
         require(grp.getgrgid(account.pw_gid).gr_name == name)
         accounts[name] = account
     protected = [LIB, Path("/usr/local/libexec/hsr-deploy"), Path("/etc/sudoers.d/hsr-deploy"),
-                 Path("/etc/systemd/system/hsr-observation.service")]
+                 Path("/etc/systemd/system/hsr-observation.service"), Path("/etc/systemd/system/hsr-control.service")]
     for path in protected:
         if path.exists() or path.is_symlink():
             require(managed and not path.is_symlink() and path.stat().st_uid == 0
                     and path.stat().st_mode & 0o022 == 0)
     env_path = BASE / "config" / "worker.env"
+    control_env = BASE / "config" / "control.env"
+    if control_env.exists() or control_env.is_symlink():
+        require(managed and not control_env.is_symlink() and control_env.is_file()
+                and control_env.stat().st_uid == 0 and control_env.stat().st_mode & 0o077 == 0)
     connection = ("Host=db.gpnijaxrgtwzwtrqsbcu.supabase.co;Port=5432;Database=postgres;"
                   "Username=hsr_worker_runtime;Password=" + config["Password"] + ";SSL Mode=VerifyFull;"
                   "Root Certificate=/srv/headless-screen-reader/config/supabase-root.crt;"
@@ -183,6 +210,8 @@ def provision(config, sources):
     check.unlink()
     install(BASE / "config" / "supabase-root.crt", certificate, 0o644)
     install(env_path, environment, 0o600)
+    if "PortalKey" in config:
+        install(control_env, ("HSR_CONTROL_PUBLISHABLE_KEY=" + config["PortalKey"] + "\n").encode(), 0o600)
     unit = ("[Unit]\nDescription=Private HeadlessScreenReader observation worker\nAfter=network-online.target\n"
             "Wants=network-online.target\n[Service]\nType=simple\nUser=hsr-worker\nGroup=hsr-worker\n"
             "UMask=0077\nWorkingDirectory=/srv/headless-screen-reader/home\n"
@@ -191,6 +220,16 @@ def provision(config, sources):
             "Restart=no\nKillMode=process\nSendSIGKILL=no\nTimeoutStopSec=180\nLimitCORE=0\n"
             "[Install]\nWantedBy=multi-user.target\n")
     install(Path("/etc/systemd/system/hsr-observation.service"), unit.encode(), 0o644)
+    control_unit = ("[Unit]\nDescription=Private HeadlessScreenReader workspace portal\n"
+        "After=network-online.target hsr-observation.service\nRequires=hsr-observation.service\n"
+        "[Service]\nType=simple\nUser=hsr-worker\nGroup=hsr-worker\nUMask=0077\n"
+        "WorkingDirectory=/srv/headless-screen-reader/home\n"
+        "EnvironmentFile=/srv/headless-screen-reader/config/control.env\n"
+        "ExecStart=/usr/bin/python3 -I -B /usr/local/libexec/headless-screen-reader/control_start.py\n"
+        "Restart=no\nKillMode=process\nSendSIGKILL=no\nTimeoutStopSec=20\nLimitCORE=0\n"
+        "NoNewPrivileges=yes\nPrivateTmp=yes\nProtectSystem=strict\n"
+        "[Install]\nWantedBy=multi-user.target\n")
+    install(Path("/etc/systemd/system/hsr-control.service"), control_unit.encode(), 0o644)
     command(["/usr/bin/loginctl", "enable-linger", "hsr-worker"])
     command(["/usr/bin/systemctl", "start", "user@" + str(worker.pw_uid) + ".service"])
     command(["/usr/bin/systemctl", "daemon-reload"])

@@ -81,6 +81,15 @@ class ReleaseBundleTests(unittest.TestCase):
     def test_unknown_top_level_file_is_rejected(self):
         self.reject(self.archive({"config.env": b"not a release file"}), "RELEASE_FILE_UNEXPECTED")
 
+    def test_v1_manifest_cannot_hide_control_payload_as_a_worker_only_release(self):
+        files = self.files | {"control/HeadlessScreenReader.Cli.dll": b"unexpected control"}
+        self.reject(self.archive(files, json.dumps(self.manifest(files)).encode()), "RELEASE_CONTROL_UNEXPECTED")
+
+    def test_v2_requires_all_control_entrypoint_runtime_files(self):
+        files = self.files | {"control/HeadlessScreenReader.Cli.dll": b"incomplete control"}
+        manifest = self.manifest(files) | {"schema": "hsr-worker-control-release-v2"}
+        self.reject(self.archive(files, json.dumps(manifest).encode()), "RELEASE_CONTROL_RUNTIME_MISSING")
+
     def test_path_length_accepts_exact_boundary_and_rejects_next_character(self):
         name = "worker/" + "a" * 233
         self.assertEqual(name, str(bundle.safe_name(name)))

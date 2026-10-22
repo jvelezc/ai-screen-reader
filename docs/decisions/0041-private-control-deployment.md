@@ -1,0 +1,11 @@
+# Deploy the private workspace portal with the accepted worker release
+
+Extend the existing release transport instead of introducing another deployment framework. Version2 binds the executed published CLI closure alongside the worker and immutable fixture image. The producer checks both hashes and the complete control inventory against the publication actually exercised by `--check-control`; promotion performs no rebuild. Version1 remains readable for rollback to the accepted worker-only release.
+
+The control probe uses real Kestrel, reads its public configuration and readiness, verifies an unauthenticated session request is denied, and joins server disposal before reporting success. It performs no tenant operation and explicitly leaves app JWT acceptance false. The CI harness runs this entrypoint from the actual Linux publication before packaging that same directory.
+
+Compose `DeploymentRuntime` with the existing worker lifecycle. Stop the portal and confirm PID zero before worker stop/recovery. Start the worker first and retain its actual database readiness gate. For version2, start the portal and require a fresh systemd invocation's matching journal receipt, actual loopback HTTP readiness, then the same active invocation with a positive PID. A portal failure follows the existing drain/recover/rollback path. A version1 rollback restarts only the worker and disables the portal.
+
+The portal runs as the existing trusted application account, with a closed environment containing public project configuration and the private evidence root. It receives no database password, management token or service-role key. Root-owned helpers, configuration and service definitions remain separate from release data. The listener is `127.0.0.1:8086`, reached through an owned SSH forward to `http://localhost:6086`; shared Caddy and public listeners stay outside this increment.
+
+Hosted migration/configuration and service installation require acceptance of all nine CI jobs for the exact main commit. Actual sign-up, email confirmation, user JWT, tenant admission and report delivery remain separate acceptance gates after deployment. Public MCP and plugin publication remain deferred. Private S3 finalization is still an original milestone requirement.

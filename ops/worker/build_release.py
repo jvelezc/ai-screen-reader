@@ -8,8 +8,9 @@ from release_bundle import IMAGE, SHA, require, safe_name, verify_directory
 from image_archive import verify_image_archive
 
 
-def package(stage, output, commit, image, tested_worker):
+def package(stage, output, commit, image, tested_worker, tested_control=None):
     stage, output, tested_worker = Path(stage), Path(output), Path(tested_worker)
+    tested_control = Path(tested_control) if tested_control is not None else None
     require(SHA.fullmatch(commit) is not None and IMAGE.fullmatch(image) is not None,
             "RELEASE_IDENTITY_MISMATCH")
     require(not (stage / "manifest.json").exists() and not output.exists(), "RELEASE_OUTPUT_EXISTS")
@@ -30,11 +31,24 @@ def package(stage, output, commit, image, tested_worker):
             with original.open("rb") as source:
                 require(hashlib.file_digest(source, "sha256").hexdigest() == files[name],
                         "RELEASE_TESTED_BINARY_MISMATCH")
+        elif name.startswith("control/"):
+            require(tested_control is not None, "RELEASE_CONTROL_NOT_TESTED")
+            original = tested_control / name[8:]
+            require(original.is_file() and not original.is_symlink(), "RELEASE_TESTED_CONTROL_MISSING")
+            with original.open("rb") as source:
+                require(hashlib.file_digest(source, "sha256").hexdigest() == files[name],
+                        "RELEASE_TESTED_CONTROL_MISMATCH")
     tested_files = {path.relative_to(tested_worker).as_posix()
                     for path in tested_worker.rglob("*") if path.is_file()}
     require(tested_files == {name[7:] for name in files if name.startswith("worker/")},
             "RELEASE_TESTED_CLOSURE_MISMATCH")
-    manifest = {"schema": "hsr-worker-release-v1", "commit": commit, "image": image, "files": files}
+    if tested_control is not None:
+        tested_files = {path.relative_to(tested_control).as_posix()
+                        for path in tested_control.rglob("*") if path.is_file()}
+        require(tested_files == {name[8:] for name in files if name.startswith("control/")},
+                "RELEASE_TESTED_CONTROL_CLOSURE_MISMATCH")
+    manifest = {"schema": "hsr-worker-control-release-v2" if tested_control is not None else "hsr-worker-release-v1",
+                "commit": commit, "image": image, "files": files}
     with (stage / "manifest.json").open("x", encoding="utf-8") as destination:
         json.dump(manifest, destination, sort_keys=True, separators=(",", ":"))
     verify_directory(stage, commit)
@@ -54,5 +68,6 @@ if __name__ == "__main__":
     parser.add_argument("--commit", required=True)
     parser.add_argument("--image", required=True)
     parser.add_argument("--tested-worker", required=True)
+    parser.add_argument("--tested-control")
     args = parser.parse_args()
-    package(args.stage, args.output, args.commit, args.image, args.tested_worker)
+    package(args.stage, args.output, args.commit, args.image, args.tested_worker, args.tested_control)

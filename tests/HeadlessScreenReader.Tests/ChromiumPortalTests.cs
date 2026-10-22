@@ -77,6 +77,39 @@ public sealed class ChromiumPortalTests
     }
 
     [Fact]
+    public async Task MembershipHiddenByTenantRlsClearsPreviouslyDisplayedPrivateEvidence()
+    {
+        var project = new PortalProjectStub(); project.Record = project.Record with { State = "observed" };
+        project.Job = project.Job with { State = "completed", Generation = 1 };
+        var reader = new PortalObservationStub
+        {
+            Value = new("document", new string('a', 64), "hsr-desktop-reader-v13", 0, false,
+            [new("node", null, "paragraph", "Previously authorized observation", false, false, null, null, null, null, null, null, null)], [])
+        };
+        await using var server = await PortalHttpTests.Start(project, reader);
+        using var playwright = await Playwright.CreateAsync();
+        await using var browser = await playwright.Chromium.LaunchAsync(new() { Headless = true, ChromiumSandbox = true });
+        var page = await browser.NewPageAsync(); page.SetDefaultTimeout(5000);
+        await page.RouteAsync(PortalOptions.Project.GetLeftPart(UriPartial.Authority) + "/auth/v1/**", route => route.FulfillAsync(new()
+        { ContentType = "application/json", Body = JsonSerializer.Serialize(new { access_token = PortalProjectClientTests.Bearer }) }));
+        await page.GotoAsync(server.BaseAddress.ToString());
+        await page.Locator("#email").FillAsync("reader@example.invalid"); await page.Locator("#password").FillAsync("synthetic-login-only");
+        await page.Locator("#login").ClickAsync(); await Assertions.Expect(page.Locator("#workspace")).ToBeVisibleAsync();
+        await page.Locator("#run").ClickAsync(); await Assertions.Expect(page.Locator("#nodes")).ToContainTextAsync("Previously authorized observation");
+        // Auth still verifies this user; current RLS visibility disappears independently.
+        project.WorkspaceHidden = true;
+        await page.Locator("#refresh").ClickAsync();
+        await Assertions.Expect(page.Locator("#workspace")).ToBeHiddenAsync();
+        Assert.Empty(await page.Locator("#nodes").InnerTextAsync()); Assert.Empty(await page.Locator("#runs").InnerTextAsync());
+        await Assertions.Expect(page.Locator("#download")).ToBeDisabledAsync();
+        Assert.False(project.Revoked);
+        await Assertions.Expect(page.Locator("#error")).ToContainTextAsync("workspace is no longer available");
+        var capture = Path.Combine(RepositoryRoot(), "artifacts", "portal-validation", "membership-revoked.png");
+        Directory.CreateDirectory(Path.GetDirectoryName(capture)!);
+        await page.ScreenshotAsync(new() { Path = capture, FullPage = true });
+    }
+
+    [Fact]
     public async Task NarrowViewportPreservesProductNameWhenTextIsEnlarged()
     {
         await using var server = await PortalHttpTests.Start(new());

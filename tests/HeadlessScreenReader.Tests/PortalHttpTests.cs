@@ -221,6 +221,7 @@ internal sealed class PortalProjectStub : IPortalProjectClient
     public int CreateCalls { get; private set; }
     public Guid LastRequest { get; private set; }
     public bool Revoked { get; set; }
+    public bool WorkspaceHidden { get; set; }
     public int HistoryCount { get; set; } = 1;
     public List<string> SeenBearers { get; } = [];
     public PortalScanResponse Record { get; set; } = new(PortalProjectClientTests.Organization, PortalProjectClientTests.Scan,
@@ -241,7 +242,7 @@ internal sealed class PortalProjectStub : IPortalProjectClient
     public Task<PortalWorkspaceBootstrap> EnsureWorkspaceAsync(PortalIdentity actor, CancellationToken token)
     { DataCalls++; SeenBearers.Add(actor.Token); return Task.FromResult(new PortalWorkspaceBootstrap(PortalProjectClientTests.Organization, DataCalls == 1)); }
     public Task<PortalWorkspaceResponse?> WorkspaceAsync(PortalIdentity actor, Guid organization, CancellationToken token)
-    { DataCalls++; SeenBearers.Add(actor.Token); return Task.FromResult(organization == PortalProjectClientTests.Organization ? new PortalWorkspaceResponse(organization, "Personal workspace") : null); }
+    { DataCalls++; SeenBearers.Add(actor.Token); return Task.FromResult(!WorkspaceHidden && organization == PortalProjectClientTests.Organization ? new PortalWorkspaceResponse(organization, "Personal workspace") : null); }
     public Task<PortalScanResponse[]> ScansAsync(PortalIdentity actor, Guid organization, CancellationToken token)
     { DataCalls++; return Task.FromResult(Enumerable.Range(0, HistoryCount).Select(_ => Record).ToArray()); }
     public Task<PortalScanCreatedResponse> CreateScanAsync(PortalIdentity actor, Guid organization, Guid request, CancellationToken token)

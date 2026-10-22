@@ -38,7 +38,7 @@ def safe_name(name):
             and not name.startswith("/")
             and all(part not in ("", ".", "..") for part in name.split("/")),
             "RELEASE_PATH_INVALID")
-    require(name in ("manifest.json", "fixture.tar") or name.startswith("worker/"),
+    require(name in ("manifest.json", "fixture.tar") or name.startswith(("worker/", "control/")),
             "RELEASE_FILE_UNEXPECTED")
     return PurePosixPath(name)
 
@@ -55,7 +55,7 @@ def verify_manifest(root, commit, actual):
         raise ReleaseError("RELEASE_MANIFEST_INVALID") from error
     require(isinstance(data, dict) and set(data) == {"schema", "commit", "image", "files"},
             "RELEASE_MANIFEST_INVALID")
-    require(data["schema"] == "hsr-worker-release-v1" and data["commit"] == commit,
+    require(data["schema"] in ("hsr-worker-release-v1", "hsr-worker-control-release-v2") and data["commit"] == commit,
             "RELEASE_IDENTITY_MISMATCH")
     require(isinstance(data["image"], str) and IMAGE.fullmatch(data["image"]) is not None,
             "RELEASE_IMAGE_INVALID")
@@ -66,6 +66,12 @@ def verify_manifest(root, commit, actual):
              "worker/HeadlessScreenReader.Worker.runtimeconfig.json",
              "worker/HeadlessScreenReader.Worker.deps.json"} <= set(files),
             "RELEASE_RUNTIME_MISSING")
+    control = {name for name in files if name.startswith("control/")}
+    if data["schema"] == "hsr-worker-control-release-v2":
+        require({"control/HeadlessScreenReader.Cli.dll", "control/HeadlessScreenReader.Cli.runtimeconfig.json",
+                 "control/HeadlessScreenReader.Cli.deps.json"} <= control, "RELEASE_CONTROL_RUNTIME_MISSING")
+    else:
+        require(not control, "RELEASE_CONTROL_UNEXPECTED")
     for name, digest in files.items():
         safe_name(name)
         require(isinstance(digest, str) and DIGEST.fullmatch(digest) is not None

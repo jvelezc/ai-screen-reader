@@ -23,6 +23,12 @@ class ProvisionGuardsTests(unittest.TestCase):
     def test_exact_project_key_certificate_and_module_inventory_are_validated_before_mutation(self):
         self.assertEqual(self.certificate, provision.validate(self.config, self.sources))
 
+    def test_portal_public_key_is_optional_for_v1_but_cannot_be_privileged_or_injected(self):
+        self.assertEqual(self.certificate, provision.validate(self.config | {"PortalKey": "sb_publishable_bootstrap_fixture"}, self.sources))
+        for key in ("sb_secret_privileged_fixture", "sb_publishable_bootstrap_fixture\nHSR_WORKER_DATABASE=private", ""):
+            with self.assertRaises(provision.ProvisionError):
+                provision.validate(self.config | {"PortalKey": key}, self.sources)
+
     def test_wrong_project_password_or_commit_cannot_enter_bootstrap(self):
         cases = {"project": {"Project": "another-project"}, "password": {"Password": "quoted'password"},
                  "commit": {"Commit": "latest"}, "extra": {"RootPath": "/etc"}}
