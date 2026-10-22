@@ -2,7 +2,7 @@
 
 Local .NET screen-reader foundation for the architecture in [the development plan](outputs/HeadlessScreenReader-Architecture-Review-and-Development-Plan.md).
 
-The [leased observation worker](docs/decisions/0037-isolated-observation-worker.md) connects tenant-authorized admission to isolated synthetic-shop observation, private saved bytes and fenced queue completion. Its private VPS deployment and rollback are accepted. The [workspace control implementation](docs/decisions/0040-private-workspace-control.md) and private S3 configuration are deployed; **next is an actual signed-in tenant fixture and S3-backed report**. [Current status](docs/development-status.md) separates local, CI and hosted acceptance.
+The [leased observation worker](docs/decisions/0037-isolated-observation-worker.md) connects tenant-authorized admission to isolated synthetic-shop observation, private saved bytes and fenced queue completion. Its private VPS deployment and rollback are accepted. A real signed-in tenant fixture completed and its report matched independently verified private S3 evidence. **Next is credential-free isolated execution for hosted reader sessions.** [Current status](docs/development-status.md) separates local, CI and hosted acceptance.
 
 **Active work: the original evidence-backed workflow.** Bounded authored traversal, immutable attempt receipts, an observation graph and linked local reports are implemented. Run `--traversal` below. See [original milestone status and the next acceptance gate](docs/development-status.md). Public MCP hosting and plugin publication are deferred.
 
@@ -22,7 +22,7 @@ third-party consumer. Reader, jobs and evidence logic stay here.
 The current bounded workspace/report API and [tenant-owned read-only fixture sessions](docs/decisions/0044-tenant-reader-sessions.md) publish
 [contract 1.1.0](docs/decisions/0043-core-http-contract.md) at `/openapi/v1.json`,
 including response schemas and safe errors. See [HTTP examples](docs/protocol/core-api.http)
-and [the next core acceptance step](docs/development-status.md#next-signed-in-hosted-fixture-and-s3-acceptance).
+and [the next core acceptance step](docs/development-status.md#next-isolated-hosted-reader-sessions).
 The private listener is not a public deployment, and the current HTTP surface does
 not yet expose every interactive capability available through local stdio MCP.
 

@@ -204,7 +204,10 @@
     if (revision !== selectionRevision || id !== selected) return;
     renderReport(report);
     for (const button of byId('runs').querySelectorAll('button')) {
-      if (button.dataset.run === id) button.setAttribute('aria-current', 'true'); else button.removeAttribute('aria-current');
+      if (button.dataset.run === id) {
+        button.setAttribute('aria-current', 'true');
+        button.querySelector('.run-state').textContent = execution(report.scan.state);
+      } else button.removeAttribute('aria-current');
     }
     if (report.scan.state === 'queued' || report.scan.state === 'leased') {
       if (++pollCount < 80) poll = setTimeout(() => selectRun(id, true).catch(handle), 1500);

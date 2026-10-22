@@ -57,15 +57,48 @@ the database credential; neither has a management token. No environment values
 were exposed. GitHub automatic deployment remains disabled, and public MCP stays
 disabled. Shared Caddy was not modified by the application provisioning code.
 
+## Signed-in tenant acceptance
+
+The user signed in to the private application, separately from the Supabase
+dashboard. Its actual authenticated workspace admitted shop scan
+`7940901d-88f4-4053-9811-221a52767b4b`. The real isolated worker completed job
+`02b57a37-6092-4f1d-ad8a-5d76a662b87b`, generation 1. No operator SQL admission,
+fabricated bearer, or browser-session token extraction was used.
+
+| Check | Observed result |
+| --- | --- |
+| Application and tenant authorization | Signed-in workspace admitted and displayed its own run |
+| Durable queue completion | Scan observed, job completed, one attempt, no remaining lease or error |
+| Authorized application report | Available; evidenceStorage S3; 32 exposed nodes |
+| Original observation | 31,510 bytes; SHA256 `dd58ff977248946ab71666e3a3c949e8140be84b97dc05847bc0b9bdabe3bd56` |
+| Independent VPS readback | Deployed production archive validated the exact object, job identity and native shutdown facts |
+| Storage metadata | Private hsr-evidence object under the exact organization/scan/job/generation/digest path; JSON MIME |
+| Anonymous access to that object | HTTP 403 |
+| Downloaded report | Same digest and tenant scan; zero dispatched input; goalVerified false |
+
+The separate VPS probe ran as `hsr-worker`, using the already configured control
+service S3 pair and manifest-verified deployed libraries. That readback alone
+does not exercise application authentication; the signed-in browser flow and
+durable database readback supply the distinct admission/report evidence above.
+The browser tab had loaded the portal before the latest deployment, so its
+markup omitted the newer evidence-location label; the actual downloaded report
+explicitly identified S3. No reload was forced because the session is in memory.
+
+The first report completed while the recent-run row still displayed Queued.
+Manual Refresh runs corrected it. A follow-up source fix synchronizes that row
+from each accepted selected-report response; a real Chromium regression covers
+Queued to Observing to both completed and blocked outcomes without manual refresh.
+Its source/CI gate is separate from the deployed d0cc99f acceptance above.
+
 ## Remaining acceptance
 
-Sign in to the private screen-reader application at `http://localhost:6086`,
-then admit a tenant fixture, observe the real isolated worker completion and
-verify the authorized report against its S3 object. Supabase dashboard/MCP
-administration is a separate identity. Hosted interactive reader sessions also
-need a validated browser runtime on the control host; local Chromium tests and
-publication of their API routes do not prove that deployed capability. The
-approved Edge-to-core network path and actual human/AT acceptance remain open.
+The signed-in fixed-fixture/S3 gate is accepted. Hosted interactive reader
+sessions still need a credential-free isolated browser execution boundary;
+launching a browser directly inside the credential-bearing control service is
+not the next deployment step. Local Chromium tests and published routes do not
+prove that deployed capability. The approved Edge-to-core network path, broader
+tenant restart/recovery exercises and actual human/AT acceptance remain open.
+Public MCP/plugin publication remains deferred.
 
 Source references: [Supabase S3 authentication](https://supabase.com/docs/guides/storage/s3/authentication),
 [Supabase MCP tool groups](https://supabase.com/docs/guides/ai-tools/mcp#available-tools).

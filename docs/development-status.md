@@ -10,25 +10,37 @@ Prioritize an independently usable core API and MCP. The Lovable UI consumes thi
 | 1: local screen reader | Substantial local implementation | Reader profile v13, fixtures, bounded events/observations, policy checks and CI | Capture/privacy feasibility remains a prerequisite to editable entry and recording; broader supported-control scope is explicit |
 | 2: evidence-backed workflow | In progress | Bounded routes, append-only JSON, node/edge reports, controlled recording canaries, 20-marker timing proof and original route media with capture/action/event intervals and passive local viewer; bounded diagnostic provenance, explicit fresh-run replay and owned evidence writes | Broader workflow acceptance and diagnostics/search coverage |
 | 3: intervention and isolation | Partial | Exact public-host policy, independent Linux egress fence and exclusive local controller leases, headed Xvfb continuity and explicitly simulated excluded input and scoped loopback semantic and pixel viewing | Actual human/AT acceptance and hosted identity/capture/persistence fencing |
-| 4: durable hosted execution | In progress | Admission and fenced leases installed; accepted worker/control release d0cc99f deployed privately with native readiness; private S3 bucket, original archive upload/readback and anonymous denial verified;196 local PostgreSQL/pgmq cases | Actual app-user JWT, admitted hosted fixture and S3-backed report; deployed interactive browser runtime acceptance |
+| 4: durable hosted execution | In progress | Admission and fenced leases installed; accepted worker/control release d0cc99f deployed privately with native readiness; actual signed-in tenant fixture completed with S3-backed report, independent object readback and anonymous denial;196 local PostgreSQL/pgmq cases | Credential-free hosted interactive reader execution; broader tenant restart/recovery acceptance |
 | 5: public MCP pilot | Deferred | Existing local stdio adapter | Public MCP HTTPS endpoint, client onboarding, plugin and pilot operations; private report remains active milestone4 work |
 | 6: measured extensions | Later | Bounded reader improvements through v13 | Broader validated widgets and compatible-run comparisons; public plugins remain deferred |
 
-## Next: signed-in hosted fixture and S3 acceptance
+## Next: isolated hosted reader sessions
 
-**Next action:** sign in to the private screen-reader application at
-`http://localhost:6086`, then verify tenant admission, isolated worker completion
-and its S3-backed report. Dashboard/MCP administration is a separate identity.
-The private evidence credentials and provider-only proof are accepted; this
-remaining end-to-end user gate is not. See [the exact evidence and limits](validation/supabase-s3-provider-v1.md).
+**Next action:** run the existing owned read-only reader-session lifecycle in a
+credential-free isolated browser worker. Reuse native ownership, limits and
+recovery; keep user JWTs, database and S3 authority in trusted services. Prove
+open, two observations of the same browser context, expiry/cancellation drain and
+confirmed native close on Windows/Linux and the private VPS before enabling
+navigation or recording. This adds no public endpoint or arbitrary target.
+Open [the next increment and its six delivery steps](next-isolated-reader-sessions.md)
+for the implementation scope and exact completion gates.
+
+<a id="next-signed-in-hosted-fixture-and-s3-acceptance"></a>
+
+**Just accepted:** a real signed-in application user admitted a tenant shop run;
+the isolated worker completed it in one attempt, retired its lease, and returned
+32 exposed nodes. The downloaded report's S3 digest matched independent VPS
+readback of the original 31,510-byte private object; anonymous access returned
+403. Zero browser inputs and no verified goal remain explicit. See
+[the exact evidence and limits](validation/supabase-s3-provider-v1.md).
 
 ### Core API and MCP contract parity
 
 [Core HTTP contract 1.0.0](decisions/0043-core-http-contract.md) now describes the
 existing authenticated workspace, fixed-fixture admission and evidence-report API
 with DTO-derived response schemas, explicit errors/headers and report consistency
-constraints. This is source implementation, not a new deployed API or a complete
-interactive-reader HTTP surface. The existing local stdio MCP implementation stays
+constraints. That workspace/report surface is deployed and accepted for the
+fixed fixture; it is not a complete interactive-reader HTTP surface. The existing local stdio MCP implementation stays
 in the core repository.
 
 [Tenant-owned reader sessions](decisions/0044-tenant-reader-sessions.md) now add
@@ -38,7 +50,7 @@ quarantined cleanup failures. Contract 1.1.0 describes their real response shape
 Only the bundled Foundation fixture is admitted; no browser input or recording is
 enabled. A real Chromium/Kestrel consumer test exercises the lifecycle.
 
-**Following core increment:** adapt shared reader navigation and timeline to owned HTTP
+**After the isolated session gate:** adapt shared reader navigation and timeline to owned HTTP
 sessions with stale-document checks and explicit input outcomes. Define gateway
 authentication/tenant delegation and an approved
 Edge-to-core network path before wiring Supabase Edge Functions or expanding the
@@ -50,11 +62,13 @@ including Windows and Linux 1,599/1,599 each. Local Windows also passed
 1,599/1,599, including 39 new cases, and full format verification; focused checks
 passed 73/73. Private promotion and independent listener readback now identify
 that same release and contract 1.1.0. Both trusted services have S3 configuration;
-actual app-user JWT, hosted tenant execution and human/AT acceptance remain open.
+actual app-user JWT and hosted fixed-fixture execution are now accepted; human/AT acceptance remains open.
 The deployed read-only session routes still need their own browser-runtime
 acceptance; the listener and local browser tests cannot establish it.
 
-## Hosted user acceptance gate (historical implementation evidence)
+## Historical implementation evidence
+
+The following records describe earlier increments and their gates at the time. The current milestone table and blue Next step above supersede their pending-state language.
 
 
 The worker deployment and controlled rollback are accepted. [CI39703752558](https://github.com/jvelezc/ai-screen-reader/actions/runs/39703752558) passed all nine jobs: Windows/Ubuntu1,352 each, SQL161, actual Linux worker21 and operational86. Release5b7d826 is live after [normal promotion39705338724](https://github.com/jvelezc/ai-screen-reader/actions/runs/39705338724). A deliberate target-start failure first restored the prior accepted release with a fresh database-ready service invocation; independent host readback verified the actual worker, hashes, runtime cleanup and unchanged shared Caddy/public listeners. That proves private worker operations, not a tenant scan or app-user JWT.
@@ -73,7 +87,7 @@ The [private fixture viewing client](decisions/0034-private-fixture-viewing-clie
 
 The selected database target is Supabase **gpnijaxrgtwzwtrqsbcu**. Access is working through the saved Windows credential; no further CLI setup is needed. Admission is installed as20261021201121 after inspection of the empty project and accepted CI. Readback confirms four RLS-enabled tables, restricted grants and zero app users/scans/messages. The selected worker host is the existing shared Contabo VPS. Read-only SSH inspection confirmed Podman, active Caddy and existing applications; its services are unchanged. The user selected private through SSH. Deployment must use separate resources; future report/control endpoints stay on loopback and Caddy stays unchanged. Live JWT, native execution and full hosted durability remain unaccepted. The user did not see the temporary viewer window; human/AT acceptance remains unperformed before human target-input authority.
 
-The [tenant admission slice](decisions/0035-tenant-scan-admission.md) passed50/50 local and Linux CI database cases in [accepted CI39665891030](https://github.com/jvelezc/ai-screen-reader/actions/runs/39665891030), with1,247 tests on each Windows/Ubuntu and all eight jobs successful. It proves a fixed-fixture scan/job transaction, tenant RLS, duplicate binding, actual pgmq rollback, concurrent revocation and orderly database restart. The [worker lease protocol](decisions/0036-fenced-observation-worker-leases.md) now adds private capabilities, immutable attempt facts, expiry/generation fencing, atomic completion and safe blocked/quarantine states. Its [validation](validation/worker-leases-v1.md) passed161/161 and all eight CI jobs. The lease migration is installed as20261021210027. The [native observation worker](decisions/0037-isolated-observation-worker.md) now passes local Windows1,329/1,329 and real Linux/Podman11/11, including exact persisted bytes, actual renewal/queue acknowledgement and safe blocked execution. Native recovery is accepted in CI39687306453. **NEXT:** accept the exact release-export path in CI, then verify private SSH deployment and rollback on the selected VPS. Hosted native execution, JWT onboarding and private S3 finalization remain unaccepted.
+The [tenant admission slice](decisions/0035-tenant-scan-admission.md) passed50/50 local and Linux CI database cases in [accepted CI39665891030](https://github.com/jvelezc/ai-screen-reader/actions/runs/39665891030), with1,247 tests on each Windows/Ubuntu and all eight jobs successful. It proves a fixed-fixture scan/job transaction, tenant RLS, duplicate binding, actual pgmq rollback, concurrent revocation and orderly database restart. The [worker lease protocol](decisions/0036-fenced-observation-worker-leases.md) now adds private capabilities, immutable attempt facts, expiry/generation fencing, atomic completion and safe blocked/quarantine states. Its [validation](validation/worker-leases-v1.md) passed161/161 and all eight CI jobs. The lease migration is installed as20261021210027. The [native observation worker](decisions/0037-isolated-observation-worker.md) now passes local Windows1,329/1,329 and real Linux/Podman11/11, including exact persisted bytes, actual renewal/queue acknowledgement and safe blocked execution. Native recovery is accepted in CI39687306453. **Historical next gate (now accepted):** accept the exact release-export path in CI, then verify private SSH deployment and rollback on the selected VPS. Hosted native execution, JWT onboarding and private S3 finalization remain unaccepted.
 
 Try `dotnet run --project src/HeadlessScreenReader.Cli -c Release -- --view-fixture`. It opens a read-only synthetic fixture viewer for up to two minutes. Pause must clear both panes; Resume must restore them; End or closing the window must clean up both owned browsers. This is a manual acceptance task, not a completed human validation. The finite automated counterpart is `--private-client`; [the matrix](validation/private-fixture-client-v1.md) distinguishes actual browser/HTTP proofs from remaining hosted and human gates.
 
@@ -83,7 +97,7 @@ The [20-marker synchronization probe](decisions/0021-recording-synchronization.m
 
 The [recorded traversal slice](decisions/0022-traversal-recording-evidence.md) now attaches original permitted video and calibrated capture/action/event intervals to four fresh input-free synthetic routes. Run `dotnet run --project src/HeadlessScreenReader.Cli -c Release -- --traversal-recording` and open its printed index. Source/result observations, actual keys, goal verification and video timing remain separate. Missing/partial media never changes a barrier assessment.
 
-The [passive local viewer](decisions/0023-passive-evidence-viewer.md) now supports node/action/event selection, original-video seeking and related timeline highlights, native keyboard operation and explicit unavailable/partial states. Selection sends no live input. The [reader-owned exclusion fence](decisions/0024-reader-capture-exclusion.md) now drains complete commands and idle sampling, blocks late results/timeline retention, rejects stale iterators and preserves same-context resume with a fresh baseline. The [bounded diagnostic inventory](decisions/0025-diagnostic-feature-provenance.md) now keeps declared hypotheses separate from exposed names, binds document/epoch/node evidence to authored traces, and preserves missing/stale cases. Run the fixed four-route demo with --features. The [controlled replay workflow](decisions/0026-eligible-fresh-run-replay.md) now compares fresh source equivalence and current environment/policy, rechecks before first dispatch and retains an independent new result. Run --replay for the fixed successful shop route. The [owned local pipeline](decisions/0027-owned-evidence-exclusion.md) now writes intent before dispatch, drains actual commands and file writes before exclusion acknowledgement, rejects stale epochs and requires a persisted fresh baseline before resume. Run --owned-scan for the real Chromium/files demo. The [exclusive local controller](decisions/0028-exclusive-local-controller.md) now checks expiring authority at command admission and final native dispatch, drains actual work before replacement and persists controller generation without bearer tokens. Run --controller to observe two generations sharing one real Chromium context. The [headed Linux proof](decisions/0029-headed-linux-session.md) now retains actual browser/context/target/document identity across controller replacement on a private Xvfb display, verifies native keys and fresh goal, and confirms browser/display/container/image cleanup. Run scripts/Test-HeadedSession.ps1 with Podman or Docker and open its returned folder. The [synthetic excluded-input handoff](decisions/0030-synthetic-excluded-input-handoff.md) now combines actual protected-field input, explicitly simulated assistance, actual input/write drain, fresh baseline and same-context continuity with canary absence across owned JSON and every original/staging media frame. Run --synthetic-handoff, or add -Scenario synthetic-handoff to the headed harness. Local Windows validation passed 982/982; local Linux/Podman headed acceptance passed separately. The [private read-only semantic viewer](decisions/0031-private-read-only-viewer.md) now binds a process-provisioned identity to one owned scan/session, exchanges a bootstrap once and enforces monotonic expiry and actual delivery drain/revocation through a loopback-only HTTP transport. Viewing uses the last acknowledged observation, sends no input or new capture, and joins actual capture exclusion. Run --private-viewer for the fixed Chromium/HTTP proof, which closes after acceptance and prints no credentials. The [owned shutdown repair](decisions/0032-owned-browser-shutdown.md) preserves actual callback joining and independent process/transport evidence; CI39548114638 passed all six jobs. The [private pixel relay](decisions/0033-private-pixel-viewer.md) passed scoped PNG delivery, exclusion, revocation, input denial and owned cleanup on Windows and headed Linux. The [private fixture client](decisions/0034-private-fixture-viewing-client.md) now supplies a separate read-only Chromium window with native controls and explicit fresh-pixel/retained-semantic timing. Its replacement seven-job CI passed, including Windows and Ubuntu1,247/1,247 each. **NEXT: deploy the private workspace and verify a signed-in fixture result**; native recovery is accepted, admission/leases are installed and the real runtime readiness canary passes locally. Human target input, real credentials, remote identity, hosted persistence and deployment remain separate gates.
+The [passive local viewer](decisions/0023-passive-evidence-viewer.md) now supports node/action/event selection, original-video seeking and related timeline highlights, native keyboard operation and explicit unavailable/partial states. Selection sends no live input. The [reader-owned exclusion fence](decisions/0024-reader-capture-exclusion.md) now drains complete commands and idle sampling, blocks late results/timeline retention, rejects stale iterators and preserves same-context resume with a fresh baseline. The [bounded diagnostic inventory](decisions/0025-diagnostic-feature-provenance.md) now keeps declared hypotheses separate from exposed names, binds document/epoch/node evidence to authored traces, and preserves missing/stale cases. Run the fixed four-route demo with --features. The [controlled replay workflow](decisions/0026-eligible-fresh-run-replay.md) now compares fresh source equivalence and current environment/policy, rechecks before first dispatch and retains an independent new result. Run --replay for the fixed successful shop route. The [owned local pipeline](decisions/0027-owned-evidence-exclusion.md) now writes intent before dispatch, drains actual commands and file writes before exclusion acknowledgement, rejects stale epochs and requires a persisted fresh baseline before resume. Run --owned-scan for the real Chromium/files demo. The [exclusive local controller](decisions/0028-exclusive-local-controller.md) now checks expiring authority at command admission and final native dispatch, drains actual work before replacement and persists controller generation without bearer tokens. Run --controller to observe two generations sharing one real Chromium context. The [headed Linux proof](decisions/0029-headed-linux-session.md) now retains actual browser/context/target/document identity across controller replacement on a private Xvfb display, verifies native keys and fresh goal, and confirms browser/display/container/image cleanup. Run scripts/Test-HeadedSession.ps1 with Podman or Docker and open its returned folder. The [synthetic excluded-input handoff](decisions/0030-synthetic-excluded-input-handoff.md) now combines actual protected-field input, explicitly simulated assistance, actual input/write drain, fresh baseline and same-context continuity with canary absence across owned JSON and every original/staging media frame. Run --synthetic-handoff, or add -Scenario synthetic-handoff to the headed harness. Local Windows validation passed 982/982; local Linux/Podman headed acceptance passed separately. The [private read-only semantic viewer](decisions/0031-private-read-only-viewer.md) now binds a process-provisioned identity to one owned scan/session, exchanges a bootstrap once and enforces monotonic expiry and actual delivery drain/revocation through a loopback-only HTTP transport. Viewing uses the last acknowledged observation, sends no input or new capture, and joins actual capture exclusion. Run --private-viewer for the fixed Chromium/HTTP proof, which closes after acceptance and prints no credentials. The [owned shutdown repair](decisions/0032-owned-browser-shutdown.md) preserves actual callback joining and independent process/transport evidence; CI39548114638 passed all six jobs. The [private pixel relay](decisions/0033-private-pixel-viewer.md) passed scoped PNG delivery, exclusion, revocation, input denial and owned cleanup on Windows and headed Linux. The [private fixture client](decisions/0034-private-fixture-viewing-client.md) now supplies a separate read-only Chromium window with native controls and explicit fresh-pixel/retained-semantic timing. Its replacement seven-job CI passed, including Windows and Ubuntu1,247/1,247 each. **Historical next gate (now accepted): deploy the private workspace and verify a signed-in fixture result**; native recovery is accepted, admission/leases are installed and the real runtime readiness canary passes locally. Human target input, real credentials, remote identity, hosted persistence and deployment remain separate gates.
 
 ```mermaid
 flowchart LR
@@ -107,21 +121,23 @@ flowchart LR
     Leases --> Worker[Accepted private VPS worker and rollback]
     Worker --> Portal[Private workspace and report implementation]
     Portal --> Sessions[Tenant-owned read-only fixture sessions]
-    Sessions --> Next[NEXT: signed-in hosted fixture and S3 report]
+    Sessions --> Accepted[Signed-in hosted fixture and S3 report accepted]
+    Accepted --> Next[NEXT: credential-free isolated reader sessions]
     Next --> CoreParity[Document-fenced navigation and timeline]
     Next --> Durable[Durable hosted scan jobs and recovery]
     Client --> ViewerControl[Human takeover acceptance]
     classDef done fill:#dcfce7,stroke:#166534,color:#14532d
     classDef next fill:#dbeafe,stroke:#1d4ed8,color:#1e3a8a
     classDef planned fill:#f3f4f6,stroke:#6b7280,color:#374151
-    class Reader,Trace,Privacy,Timing,Recording,Viewer,ReaderGate,Features,Replay,Owned,Controller,Headed,Handoff,PrivateViewer,Pixels,Client,Admission,Leases,Worker,Portal,Sessions done
+    class Reader,Trace,Privacy,Timing,Recording,Viewer,ReaderGate,Features,Replay,Owned,Controller,Headed,Handoff,PrivateViewer,Pixels,Client,Admission,Leases,Worker,Portal,Sessions,Accepted done
     class Next next
     class ViewerControl,Durable,CoreParity planned
     click Client "validation/private-fixture-client-v1.md"
     click Worker "validation/observation-worker-v1.md"
     click Portal "decisions/0040-private-workspace-control.md"
     click Sessions "decisions/0044-tenant-reader-sessions.md"
-    click Next "#next-signed-in-hosted-fixture-and-s3-acceptance"
+    click Accepted "validation/supabase-s3-provider-v1.md#signed-in-tenant-acceptance"
+    click Next "#next-isolated-hosted-reader-sessions"
 ```
 
 Green means an implemented, locally validated bounded capability; blue is the next increment; gray is planned. These are not full milestone-completion labels. CI, deployment and assistive-technology gates remain separate.

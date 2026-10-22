@@ -11,6 +11,45 @@ namespace HeadlessScreenReader.Tests;
 public sealed class ChromiumPortalTests
 {
     [Theory]
+    [InlineData("observed", "completed", "Observation stored")]
+    [InlineData("blocked", "blocked", "Could not complete observation")]
+    public async Task PollingUpdatesRecentRunStateWithoutManualRefresh(string scanState, string jobState, string label)
+    {
+        var project = new PortalProjectStub();
+        var reader = new PortalObservationStub
+        {
+            Value = new("document", new string('a', 64), "hsr-desktop-reader-v13", 0, false,
+            [new("node", null, "heading", "Synthetic shop", false, false, 1, null, null, null, null, null, null)], [], "S3")
+        };
+        await using var server = await PortalHttpTests.Start(project, reader);
+        using var playwright = await Playwright.CreateAsync();
+        await using var browser = await playwright.Chromium.LaunchAsync(new() { Headless = true, ChromiumSandbox = true });
+        var page = await browser.NewPageAsync(); page.SetDefaultTimeout(5000);
+        var errors = new List<string>(); page.PageError += (_, error) => errors.Add(error);
+        await page.RouteAsync(PortalOptions.Project.GetLeftPart(UriPartial.Authority) + "/auth/v1/**", route => route.FulfillAsync(new()
+        { ContentType = "application/json", Body = JsonSerializer.Serialize(new { access_token = PortalProjectClientTests.Bearer }) }));
+        await page.GotoAsync(server.BaseAddress.ToString());
+        await page.Locator("#email").FillAsync("reader@example.invalid"); await page.Locator("#password").FillAsync("synthetic-login-only");
+        await page.Locator("#login").ClickAsync(); await Assertions.Expect(page.Locator("#workspace")).ToBeVisibleAsync();
+        await page.Locator("#run").ClickAsync();
+        await Assertions.Expect(page.Locator("#result-message")).ToContainTextAsync("has not completed");
+        var row = page.Locator("#runs button[aria-current='true'] .run-state");
+        await Assertions.Expect(row).ToHaveTextAsync("Queued");
+        project.Record = project.Record with { State = "leased" };
+        project.Job = project.Job with { State = "leased", Generation = 1 };
+        await Assertions.Expect(page.Locator("#facts")).ToContainTextAsync("Observing");
+        await Assertions.Expect(row).ToHaveTextAsync("Observing");
+        project.Record = project.Record with { State = scanState };
+        project.Job = project.Job with { State = jobState };
+        await Assertions.Expect(page.Locator("#facts")).ToContainTextAsync(label);
+        await Assertions.Expect(row).ToHaveTextAsync(label);
+        Assert.Equal(1, project.CreateCalls);
+        Assert.Equal(scanState == "observed" ? 1 : 0, reader.Calls);
+        Assert.Contains(scanState == "observed" ? "Not tested" : "Not verified", await page.Locator("#facts").InnerTextAsync());
+        Assert.Empty(errors);
+    }
+
+    [Theory]
     [InlineData(320, "LocalFallback", "Server disk; object copy not found")]
     [InlineData(736, "future-storage", "Storage location unconfirmed")]
     [InlineData(736, "constructor", "Storage location unconfirmed")]
