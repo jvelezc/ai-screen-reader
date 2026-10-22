@@ -2,7 +2,7 @@
 
 Local .NET screen-reader foundation for the architecture in [the development plan](outputs/HeadlessScreenReader-Architecture-Review-and-Development-Plan.md).
 
-The [leased observation worker](docs/decisions/0037-isolated-observation-worker.md) now connects tenant-authorized admission to isolated synthetic-shop observation, private saved bytes and fenced queue completion. [Worker validation](docs/validation/observation-worker-v1.md) distinguishes local execution from hosted deployment and the remaining product gates.
+The [leased observation worker](docs/decisions/0037-isolated-observation-worker.md) connects tenant-authorized admission to isolated synthetic-shop observation, private saved bytes and fenced queue completion. Its private VPS deployment and rollback are accepted. The [workspace control implementation](docs/decisions/0040-private-workspace-control.md) adds sign-in and verified fixture reports; **next is SSH-only portal deployment and an actual signed-in run**. [Current status](docs/development-status.md) separates local, CI and hosted acceptance.
 
 **Active work: the original evidence-backed workflow.** Bounded authored traversal, immutable attempt receipts, an observation graph and linked local reports are implemented. Run `--traversal` below. See [original milestone status and the next acceptance gate](docs/development-status.md). Public MCP hosting and plugin publication are deferred.
 

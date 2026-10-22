@@ -1,0 +1,39 @@
+---
+version: 1
+slug: "src-headlessscreenreader-cli-hostedcontrol"
+primary_target: "src/HeadlessScreenReader.Cli/HostedControl/PortalAssets.cs"
+related_targets: ["src/HeadlessScreenReader.Cli/HostedControl/portal.css", "src/HeadlessScreenReader.Cli/HostedControl/portal.js", "src/HeadlessScreenReader.Cli/HostedControl/HostedControlServer.cs"]
+---
+
+# Private reader workspace
+
+Mode: Operate. Extend the existing private viewer/report world for the user's authorized next journey: sign in, create a personal workspace, run the fixed shop fixture and inspect its verified observation. The user has requested continuous implementation; the task, private SSH access and existing visual language are settled. This is a bounded extension, without a new visual identity or global design change.
+
+## Direction contract
+
+THESIS: One real fixture run leads to an honest reader result; execution, evidence and goal verification stay separate.
+
+OWN-WORLD: Inherit navy ink, muted blue-gray, white and cool-gray flat surfaces, system UI text, thin dividers, native controls and visible blue focus. No new palette, imagery or decorative dashboard metrics.
+
+STORY: Sign in or confirm an email, open your own workspace, run the shop fixture, select a run and read its exposed semantics. Errors name the recovery action; stale or unauthorized data clears.
+
+FIRST VIEWPORT: Product title and purpose precede the sign-in form. After sign-in, the primary run action and a full-width state band precede recent runs and the selected result in desktop columns, stacked on mobile.
+
+FORM: Extend the incumbent task workspace directly. The report's verified evidence state is the signature interaction; status changes preserve native focus and avoid repeated announcements. No concept round or new world is needed for this specified workflow.
+
+FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance. For this inherited extension, preserve the existing global visual system and document only the scoped surface; no shipping raster is planned.
+
+## Finished-source evidence (2026-10-21)
+
+- Checked `PRODUCT.md`, this direction contract, `.impeccable/surfaces/src-headlessscreenreader-browser-playwright-privateviewer.md`, `src/HeadlessScreenReader.Browser.Playwright/PrivateViewer/view.html`, `src/HeadlessScreenReader.Browser.Playwright/PrivateViewer/view.css`, and `src/HeadlessScreenReader.Cli/Viewer/viewer.css` for incumbent authority. Checked `src/HeadlessScreenReader.Cli/HostedControl/PortalAssets.cs`, `src/HeadlessScreenReader.Cli/HostedControl/portal.css`, and `src/HeadlessScreenReader.Cli/HostedControl/portal.js` for the finished extension. The ordinary-extension finish rule in `reference/new-work.md` applies: global design state and incumbent files are preserved. No global design drift was established or repaired in this scoped comparison.
+- The workspace carries forward the private viewer's navy (`#16243a`), muted text (`#42526b`), white, cool-gray wash (`#f1f5fa`), thin divider (`#c9d3e0`), and blue focus (`#1455bb`). System UI text remains `16px/1.5`, with the same `2rem` desktop title, flat surfaces, six-pixel button corners, native controls, and 44px minimum control height. The portal adds task-specific primary buttons and restrained red error text without changing the shared visual authority.
+- The inherited 1120px container, 32px desktop padding, full-width state band, and 40px column gap remain. The account form is capped at 480px; recent runs and selected result use a 1:3 desktop grid. At 760px the workspace stacks, padding becomes `24px 16px`, the title becomes `1.7rem`, and controls wrap. Long node identifiers and semantics wrap within the result. No new imagery, chart, score, or decorative metric was introduced.
+- Labels, required email/password fields, native buttons and disclosure, section headings, a skip link, visible focus outlines, polite status, and an alert region provide the implemented interaction mechanisms. Repeated status strings do not mutate text again. Rebuilt run lists restore the focused run when still present; selected runs have `aria-current`. Button transitions run only without a reduced-motion preference. Source inspection and supplied Chromium checks do not establish real assistive-technology acceptance.
+- Sign-in, email confirmation, workspace opening, queued/observing/stored execution, connection retry, admission retry, and bounded polling exhaustion have explicit copy. The client clears results on new selection, sign-out, and denied authorization; request epochs and selection revisions discard stale responses. A request with unconfirmed admission retains its request ID for retry. Access credentials remain in memory; the source stores only a bounded-lifetime PKCE verifier for email confirmation. These are source-defined behaviors, not evidence of successful real-project authentication.
+- Reader results distinguish execution, evidence availability, goal status, and browser-input count. Available evidence says the fixture captured an accessibility observation without traversing or verifying an objective; Goal remains “Not tested” and Browser input is “0 keys.” Missing/invalid/unavailable evidence has explicit wording. Exposed nodes retain roles, identities, observed states, limitations, and neutral `(unnamed)` names for every role. The evidence disclosure shows the original observation digest; the download action exports the selected report. The footer preserves the conformance and objective-verification limits.
+- Visually checked all four supplied captures: `.impeccable/review/desktop.png`, `.impeccable/review/mobile.png`, `.impeccable/review/portal-desktop-signin.png`, and `.impeccable/review/portal-mobile-signin.png`. They show the inherited desktop/mobile composition, sign-in form, stored observation, neutral unnamed nodes, explicit result claims, long semantics, and boundary footer. They are QA screenshots; there is no generated shipping raster.
+- The supplied finish reviewer returned **ship** for the sole scored correction from “Unnamed control” to `(unnamed)`, resolved. That verdict scores this fix; the prior scoped review covers the inherited palette, type, mobile layout, and result claims. The build handoff reports one detector run over the three target files with `[]`, 60 passing protocol/report checks, 31 passing boundary checks, and three passing actual-Chromium cases with a real fixture observation. The documenter did not rerun the detector or tests.
+
+## Acceptance boundary
+
+This documentation pass changed only this surface brief. Global `DESIGN.md`/`.impeccable/design.json` state, production files, screenshots, product documentation, and the architecture plan under `outputs/` were preserved. Authentication in the supplied browser checks was mocked. Real-project account sign-in, remote CI, hosted portal deployment, Linux acceptance, and real assistive-technology validation remain separate, unfinished gates. The requested access direction is private SSH first; public MCP hosting and plugin publication remain deferred. Scoped UI review and a real fixture observation do not establish those outcomes.

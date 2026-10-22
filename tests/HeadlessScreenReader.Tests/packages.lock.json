@@ -392,7 +392,8 @@
         "dependencies": {
           "HeadlessScreenReader.Browser.Playwright": "[1.0.0, )",
           "HeadlessScreenReader.Exploration": "[1.0.0, )",
-          "HeadlessScreenReader.ScreenReader": "[1.0.0, )"
+          "HeadlessScreenReader.ScreenReader": "[1.0.0, )",
+          "HeadlessScreenReader.Worker": "[1.0.0, )"
         }
       },
       "headlessscreenreader.domain": {

@@ -1,0 +1,54 @@
+# Through the private SSH forward. Supply an actual confirmed app-user JWT in
+# your local HTTP client's private environment, never in this tracked file.
+@origin = http://localhost:6086
+@organization = 00000000-0000-0000-0000-000000000000
+@scan = 00000000-0000-0000-0000-000000000000
+@request = 00000000-0000-0000-0000-000000000000
+
+### Workspace page
+GET {{origin}}/
+
+### Static script
+GET {{origin}}/portal.js
+
+### Static styles
+GET {{origin}}/portal.css
+
+### Public project settings
+GET {{origin}}/api/config
+
+### Listener readiness (does not attest to app-user acceptance)
+GET {{origin}}/internal/ready
+
+### Protocol description
+GET {{origin}}/openapi/v1.json
+
+### Verify signed-in user
+GET {{origin}}/api/session
+Authorization: Bearer {{userJwt}}
+
+### Atomically create or resume your personal workspace
+POST {{origin}}/api/workspace
+Authorization: Bearer {{userJwt}}
+Content-Type: application/json
+
+{}
+
+### Read authorized workspace
+GET {{origin}}/api/workspaces/{{organization}}
+Authorization: Bearer {{userJwt}}
+
+### Recent runs
+GET {{origin}}/api/workspaces/{{organization}}/scans
+Authorization: Bearer {{userJwt}}
+
+### Admit fixed shop fixture (replace zero request with a fresh UUID; reuse on retry)
+POST {{origin}}/api/workspaces/{{organization}}/scans
+Authorization: Bearer {{userJwt}}
+Content-Type: application/json
+
+{"requestId":"{{request}}"}
+
+### Verified result
+GET {{origin}}/api/workspaces/{{organization}}/scans/{{scan}}
+Authorization: Bearer {{userJwt}}

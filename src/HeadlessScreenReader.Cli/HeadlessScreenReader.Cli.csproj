@@ -3,9 +3,11 @@
   <ItemGroup><FrameworkReference Include="Microsoft.AspNetCore.App" /></ItemGroup>
   <ItemGroup><InternalsVisibleTo Include="HeadlessScreenReader.Tests" /></ItemGroup>
   <ItemGroup><EmbeddedResource Include="Viewer/*.css;Viewer/*.js" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="HostedControl/*.css;HostedControl/*.js" /></ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../HeadlessScreenReader.ScreenReader/HeadlessScreenReader.ScreenReader.csproj" />
     <ProjectReference Include="../HeadlessScreenReader.Exploration/HeadlessScreenReader.Exploration.csproj" />
     <ProjectReference Include="../HeadlessScreenReader.Browser.Playwright/HeadlessScreenReader.Browser.Playwright.csproj" />
+    <ProjectReference Include="../HeadlessScreenReader.Worker/HeadlessScreenReader.Worker.csproj" />
   </ItemGroup>
 </Project>
