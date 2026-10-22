@@ -2,7 +2,10 @@
 
 On October 22, 2026, Supabase MCP verified project `gpnijaxrgtwzwtrqsbcu`
 (`ai-screen-reader`, healthy, `us-east-1`) and provisioned `hsr-evidence` as a
-private bucket with a 1,048,576-byte limit and `application/json` uploads only.
+private bucket. Following the user's storage requirement, the current bucket
+limit is **26,214,400 bytes (25 MiB)** with **no MIME-type restriction**, verified
+through MCP readback. The original 1 MiB/JSON-only bucket setting was replaced.
+This bucket setting is separate from the bounded typed observation protocol.
 The connected MCP tools do not create S3 access keys. The authorized dashboard
 flow created `hsr-private-evidence-v1`; its project-wide Storage access and RLS
 bypass were disclosed and confirmed before creation.
@@ -92,6 +95,18 @@ Manual Refresh runs corrected it. A follow-up source fix synchronizes that row
 from each accepted selected-report response; a real Chromium regression covers
 Queued to Observing to both completed and blocked outcomes without manual refresh.
 Its source/CI gate is separate from the deployed d0cc99f acceptance above.
+
+## Subsequent accepted release
+
+Release `a56c7c7985b4a57c3bdc098e9fe223d974ddf45f` passed all nine jobs in
+[CI 39865437194](https://github.com/jvelezc/ai-screen-reader/actions/runs/39865437194),
+including Windows and Ubuntu **1,607/1,607 each**. Local Windows and formatting
+also passed. [Private deployment 39867164095](https://github.com/jvelezc/ai-screen-reader/actions/runs/39867164095)
+promoted that exact artifact; independent host readback confirmed its services,
+closed control environment, actual native probes and unchanged Caddy/public
+listeners. The signed-in browser reopened and downloaded the same tenant report
+after the deployment restart: S3, the same original digest and 32 exposed nodes.
+This also deploys the selected-report polling repair described above.
 
 ## Remaining acceptance
 

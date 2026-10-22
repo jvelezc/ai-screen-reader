@@ -10,7 +10,7 @@ Prioritize an independently usable core API and MCP. The Lovable UI consumes thi
 | 1: local screen reader | Substantial local implementation | Reader profile v13, fixtures, bounded events/observations, policy checks and CI | Capture/privacy feasibility remains a prerequisite to editable entry and recording; broader supported-control scope is explicit |
 | 2: evidence-backed workflow | In progress | Bounded routes, append-only JSON, node/edge reports, controlled recording canaries, 20-marker timing proof and original route media with capture/action/event intervals and passive local viewer; bounded diagnostic provenance, explicit fresh-run replay and owned evidence writes | Broader workflow acceptance and diagnostics/search coverage |
 | 3: intervention and isolation | Partial | Exact public-host policy, independent Linux egress fence and exclusive local controller leases, headed Xvfb continuity and explicitly simulated excluded input and scoped loopback semantic and pixel viewing | Actual human/AT acceptance and hosted identity/capture/persistence fencing |
-| 4: durable hosted execution | In progress | Admission and fenced leases installed; accepted worker/control release d0cc99f deployed privately with native readiness; actual signed-in tenant fixture completed with S3-backed report, independent object readback and anonymous denial;196 local PostgreSQL/pgmq cases | Credential-free hosted interactive reader execution; broader tenant restart/recovery acceptance |
+| 4: durable hosted execution | In progress | Admission and fenced leases installed; accepted worker/control release a56c7c7 deployed privately with native readiness; actual signed-in tenant fixture completed with S3-backed report, independent object readback and anonymous denial;196 local PostgreSQL/pgmq cases | Credential-free hosted interactive reader execution; broader tenant restart/recovery acceptance |
 | 5: public MCP pilot | Deferred | Existing local stdio adapter | Public MCP HTTPS endpoint, client onboarding, plugin and pilot operations; private report remains active milestone4 work |
 | 6: measured extensions | Later | Bounded reader improvements through v13 | Broader validated widgets and compatible-run comparisons; public plugins remain deferred |
 
@@ -56,13 +56,17 @@ authentication/tenant delegation and an approved
 Edge-to-core network path before wiring Supabase Edge Functions or expanding the
 Lovable screens. The UI is a third-party consumer even though we own both repos.
 
-Core source `d0cc99f` passed all nine jobs in
-[CI 39854653555](https://github.com/jvelezc/ai-screen-reader/actions/runs/39854653555),
-including Windows and Linux 1,599/1,599 each. Local Windows also passed
-1,599/1,599, including 39 new cases, and full format verification; focused checks
-passed 73/73. Private promotion and independent listener readback now identify
+Core source `a56c7c7` passed all nine jobs in
+[CI 39865437194](https://github.com/jvelezc/ai-screen-reader/actions/runs/39865437194),
+including Windows and Linux 1,607/1,607 each. Local Windows also passed
+1,607/1,607 and full format verification. Private promotion in
+[deployment 39867164095](https://github.com/jvelezc/ai-screen-reader/actions/runs/39867164095)
+and independent listener readback identify
 that same release and contract 1.1.0. Both trusted services have S3 configuration;
 actual app-user JWT and hosted fixed-fixture execution are now accepted; human/AT acceptance remains open.
+The same tenant report was downloaded again after the deployment restart.
+The private evidence bucket now permits 25 MiB files with no MIME restriction;
+the typed observation decoder retains its separate bounded protocol.
 The deployed read-only session routes still need their own browser-runtime
 acceptance; the listener and local browser tests cannot establish it.
 
