@@ -2,7 +2,7 @@
 
 Local .NET screen-reader foundation for the architecture in [the development plan](outputs/HeadlessScreenReader-Architecture-Review-and-Development-Plan.md).
 
-The [leased observation worker](docs/decisions/0037-isolated-observation-worker.md) connects tenant-authorized admission to isolated synthetic-shop observation, private saved bytes and fenced queue completion. Its private VPS deployment and rollback are accepted. The [workspace control implementation](docs/decisions/0040-private-workspace-control.md) adds sign-in and verified fixture reports; **next is SSH-only portal deployment and an actual signed-in run**. [Current status](docs/development-status.md) separates local, CI and hosted acceptance.
+The [leased observation worker](docs/decisions/0037-isolated-observation-worker.md) connects tenant-authorized admission to isolated synthetic-shop observation, private saved bytes and fenced queue completion. Its private VPS deployment and rollback are accepted. The [workspace control implementation](docs/decisions/0040-private-workspace-control.md) and private S3 configuration are deployed; **next is an actual signed-in tenant fixture and S3-backed report**. [Current status](docs/development-status.md) separates local, CI and hosted acceptance.
 
 **Active work: the original evidence-backed workflow.** Bounded authored traversal, immutable attempt receipts, an observation graph and linked local reports are implemented. Run `--traversal` below. See [original milestone status and the next acceptance gate](docs/development-status.md). Public MCP hosting and plugin publication are deferred.
 
@@ -22,7 +22,7 @@ third-party consumer. Reader, jobs and evidence logic stay here.
 The current bounded workspace/report API and [tenant-owned read-only fixture sessions](docs/decisions/0044-tenant-reader-sessions.md) publish
 [contract 1.1.0](docs/decisions/0043-core-http-contract.md) at `/openapi/v1.json`,
 including response schemas and safe errors. See [HTTP examples](docs/protocol/core-api.http)
-and [the next core acceptance step](docs/development-status.md#next-core-api-and-mcp-contract-parity).
+and [the next core acceptance step](docs/development-status.md#next-signed-in-hosted-fixture-and-s3-acceptance).
 The private listener is not a public deployment, and the current HTTP surface does
 not yet expose every interactive capability available through local stdio MCP.
 
@@ -165,7 +165,7 @@ See [widget milestone validation](docs/validation/widget-milestone.md) for earli
 
 The [comparison issue catalogue](docs/validation/nvda-comparison-issues.md) records the confirmed focus-mode cursor synchronization fix, earlier checks and live observations. The [v9 increment](docs/validation/reader-composites-v9.md) adds tree hierarchy/context, tree and tab browse navigation, and keyboard-driven expansion/selection after the range widgets in v8 and bounded child frames in v7. In focus mode, externally changed focus and active descendants keep result and announcement node IDs aligned; browse-mode cursor independence is preserved.
 
-These local increments do not complete Milestone 0 and Milestone 1. The public MCP prototype has a separately tested Linux container egress fence and exact approved-host policy; it supports reading and focused link navigation. NVDA comparison is an optional external benchmark; the product is an independent screen reader for AI agents. General recordings, credential entry, human-control leases, Xvfb takeover, Supabase, S3 and hosted scanning remain open gates. Public MCP hosting and plugin publication are deferred.
+These local increments do not complete Milestone 0 and Milestone 1. The public MCP prototype has a separately tested Linux container egress fence and exact approved-host policy; it supports reading and focused link navigation. NVDA comparison is an optional external benchmark; the product is an independent screen reader for AI agents. General recordings, real credential entry, human-control acceptance and signed-in hosted scans with S3-backed reports remain open gates. Private worker/control deployment and the selected S3 provider upload/readback proof are accepted separately. Public MCP hosting and plugin publication are deferred.
 
 Run `dotnet run --project src/HeadlessScreenReader.Cli -c Release -- --capture-probe` for the [controlled synthetic recording privacy probe](docs/decisions/0020-capture-collector-feasibility.md). It saves original segments, inspects decoded video/JPEG canaries and staging files, and prints a report path. It cannot record an arbitrary page.
 

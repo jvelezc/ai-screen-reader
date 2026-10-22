@@ -10,11 +10,19 @@ Prioritize an independently usable core API and MCP. The Lovable UI consumes thi
 | 1: local screen reader | Substantial local implementation | Reader profile v13, fixtures, bounded events/observations, policy checks and CI | Capture/privacy feasibility remains a prerequisite to editable entry and recording; broader supported-control scope is explicit |
 | 2: evidence-backed workflow | In progress | Bounded routes, append-only JSON, node/edge reports, controlled recording canaries, 20-marker timing proof and original route media with capture/action/event intervals and passive local viewer; bounded diagnostic provenance, explicit fresh-run replay and owned evidence writes | Broader workflow acceptance and diagnostics/search coverage |
 | 3: intervention and isolation | Partial | Exact public-host policy, independent Linux egress fence and exclusive local controller leases, headed Xvfb continuity and explicitly simulated excluded input and scoped loopback semantic and pixel viewing | Actual human/AT acceptance and hosted identity/capture/persistence fencing |
-| 4: durable hosted execution | In progress | Admission and fenced leases installed; exact accepted worker deployed through restricted SSH, actual guarded rollback and normal promotion verified; private workspace/report implementation and196 local PostgreSQL/pgmq cases | Current-source promotion, actual app-user JWT and admitted hosted result, private S3 provider acceptance |
+| 4: durable hosted execution | In progress | Admission and fenced leases installed; accepted worker/control release d0cc99f deployed privately with native readiness; private S3 bucket, original archive upload/readback and anonymous denial verified;196 local PostgreSQL/pgmq cases | Actual app-user JWT, admitted hosted fixture and S3-backed report; deployed interactive browser runtime acceptance |
 | 5: public MCP pilot | Deferred | Existing local stdio adapter | Public MCP HTTPS endpoint, client onboarding, plugin and pilot operations; private report remains active milestone4 work |
 | 6: measured extensions | Later | Bounded reader improvements through v13 | Broader validated widgets and compatible-run comparisons; public plugins remain deferred |
 
-## Next: core API and MCP contract parity
+## Next: signed-in hosted fixture and S3 acceptance
+
+**Next action:** sign in to the private screen-reader application at
+`http://localhost:6086`, then verify tenant admission, isolated worker completion
+and its S3-backed report. Dashboard/MCP administration is a separate identity.
+The private evidence credentials and provider-only proof are accepted; this
+remaining end-to-end user gate is not. See [the exact evidence and limits](validation/supabase-s3-provider-v1.md).
+
+### Core API and MCP contract parity
 
 [Core HTTP contract 1.0.0](decisions/0043-core-http-contract.md) now describes the
 existing authenticated workspace, fixed-fixture admission and evidence-report API
@@ -30,22 +38,21 @@ quarantined cleanup failures. Contract 1.1.0 describes their real response shape
 Only the bundled Foundation fixture is admitted; no browser input or recording is
 enabled. A real Chromium/Kestrel consumer test exercises the lifecycle.
 
-**Next action:** adapt shared reader navigation and timeline to owned HTTP
+**Following core increment:** adapt shared reader navigation and timeline to owned HTTP
 sessions with stale-document checks and explicit input outcomes. Define gateway
 authentication/tenant delegation and an approved
 Edge-to-core network path before wiring Supabase Edge Functions or expanding the
 Lovable screens. The UI is a third-party consumer even though we own both repos.
 
-The prior core source at `c7daaeb` passed all nine jobs in
-[CI 39834402446](https://github.com/jvelezc/ai-screen-reader/actions/runs/39834402446),
-including Windows and Linux 1,560/1,560 each. The tenant reader-session increment
-passes local Windows 1,599/1,599, including 39 new cases, and full format
-verification. Its focused lifecycle, HTTP and schema run passes 73/73; its own
-fresh CI remains required. Live readback on
-October 22 still identifies private release `91b36777472e6ddc31ed56c17d08382a02e1c012`,
-with listening readiness and both application-user validation and public MCP flags
-false. No promotion or exposure change occurs here. Private S3 provider acceptance,
-real signed-in tenant execution and human/AT acceptance remain distinct gates.
+Core source `d0cc99f` passed all nine jobs in
+[CI 39854653555](https://github.com/jvelezc/ai-screen-reader/actions/runs/39854653555),
+including Windows and Linux 1,599/1,599 each. Local Windows also passed
+1,599/1,599, including 39 new cases, and full format verification; focused checks
+passed 73/73. Private promotion and independent listener readback now identify
+that same release and contract 1.1.0. Both trusted services have S3 configuration;
+actual app-user JWT, hosted tenant execution and human/AT acceptance remain open.
+The deployed read-only session routes still need their own browser-runtime
+acceptance; the listener and local browser tests cannot establish it.
 
 ## Hosted user acceptance gate (historical implementation evidence)
 
@@ -100,7 +107,8 @@ flowchart LR
     Leases --> Worker[Accepted private VPS worker and rollback]
     Worker --> Portal[Private workspace and report implementation]
     Portal --> Sessions[Tenant-owned read-only fixture sessions]
-    Sessions --> Next[NEXT: document-fenced navigation and timeline]
+    Sessions --> Next[NEXT: signed-in hosted fixture and S3 report]
+    Next --> CoreParity[Document-fenced navigation and timeline]
     Next --> Durable[Durable hosted scan jobs and recovery]
     Client --> ViewerControl[Human takeover acceptance]
     classDef done fill:#dcfce7,stroke:#166534,color:#14532d
@@ -108,12 +116,12 @@ flowchart LR
     classDef planned fill:#f3f4f6,stroke:#6b7280,color:#374151
     class Reader,Trace,Privacy,Timing,Recording,Viewer,ReaderGate,Features,Replay,Owned,Controller,Headed,Handoff,PrivateViewer,Pixels,Client,Admission,Leases,Worker,Portal,Sessions done
     class Next next
-    class ViewerControl,Durable planned
+    class ViewerControl,Durable,CoreParity planned
     click Client "validation/private-fixture-client-v1.md"
     click Worker "validation/observation-worker-v1.md"
     click Portal "decisions/0040-private-workspace-control.md"
     click Sessions "decisions/0044-tenant-reader-sessions.md"
-    click Next "#next-core-api-and-mcp-contract-parity"
+    click Next "#next-signed-in-hosted-fixture-and-s3-acceptance"
 ```
 
 Green means an implemented, locally validated bounded capability; blue is the next increment; gray is planned. These are not full milestone-completion labels. CI, deployment and assistive-technology gates remain separate.
