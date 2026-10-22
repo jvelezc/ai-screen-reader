@@ -5,6 +5,7 @@ from pathlib import Path
 import pwd
 import re
 import signal
+import stat
 import subprocess
 import tempfile
 import time
@@ -13,6 +14,37 @@ from image_archive import verify_image_archive
 
 UNIT = "hsr-observation.service"
 DOTNET = "/usr/local/bin/dotnet"
+
+
+def evidence_environment(source):
+    """Copy only an optional complete S3 pair, never other inherited authority."""
+    access, secret = (source.get(name) for name in ("HSR_EVIDENCE_S3_ACCESS_KEY", "HSR_EVIDENCE_S3_SECRET"))
+    if access is None and secret is None:
+        return {}
+    require(isinstance(access, str) and isinstance(secret, str)
+            and re.fullmatch(r"[A-Za-z0-9_-]{16,128}", access) is not None
+            and re.fullmatch(r"[A-Za-z0-9_+/=-]{32,256}", secret) is not None
+            and not any(value.startswith(("sb_", "sbp_")) for value in (access, secret)),
+            "EVIDENCE_S3_CONFIGURATION_INVALID")
+    return {"HSR_EVIDENCE_S3_ACCESS_KEY": access, "HSR_EVIDENCE_S3_SECRET": secret}
+
+
+def validate_evidence_configuration(base):
+    """Root preflight only; the operator's optional file never enters a readiness probe."""
+    path = Path(base) / "config" / "evidence.env"
+    try:
+        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    except FileNotFoundError:
+        return
+    with os.fdopen(descriptor, "r", encoding="utf-8") as source:
+        facts = os.fstat(source.fileno())
+        require(stat.S_ISREG(facts.st_mode) and facts.st_uid == 0 and facts.st_mode & 0o077 == 0
+                and facts.st_size <= 512, "EVIDENCE_S3_CONFIGURATION_INVALID")
+        text = source.read(513)
+    match = re.fullmatch(r"HSR_EVIDENCE_S3_ACCESS_KEY=([A-Za-z0-9_-]{16,128})\n"
+                         r"HSR_EVIDENCE_S3_SECRET=([A-Za-z0-9_+/=-]{32,256})\n", text)
+    require(match is not None, "EVIDENCE_S3_CONFIGURATION_INVALID")
+    evidence_environment({"HSR_EVIDENCE_S3_ACCESS_KEY": match[1], "HSR_EVIDENCE_S3_SECRET": match[2]})
 
 
 def run_checked(arguments, *, env=None, timeout=30):
@@ -94,6 +126,7 @@ class HostRuntime:
                 "DEPLOY_RECOVERY_UNCONFIRMED")
 
     def probe(self, commit):
+        validate_evidence_configuration(self.base)
         receipt = self.worker(commit, "readiness", "--check-runtime")
         require(isinstance(receipt, dict) and set(receipt) == {"Schema", "State", "Image", "ObservedNodes",
                 "Sha256", "DatabaseAccessed", "ObservationPersisted", "DispatchedInputs", "GoalVerified", "Recovered"}

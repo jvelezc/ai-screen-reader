@@ -3,5 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="../HeadlessScreenReader.Domain/HeadlessScreenReader.Domain.csproj" />
     <PackageReference Include="Npgsql" />
+    <PackageReference Include="AWSSDK.Core" />
   </ItemGroup>
+  <ItemGroup><InternalsVisibleTo Include="HeadlessScreenReader.Tests" /></ItemGroup>
 </Project>

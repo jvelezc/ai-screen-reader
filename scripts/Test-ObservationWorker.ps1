@@ -11,7 +11,7 @@ $created=$false; $built=$false; $removed=$false; $imageRemoved=$false; $ready=$f
 $cases=[Collections.Generic.List[string]]::new()
 $releaseCreated=$false
 $script:executed=0; $script:failed=0
-$expected=if($IsLinux){22}else{20}; $linuxSignalPerformed=$false
+$expected=if($IsLinux){23}else{21}; $linuxSignalPerformed=$false
 $recoveryResources=[Collections.Generic.List[string]]::new()
 $names=@('POSTGRES_PASSWORD','HSR_WORKER_DATABASE','HSR_WORKER_IMAGE','HSR_WORKER_EVIDENCE','HSR_WORKER_RUNTIME','HSR_WORKER_SECCOMP',
     'HSR_CONTROL_PUBLISHABLE_KEY','HSR_CONTROL_EVIDENCE','HSR_CONTROL_PORT','HSR_CONTROL_ORIGIN','HSR_RELEASE_COMMIT')
@@ -48,6 +48,9 @@ try {
     $imageId=(Invoke-ReaderRuntime $Runtime @('image','inspect','--format','{{.Id}}',$image)).Text.Trim()
     if($imageId -match '^[a-f0-9]{64}$'){$imageId='sha256:'+$imageId}
     if($imageId -notmatch '^sha256:[a-f0-9]{64}$'){throw 'WORKER_IMAGE_ID_UNCONFIRMED'}
+    $stage='s3-evidence'
+    $s3=& (Join-Path $PSScriptRoot 'Test-S3Evidence.ps1') -Runtime $Runtime -Image $imageId -PublishedCli $testedControl -Folder (Join-Path $folder 's3')
+    Assert-Proof ($s3.Ready -and $s3.Passed -eq 10 -and $s3.ServerRemoved -and $s3.NetworkRemoved -and $s3.NativeOwnershipRecovered) 'ActualSignedS3FinalizationAndOffHostReadbackPreserveNativeFacts'
     $stage='database'
     $postgres=Resolve-ReaderDatabaseImage $Runtime
     $env:POSTGRES_PASSWORD=[Guid]::NewGuid().ToString('N')

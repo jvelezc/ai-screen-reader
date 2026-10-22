@@ -79,7 +79,7 @@ internal sealed record PortalNodeResponse(string Id, string? ParentId, string Ro
     bool? Required, string? RequiredSource, string? Description);
 /// <summary>Verified stored observation, without an invented traversal or goal claim.</summary>
 internal sealed record PortalObservationResponse(string DocumentId, string Digest, string ReaderProfile,
-    int DispatchedInputs, bool GoalVerified, PortalNodeResponse[] Nodes, string[] Limitations);
+    int DispatchedInputs, bool GoalVerified, PortalNodeResponse[] Nodes, string[] Limitations, string EvidenceStorage = "Local");
 /// <summary>Report metadata and explicit evidence availability are independent facts.</summary>
 internal sealed record PortalReportResponse(PortalScanResponse Scan, string EvidenceState,
     string? ErrorCode, PortalObservationResponse? Observation);

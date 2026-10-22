@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Net;
 using System.Runtime.InteropServices;
 using System.Text.Json;
+using HeadlessScreenReader.Worker;
 
 namespace HeadlessScreenReader.Cli.HostedControl;
 
@@ -33,7 +34,10 @@ internal static class HostedControlDemo
             { AllowAutoRedirect = false, UseCookies = false, ConnectTimeout = TimeSpan.FromSeconds(10) };
             using var http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(15) };
             var project = new SupabasePortalClient(http, key);
-            await using var server = await HostedControlServer.StartAsync(options, project, new PortalObservationReader(evidence), stop.Token).ConfigureAwait(false);
+            var archiveConfiguration = S3EvidenceConfiguration.Optional(Environment.GetEnvironmentVariable("HSR_EVIDENCE_S3_ACCESS_KEY"),
+                Environment.GetEnvironmentVariable("HSR_EVIDENCE_S3_SECRET"));
+            using var archive = archiveConfiguration is null ? null : new S3ObservationArchive(archiveConfiguration);
+            await using var server = await HostedControlServer.StartAsync(options, project, new PortalObservationReader(evidence, archive), stop.Token).ConfigureAwait(false);
             Console.WriteLine(JsonSerializer.Serialize(new
             {
                 Schema = "hsr-control-readiness-v1",

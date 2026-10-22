@@ -5,7 +5,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from activation import current_commit
-from host_runtime import HostRuntime, DOTNET
+from host_runtime import HostRuntime, DOTNET, evidence_environment
 from release_bundle import require
 
 BASE = Path("/srv/headless-screen-reader")
@@ -21,7 +21,7 @@ def main():
     env = runtime.environment() | {"HSR_WORKER_IMAGE": runtime.manifest(commit)["image"],
                                    "HSR_WORKER_RUNTIME": "podman",
                                    "HSR_WORKER_EVIDENCE": str(BASE / "state" / "evidence"),
-                                   "HSR_WORKER_DATABASE": connection}
+                                   "HSR_WORKER_DATABASE": connection} | evidence_environment(os.environ)
     os.execve(DOTNET, [DOTNET, str(BASE / "releases" / commit / "worker" /
                                  "HeadlessScreenReader.Worker.dll"), "--poll"], env)
 

@@ -142,6 +142,10 @@ def provision(config, sources):
                     and path.stat().st_mode & 0o022 == 0)
     env_path = BASE / "config" / "worker.env"
     control_env = BASE / "config" / "control.env"
+    evidence_env = BASE / "config" / "evidence.env"
+    if evidence_env.exists() or evidence_env.is_symlink():
+        require(managed and not evidence_env.is_symlink() and evidence_env.is_file()
+                and evidence_env.stat().st_uid == 0 and evidence_env.stat().st_mode & 0o077 == 0)
     if control_env.exists() or control_env.is_symlink():
         require(managed and not control_env.is_symlink() and control_env.is_file()
                 and control_env.stat().st_uid == 0 and control_env.stat().st_mode & 0o077 == 0)
@@ -216,6 +220,7 @@ def provision(config, sources):
             "Wants=network-online.target\n[Service]\nType=simple\nUser=hsr-worker\nGroup=hsr-worker\n"
             "UMask=0077\nWorkingDirectory=/srv/headless-screen-reader/home\n"
             "EnvironmentFile=/srv/headless-screen-reader/config/worker.env\n"
+            "EnvironmentFile=-/srv/headless-screen-reader/config/evidence.env\n"
             "ExecStart=/usr/bin/python3 -I -B /usr/local/libexec/headless-screen-reader/worker_start.py\n"
             "Restart=no\nKillMode=process\nSendSIGKILL=no\nTimeoutStopSec=180\nLimitCORE=0\n"
             "[Install]\nWantedBy=multi-user.target\n")
@@ -225,6 +230,7 @@ def provision(config, sources):
         "[Service]\nType=simple\nUser=hsr-worker\nGroup=hsr-worker\nUMask=0077\n"
         "WorkingDirectory=/srv/headless-screen-reader/home\n"
         "EnvironmentFile=/srv/headless-screen-reader/config/control.env\n"
+        "EnvironmentFile=-/srv/headless-screen-reader/config/evidence.env\n"
         "ExecStart=/usr/bin/python3 -I -B /usr/local/libexec/headless-screen-reader/control_start.py\n"
         "Restart=no\nKillMode=process\nSendSIGKILL=no\nTimeoutStopSec=20\nLimitCORE=0\n"
         "NoNewPrivileges=yes\nPrivateTmp=yes\nProtectSystem=strict\n"

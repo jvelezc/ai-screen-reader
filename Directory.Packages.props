@@ -3,6 +3,7 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup>
+    <PackageVersion Include="AWSSDK.Core" Version="4.0.102.13" />
     <PackageVersion Include="Npgsql" Version="10.0.3" />
     <PackageVersion Include="Microsoft.Playwright" Version="1.63.0" />
     <PackageVersion Include="ModelContextProtocol" Version="2.2.0" />

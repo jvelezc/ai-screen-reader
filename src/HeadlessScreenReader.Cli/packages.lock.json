@@ -38,9 +38,16 @@
       "headlessscreenreader.worker": {
         "type": "Project",
         "dependencies": {
+          "AWSSDK.Core": "[4.0.102.13, )",
           "HeadlessScreenReader.Domain": "[1.0.0, )",
           "Npgsql": "[10.0.3, )"
         }
+      },
+      "AWSSDK.Core": {
+        "type": "CentralTransitive",
+        "requested": "[4.0.102.13, )",
+        "resolved": "4.0.102.13",
+        "contentHash": "vaYs/kwfB+Lv9PeVKYE4g2mQlzVtHImXLWgfTG8UgeCybUAPkew5kwb8GS6RhuzwvImbolyLHT+IM34WoM9lJg=="
       },
       "Microsoft.Playwright": {
         "type": "CentralTransitive",

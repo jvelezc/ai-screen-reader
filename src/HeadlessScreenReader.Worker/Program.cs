@@ -49,8 +49,11 @@ try
         return 0;
     }
     var connection = Environment.GetEnvironmentVariable("HSR_WORKER_DATABASE") ?? throw new InvalidOperationException();
+    var archiveConfiguration = S3EvidenceConfiguration.Optional(Environment.GetEnvironmentVariable("HSR_EVIDENCE_S3_ACCESS_KEY"),
+        Environment.GetEnvironmentVariable("HSR_EVIDENCE_S3_SECRET"));
+    using var archive = archiveConfiguration is null ? null : new S3ObservationArchive(archiveConfiguration);
     await using var leases = new PostgresWorkerLeases(connection);
-    var coordinator = new ObservationCoordinator(leases, executor, new(evidence));
+    var coordinator = new ObservationCoordinator(leases, executor, new(evidence, archive));
     var worker = Guid.NewGuid();
     string? previousState = null;
     do

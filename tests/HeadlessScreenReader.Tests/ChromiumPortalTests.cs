@@ -11,6 +11,40 @@ namespace HeadlessScreenReader.Tests;
 public sealed class ChromiumPortalTests
 {
     [Theory]
+    [InlineData(320, "LocalFallback", "Server disk; object copy not found")]
+    [InlineData(736, "future-storage", "Storage location unconfirmed")]
+    [InlineData(736, "constructor", "Storage location unconfirmed")]
+    [InlineData(1120, "S3", "Verified private object storage")]
+    public async Task EvidenceCopyLabelDistinguishesRemoteLegacyAndUnknownWithoutChangingGoalClaims(int width, string storage, string label)
+    {
+        var project = new PortalProjectStub(); project.Record = project.Record with { State = "observed" };
+        project.Job = project.Job with { State = "completed", Generation = 1 };
+        var reader = new PortalObservationStub
+        {
+            Value = new("document", new string('a', 64), "hsr-desktop-reader-v13", 0, false,
+            [new("node", null, "heading", "Synthetic shop", false, false, 1, null, null, null, null, null, null)], [], storage)
+        };
+        await using var server = await PortalHttpTests.Start(project, reader);
+        using var playwright = await Playwright.CreateAsync();
+        await using var browser = await playwright.Chromium.LaunchAsync(new() { Headless = true, ChromiumSandbox = true });
+        var page = await browser.NewPageAsync(new() { ViewportSize = new() { Width = width, Height = 900 } });
+        page.SetDefaultTimeout(5000); var errors = new List<string>(); page.PageError += (_, error) => errors.Add(error);
+        await page.RouteAsync(PortalOptions.Project.GetLeftPart(UriPartial.Authority) + "/auth/v1/**", route => route.FulfillAsync(new()
+        { ContentType = "application/json", Body = JsonSerializer.Serialize(new { access_token = PortalProjectClientTests.Bearer }) }));
+        await page.GotoAsync(server.BaseAddress.ToString());
+        await page.Locator("#email").FillAsync("reader@example.invalid"); await page.Locator("#password").FillAsync("synthetic-login-only");
+        await page.Locator("#login").ClickAsync(); await Assertions.Expect(page.Locator("#workspace")).ToBeVisibleAsync();
+        await page.Locator("#run").ClickAsync(); await Assertions.Expect(page.Locator("#facts")).ToContainTextAsync(label);
+        var facts = await page.Locator("#facts").InnerTextAsync();
+        Assert.Contains("Evidence copy", facts); Assert.Contains("Not tested", facts); Assert.Contains("0 keys", facts);
+        Assert.False(await page.EvaluateAsync<bool>("document.documentElement.scrollWidth > innerWidth"), await LayoutFacts(page));
+        Assert.Empty(errors);
+        var folder = Path.Combine(RepositoryRoot(), "artifacts", "s3-validation", "portal"); Directory.CreateDirectory(folder);
+        await page.ScreenshotAsync(new() { Path = Path.Combine(folder, "storage-" + width + ".png"), FullPage = true });
+        await page.Locator("#logout").ClickAsync(); Assert.Empty(await page.Locator("#facts").InnerTextAsync());
+    }
+
+    [Theory]
     [InlineData(1120)]
     [InlineData(320)]
     public async Task NativeKeyboardSignInRunVerifiedResultAndSignOutWorkWithoutCredentialPersistence(int width)

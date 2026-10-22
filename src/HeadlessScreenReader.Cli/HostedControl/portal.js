@@ -164,6 +164,8 @@
     fact('Execution', execution(report.scan.state)); fact('Evidence', report.evidenceState);
     fact('Goal', observation ? 'Not tested' : 'Not verified');
     fact('Browser input', observation ? String(observation.dispatchedInputs) + ' keys' : 'Not verified');
+    if (observation) fact('Evidence copy', new Map([['S3', 'Verified private object storage'], ['Local', 'Server disk'],
+      ['LocalFallback', 'Server disk; object copy not found']]).get(observation.evidenceStorage) || 'Storage location unconfirmed');
     const messages = { Pending: 'The worker has not completed this observation yet.',
       NotCollected: 'The observation could not be collected. This is an execution result, not an accessibility judgment.',
       Unavailable: 'The saved observation is currently unavailable. Its availability remains unconfirmed.',

@@ -5,10 +5,13 @@ using HeadlessScreenReader.Domain;
 
 namespace HeadlessScreenReader.Worker;
 
-public sealed record StoredObservation(string Reference, string Sha256);
+public sealed record StoredObservation(string Reference, string Sha256)
+{
+    public bool OffHostReadbackVerified { get; init; }
+}
 
 /// <summary>Private local evidence. Flush and readback precede database completion.</summary>
-public sealed class ObservationStore(string root)
+public sealed class ObservationStore(string root, IObservationArchive? archive = null)
 {
     public static readonly JsonSerializerOptions Json = new()
     {
@@ -59,7 +62,10 @@ public sealed class ObservationStore(string root)
             File.Move(pending, path, overwrite: false);
             var readback = await File.ReadAllBytesAsync(path, token);
             if (!bytes.AsSpan().SequenceEqual(readback)) throw new IOException("WORKER_EVIDENCE_READBACK_UNCONFIRMED");
-            return new(job.Reference, Convert.ToHexStringLower(SHA256.HashData(readback)));
+            var digest = Convert.ToHexStringLower(SHA256.HashData(readback));
+            if (archive is not null)
+                await archive.FinalizeAsync(job, readback, digest, token).ConfigureAwait(false);
+            return new(job.Reference, digest) { OffHostReadbackVerified = archive is not null };
         }
         finally { if (File.Exists(pending)) File.Delete(pending); }
     }

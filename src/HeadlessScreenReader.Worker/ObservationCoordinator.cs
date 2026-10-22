@@ -7,7 +7,11 @@ public interface IFixtureExecutor
     /// <summary>Return only after actual owned container removal is confirmed.</summary>
     Task<byte[]> ExecuteAsync(FixtureJob job, CancellationToken token);
 }
-public sealed record WorkerResult(string State, Guid? JobId = null, string? Reference = null, string? ErrorCode = null);
+public sealed record WorkerResult(string State, Guid? JobId = null, string? Reference = null, string? ErrorCode = null)
+{
+    public bool? OffHostReadbackVerified { get; init; }
+    public string? EvidenceErrorCode { get; init; }
+}
 
 public sealed class ObservationCoordinator(IWorkerLeases leases, IFixtureExecutor executor, ObservationStore store)
 {
@@ -27,6 +31,7 @@ public sealed class ObservationCoordinator(IWorkerLeases leases, IFixtureExecuto
         var heartbeat = HeartbeatAsync(lease, heartbeatStop.Token, execution);
         StoredObservation? stored = null;
         string? error = null;
+        string? evidenceError = null;
         try
         {
             var bytes = await executor.ExecuteAsync(lease.Job, execution.Token);
@@ -35,6 +40,7 @@ public sealed class ObservationCoordinator(IWorkerLeases leases, IFixtureExecuto
         }
         catch (Exception exception)
         {
+            evidenceError = exception is ObservationArchiveException archiveFailure ? archiveFailure.Message : null;
             error = exception is BrowserOperationException { Code: "WORKER_NATIVE_OWNERSHIP_UNCONFIRMED" }
                 ? "WORKER_NATIVE_OWNERSHIP_UNCONFIRMED"
                 : exception is BrowserOperationException { Code: "WORKER_CONTAINER_CLEANUP_UNCONFIRMED" }
@@ -44,7 +50,11 @@ public sealed class ObservationCoordinator(IWorkerLeases leases, IFixtureExecuto
         finally { await heartbeatStop.CancelAsync(); }
         // Join the real database callback. Cancellation of a waiter does not release ownership.
         try { await heartbeat; }
-        catch (Exception) { return new("Unconfirmed", lease.Job.JobId, stored?.Reference, "WORKER_LEASE_UNCONFIRMED"); }
+        catch (Exception)
+        {
+            return new("Unconfirmed", lease.Job.JobId, stored?.Reference, "WORKER_LEASE_UNCONFIRMED")
+            { OffHostReadbackVerified = stored?.OffHostReadbackVerified };
+        }
         using var finish = new CancellationTokenSource(TimeSpan.FromSeconds(12));
         if (error is not null)
         {
@@ -53,14 +63,19 @@ public sealed class ObservationCoordinator(IWorkerLeases leases, IFixtureExecuto
             bool blocked;
             try { blocked = await leases.BlockAsync(lease, error, finish.Token); }
             catch (Exception) { return new("Unconfirmed", lease.Job.JobId, ErrorCode: "WORKER_BLOCK_UNCONFIRMED"); }
-            return new(blocked ? "Blocked" : "Unconfirmed", lease.Job.JobId, ErrorCode: error);
+            return new(blocked ? "Blocked" : "Unconfirmed", lease.Job.JobId, ErrorCode: error) { EvidenceErrorCode = evidenceError };
         }
         // Persisted bytes can remain orphaned after lease loss; they do not imply database completion.
         bool completed;
         try { completed = await leases.CompleteAsync(lease, stored!, finish.Token); }
-        catch (Exception) { return new("Unconfirmed", lease.Job.JobId, stored!.Reference, "WORKER_COMPLETION_UNCONFIRMED"); }
+        catch (Exception)
+        {
+            return new("Unconfirmed", lease.Job.JobId, stored!.Reference, "WORKER_COMPLETION_UNCONFIRMED")
+            { OffHostReadbackVerified = stored.OffHostReadbackVerified };
+        }
         return new(completed ? "Observed" : "Unconfirmed", lease.Job.JobId, stored!.Reference,
-            completed ? null : "WORKER_COMPLETION_UNCONFIRMED");
+            completed ? null : "WORKER_COMPLETION_UNCONFIRMED")
+        { OffHostReadbackVerified = stored.OffHostReadbackVerified };
     }
 
     private async Task HeartbeatAsync(WorkerLease lease, CancellationToken stop, CancellationTokenSource execution)

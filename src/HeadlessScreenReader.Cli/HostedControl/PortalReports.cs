@@ -11,38 +11,54 @@ internal interface IPortalObservationReader
 }
 
 /// <summary>Only the exact authorized job reference and validated original bytes can become a report.</summary>
-internal sealed class PortalObservationReader(string root) : IPortalObservationReader
+internal sealed class PortalObservationReader(string root, IObservationArchive? archive = null) : IPortalObservationReader
 {
     public async Task<PortalObservationResponse?> ReadAsync(PortalJobResult job, CancellationToken token)
     {
         var descriptor = new FixtureJob(job.OrganizationId, job.ScanId, job.JobId, job.Generation);
         try { descriptor.Validate(); }
         catch (BrowserOperationException) { throw new PortalFault(503, "CONTROL_EVIDENCE_IDENTITY_UNCONFIRMED"); }
-        if (job.State != "completed" || job.Reference != descriptor.Reference || job.Digest is null || job.Digest.Length != 64)
+        if (job.State != "completed" || job.Reference != descriptor.Reference || job.Digest is null || job.Digest.Length != 64
+            || job.Digest.Any(character => !char.IsAsciiHexDigitLower(character)))
             throw new PortalFault(503, "CONTROL_EVIDENCE_IDENTITY_UNCONFIRMED");
         var path = Path.Combine(Path.GetFullPath(root), descriptor.Reference.Replace('/', Path.DirectorySeparatorChar));
         try
         {
+            if (archive is not null)
+            {
+                var remote = await archive.ReadAsync(descriptor, job.Digest, token).ConfigureAwait(false);
+                if (remote is not null) return Project(remote, descriptor, job.Digest, "S3");
+            }
             await using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read,
                 8192, FileOptions.Asynchronous | FileOptions.SequentialScan);
             if (file.Length is <= 0 or > FixtureObservation.MaximumBytes)
                 throw new PortalFault(503, "CONTROL_EVIDENCE_UNCONFIRMED");
             var bytes = new byte[checked((int)file.Length)];
             await file.ReadExactlyAsync(bytes, token).ConfigureAwait(false);
-            if (file.ReadByte() != -1 || Convert.ToHexStringLower(SHA256.HashData(bytes)) != job.Digest)
+            if (file.ReadByte() != -1)
                 throw new PortalFault(503, "CONTROL_EVIDENCE_UNCONFIRMED");
-            var observation = ObservationStore.Validate(bytes, descriptor);
-            var nodes = observation.Snapshot.Nodes.Select(node => new PortalNodeResponse(node.Id, node.ParentId,
-                node.Role, node.Name, node.IsFocused, node.IsDisabled, node.HeadingLevel, node.Checked, node.Expanded,
-                node.Selected, node.Required?.Value, node.Required?.Source.ToString(), node.Description)).ToArray();
-            return new(observation.Snapshot.DocumentId, job.Digest, observation.ReaderProfile,
-                observation.DispatchedInputs, observation.GoalVerified, nodes, observation.Snapshot.Limitations.ToArray());
+            return Project(bytes, descriptor, job.Digest, archive is null ? "Local" : "LocalFallback");
         }
+        catch (ObservationArchiveException exception) when (exception.Failure == ObservationArchiveFailure.Invalid)
+        { throw new PortalFault(503, "CONTROL_EVIDENCE_UNCONFIRMED"); }
+        catch (ObservationArchiveException) { throw new PortalFault(503, "CONTROL_EVIDENCE_REMOTE_UNAVAILABLE"); }
         catch (Exception exception) when (exception is FileNotFoundException or DirectoryNotFoundException) { return null; }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
         catch (PortalFault) { throw; }
         catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or JsonException or BrowserOperationException)
         { throw new PortalFault(503, "CONTROL_EVIDENCE_UNCONFIRMED"); }
+    }
+
+    private static PortalObservationResponse Project(byte[] bytes, FixtureJob descriptor, string digest, string storage)
+    {
+        if (Convert.ToHexStringLower(SHA256.HashData(bytes)) != digest)
+            throw new PortalFault(503, "CONTROL_EVIDENCE_UNCONFIRMED");
+        var observation = ObservationStore.Validate(bytes, descriptor);
+        var nodes = observation.Snapshot.Nodes.Select(node => new PortalNodeResponse(node.Id, node.ParentId,
+            node.Role, node.Name, node.IsFocused, node.IsDisabled, node.HeadingLevel, node.Checked, node.Expanded,
+            node.Selected, node.Required?.Value, node.Required?.Source.ToString(), node.Description)).ToArray();
+        return new(observation.Snapshot.DocumentId, digest, observation.ReaderProfile,
+            observation.DispatchedInputs, observation.GoalVerified, nodes, observation.Snapshot.Limitations.ToArray(), storage);
     }
 }
 
@@ -88,6 +104,9 @@ internal sealed class PortalScanService(IPortalProjectClient project, IPortalObs
             return observation is null ? new(record, "Unavailable", "CONTROL_EVIDENCE_UNAVAILABLE", null)
                 : new(record, "Available", null, observation);
         }
-        catch (PortalFault fault) { return new(record, "Invalid", fault.Code, null); }
+        catch (PortalFault fault)
+        {
+            return new(record, fault.Code == "CONTROL_EVIDENCE_REMOTE_UNAVAILABLE" ? "Unavailable" : "Invalid", fault.Code, null);
+        }
     }
 }
