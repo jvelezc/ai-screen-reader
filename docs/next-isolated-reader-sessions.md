@@ -5,12 +5,14 @@ accepted. The first delivery step now implements the persistent fixed-fixture
 child and strict framed protocol; see [its contract](decisions/0045-persistent-fixture-reader-worker.md).
 Native container supervision and separately locked recovery are now implemented;
 see [decision 0046](decisions/0046-isolated-reader-supervision.md). Authenticated
-registry composition, host recovery/readiness integration and signed-in hosted
-session acceptance remain the next gates.
+registry composition and host recovery/readiness integration are implemented in
+[decision0047](decisions/0047-isolated-reader-http-composition.md). The current
+gate is to finish validation, promote the exact accepted artifact privately and
+verify a signed-in hosted reader lifecycle.
 
-Before registry composition, accept the Windows shutdown repair through all nine
-CI jobs, promote the exact artifact and pass the private VPS reader-runtime
-canary. Internal native grace is one second with a scoped root stop, and 250ms
+The Windows shutdown repair is accepted as `2bc8405`: all nine jobs in CI39909237769,
+exact private deployment39910679532 and the actual VPS reader-runtime canary.
+Internal native grace is one second with a scoped root stop, and 250ms
 for driver-only disposal. Both retain exit confirmation strictly below four
 seconds and the
 five-second ownership bound. See the [shutdown repair evidence](validation/browser-shutdown-v1.md#one-second-grace-with-unchanged-exit-and-ownership-deadlines).
@@ -26,7 +28,7 @@ This is the foundation for later reader navigation and command timelines.
    open/capture/close exchange. Validate response identity, sequence and size;
    unexpected or incomplete output is an execution failure. No URL, credential
    entry, keyboard commands or recording is admitted in this increment.
-2. Connect the existing tenant-owned HTTP session registry to that child.
+2. **Implemented; current delivery gate:** connect the existing tenant-owned HTTP session registry to that child.
    Subject ownership and fresh workspace authorization remain in the trusted
    API. Preserve two-minute expiry, capacity and observation limits, cancellation
    drain and quarantine after uncertain shutdown. Reserve ownership/capacity
@@ -38,10 +40,11 @@ This is the foundation for later reader navigation and command timelines.
    process/container transport. Use a separate reader journal, not the queue
    worker's exclusively owned journal; recovery must drain the API before
    inspecting either scope.
-4. Extend packaging and readiness to execute the actual packaged child in
+4. **Implemented; current delivery gate:** extend packaging and readiness to execute the actual packaged child in
    isolation. Retain compatibility with the previous accepted release and its
    rollback/recovery protocol. Stop the API before native recovery; allow only
-   the narrow writable journal path needed by the trusted coordinator.
+   reader journal owned by the trusted coordinator. The HTTP service keeps its
+   read-only filesystem and uses the worker's private loopback broker.
 5. Validate the same browser context across two observations, then actual
    shutdown. Cancellation or an elapsed timeout must not free capacity while a
    browser can still be running. Preserve recovery intent until native removal
@@ -72,9 +75,12 @@ actual CLI closure and real Chromium. The full Windows solution passes
 **1,702/1,702**, with zero failures/skips, a nonincremental Release build with
 zero warnings/errors and format verification. Current-source Windows/Linux CI
 and any subsequent deployment remain separate gates, recorded when accepted.
-The new worker is not connected to hosted HTTP sessions. The isolated supervisor and its separate recovery journal now have 35 focused
-Windows tests. Next, change the registry and host recovery/readiness composition;
-see [supervisor acceptance](validation/isolated-reader-supervisor-v1.md).
+The production HTTP composition now uses the worker's isolated sessions through
+a private broker. The packaged real Chromium proof passes28/28 on Windows-launched
+Linux/Podman, including global capacity, caller scope, fresh document observations,
+native cleanup and sibling survival. Its identities are synthetic. Current-source
+CI, private promotion and signed-in tenant acceptance are recorded separately in
+[HTTP composition validation](validation/isolated-reader-http-v1.md).
 
 After this gate, add document-fenced reader navigation and timeline operations.
 An approved authenticated Edge-to-core network path is still needed for the

@@ -4,9 +4,9 @@ using HeadlessScreenReader.Worker;
 using HeadlessScreenReader.Domain;
 using System.Security.Cryptography;
 
-if (args.Length != 1 || args[0] is not ("--once" or "--poll" or "--recover" or "--check-runtime" or "--check-reader-runtime" or "--recover-reader"))
+if (args.Length != 1 || args[0] is not ("--once" or "--poll" or "--recover" or "--check-runtime" or "--check-reader-runtime" or "--recover-reader" or "--host-reader"))
 {
-    Console.Error.WriteLine("Usage: HeadlessScreenReader.Worker --once | --poll | --recover | --check-runtime | --check-reader-runtime | --recover-reader. Operator configuration is supplied through the private service environment.");
+    Console.Error.WriteLine("Usage: HeadlessScreenReader.Worker --once | --poll | --recover | --check-runtime | --check-reader-runtime | --recover-reader | --host-reader. Operator configuration is supplied through the private service environment.");
     return 2;
 }
 using var stop = new CancellationTokenSource();
@@ -18,6 +18,15 @@ try
     var image = Environment.GetEnvironmentVariable("HSR_WORKER_IMAGE") ?? throw new InvalidOperationException();
     var evidence = Environment.GetEnvironmentVariable("HSR_WORKER_EVIDENCE") ?? throw new InvalidOperationException();
     var runtime = Environment.GetEnvironmentVariable("HSR_WORKER_RUNTIME") ?? "podman";
+    if (args[0] == "--host-reader")
+    {
+        // Private operator proof of the same broker used by --poll, without queue/database authority.
+        await using var host = await ReaderHost.StartAsync(evidence, runtime, image, Environment.GetEnvironmentVariable("HSR_WORKER_SECCOMP"));
+        Console.WriteLine("READER_HOST_READY");
+        var input = new byte[1];
+        if (await Console.OpenStandardInput().ReadAsync(input, stop.Token) != 0) throw new InvalidDataException();
+        return 0; // EOF joins actual reader drain before this worker exits.
+    }
     if (args[0] is "--check-reader-runtime" or "--recover-reader")
     {
         // Independent reader journal: this probe may run while the queue worker retains its lock.
@@ -28,8 +37,9 @@ try
             Console.WriteLine(JsonSerializer.Serialize(new { Schema = "hsr-reader-recovery-v1", State = "ReaderRecovered", supervisor.Recovered }));
             return 0;
         }
-        await using var reader = await supervisor.OpenAsync(Guid.NewGuid(), Guid.NewGuid(), stop.Token);
-        await using var secondReader = await supervisor.OpenAsync(Guid.NewGuid(), Guid.NewGuid(), stop.Token);
+        var organization = Guid.NewGuid(); var secondOrganization = Guid.NewGuid();
+        await using var reader = await supervisor.OpenAsync(organization, Guid.NewGuid(), stop.Token);
+        await using var secondReader = await supervisor.OpenAsync(secondOrganization, Guid.NewGuid(), stop.Token);
         var duplicateDenied = false;
         var capacityDenied = false;
         try { await supervisor.OpenAsync(Guid.NewGuid(), reader.SessionId, stop.Token); }
@@ -37,13 +47,20 @@ try
         try { await supervisor.OpenAsync(Guid.NewGuid(), Guid.NewGuid(), stop.Token); }
         catch (BrowserOperationException fault) when (fault.Code == "READER_SUPERVISOR_CAPACITY_UNCONFIRMED") { capacityDenied = true; }
         if (!duplicateDenied || !capacityDenied) throw new InvalidDataException();
+        var wrongOrganizationDenied = false;
+        try { await supervisor.RetireAsync(Guid.NewGuid(), reader.SessionId); }
+        catch (BrowserOperationException fault) when (fault.Code == "READER_SESSION_NOT_FOUND") { wrongOrganizationDenied = true; }
+        if (!wrongOrganizationDenied || reader.ContainerAbsenceConfirmed) throw new InvalidDataException();
         var first = reader.InitialSnapshot;
         var second = await reader.ObserveAsync(stop.Token);
         var third = await reader.ObserveAsync(stop.Token);
         if (first.DocumentId != second.DocumentId || first.DocumentId != third.DocumentId)
             throw new InvalidDataException();
-        await reader.DisposeAsync();
-        await secondReader.DisposeAsync();
+        var retired = await supervisor.RetireAsync(organization, reader.SessionId);
+        var sibling = await secondReader.ObserveAsync(stop.Token);
+        var siblingPreserved = sibling.DocumentId == secondReader.InitialSnapshot.DocumentId && !sibling.Nodes.IsDefaultOrEmpty;
+        if (!retired.NativeShutdownConfirmed || !retired.ContainerAbsenceConfirmed || !siblingPreserved) throw new InvalidDataException();
+        await supervisor.RetireAsync(secondOrganization, secondReader.SessionId);
         await using var replacement = await supervisor.OpenAsync(Guid.NewGuid(), Guid.NewGuid(), stop.Token);
         await replacement.DisposeAsync();
         Console.WriteLine(JsonSerializer.Serialize(new
@@ -60,6 +77,9 @@ try
             DuplicateDenied = duplicateDenied,
             CapacityDenied = capacityDenied,
             CapacityReusableAfterConfirmedRemoval = replacement.ContainerAbsenceConfirmed && replacement.NativeShutdownConfirmed,
+            ScopedRetirementConfirmed = retired.NativeShutdownConfirmed && retired.ContainerAbsenceConfirmed,
+            WrongOrganizationDenied = wrongOrganizationDenied,
+            SiblingDocumentPreserved = siblingPreserved,
             DatabaseAccessed = false,
             ObservationPersisted = false,
             DispatchedInputs = 0,
@@ -103,6 +123,9 @@ try
     using var archive = archiveConfiguration is null ? null : new S3ObservationArchive(archiveConfiguration);
     await using var leases = new PostgresWorkerLeases(connection);
     var coordinator = new ObservationCoordinator(leases, executor, new(evidence, archive));
+    // The trusted coordinator owns native execution. The separate read-only HTTP service uses the protected loopback broker.
+    await using var readerHost = args[0] == "--poll" ? await ReaderHost.StartAsync(evidence, runtime, image,
+        Environment.GetEnvironmentVariable("HSR_WORKER_SECCOMP")) : null;
     var worker = Guid.NewGuid();
     string? previousState = null;
     do

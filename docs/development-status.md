@@ -1,6 +1,6 @@
 # Original development goals and next step
 
-Updated October 22, 2026. The original proposal under `outputs/` remains unchanged. This status document tracks implementation against its acceptance gates.
+Updated October 23, 2026. The original proposal under `outputs/` remains unchanged. This status document tracks implementation against its acceptance gates.
 
 Prioritize an independently usable core API and MCP. The Lovable UI consumes this service through Edge Functions in existing Supabase project `gpnijaxrgtwzwtrqsbcu`. Public MCP hosting and official plugin publication remain separate from implementing the core protocols.
 
@@ -46,11 +46,16 @@ tracked separately in the validation record.
 See [the ownership decision](decisions/0046-isolated-reader-supervision.md) and
 [current validation](validation/isolated-reader-supervisor-v1.md).
 
-**Do next:** connect the authenticated registry to this supervisor with reserved
-subject capacity, narrowly writable reader state and ordered host stop/recovery/
-readiness. Then verify a signed-in VPS reader lifecycle. This increment does
-not enable that hosted composition; local, CI, private promotion and tenant
-acceptance remain separate gates.
+**Native runtime accepted:** `2bc8405` passed all nine jobs in CI39909237769,
+exact private deployment39910679532 and a fresh actual VPS Podman4.9 reader canary.
+The original four-second exit and five-second ownership deadlines remain intact.
+
+**Do next:** finish validation and private delivery of the authenticated isolated
+reader API, then verify a signed-in VPS reader lifecycle. The implementation now
+connects the registry to the trusted worker through a private loopback broker;
+the HTTP service keeps its existing read-only filesystem. Packaged Chromium proof
+passes28/28 and Linux operator checks122/122. These synthetic identities do not
+establish application JWT acceptance. See [the exact requirements and gates](validation/isolated-reader-http-v1.md).
 
 <a id="next-signed-in-hosted-fixture-and-s3-acceptance"></a>
 

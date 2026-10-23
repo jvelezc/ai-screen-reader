@@ -11,7 +11,7 @@ $created=$false; $built=$false; $removed=$false; $imageRemoved=$false; $ready=$f
 $cases=[Collections.Generic.List[string]]::new()
 $releaseCreated=$false
 $script:executed=0; $script:failed=0
-$expected=if($IsLinux){27}else{25}; $linuxSignalPerformed=$false
+$expected=if($IsLinux){30}else{28}; $linuxSignalPerformed=$false
 $recoveryResources=[Collections.Generic.List[string]]::new()
 $names=@('POSTGRES_PASSWORD','HSR_WORKER_DATABASE','HSR_WORKER_IMAGE','HSR_WORKER_EVIDENCE','HSR_WORKER_RUNTIME','HSR_WORKER_SECCOMP',
     'HSR_CONTROL_PUBLISHABLE_KEY','HSR_CONTROL_EVIDENCE','HSR_CONTROL_PORT','HSR_CONTROL_ORIGIN','HSR_RELEASE_COMMIT')
@@ -68,6 +68,8 @@ try {
         $readerProbe.DuplicateDenied -and $readerProbe.CapacityDenied -and $readerProbe.CapacityReusableAfterConfirmedRemoval -and
         -not $readerProbe.DatabaseAccessed -and -not $readerProbe.ObservationPersisted -and
         $readerProbe.DispatchedInputs -eq 0 -and -not $readerProbe.GoalVerified) 'PersistentPackagedReaderRetainsDocumentAndCapacityUntilConfirmedNativeRemovalWithoutQueueLock'
+    Assert-Proof ($readerProbe.ScopedRetirementConfirmed -and $readerProbe.WrongOrganizationDenied -and
+        $readerProbe.SiblingDocumentPreserved) 'ScopedReaderRetirementDeniesWrongOrganizationAndPreservesAnotherLiveDocument'
     $readerJournal=Join-Path $env:HSR_WORKER_EVIDENCE '.reader-runtime'
     $readerRemovals=@(Get-ChildItem (Join-Path $readerJournal 'removals') -Filter '*.json' | ForEach-Object { Get-Content $_.FullName -Raw | ConvertFrom-Json })
     $readerRemaining=Invoke-ReaderRuntime $Runtime @('ps','--all','--filter','name=^hsr-observation-','--format','{{.ID}}')
@@ -93,6 +95,32 @@ try {
     Assert-Proof ($readerExit -eq 0 -and $readerRecovery.Schema -eq 'hsr-reader-recovery-v1' -and $readerRecovery.State -eq 'ReaderRecovered' -and
         $readerRecovery.Recovered -eq 1 -and [string]::IsNullOrWhiteSpace($readerGone.Text) -and -not (Test-Path $readerIntentPath) -and
         $readerRemoval.ContainerAbsenceConfirmed -and $readerRemoval.RecoveredAfterRestart -and $readerRemoval.Intent.Owner -eq "$readerOwner") 'SeparateReaderRecoveryRemovesOnlyItsRecordedContainerWithoutDatabaseAccess'
+    $stage='isolated-reader-http'
+    $beforeHttpRemovals=@(Get-ChildItem (Join-Path $readerJournal 'removals') -Filter '*.json').Count
+    $queueLock=[IO.FileStream]::new((Join-Path $queueRoot 'worker.lock'),[IO.FileMode]::Open,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)
+    try {
+        $httpOutput=@(& dotnet (Join-Path $testedControl 'HeadlessScreenReader.Cli.dll') --check-isolated-reader-api 2>&1)
+        $httpExit=$LASTEXITCODE
+    } finally { $queueLock.Dispose() }
+    $httpProbe=($httpOutput -join "`n") | ConvertFrom-Json
+    $httpProbe | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $folder 'isolated-reader-http.json') -Encoding utf8NoBOM
+    Assert-Proof ($httpExit -eq 0 -and $httpProbe.Schema -eq 'hsr-isolated-reader-http-proof-v1' -and
+        $httpProbe.State -eq 'IsolatedReaderHttpReady' -and $httpProbe.Image -eq $imageId -and $httpProbe.SameDocument -and
+        $httpProbe.FreshHttpObservations -eq 2 -and $httpProbe.InitialNativeCaptures -eq 1 -and $httpProbe.ObservedNodes -gt 0 -and
+        $httpProbe.AnonymousDenied -and $httpProbe.OtherSubjectDenied -and $httpProbe.RevokedWorkspaceDenied -and $httpProbe.StaleSessionDenied -and
+        $httpProbe.NativeShutdownConfirmed -and $httpProbe.ContainerAbsenceConfirmed -and $httpProbe.NativeExecutionOutsideApi -and
+        $httpProbe.GlobalSubjectReservationConfirmed -and $httpProbe.GlobalCapacityConfirmed -and $httpProbe.WorkerScopeDenied -and
+        $httpProbe.SiblingDocumentPreserved -and $httpProbe.SyntheticIdentityOnly -and
+        -not $httpProbe.AppJwtValidated -and -not $httpProbe.HostedTenantReaderAccepted -and -not $httpProbe.DatabaseAccessed -and
+        -not $httpProbe.ObservationPersisted -and $httpProbe.DispatchedInputs -eq 0 -and -not $httpProbe.GoalVerified) 'PublishedHttpReaderUsesIsolatedNativeContextAndRechecksSyntheticAuthority'
+    $afterHttpRemovals=@(Get-ChildItem (Join-Path $readerJournal 'removals') -Filter '*.json').Count
+    $httpRemaining=Invoke-ReaderRuntime $Runtime @('ps','--all','--filter','name=^hsr-observation-','--format','{{.ID}}')
+    $readerLock=[IO.FileStream]::new((Join-Path $readerJournal 'worker.lock'),[IO.FileMode]::Open,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)
+    try {
+        Assert-Proof ($readerLock.CanWrite -and $afterHttpRemovals -eq $beforeHttpRemovals+2 -and
+            @(Get-ChildItem (Join-Path $readerJournal 'intents')).Count -eq 0 -and -not (Test-Path (Join-Path $readerJournal 'host.json')) -and
+            [string]::IsNullOrWhiteSpace($httpRemaining.Text)) 'HttpReaderRetiresIntentAndReleasesExclusiveJournalAfterServerDrain'
+    } finally { $readerLock.Dispose() }
     $stage='s3-evidence'
     $s3=& (Join-Path $PSScriptRoot 'Test-S3Evidence.ps1') -Runtime $Runtime -Image $imageId -PublishedCli $testedControl -Folder (Join-Path $folder 's3')
     Assert-Proof ($s3.Ready -and $s3.Passed -eq 10 -and $s3.ServerRemoved -and $s3.NetworkRemoved -and $s3.NativeOwnershipRecovered) 'ActualSignedS3FinalizationAndOffHostReadbackPreserveNativeFacts'

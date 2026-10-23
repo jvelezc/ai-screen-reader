@@ -17,6 +17,9 @@ internal sealed record PortalReaderClosedResponse(Guid SessionId, string State);
 /// <summary>Host resource seam; implementations must join actual capture and shutdown work.</summary>
 internal interface IPortalReaderBrowser : IAsyncDisposable
 {
+    Task InitializeAsync() => Task.CompletedTask;
+    int InitialCaptures => 0;
+    bool CleanupConfirmed => false;
     Task<AccessibilitySnapshot> CaptureAsync();
 }
 
@@ -41,19 +44,29 @@ internal sealed class PortalReaderSessions : IAsyncDisposable
     internal static readonly TimeSpan Lifetime = TimeSpan.FromMinutes(2);
     private readonly IPortalProjectClient _project;
     private readonly TimeProvider _time;
-    private readonly Func<Task<IPortalReaderBrowser>> _open;
+    private readonly Func<Guid, Guid, Guid, IPortalReaderBrowser> _reserve;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly Dictionary<Guid, Entry> _sessions = [];
     private readonly PeriodicTimer _timer;
     private readonly Task _maintenance;
     private bool _disposed;
+    private bool _closing;
 
     public PortalReaderSessions(IPortalProjectClient project, TimeProvider time,
         Func<Task<IPortalReaderBrowser>>? open = null)
+        : this(project, time, (_, _, _) => new DeferredPortalReaderBrowser(open ?? PortalFixtureReaderBrowser.OpenAsync)) { }
+
+    /// <summary>The factory allocates a resource owner only; native work starts after its reservation is recorded.</summary>
+    public PortalReaderSessions(IPortalProjectClient project, TimeProvider time,
+        Func<Guid, Guid, IPortalReaderBrowser> reserve)
+        : this(project, time, (_, organization, session) => reserve(organization, session)) { }
+
+    public PortalReaderSessions(IPortalProjectClient project, TimeProvider time,
+        Func<Guid, Guid, Guid, IPortalReaderBrowser> reserve)
     {
         _project = project;
         _time = time;
-        _open = open ?? PortalFixtureReaderBrowser.OpenAsync;
+        _reserve = reserve;
         _timer = new(TimeSpan.FromSeconds(1), time);
         _maintenance = MaintainAsync();
     }
@@ -67,19 +80,36 @@ internal sealed class PortalReaderSessions : IAsyncDisposable
             await AuthorizeAsync(actor, organization, token).ConfigureAwait(false);
             await ReapCoreAsync().ConfigureAwait(false);
             token.ThrowIfCancellationRequested();
-            if (_sessions.Values.Any(entry => entry.User == actor.UserId)) throw new PortalFault(409, "CONTROL_READER_ALREADY_OPEN");
+            var previous = _sessions.Values.SingleOrDefault(entry => entry.User == actor.UserId);
+            if (previous is { OpenFailed: true }) await CloseCoreAsync(previous).ConfigureAwait(false);
+            else if (previous is not null) throw new PortalFault(409, "CONTROL_READER_ALREADY_OPEN");
             if (_sessions.Count >= MaximumSessions) throw new PortalFault(409, "CONTROL_READER_CAPACITY_EXHAUSTED");
-            // Once native launch begins, caller cancellation must not orphan its browser.
-            var browser = await _open().ConfigureAwait(false);
-            var entry = new Entry(actor.UserId, organization, Guid.NewGuid(), _time.GetTimestamp(),
-                _time.GetUtcNow() + Lifetime, browser);
+            var id = Guid.NewGuid();
+            var started = _time.GetTimestamp();
+            var expires = _time.GetUtcNow() + Lifetime;
+            IPortalReaderBrowser browser;
+            try { browser = _reserve(actor.UserId, organization, id); }
+            catch { throw new PortalFault(503, "CONTROL_READER_OPEN_UNCONFIRMED"); }
+            var entry = new Entry(actor.UserId, organization, id, started, expires, browser);
             _sessions.Add(entry.Id, entry);
-            if (token.IsCancellationRequested)
+            try
             {
-                await CloseCoreAsync(entry).ConfigureAwait(false);
+                // Actual initialization is joined even after an HTTP caller departs. Its owner already consumes capacity.
                 token.ThrowIfCancellationRequested();
+                await browser.InitializeAsync().ConfigureAwait(false);
+                entry.Observations = browser.InitialCaptures;
+                EnsureOpen();
+                token.ThrowIfCancellationRequested();
+                if (Expired(entry)) throw new PortalFault(404, "CONTROL_READER_NOT_FOUND");
+                return Response(entry);
             }
-            return Response(entry);
+            catch (Exception error)
+            {
+                entry.OpenFailed = true;
+                await CloseCoreAsync(entry).ConfigureAwait(false);
+                if (error is OperationCanceledException or PortalFault) throw;
+                throw new PortalFault(503, "CONTROL_READER_OPEN_UNCONFIRMED");
+            }
         }
         finally { _gate.Release(); }
     }
@@ -160,7 +190,7 @@ internal sealed class PortalReaderSessions : IAsyncDisposable
     }
     private void EnsureOpen()
     {
-        if (_disposed) throw new PortalFault(503, "CONTROL_READER_HOST_CLOSED");
+        if (_disposed || Volatile.Read(ref _closing)) throw new PortalFault(503, "CONTROL_READER_HOST_CLOSED");
     }
     private bool Expired(Entry entry) => _time.GetElapsedTime(entry.OpenedAt) >= Lifetime;
     private static PortalReaderSessionResponse Response(Entry entry) => new(entry.Organization, entry.Id,
@@ -171,7 +201,8 @@ internal sealed class PortalReaderSessions : IAsyncDisposable
         try { await entry.Browser.DisposeAsync().ConfigureAwait(false); }
         catch
         {
-            entry.Quarantined = true;
+            if (entry.Browser.CleanupConfirmed) _sessions.Remove(entry.Id);
+            else entry.Quarantined = true;
             throw new PortalFault(503, "CONTROL_READER_CLOSE_UNCONFIRMED");
         }
         _sessions.Remove(entry.Id);
@@ -180,7 +211,7 @@ internal sealed class PortalReaderSessions : IAsyncDisposable
     internal async Task SweepAsync()
     {
         await _gate.WaitAsync().ConfigureAwait(false);
-        try { if (!_disposed) await ReapCoreAsync().ConfigureAwait(false); }
+        try { if (!_disposed && !Volatile.Read(ref _closing)) await ReapCoreAsync().ConfigureAwait(false); }
         finally { _gate.Release(); }
     }
     private async Task ReapCoreAsync()
@@ -195,17 +226,18 @@ internal sealed class PortalReaderSessions : IAsyncDisposable
     }
     public async ValueTask DisposeAsync()
     {
+        Volatile.Write(ref _closing, true);
         _timer.Dispose();
         await _maintenance.ConfigureAwait(false);
         await _gate.WaitAsync().ConfigureAwait(false);
         try
         {
             if (_disposed) return;
-            _disposed = true;
             var failures = new List<Exception>();
             foreach (var entry in _sessions.Values.ToArray())
                 try { await CloseCoreAsync(entry).ConfigureAwait(false); }
                 catch (PortalFault fault) { failures.Add(fault); }
+            _disposed = _sessions.Count == 0;
             if (failures.Count > 0) throw new AggregateException("CONTROL_READER_CLOSE_UNCONFIRMED", failures);
         }
         finally { _gate.Release(); }
@@ -220,5 +252,6 @@ internal sealed class PortalReaderSessions : IAsyncDisposable
         public IPortalReaderBrowser Browser { get; } = browser;
         public int Observations { get; set; }
         public bool Quarantined { get; set; }
+        public bool OpenFailed { get; set; }
     }
 }

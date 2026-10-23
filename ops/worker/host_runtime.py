@@ -107,7 +107,7 @@ class HostRuntime:
                 "DEPLOY_IMAGE_UNCONFIRMED")
 
     def worker(self, commit, scope, mode):
-        require(scope in ("evidence", "readiness") and mode in ("--recover", "--check-runtime"),
+        require(scope in ("evidence", "readiness") and mode in ("--recover", "--check-runtime", "--recover-reader"),
                 "DEPLOY_OPERATION_INVALID")
         env = self.environment() | {"HSR_WORKER_IMAGE": self.manifest(commit)["image"],
                                     "HSR_WORKER_RUNTIME": "podman",
@@ -124,6 +124,21 @@ class HostRuntime:
                 and receipt.get("State") == "Recovered"
                 and type(receipt.get("Recovered")) is int and receipt["Recovered"] >= 0,
                 "DEPLOY_RECOVERY_UNCONFIRMED")
+        reader_root = self.base / "state" / scope / ".reader-runtime"
+        if reader_root.exists() or reader_root.is_symlink():
+            require(reader_root.is_dir() and not reader_root.is_symlink(), "DEPLOY_READER_JOURNAL_INVALID")
+            pending = reader_root / "intents"
+            require(pending.is_dir() and not pending.is_symlink(), "DEPLOY_READER_JOURNAL_INVALID")
+            if any(pending.iterdir()):
+                # Stop-before-recovery is enforced by activation. An older release without this narrow
+                # operator mode must fail closed rather than restart over an unretired reader container.
+                reader = self.worker(commit, scope, "--recover-reader")
+                require(isinstance(reader, dict) and set(reader) == {"Schema", "State", "Recovered"}
+                        and reader.get("Schema") == "hsr-reader-recovery-v1"
+                        and reader.get("State") == "ReaderRecovered"
+                        and type(reader.get("Recovered")) is int and reader["Recovered"] >= 0,
+                        "DEPLOY_READER_RECOVERY_UNCONFIRMED")
+                require(not any(pending.iterdir()), "DEPLOY_READER_RECOVERY_UNCONFIRMED")
 
     def probe(self, commit):
         validate_evidence_configuration(self.base)

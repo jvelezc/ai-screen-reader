@@ -2,6 +2,9 @@ using HeadlessScreenReader.Domain;
 
 namespace HeadlessScreenReader.Worker;
 
+/// <summary>Native protocol acknowledgement and confirmed owned-container removal are independent facts.</summary>
+public sealed record ReaderRetirement(bool NativeShutdownConfirmed, bool ContainerAbsenceConfirmed);
+
 /// <summary>Exclusive reader ownership, deliberately separate from the queue worker's .runtime journal.</summary>
 public sealed class IsolatedReaderSupervisor : IAsyncDisposable
 {
@@ -9,7 +12,7 @@ public sealed class IsolatedReaderSupervisor : IAsyncDisposable
     private readonly FileStream _exclusive;
     private readonly IsolatedFixtureExecutor _executor;
     private readonly SemaphoreSlim _gate = new(1, 1);
-    private readonly Dictionary<Guid, IsolatedReaderSession?> _sessions = [];
+    private readonly Dictionary<Guid, Reservation> _sessions = [];
     private readonly PeriodicTimer _timer;
     private Task _maintenance = Task.CompletedTask;
     private bool _closing;
@@ -52,16 +55,16 @@ public sealed class IsolatedReaderSupervisor : IAsyncDisposable
             if (_closing) throw new BrowserOperationException("READER_SUPERVISOR_CLOSED");
             await SweepCoreAsync().ConfigureAwait(false);
             if (_sessions.ContainsKey(session)) throw new BrowserOperationException("READER_SESSION_ALREADY_OPEN");
-            if (_sessions.Count >= 2 || _sessions.Values.Any(value => value is null))
+            if (_sessions.Count >= 2 || _sessions.Values.Any(value => value.Reader is null))
                 throw new BrowserOperationException("READER_SUPERVISOR_CAPACITY_UNCONFIRMED");
             token.ThrowIfCancellationRequested();
-            _sessions.Add(session, null); // Reserve before the durable intent or native create can begin.
+            _sessions.Add(session, new(organization)); // Reserve before the durable intent or native create can begin.
             try
             {
                 // These nonsecret ownership labels do not create or claim a queue job or scan.
                 var descriptor = new FixtureJob(organization, session, session, 1);
                 var reader = await _executor.OpenReaderAsync(descriptor, session, token).ConfigureAwait(false);
-                _sessions[session] = reader;
+                _sessions[session].Reader = reader;
                 return reader;
             }
             catch
@@ -69,8 +72,8 @@ public sealed class IsolatedReaderSupervisor : IAsyncDisposable
                 // Unknown native ownership keeps its reservation, even when Open never returned a session.
                 try
                 {
-                    if (!_journal.ReadPending().Any(intent => intent.Job.OrganizationId == organization
-                        && intent.Job.ScanId == session && intent.Job.JobId == session)) _sessions.Remove(session);
+                    if (!_journal.ReadPending().Any(intent => intent.Job.ScanId == session || intent.Job.JobId == session))
+                        _sessions.Remove(session);
                 }
                 catch (Exception) { /* Unreadable durable ownership also retains the reservation. */ }
                 throw new BrowserOperationException("READER_CONTAINER_OPEN_UNCONFIRMED");
@@ -79,14 +82,47 @@ public sealed class IsolatedReaderSupervisor : IAsyncDisposable
         finally { _gate.Release(); }
     }
 
+    /// <summary>Retire only this organization's session, including a failed launch. Never recover the whole live journal.</summary>
+    public async Task<ReaderRetirement> RetireAsync(Guid organization, Guid session)
+    {
+        if (organization == Guid.Empty || session == Guid.Empty) throw new ArgumentException("READER_SESSION_ID_INVALID");
+        await _gate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            // Startup reconciles the complete inventory; entries leave this map only after confirmed removal.
+            if (!_sessions.TryGetValue(session, out var reservation))
+            {
+                if (_journal.ReadPending().Any(intent => intent.Job.ScanId == session || intent.Job.JobId == session))
+                    throw new BrowserOperationException("READER_SESSION_OWNERSHIP_UNCONFIRMED");
+                return new(false, true);
+            }
+            if (reservation.Organization != organization) throw new BrowserOperationException("READER_SESSION_NOT_FOUND");
+            var native = false;
+            if (reservation.Reader is { } reader)
+            {
+                try { await reader.DisposeAsync().ConfigureAwait(false); }
+                catch (Exception) when (reader.ContainerAbsenceConfirmed) { /* Preserve the missing native acknowledgement below. */ }
+                if (!reader.ContainerAbsenceConfirmed) throw new BrowserOperationException("READER_CONTAINER_CLEANUP_UNCONFIRMED");
+                native = reader.NativeShutdownConfirmed;
+            }
+            else
+            {
+                await _executor.RecoverReaderAsync(new(organization, session, session, 1)).ConfigureAwait(false);
+            }
+            _sessions.Remove(session);
+            return new(native, true);
+        }
+        finally { _gate.Release(); }
+    }
+
     private async Task SweepCoreAsync()
     {
         foreach (var pair in _sessions.ToArray())
         {
-            if (pair.Value is null) continue;
-            if (pair.Value.Expired)
-                try { await pair.Value.DisposeAsync().ConfigureAwait(false); } catch (Exception) { }
-            if (pair.Value.ContainerAbsenceConfirmed) _sessions.Remove(pair.Key);
+            if (pair.Value.Reader is not { } reader) continue;
+            if (reader.Expired)
+                try { await reader.DisposeAsync().ConfigureAwait(false); } catch (Exception) { }
+            if (reader.ContainerAbsenceConfirmed) _sessions.Remove(pair.Key);
         }
     }
 
@@ -111,10 +147,10 @@ public sealed class IsolatedReaderSupervisor : IAsyncDisposable
             _closing = true;
             foreach (var pair in _sessions.ToArray())
             {
-                if (pair.Value is not null)
+                if (pair.Value.Reader is { } reader)
                 {
-                    try { await pair.Value.DisposeAsync().ConfigureAwait(false); }
-                    catch (Exception) when (pair.Value.ContainerAbsenceConfirmed) { }
+                    try { await reader.DisposeAsync().ConfigureAwait(false); }
+                    catch (Exception) when (reader.ContainerAbsenceConfirmed) { }
                 }
             }
             // All attached clients are settled before recovering a failed launch's retained intent.
@@ -124,5 +160,11 @@ public sealed class IsolatedReaderSupervisor : IAsyncDisposable
             _disposed = true;
         }
         finally { _gate.Release(); }
+    }
+
+    private sealed class Reservation(Guid organization)
+    {
+        public Guid Organization { get; } = organization;
+        public IsolatedReaderSession? Reader { get; set; }
     }
 }

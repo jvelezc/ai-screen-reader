@@ -253,11 +253,12 @@ public sealed class PortalReaderSessionTests
     }
 
     [Fact]
-    public async Task FailedLaunchDoesNotConsumeCapacityAndClosedHostCannotReopen()
+    public async Task ConfirmedFailedLaunchCleanupReleasesCapacityAndClosedHostCannotReopen()
     {
-        var opens = 0; var browser = new ReaderBrowserStub();
-        var sessions = NewSessions(() => ++opens == 1 ? Task.FromException<IPortalReaderBrowser>(new InvalidOperationException("private-canary")) : Task.FromResult<IPortalReaderBrowser>(browser));
-        await Assert.ThrowsAsync<InvalidOperationException>(() => sessions.OpenAsync(Actor, Organization, default));
+        var opens = 0; var browser = new ReaderBrowserStub(); var failed = new ReaderBrowserStub { FailInitialize = true };
+        var sessions = new PortalReaderSessions(new ReaderProjectStub(), new FakeTimeProvider(), (_, _) => ++opens == 1 ? failed : browser);
+        Assert.Equal("CONTROL_READER_OPEN_UNCONFIRMED", (await Assert.ThrowsAsync<PortalFault>(() => sessions.OpenAsync(Actor, Organization, default))).Code);
+        Assert.Equal(1, failed.Closes);
         await sessions.OpenAsync(Actor, Organization, default);
         await sessions.DisposeAsync();
         Assert.Equal(1, browser.Closes);
@@ -287,12 +288,26 @@ internal sealed class ReaderBrowserStub : IPortalReaderBrowser
     public AccessibilitySnapshot Snapshot { get; init; } = DefaultSnapshot;
     public bool FailCapture { get; init; }
     public bool FailClose { get; set; }
+    public bool FailInitialize { get; init; }
+    public bool ProveCleanupOnFailure { get; init; }
+    public bool CleanupConfirmed { get; private set; }
+    public int InitialCaptures { get; init; }
+    public int Initializations { get; private set; }
+    public Action? Initializing { get; init; }
     public int Captures { get; private set; }
     public int Closes { get; private set; }
     public TaskCompletionSource CaptureEntered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
     public TaskCompletionSource CloseEntered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    public TaskCompletionSource InitializeEntered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    public TaskCompletionSource? InitializeRelease { get; init; }
     public TaskCompletionSource? CaptureRelease { get; init; }
     public TaskCompletionSource? CloseRelease { get; init; }
+    public async Task InitializeAsync()
+    {
+        Initializations++; CleanupConfirmed = false; Initializing?.Invoke(); InitializeEntered.TrySetResult();
+        if (InitializeRelease is not null) await InitializeRelease.Task;
+        if (FailInitialize) throw new IOException("private-initialization-canary");
+    }
     public async Task<AccessibilitySnapshot> CaptureAsync()
     {
         Captures++; CaptureEntered.TrySetResult();
@@ -304,6 +319,7 @@ internal sealed class ReaderBrowserStub : IPortalReaderBrowser
     {
         Closes++; CloseEntered.TrySetResult();
         if (CloseRelease is not null) await CloseRelease.Task;
+        CleanupConfirmed = !FailClose || ProveCleanupOnFailure;
         if (FailClose) throw new InvalidOperationException("private-close-canary");
     }
 }

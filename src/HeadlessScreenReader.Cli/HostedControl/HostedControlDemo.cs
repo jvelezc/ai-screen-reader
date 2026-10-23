@@ -37,7 +37,26 @@ internal static class HostedControlDemo
             var archiveConfiguration = S3EvidenceConfiguration.Optional(Environment.GetEnvironmentVariable("HSR_EVIDENCE_S3_ACCESS_KEY"),
                 Environment.GetEnvironmentVariable("HSR_EVIDENCE_S3_SECRET"));
             using var archive = archiveConfiguration is null ? null : new S3ObservationArchive(archiveConfiguration);
-            await using var server = await HostedControlServer.StartAsync(options, project, new PortalObservationReader(evidence, archive), stop.Token).ConfigureAwait(false);
+            var image = Environment.GetEnvironmentVariable("HSR_WORKER_IMAGE");
+            if (image is null)
+            {
+                // The root-owned release manifest is already verified by the private launcher; the API only reads it.
+                var manifestPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "manifest.json"));
+                var manifestInfo = new FileInfo(manifestPath);
+                if (!manifestInfo.Exists || manifestInfo.LinkTarget is not null || manifestInfo.Length is < 1 or > 2097152)
+                    throw new InvalidOperationException();
+                using var manifest = JsonDocument.Parse(await File.ReadAllBytesAsync(manifestPath, stop.Token).ConfigureAwait(false),
+                    new() { AllowDuplicateProperties = false });
+                if (manifest.RootElement.GetProperty("commit").GetString() != commit
+                    || manifest.RootElement.GetProperty("schema").GetString() != "hsr-worker-control-release-v2") throw new InvalidOperationException();
+                image = manifest.RootElement.GetProperty("image").GetString() ?? throw new InvalidOperationException();
+            }
+            var readerHost = new ReaderHostClient(evidence, image);
+            if (!await readerHost.ReadyAsync().ConfigureAwait(false)) throw new InvalidOperationException();
+            await using var readers = new PortalReaderSessions(project, TimeProvider.System,
+                (subject, organization, session) => new PortalHostedReaderBrowser(readerHost, subject, organization, session));
+            await using var server = await HostedControlServer.StartAsync(options, project, new PortalObservationReader(evidence, archive),
+                stop.Token, readers, readerHost.ReadyAsync).ConfigureAwait(false);
             Console.WriteLine(JsonSerializer.Serialize(new
             {
                 Schema = "hsr-control-readiness-v1",

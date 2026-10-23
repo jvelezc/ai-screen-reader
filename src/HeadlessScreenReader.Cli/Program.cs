@@ -19,6 +19,9 @@ if (args.SequenceEqual(["--hosted-control"]))
 if (args.SequenceEqual(["--check-control"]))
     return await HeadlessScreenReader.Cli.HostedControl.HostedControlDemo.RunAsync(check: true);
 
+if (args.SequenceEqual(["--check-isolated-reader-api"]))
+    return await HeadlessScreenReader.Cli.HostedControl.IsolatedReaderHttpProof.RunAsync();
+
 if (args.Length == 3 && args[0] == "--check-s3-local")
     return await S3ProofDemo.RunAsync(args[1], args[2]);
 

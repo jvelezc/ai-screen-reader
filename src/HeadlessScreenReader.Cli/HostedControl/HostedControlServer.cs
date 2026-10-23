@@ -26,7 +26,8 @@ internal sealed class HostedControlServer : IAsyncDisposable
     private HostedControlServer(WebApplication app, Uri address) { _app = app; BaseAddress = address; }
 
     public static async Task<HostedControlServer> StartAsync(PortalOptions options, IPortalProjectClient project,
-        IPortalObservationReader observations, CancellationToken token = default, PortalReaderSessions? readerSessions = null)
+        IPortalObservationReader observations, CancellationToken token = default, PortalReaderSessions? readerSessions = null,
+        Func<Task<bool>>? readerRuntimeReady = null)
     {
         options.Validate();
         var builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions
@@ -83,7 +84,7 @@ internal sealed class HostedControlServer : IAsyncDisposable
             catch (JsonException) { await FailAsync(context, 400, "CONTROL_REQUEST_INVALID").ConfigureAwait(false); }
             catch { await FailAsync(context, 503, "CONTROL_OPERATION_UNCONFIRMED").ConfigureAwait(false); }
         });
-        app.MapPortal(options);
+        app.MapPortal(options, readerRuntimeReady);
         app.MapReaderSessions();
         try
         {
@@ -135,7 +136,7 @@ internal sealed class HostedControlServer : IAsyncDisposable
 
 internal static class PortalEndpoints
 {
-    public static void MapPortal(this WebApplication app, PortalOptions options)
+    public static void MapPortal(this WebApplication app, PortalOptions options, Func<Task<bool>>? readerRuntimeReady = null)
     {
         app.MapGet("/", (HttpContext context, CancellationToken token) =>
         {
@@ -155,9 +156,11 @@ internal static class PortalEndpoints
             return TypedResults.Json(new PortalConfigurationResponse(PortalOptions.Project.GetLeftPart(UriPartial.Authority),
                 options.PublishableKey, "synthetic-shop", FixtureObservation.Profile), PortalJson.Options);
         }).WithName("PortalConfiguration").WithSummary("Public project settings; contains no privileged credential");
-        app.MapGet("/internal/ready", (HttpContext context, CancellationToken token) =>
+        app.MapGet("/internal/ready", async (HttpContext context, CancellationToken token) =>
         {
             HostedControlServer.NoQuery(context);
+            if (readerRuntimeReady is not null && !await readerRuntimeReady().ConfigureAwait(false))
+                throw new PortalFault(503, "CONTROL_READER_RUNTIME_UNAVAILABLE");
             return TypedResults.Json(new PortalReadinessResponse("hsr-control-readiness-v1", "Listening",
                 options.ReleaseCommit, false, false), PortalJson.Options);
         }).WithName("PortalReadiness").WithSummary("Actual loopback listener readiness; not a tenant sign-in assertion");

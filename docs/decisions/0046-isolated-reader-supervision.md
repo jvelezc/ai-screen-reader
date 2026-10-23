@@ -66,9 +66,10 @@ while holding the queue journal lock; it checks durable retirement, a missing
 image failure and a real interrupted-create container recovery. The recovery
 case does not claim an interrupted browser run or tenant acceptance.
 
-Next, compose this supervisor with the authenticated HTTP registry and deployment
-stop/recovery/readiness ordering. Reserve the registry's subject capacity before
-calling the factory, preserve fresh RLS checks, and make that service's narrowly
-writable reader journal explicit. The current API composition still uses its
-existing in-process fixture adapter. Hosted persistent-session acceptance,
-authenticated Edge-to-core reachability and human/AT acceptance remain separate.
+The authenticated registry now uses this supervisor through the trusted worker's
+private loopback broker; see [decision0047](0047-isolated-reader-http-composition.md).
+The API reserves subject capacity before initialization and keeps its read-only
+filesystem. Fresh RLS checks and scoped retirement remain explicit. Current-source
+CI, private delivery, hosted persistent-session acceptance, authenticated
+Edge-to-core reachability and human/AT acceptance are tracked separately in
+[the HTTP validation record](../validation/isolated-reader-http-v1.md).

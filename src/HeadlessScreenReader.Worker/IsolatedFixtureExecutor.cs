@@ -169,6 +169,25 @@ public sealed partial class IsolatedFixtureExecutor : IFixtureExecutor
         return intents.Count;
     }
 
+    /// <summary>Reconcile one failed reader launch after its attach client has settled, without touching sibling intents.</summary>
+    internal async Task<int> RecoverReaderAsync(FixtureJob descriptor)
+    {
+        descriptor.Validate();
+        if (descriptor.ScanId != descriptor.JobId || descriptor.Generation != 1)
+            throw new ArgumentException("READER_RECOVERY_SCOPE_INVALID");
+        var intents = _journal.ReadPending().Where(intent => intent.Job.ScanId == descriptor.ScanId
+            || intent.Job.JobId == descriptor.JobId).ToArray();
+        if (intents.Any(intent => intent.Runtime != _runtime || intent.Job != descriptor))
+            throw new BrowserOperationException("READER_RECOVERY_SCOPE_MISMATCH");
+        foreach (var intent in intents)
+        {
+            if (!await RemoveOwnedAsync(intent).ConfigureAwait(false))
+                throw new BrowserOperationException("READER_CONTAINER_CLEANUP_UNCONFIRMED");
+            await _journal.RecordRemovalAsync(intent, true, CancellationToken.None).ConfigureAwait(false);
+        }
+        return intents.Length;
+    }
+
     private async Task<bool> RemoveOwnedAsync(NativeOwnership intent)
     {
         try

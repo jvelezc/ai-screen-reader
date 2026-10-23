@@ -69,6 +69,59 @@ class HostRuntimeTests(unittest.TestCase):
                 self.assertEqual("DEPLOY_OPERATION_INVALID", str(caught.exception))
                 run.assert_not_called()
 
+    def test_reader_recovery_runs_only_after_queue_recovery_and_requires_empty_inventory(self):
+        pending = self.base / "state" / "evidence" / ".reader-runtime" / "intents"
+        pending.mkdir(parents=True)
+        intent = pending / "owned.json"
+        intent.write_text("durable ownership sentinel")
+        calls = []
+        def recover(commit, scope, mode):
+            calls.append((commit, scope, mode))
+            if mode == "--recover":
+                self.assertTrue(intent.exists())
+                return {"State": "Recovered", "Recovered": 0}
+            intent.unlink()
+            return {"Schema": "hsr-reader-recovery-v1", "State": "ReaderRecovered", "Recovered": 1}
+        with patch.object(self.runtime, "worker", side_effect=recover):
+            self.runtime.recover(COMMIT, "evidence")
+        self.assertEqual([(COMMIT, "evidence", "--recover"), (COMMIT, "evidence", "--recover-reader")], calls)
+        self.assertEqual([], list(pending.iterdir()))
+
+    def test_reader_recovery_cannot_claim_success_while_an_intent_remains(self):
+        pending = self.base / "state" / "evidence" / ".reader-runtime" / "intents"
+        pending.mkdir(parents=True)
+        sentinel = pending / "owned.json"
+        sentinel.write_text("retain this ownership intent")
+        with patch.object(self.runtime, "worker", side_effect=[{"State": "Recovered", "Recovered": 0},
+                {"Schema": "hsr-reader-recovery-v1", "State": "ReaderRecovered", "Recovered": 1}]) as worker:
+            with self.assertRaises(ReleaseError) as caught:
+                self.runtime.recover(COMMIT, "evidence")
+        self.assertEqual("DEPLOY_READER_RECOVERY_UNCONFIRMED", str(caught.exception))
+        self.assertEqual(2, worker.call_count)
+        self.assertEqual("retain this ownership intent", sentinel.read_text())
+
+    def test_reader_recovery_rejects_unconfirmed_receipt_without_deleting_ownership(self):
+        pending = self.base / "state" / "evidence" / ".reader-runtime" / "intents"
+        pending.mkdir(parents=True)
+        sentinel = pending / "owned.json"
+        sentinel.write_text("retain")
+        valid = {"Schema": "hsr-reader-recovery-v1", "State": "ReaderRecovered", "Recovered": 1}
+        for label, change in {"schema": {"Schema": "other"}, "state": {"State": "Ready"},
+                "negative": {"Recovered": -1}, "boolean": {"Recovered": True}, "extra": {"Extra": True}}.items():
+            with self.subTest(case=label), patch.object(self.runtime, "worker", side_effect=[
+                    {"State": "Recovered", "Recovered": 0}, valid | change]):
+                with self.assertRaises(ReleaseError) as caught:
+                    self.runtime.recover(COMMIT, "evidence")
+                self.assertEqual("DEPLOY_READER_RECOVERY_UNCONFIRMED", str(caught.exception))
+                self.assertEqual("retain", sentinel.read_text())
+
+    def test_empty_reader_inventory_preserves_legacy_release_recovery(self):
+        pending = self.base / "state" / "evidence" / ".reader-runtime" / "intents"
+        pending.mkdir(parents=True)
+        with patch.object(self.runtime, "worker", return_value={"State": "Recovered", "Recovered": 0}) as worker:
+            self.runtime.recover(COMMIT, "evidence")
+        worker.assert_called_once_with(COMMIT, "evidence", "--recover")
+
     def test_readiness_accepts_exact_observed_bounds_without_database_or_goal_claim(self):
         for count in (1, 2048):
             with self.subTest(case="nodes_" + str(count)):

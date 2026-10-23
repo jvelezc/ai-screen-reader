@@ -38,7 +38,10 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: observation-worker-linux
-          path: artifacts/worker-linux/
+          path: |
+            artifacts/worker-linux/
+            !artifacts/worker-linux/**/host.json
+            !artifacts/worker-linux/**/host.json.*
           retention-days: 7
       - name: Retain private deployment unit receipt
         if: always()
