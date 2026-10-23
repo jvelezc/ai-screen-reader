@@ -99,12 +99,22 @@ public sealed partial class IsolatedFixtureExecutor : IFixtureExecutor
     {
         var config = item.GetProperty("Config");
         var labels = config.GetProperty("Labels");
+        var entrypoint = config.GetProperty("Entrypoint");
+        // Podman 4.9 serializes this as a string; Docker/newer Podman use an array.
+        // Both must describe exactly the same fixed executable, with no shell parsing.
+        var fixedEntrypoint = entrypoint.ValueKind switch
+        {
+            JsonValueKind.String => entrypoint.GetString() == "dotnet",
+            JsonValueKind.Array => entrypoint.EnumerateArray()
+                .Select(value => value.ValueKind == JsonValueKind.String ? value.GetString() : null).SequenceEqual(["dotnet"]),
+            _ => false
+        };
         if (item.GetProperty("Image").GetString()?.Replace("sha256:", "", StringComparison.Ordinal) != intent.Image[7..]
             || labels.GetProperty("hsr.observation.organization").GetString() != intent.Job.OrganizationId.ToString("N")
             || labels.GetProperty("hsr.observation.scan").GetString() != intent.Job.ScanId.ToString("N")
             || labels.GetProperty("hsr.observation.job").GetString() != intent.Job.JobId.ToString("N")
             || labels.GetProperty("hsr.observation.generation").GetString() != "1"
-            || !config.GetProperty("Entrypoint").EnumerateArray().Select(value => value.GetString()).SequenceEqual(["dotnet"])
+            || !fixedEntrypoint
             || !config.GetProperty("Cmd").EnumerateArray().Select(value => value.GetString())
                 .SequenceEqual(["/app/cli/HeadlessScreenReader.Cli.dll", "--reader-fixture"]))
             throw new InvalidDataException("READER_CONTAINER_IDENTITY_UNCONFIRMED");

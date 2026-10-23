@@ -37,3 +37,32 @@ change host recovery ordering. A subsequent private promotion alone would not
 establish authenticated hosted reader acceptance. The previously accepted
 signed-in one-shot/S3 workflow and actual assistive-technology acceptance remain
 distinct gates.
+
+## Target-host inspection compatibility
+
+Source `e529e30` passed all nine jobs in [CI 39896507611](https://github.com/jvelezc/ai-screen-reader/actions/runs/39896507611):
+Windows and Ubuntu TRX each confirm1,734/1,734, all32 new cases. The native Linux
+release proof passed27/27, including Linux signal cases. Exact private deployment
+39897505967 and independent worker/control host readback passed.
+
+The additional persistent-reader VPS canary failed before acceptance. Inspection
+of a separately journaled owned container showed Podman4.9.3 serializing
+`Config.Entrypoint` as the string `"dotnet"`; Docker/newer Podman returned the
+array `["dotnet"]`. All image, argument, user and resource values matched. The
+canary's failed intent and the diagnostic container were recovered with the
+normal ownership-checked reader recovery; no unknown container was deleted.
+
+The repair accepts only these two representations of the same executable.
+Strings containing arguments, null/other values and extra array elements stay
+denied. `ReaderInspectionPinsExactImmutableImageOwnershipAndFixedEntryPoint`
+adds exact-string acceptance and argument/null rejection cases. The fixed
+argument vector, immutable image, owner labels and isolation guards remain
+required. Replacement full checks, all-nine CI and exact-artifact VPS canary
+acceptance remain required; the earlier general host readback does not pass the
+persistent-reader canary.
+
+Repair validation: focused35/35 and full local Windows1,737/1,737, zero
+failures/skips; nonzero TRX counters checked. Nonincremental Release build
+and complete format verification pass. The three new provider-shape cases
+exercise the actual target-host representation while retaining negative checks.
+Replacement all-nine CI and the VPS reader canary are still required.

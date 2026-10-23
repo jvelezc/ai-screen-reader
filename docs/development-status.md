@@ -35,11 +35,14 @@ preserved the original native deadlines.
 launch ownership, uses an exclusively locked separate reader journal, reuses
 the immutable-image isolation checks and confirms native removal independently
 of child shutdown. Parent expiry/cancellation, bounded persistent IPC and retry
-after uncertain removal have 32 passing focused Windows cases. Full local Windows passes 1,734/1,734, zero failures/skips,
+after uncertain removal have 35 passing focused Windows cases. Full local Windows passes 1,737/1,737, zero failures/skips,
 the nonincremental Release build has zero warnings/errors, and format verification
 passes. The Windows-launched Linux/Podman harness passes25/25, including actual
 packaged readers, capacity/reuse, native removal and separate recovery.
-Current-source Windows/Linux CI remains separate.
+The first supervisor release passed all nine CI jobs, but an extra VPS canary
+found Podman4.9 entrypoint serialization differs from Docker. Its exact-shape
+repair is locally validated; replacement CI and VPS reader acceptance are
+tracked separately in the validation record.
 See [the ownership decision](decisions/0046-isolated-reader-supervision.md) and
 [current validation](validation/isolated-reader-supervisor-v1.md).
 

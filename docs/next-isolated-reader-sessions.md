@@ -65,7 +65,7 @@ actual CLI closure and real Chromium. The full Windows solution passes
 **1,702/1,702**, with zero failures/skips, a nonincremental Release build with
 zero warnings/errors and format verification. Current-source Windows/Linux CI
 and any subsequent deployment remain separate gates, recorded when accepted.
-The new worker is not connected to hosted HTTP sessions. The isolated supervisor and its separate recovery journal now have 32 focused
+The new worker is not connected to hosted HTTP sessions. The isolated supervisor and its separate recovery journal now have 35 focused
 Windows tests. Next, change the registry and host recovery/readiness composition;
 see [supervisor acceptance](validation/isolated-reader-supervisor-v1.md).
 
