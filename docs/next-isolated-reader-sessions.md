@@ -3,8 +3,10 @@
 Status: in progress. The signed-in shop run and its private S3 report are
 accepted. The first delivery step now implements the persistent fixed-fixture
 child and strict framed protocol; see [its contract](decisions/0045-persistent-fixture-reader-worker.md).
-Hosted container supervision, separate recovery ownership and authenticated
-session acceptance remain unimplemented gates.
+Native container supervision and separately locked recovery are now implemented;
+see [decision 0046](decisions/0046-isolated-reader-supervision.md). Authenticated
+registry composition, host recovery/readiness integration and signed-in hosted
+session acceptance remain the next gates.
 
 The next increment lets an authorized API consumer open one reader, inspect the
 same page more than once, and close it reliably. The browser runs in its own
@@ -23,7 +25,7 @@ This is the foundation for later reader navigation and command timelines.
    drain and quarantine after uncertain shutdown. Reserve ownership/capacity
    before native launch; a failed launch with unconfirmed cleanup must retain
    its reservation and recovery intent even if no open response was returned.
-3. Reuse the existing native ownership journal, container inspection, resource
+3. **Implemented; packaged validation required:** reuse the existing native ownership journal, container inspection, resource
    limits and recovery. Use a closed child environment, no network and no secret
    or host-directory mounts. Keep Domain and ScreenReader independent of the
    process/container transport. Use a separate reader journal, not the queue
@@ -63,8 +65,9 @@ actual CLI closure and real Chromium. The full Windows solution passes
 **1,702/1,702**, with zero failures/skips, a nonincremental Release build with
 zero warnings/errors and format verification. Current-source Windows/Linux CI
 and any subsequent deployment remain separate gates, recorded when accepted.
-The new worker is not connected to hosted HTTP sessions. Next, add the isolated
-supervisor and its separate recovery journal before changing that composition.
+The new worker is not connected to hosted HTTP sessions. The isolated supervisor and its separate recovery journal now have 32 focused
+Windows tests. Next, change the registry and host recovery/readiness composition;
+see [supervisor acceptance](validation/isolated-reader-supervisor-v1.md).
 
 After this gate, add document-fenced reader navigation and timeline operations.
 An approved authenticated Edge-to-core network path is still needed for the

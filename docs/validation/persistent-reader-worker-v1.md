@@ -26,13 +26,17 @@ Production shutdown code, the original 1,999/2,000/3,999 ms assertions and
 four/five-second native limits are unchanged. No tests or assertions were
 removed, deadlines expanded, or real cleanup replaced with fake success.
 The focused repaired suite passes 109/109 locally, including the worker cases.
-Full local and replacement Windows/Linux CI results remain separate until
-their reports confirm acceptance.
+Replacement [CI 39875200017](https://github.com/jvelezc/ai-screen-reader/actions/runs/39875200017)
+at `5d87312` passed all nine jobs. Downloaded Windows and Ubuntu TRX each confirm
+1,702/1,702, zero failures/skips. Exact private deployment 39876744008 and
+independent native/control readiness also passed; the child was not wired to
+hosted sessions by that promotion.
 
 ## Remaining boundary
 
 This proves the child protocol and actual Chromium lifecycle, not a hosted
-isolated session. Container supervision, a separate reader journal, reserved
-launch ownership, independent native removal and authenticated API composition
-are the next delivery steps. The accepted signed-in shop/S3 workflow is a
+isolated session. Container supervision, a separate reader journal, reserved launch ownership
+and independent native removal are now implemented in [decision 0046](../decisions/0046-isolated-reader-supervision.md),
+with their own [validation record](isolated-reader-supervisor-v1.md). Authenticated
+API composition and ordered host readiness/recovery are the next delivery steps. The accepted signed-in shop/S3 workflow is a
 separate one-shot path. Actual human/AT acceptance remains open.

@@ -11,7 +11,7 @@ $created=$false; $built=$false; $removed=$false; $imageRemoved=$false; $ready=$f
 $cases=[Collections.Generic.List[string]]::new()
 $releaseCreated=$false
 $script:executed=0; $script:failed=0
-$expected=if($IsLinux){23}else{21}; $linuxSignalPerformed=$false
+$expected=if($IsLinux){27}else{25}; $linuxSignalPerformed=$false
 $recoveryResources=[Collections.Generic.List[string]]::new()
 $names=@('POSTGRES_PASSWORD','HSR_WORKER_DATABASE','HSR_WORKER_IMAGE','HSR_WORKER_EVIDENCE','HSR_WORKER_RUNTIME','HSR_WORKER_SECCOMP',
     'HSR_CONTROL_PUBLISHABLE_KEY','HSR_CONTROL_EVIDENCE','HSR_CONTROL_PORT','HSR_CONTROL_ORIGIN','HSR_RELEASE_COMMIT')
@@ -48,6 +48,51 @@ try {
     $imageId=(Invoke-ReaderRuntime $Runtime @('image','inspect','--format','{{.Id}}',$image)).Text.Trim()
     if($imageId -match '^[a-f0-9]{64}$'){$imageId='sha256:'+$imageId}
     if($imageId -notmatch '^sha256:[a-f0-9]{64}$'){throw 'WORKER_IMAGE_ID_UNCONFIRMED'}
+    $stage='persistent-reader'
+    $env:HSR_WORKER_IMAGE=$imageId; $env:HSR_WORKER_RUNTIME=$Runtime
+    $env:HSR_WORKER_EVIDENCE=Join-Path $folder 'reader-state'
+    $env:HSR_WORKER_SECCOMP=Join-Path $repoRoot 'ops/prototype/playwright-seccomp.json'
+    $env:HSR_WORKER_DATABASE='deliberately invalid database configuration'
+    $queueRoot=Join-Path $env:HSR_WORKER_EVIDENCE '.runtime'
+    New-Item -ItemType Directory -Force $queueRoot | Out-Null
+    $queueLock=[IO.FileStream]::new((Join-Path $queueRoot 'worker.lock'),[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)
+    try {
+        $readerOutput=@(& dotnet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --check-reader-runtime 2>&1)
+        $readerExit=$LASTEXITCODE; $readerProbe=($readerOutput -join "`n") | ConvertFrom-Json
+    } finally { $queueLock.Dispose() }
+    $readerProbe | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $folder 'reader-runtime.json') -Encoding utf8NoBOM
+    Assert-Proof ($readerExit -eq 0 -and $readerProbe.Schema -eq 'hsr-reader-runtime-readiness-v1' -and
+        $readerProbe.State -eq 'ReaderRuntimeReady' -and $readerProbe.Image -eq $imageId -and
+        $readerProbe.Captures -eq 3 -and $readerProbe.SameDocument -and $readerProbe.ObservedNodes -gt 0 -and
+        $readerProbe.NativeShutdownConfirmed -and $readerProbe.ContainerAbsenceConfirmed -and
+        $readerProbe.DuplicateDenied -and $readerProbe.CapacityDenied -and $readerProbe.CapacityReusableAfterConfirmedRemoval -and
+        -not $readerProbe.DatabaseAccessed -and -not $readerProbe.ObservationPersisted -and
+        $readerProbe.DispatchedInputs -eq 0 -and -not $readerProbe.GoalVerified) 'PersistentPackagedReaderRetainsDocumentAndCapacityUntilConfirmedNativeRemovalWithoutQueueLock'
+    $readerJournal=Join-Path $env:HSR_WORKER_EVIDENCE '.reader-runtime'
+    $readerRemovals=@(Get-ChildItem (Join-Path $readerJournal 'removals') -Filter '*.json' | ForEach-Object { Get-Content $_.FullName -Raw | ConvertFrom-Json })
+    $readerRemaining=Invoke-ReaderRuntime $Runtime @('ps','--all','--filter','name=^hsr-observation-','--format','{{.ID}}')
+    Assert-Proof ($readerRemovals.Count -eq 3 -and @($readerRemovals | Where-Object {-not $_.ContainerAbsenceConfirmed -or $_.RecoveredAfterRestart}).Count -eq 0 -and
+        @(Get-ChildItem (Join-Path $readerJournal 'intents')).Count -eq 0 -and [string]::IsNullOrWhiteSpace($readerRemaining.Text)) 'PersistentReaderRetiresThreeDurableIntentsOnlyAfterActualContainerAbsence'
+    $env:HSR_WORKER_IMAGE='sha256:'+('f'*64)
+    $readerOutput=@(& dotnet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --check-reader-runtime 2>&1)
+    $readerExit=$LASTEXITCODE; $env:HSR_WORKER_IMAGE=$imageId
+    Assert-Proof ($readerExit -eq 3 -and ($readerOutput -join "`n").Trim() -eq 'WORKER_STOPPED_UNCONFIRMED' -and
+        @(Get-ChildItem (Join-Path $readerJournal 'intents')).Count -eq 0) 'MissingReaderImageCannotReturnReadyAndRetiresIntentOnlyAfterNativeAbsence'
+    $readerOwner=[Guid]::NewGuid(); $readerTarget="hsr-observation-$($readerOwner.ToString('N'))"
+    $readerDescriptor=@{OrganizationId="$([Guid]::NewGuid())";ScanId="$([Guid]::NewGuid())";JobId="$([Guid]::NewGuid())";Generation=1}
+    $readerIntent=@{Schema='hsr-native-ownership-v1';Owner="$readerOwner";Job=$readerDescriptor;Runtime=$Runtime;Image=$imageId}
+    $readerIntentPath=Join-Path $readerJournal "intents/$($readerOwner.ToString('N')).json"
+    $readerIntent | ConvertTo-Json -Depth 4 | Set-Content $readerIntentPath -Encoding utf8NoBOM
+    $readerLabels=@('--label',"hsr.observation.owner=$($readerOwner.ToString('N'))",'--label',"hsr.observation.organization=$($readerDescriptor.OrganizationId.Replace('-',''))",'--label',"hsr.observation.scan=$($readerDescriptor.ScanId.Replace('-',''))",'--label',"hsr.observation.job=$($readerDescriptor.JobId.Replace('-',''))",'--label','hsr.observation.generation=1','--label',"hsr.worker.proof=$owner")
+    $null=Invoke-ReaderRuntime $Runtime (@('create','--interactive','--name',$readerTarget,'--network','none','--user','1001:1001','--read-only','--cap-drop','ALL','--security-opt','no-new-privileges','--entrypoint','dotnet')+$readerLabels+@($imageId,'/app/cli/HeadlessScreenReader.Cli.dll','--reader-fixture'))
+    $recoveryResources.Add($readerTarget)
+    $readerOutput=@(& dotnet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --recover-reader 2>&1)
+    $readerExit=$LASTEXITCODE; $readerRecovery=($readerOutput -join "`n") | ConvertFrom-Json
+    $readerGone=Invoke-ReaderRuntime $Runtime @('ps','--all','--filter',"name=^$readerTarget`$",'--format','{{.ID}}')
+    $readerRemoval=Get-Content (Join-Path $readerJournal "removals/$($readerOwner.ToString('N')).json") -Raw | ConvertFrom-Json
+    Assert-Proof ($readerExit -eq 0 -and $readerRecovery.Schema -eq 'hsr-reader-recovery-v1' -and $readerRecovery.State -eq 'ReaderRecovered' -and
+        $readerRecovery.Recovered -eq 1 -and [string]::IsNullOrWhiteSpace($readerGone.Text) -and -not (Test-Path $readerIntentPath) -and
+        $readerRemoval.ContainerAbsenceConfirmed -and $readerRemoval.RecoveredAfterRestart -and $readerRemoval.Intent.Owner -eq "$readerOwner") 'SeparateReaderRecoveryRemovesOnlyItsRecordedContainerWithoutDatabaseAccess'
     $stage='s3-evidence'
     $s3=& (Join-Path $PSScriptRoot 'Test-S3Evidence.ps1') -Runtime $Runtime -Image $imageId -PublishedCli $testedControl -Folder (Join-Path $folder 's3')
     Assert-Proof ($s3.Ready -and $s3.Passed -eq 10 -and $s3.ServerRemoved -and $s3.NetworkRemoved -and $s3.NativeOwnershipRecovered) 'ActualSignedS3FinalizationAndOffHostReadbackPreserveNativeFacts'

@@ -25,20 +25,29 @@ navigation or recording. This adds no public endpoint or arbitrary target.
 Open [the next increment and its six delivery steps](next-isolated-reader-sessions.md)
 for the implementation scope and exact completion gates.
 
-**First delivery step implemented:** the fixed Foundation worker now holds one
-Chromium context for bounded Open/Observe/Close exchanges, with strict framed
-JSON and actual native shutdown acknowledgement. Its focused 95-case suite
-passes locally on Windows, including the real CLI subprocess. See
-[the worker protocol](decisions/0045-persistent-fixture-reader-worker.md).
-The full Windows solution passes 1,702/1,702 with zero failures/skips;
-nonincremental Release build and format verification pass. This increment's
-Windows/Linux CI and any private promotion are separate from that local result.
-The first CI run passed eight jobs and all 95 worker cases on both OSes, but
-failed one existing Windows transport timing test. Its test-clock registration
-race and repair are [catalogued here](validation/persistent-reader-worker-v1.md);
-replacement CI remains required before promotion.
-Next, connect isolated supervision and a separate reader recovery journal;
-the hosted registry still requires that boundary before deployment acceptance.
+**Persistent child accepted:** source `5d87312` passed all nine jobs in
+[CI 39875200017](https://github.com/jvelezc/ai-screen-reader/actions/runs/39875200017),
+with Windows and Ubuntu each 1,702/1,702, and exact private deployment
+39876744008. The [timing-test repair](validation/persistent-reader-worker-v1.md)
+preserved the original native deadlines.
+
+**Second delivery step implemented:** the container supervisor now reserves
+launch ownership, uses an exclusively locked separate reader journal, reuses
+the immutable-image isolation checks and confirms native removal independently
+of child shutdown. Parent expiry/cancellation, bounded persistent IPC and retry
+after uncertain removal have 32 passing focused Windows cases. Full local Windows passes 1,734/1,734, zero failures/skips,
+the nonincremental Release build has zero warnings/errors, and format verification
+passes. The Windows-launched Linux/Podman harness passes25/25, including actual
+packaged readers, capacity/reuse, native removal and separate recovery.
+Current-source Windows/Linux CI remains separate.
+See [the ownership decision](decisions/0046-isolated-reader-supervision.md) and
+[current validation](validation/isolated-reader-supervisor-v1.md).
+
+**Do next:** connect the authenticated registry to this supervisor with reserved
+subject capacity, narrowly writable reader state and ordered host stop/recovery/
+readiness. Then verify a signed-in VPS reader lifecycle. This increment does
+not enable that hosted composition; local, CI, private promotion and tenant
+acceptance remain separate gates.
 
 <a id="next-signed-in-hosted-fixture-and-s3-acceptance"></a>
 

@@ -4,9 +4,9 @@ using HeadlessScreenReader.Worker;
 using HeadlessScreenReader.Domain;
 using System.Security.Cryptography;
 
-if (args.Length != 1 || args[0] is not ("--once" or "--poll" or "--recover" or "--check-runtime"))
+if (args.Length != 1 || args[0] is not ("--once" or "--poll" or "--recover" or "--check-runtime" or "--check-reader-runtime" or "--recover-reader"))
 {
-    Console.Error.WriteLine("Usage: HeadlessScreenReader.Worker --once | --poll | --recover | --check-runtime. Operator configuration is supplied through the private service environment.");
+    Console.Error.WriteLine("Usage: HeadlessScreenReader.Worker --once | --poll | --recover | --check-runtime | --check-reader-runtime | --recover-reader. Operator configuration is supplied through the private service environment.");
     return 2;
 }
 using var stop = new CancellationTokenSource();
@@ -18,6 +18,55 @@ try
     var image = Environment.GetEnvironmentVariable("HSR_WORKER_IMAGE") ?? throw new InvalidOperationException();
     var evidence = Environment.GetEnvironmentVariable("HSR_WORKER_EVIDENCE") ?? throw new InvalidOperationException();
     var runtime = Environment.GetEnvironmentVariable("HSR_WORKER_RUNTIME") ?? "podman";
+    if (args[0] is "--check-reader-runtime" or "--recover-reader")
+    {
+        // Independent reader journal: this probe may run while the queue worker retains its lock.
+        await using var supervisor = await IsolatedReaderSupervisor.StartAsync(evidence, runtime, image,
+            Environment.GetEnvironmentVariable("HSR_WORKER_SECCOMP"));
+        if (args[0] == "--recover-reader")
+        {
+            Console.WriteLine(JsonSerializer.Serialize(new { Schema = "hsr-reader-recovery-v1", State = "ReaderRecovered", supervisor.Recovered }));
+            return 0;
+        }
+        await using var reader = await supervisor.OpenAsync(Guid.NewGuid(), Guid.NewGuid(), stop.Token);
+        await using var secondReader = await supervisor.OpenAsync(Guid.NewGuid(), Guid.NewGuid(), stop.Token);
+        var duplicateDenied = false;
+        var capacityDenied = false;
+        try { await supervisor.OpenAsync(Guid.NewGuid(), reader.SessionId, stop.Token); }
+        catch (BrowserOperationException fault) when (fault.Code == "READER_SESSION_ALREADY_OPEN") { duplicateDenied = true; }
+        try { await supervisor.OpenAsync(Guid.NewGuid(), Guid.NewGuid(), stop.Token); }
+        catch (BrowserOperationException fault) when (fault.Code == "READER_SUPERVISOR_CAPACITY_UNCONFIRMED") { capacityDenied = true; }
+        if (!duplicateDenied || !capacityDenied) throw new InvalidDataException();
+        var first = reader.InitialSnapshot;
+        var second = await reader.ObserveAsync(stop.Token);
+        var third = await reader.ObserveAsync(stop.Token);
+        if (first.DocumentId != second.DocumentId || first.DocumentId != third.DocumentId)
+            throw new InvalidDataException();
+        await reader.DisposeAsync();
+        await secondReader.DisposeAsync();
+        await using var replacement = await supervisor.OpenAsync(Guid.NewGuid(), Guid.NewGuid(), stop.Token);
+        await replacement.DisposeAsync();
+        Console.WriteLine(JsonSerializer.Serialize(new
+        {
+            Schema = "hsr-reader-runtime-readiness-v1",
+            State = "ReaderRuntimeReady",
+            Image = image,
+            Captures = 3,
+            SameDocument = true,
+            ObservedNodes = third.Nodes.Length,
+            reader.ContainerAbsenceConfirmed,
+            reader.NativeShutdownConfirmed,
+            supervisor.Recovered,
+            DuplicateDenied = duplicateDenied,
+            CapacityDenied = capacityDenied,
+            CapacityReusableAfterConfirmedRemoval = replacement.ContainerAbsenceConfirmed && replacement.NativeShutdownConfirmed,
+            DatabaseAccessed = false,
+            ObservationPersisted = false,
+            DispatchedInputs = 0,
+            GoalVerified = false
+        }));
+        return 0;
+    }
     var journal = new OwnershipJournal(Path.Combine(evidence, ".runtime"));
     using var exclusive = journal.AcquireExclusive();
     var executor = new IsolatedFixtureExecutor(runtime, image, Environment.GetEnvironmentVariable("HSR_WORKER_SECCOMP"), journal);

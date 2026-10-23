@@ -38,37 +38,10 @@ public sealed partial class IsolatedFixtureExecutor : IFixtureExecutor
         NativeOwnership intent;
         try { intent = await _journal.BeginAsync(job, _runtime, _image, token); }
         catch (Exception) { throw new BrowserOperationException("WORKER_NATIVE_OWNERSHIP_UNCONFIRMED"); }
-        var owner = intent.Owner.ToString("N");
         var name = intent.ContainerName;
         try
         {
-            List<string> create = ["create", "--pull", "never", "--interactive", "--name", name, "--network", "none", "--user", "1001:1001",
-                "--read-only", "--cap-drop", "ALL", "--cap-add", "SYS_CHROOT", "--security-opt", "no-new-privileges",
-                "--memory", "1024m", "--cpus", "2", "--pids-limit", "256", "--shm-size", "256m",
-                "--tmpfs", "/tmp:rw,nosuid,size=256m,mode=1777", "--tmpfs", "/home/pwuser:rw,nosuid,size=64m,mode=1777",
-                "--label", "hsr.observation.owner=" + owner,
-                "--label", "hsr.observation.organization=" + job.OrganizationId.ToString("N"),
-                "--label", "hsr.observation.scan=" + job.ScanId.ToString("N"),
-                "--label", "hsr.observation.job=" + job.JobId.ToString("N"),
-                "--label", "hsr.observation.generation=" + job.Generation.ToString(System.Globalization.CultureInfo.InvariantCulture)];
-            if (_runtime == "docker") create.AddRange(["--security-opt", "seccomp=" + _seccomp]);
-            create.Add(_image);
-            if ((await InvokeAsync(create, null, token)).Code != 0) throw new InvalidDataException("WORKER_CONTAINER_CREATE_UNCONFIRMED");
-            var inspect = await InvokeAsync(["inspect", name], null, token);
-            if (inspect.Code != 0) throw new InvalidDataException("WORKER_CONTAINER_INSPECTION_UNCONFIRMED");
-            using (var document = JsonDocument.Parse(inspect.Bytes))
-            {
-                var item = document.RootElement[0];
-                var host = item.GetProperty("HostConfig");
-                var config = item.GetProperty("Config");
-                if (config.GetProperty("Labels").GetProperty("hsr.observation.owner").GetString() != owner
-                    || config.GetProperty("User").GetString() != "1001:1001"
-                    || host.GetProperty("NetworkMode").GetString() != "none" || host.GetProperty("Privileged").GetBoolean()
-                    || !host.GetProperty("ReadonlyRootfs").GetBoolean() || host.GetProperty("PidsLimit").GetInt64() != 256
-                    || host.GetProperty("Memory").GetInt64() != 1_073_741_824
-                    || item.GetProperty("Mounts").EnumerateArray().Any(m => m.GetProperty("Type").GetString() is "bind" or "volume"))
-                    throw new InvalidDataException("WORKER_CONTAINER_ISOLATION_UNCONFIRMED");
-            }
+            await CreateAndInspectAsync(intent, token);
             var result = await InvokeAsync(["start", "--attach", "--interactive", name],
                 JsonSerializer.SerializeToUtf8Bytes(job), token, TimeSpan.FromSeconds(120));
             if (result.Code != 0) throw new InvalidDataException("WORKER_CONTAINER_EXECUTION_UNCONFIRMED");
@@ -82,6 +55,95 @@ public sealed partial class IsolatedFixtureExecutor : IFixtureExecutor
             if (!await RemoveOwnedAsync(intent)) throw new BrowserOperationException("WORKER_CONTAINER_CLEANUP_UNCONFIRMED");
             try { await _journal.RecordRemovalAsync(intent, false, CancellationToken.None); }
             catch (Exception) { throw new BrowserOperationException("WORKER_NATIVE_OWNERSHIP_UNCONFIRMED"); }
+        }
+    }
+
+    private async Task CreateAndInspectAsync(NativeOwnership intent, CancellationToken token, bool reader = false)
+    {
+        var owner = intent.Owner.ToString("N");
+        var name = intent.ContainerName;
+        var job = intent.Job;
+        List<string> create = ["create", "--pull", "never", "--interactive", "--name", name, "--network", "none", "--user", "1001:1001",
+            "--read-only", "--cap-drop", "ALL", "--cap-add", "SYS_CHROOT", "--security-opt", "no-new-privileges",
+            "--memory", "1024m", "--cpus", "2", "--pids-limit", "256", "--shm-size", "256m",
+            "--tmpfs", "/tmp:rw,nosuid,size=256m,mode=1777", "--tmpfs", "/home/pwuser:rw,nosuid,size=64m,mode=1777",
+            "--label", "hsr.observation.owner=" + owner,
+            "--label", "hsr.observation.organization=" + job.OrganizationId.ToString("N"),
+            "--label", "hsr.observation.scan=" + job.ScanId.ToString("N"),
+            "--label", "hsr.observation.job=" + job.JobId.ToString("N"),
+            "--label", "hsr.observation.generation=" + job.Generation.ToString(System.Globalization.CultureInfo.InvariantCulture)];
+        if (_runtime == "docker") create.AddRange(["--security-opt", "seccomp=" + _seccomp]);
+        if (reader) create.AddRange(["--entrypoint", "dotnet"]);
+        create.Add(_image);
+        if (reader) create.AddRange(["/app/cli/HeadlessScreenReader.Cli.dll", "--reader-fixture"]);
+        if ((await InvokeAsync(create, null, token)).Code != 0) throw new InvalidDataException("WORKER_CONTAINER_CREATE_UNCONFIRMED");
+        var inspect = await InvokeAsync(["inspect", name], null, token);
+        if (inspect.Code != 0) throw new InvalidDataException("WORKER_CONTAINER_INSPECTION_UNCONFIRMED");
+        using (var document = JsonDocument.Parse(inspect.Bytes))
+        {
+            var item = document.RootElement[0];
+            var host = item.GetProperty("HostConfig");
+            var config = item.GetProperty("Config");
+            if (config.GetProperty("Labels").GetProperty("hsr.observation.owner").GetString() != owner
+                || config.GetProperty("User").GetString() != "1001:1001"
+                || host.GetProperty("NetworkMode").GetString() != "none" || host.GetProperty("Privileged").GetBoolean()
+                || !host.GetProperty("ReadonlyRootfs").GetBoolean() || host.GetProperty("PidsLimit").GetInt64() != 256
+                || host.GetProperty("Memory").GetInt64() != 1_073_741_824
+                || item.GetProperty("Mounts").EnumerateArray().Any(m => m.GetProperty("Type").GetString() is "bind" or "volume"))
+                throw new InvalidDataException("WORKER_CONTAINER_ISOLATION_UNCONFIRMED");
+            if (reader) ValidateReaderContainer(item, intent);
+        }
+    }
+
+    internal static void ValidateReaderContainer(JsonElement item, NativeOwnership intent)
+    {
+        var config = item.GetProperty("Config");
+        var labels = config.GetProperty("Labels");
+        if (item.GetProperty("Image").GetString()?.Replace("sha256:", "", StringComparison.Ordinal) != intent.Image[7..]
+            || labels.GetProperty("hsr.observation.organization").GetString() != intent.Job.OrganizationId.ToString("N")
+            || labels.GetProperty("hsr.observation.scan").GetString() != intent.Job.ScanId.ToString("N")
+            || labels.GetProperty("hsr.observation.job").GetString() != intent.Job.JobId.ToString("N")
+            || labels.GetProperty("hsr.observation.generation").GetString() != "1"
+            || !config.GetProperty("Entrypoint").EnumerateArray().Select(value => value.GetString()).SequenceEqual(["dotnet"])
+            || !config.GetProperty("Cmd").EnumerateArray().Select(value => value.GetString())
+                .SequenceEqual(["/app/cli/HeadlessScreenReader.Cli.dll", "--reader-fixture"]))
+            throw new InvalidDataException("READER_CONTAINER_IDENTITY_UNCONFIRMED");
+    }
+
+    internal async Task<IsolatedReaderSession> OpenReaderAsync(FixtureJob descriptor, Guid session, CancellationToken token)
+    {
+        descriptor.Validate();
+        var intent = await _journal.BeginAsync(descriptor, _runtime, _image, token).ConfigureAwait(false);
+        IsolatedReaderSession? connection = null;
+        async Task RemoveAsync()
+        {
+            if (!await RemoveOwnedAsync(intent).ConfigureAwait(false))
+                throw new BrowserOperationException("READER_CONTAINER_CLEANUP_UNCONFIRMED");
+            await _journal.RecordRemovalAsync(intent, false, CancellationToken.None).ConfigureAwait(false);
+        }
+        try
+        {
+            await CreateAndInspectAsync(intent, token, reader: true).ConfigureAwait(false);
+            var start = new ProcessStartInfo(_runtime)
+            {
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardInput = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            };
+            foreach (var arg in new[] { "start", "--attach", "--interactive", intent.ContainerName }) start.ArgumentList.Add(arg);
+            start.Environment.Clear();
+            foreach (var pair in ChildEnvironment()) start.Environment[pair.Key] = pair.Value;
+            connection = new IsolatedReaderSession(start, session, RemoveAsync);
+            await connection.OpenAsync(token).ConfigureAwait(false);
+            return connection;
+        }
+        catch
+        {
+            if (connection is not null) await connection.DisposeAsync().ConfigureAwait(false);
+            else await RemoveAsync().ConfigureAwait(false);
+            throw new BrowserOperationException("READER_CONTAINER_OPEN_UNCONFIRMED");
         }
     }
 
