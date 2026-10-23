@@ -8,6 +8,12 @@ see [decision 0046](decisions/0046-isolated-reader-supervision.md). Authenticate
 registry composition, host recovery/readiness integration and signed-in hosted
 session acceptance remain the next gates.
 
+Before registry composition, accept the Windows shutdown repair through all nine
+CI jobs, promote the exact artifact and pass the private VPS reader-runtime
+canary. The internal native grace is now one second, reserving three seconds for
+cleanup while retaining exit confirmation strictly below four seconds and the
+five-second ownership bound. See the [shutdown repair evidence](validation/browser-shutdown-v1.md#one-second-grace-with-unchanged-exit-and-ownership-deadlines).
+
 The next increment lets an authorized API consumer open one reader, inspect the
 same page more than once, and close it reliably. The browser runs in its own
 restricted worker, without account tokens, database passwords or storage keys.

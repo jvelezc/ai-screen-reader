@@ -10,26 +10,31 @@ public sealed class ChromiumOwnedRootStopTests
     [Theory]
     [InlineData(0)]
     [InlineData(1000)]
-    public async Task OwnedRootStop_StartsAtTwoSecondsAndAckDoesNotReplaceExitProof(int contextTime)
+    public async Task OwnedRootStop_StartsAtOneSecondAndAckDoesNotReplaceExitProof(int contextTime)
     {
-        var time = new FakeTimeProvider(); var context = Signal(); var browserStarted = Signal(); var process = Signal(); var stop = Signal(); var stops = 0;
-        Task? actual = null; ChromiumShutdown? shutdown = null;
-        shutdown = new(() => context.Task, () => { browserStarted.SetResult(); return Task.CompletedTask; }, () => { }, time,
+        var time = new FakeTimeProvider(); var process = Signal(); var stop = Signal(); var stops = 0;
+        Task? reentered = null; ChromiumShutdown? shutdown = null;
+        shutdown = new(() => { time.Advance(TimeSpan.FromMilliseconds(contextTime)); return Task.CompletedTask; }, () => Task.CompletedTask, () => { }, time,
             waitProcessExit: () => process.Task, stopOwnedProcess: () =>
-            { Assert.Same(actual, shutdown!.CloseAsync()); Interlocked.Increment(ref stops); stop.SetResult(); return Task.CompletedTask; });
-        actual = shutdown.CloseAsync(); time.Advance(TimeSpan.FromMilliseconds(contextTime)); context.SetResult(); await browserStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        time.Advance(TimeSpan.FromMilliseconds(1999 - contextTime)); Assert.Equal(0, stops);
-        time.Advance(TimeSpan.FromMilliseconds(1)); await stop.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            { reentered = shutdown!.CloseAsync(); Interlocked.Increment(ref stops); stop.SetResult(); return Task.CompletedTask; });
+        var actual = shutdown.CloseAsync();
+        if (contextTime < 1000)
+        {
+            time.Advance(TimeSpan.FromMilliseconds(999 - contextTime)); Assert.Equal(0, stops);
+            time.Advance(TimeSpan.FromMilliseconds(1));
+        }
+        await stop.Task.WaitAsync(TimeSpan.FromSeconds(5));
         await NativeShutdownTestSync.UntilAsync(() => shutdown.Status.OwnedProcessStopCallSettled);
         Assert.True(shutdown.Status.OwnedProcessStopRequested); Assert.True(shutdown.Status.OwnedProcessStopAcknowledged);
+        Assert.Same(actual, reentered);
         Assert.False(shutdown.Status.TransportDisposed); Assert.False(shutdown.Status.ProcessExitConfirmed); Assert.False(actual.IsCompleted);
-        time.Advance(TimeSpan.FromMilliseconds(1999)); process.SetResult(); await actual;
+        time.Advance(TimeSpan.FromMilliseconds(2999)); process.SetResult(); await actual;
         Assert.Equal(1, stops); Assert.Equal(BrowserShutdownPhase.Closed, shutdown.Status.Phase); Assert.Equal(3999d, shutdown.Status.ProcessExitConfirmationMilliseconds);
         Assert.False(shutdown.Status.TransportEscalatedBeforeProcessExit); Assert.Equal(0, shutdown.Status.ActiveCalls);
     }
     [Theory]
     [InlineData(0)]
-    [InlineData(1999)]
+    [InlineData(999)]
     public async Task OwnedRootStop_TimelyGracefulExitNeverDispatchesFallback(int exitAt)
     {
         var time = new FakeTimeProvider(); var process = Signal(); var stops = 0;
@@ -90,18 +95,18 @@ public sealed class ChromiumOwnedRootStopTests
         Assert.Equal(BrowserShutdownPhase.Closed, shutdown.Status.Phase); Assert.Equal(0, shutdown.Status.ActiveCalls);
     }
     [Theory]
-    [InlineData(1999, false)]
-    [InlineData(2000, true)]
-    [InlineData(2500, true)]
+    [InlineData(2999, false)]
+    [InlineData(3000, true)]
+    [InlineData(3500, true)]
     public async Task OwnedRootStop_ConfirmationStillMustPrecedeTheOriginalFourSecondDeadline(int cost, bool fails)
     {
         var time = new FakeTimeProvider(); var process = Signal();
         var shutdown = new ChromiumShutdown(() => Task.CompletedTask, () => Task.CompletedTask, () => { }, time, waitProcessExit: () => process.Task,
             stopOwnedProcess: () => { time.Advance(TimeSpan.FromMilliseconds(cost)); process.SetResult(); return Task.CompletedTask; });
-        var actual = shutdown.CloseAsync(); time.Advance(TimeSpan.FromSeconds(2));
+        var actual = shutdown.CloseAsync(); time.Advance(TimeSpan.FromSeconds(1));
         if (fails) Assert.Equal("CHROMIUM_BROWSER_CLOSE_UNCONFIRMED", (await Assert.ThrowsAsync<BrowserOperationException>(() => actual)).Code);
         else await actual;
-        Assert.Equal(fails, shutdown.Status.BrowserDeadlineExceeded); Assert.Equal(2000d + cost, shutdown.Status.ProcessExitConfirmationMilliseconds);
+        Assert.Equal(fails, shutdown.Status.BrowserDeadlineExceeded); Assert.Equal(1000d + cost, shutdown.Status.ProcessExitConfirmationMilliseconds);
         Assert.True(shutdown.Status.OwnedProcessStopCallSettled); Assert.True(shutdown.Status.OwnedProcessStopAcknowledged);
         Assert.Equal(fails ? BrowserShutdownPhase.Faulted : BrowserShutdownPhase.Closed, shutdown.Status.Phase);
     }

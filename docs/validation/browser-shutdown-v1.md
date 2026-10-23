@@ -60,11 +60,11 @@ CI39538136292 remained failed overall: Windows1,169/1,171, Ubuntu1,171/1,171 and
 
 CI39539944407 failed overall: Windows1,169/1,171 with two frame-test shutdown deadlines; Ubuntu1,171/1,171, all CLI/package checks and the other four Linux jobs passed. The preceding paragraph and recording-viewer failures passed. Contexts acknowledged, while SDK responses and root-exit confirmation were still pending at the deadline; actual cleanup settled after transport stop at4,127 and5,656ms. The root's precise kernel exit time and native cause remain unmeasured.
 
-The repair reserves the second half of the existing four-second native wait budget for actual owned-transport stop and process-exit confirmation. The soft grace ends at two seconds of total native time; context time is included. Disposal is attempted once. An explicit TransportEscalatedBeforeProcessExit fact means before confirmation, not measured before actual kernel exit. Actual process/context/browser calls remain joined; failed transport/collector/SDK calls and late confirmation cannot recover. No production OS kill or directory deletion is introduced. The integration test has an emergency cleanup branch limited to its own pre-retained root handle; passing root-exit assertions mean that branch is not used as acceptance evidence.
+The current repair reserves three seconds of the existing four-second native wait budget for actual owned-transport stop and process-exit confirmation. The soft grace ends at one second of total native time; context time is included. Disposal is attempted once. An explicit TransportEscalatedBeforeProcessExit fact means before confirmation, not measured before actual kernel exit. Actual process/context/browser calls remain joined; failed transport/collector/SDK calls and late confirmation cannot recover. No production OS kill or directory deletion is introduced. The integration test has an emergency cleanup branch limited to its own pre-retained root handle; passing root-exit assertions mean that branch is not used as acceptance evidence.
 
 | Requirement | Evidence |
 | --- | --- |
-| Soft escalation at1,999/2,000ms, context0/250/1,000ms included, both pending and acknowledged SDK paths still require actual exit | OwnedTransport_StopsAtTwoSecondsOfTotalNativeTimeAndStillRequiresActualExit |
+| Soft escalation at999/1,000ms, context0/250/1,000ms included, both pending and acknowledged SDK paths still require actual exit | OwnedTransport_StopsAtOneSecondOfTotalNativeTimeAndStillRequiresActualExit |
 | Actual stop cost consumes the same budget;3,999ms accepted,4,000/4,500ms faulted | OwnedTransport_StopCostConsumesTheOriginalFourSecondBudget |
 | Caller cancellation cannot drain the actual process watch after early transport stop | OwnedTransport_CancelledCallerCannotAcknowledgeTheStillPendingProcessWatch |
 | SDK rejection during stop stays failed after exit without leaking native text | OwnedTransport_SdkRejectionDuringEarlyStopRemainsAFailureAfterActualExit |
@@ -99,7 +99,7 @@ CI39655895713 passed all six Linux jobs, Ubuntu1,234/1,234, while Windows passed
 
 | Requirement | Evidence |
 | --- | --- |
-| Root stop starts at2sec total native time, one actual call shared by reentrant close; request ack is not exit | OwnedRootStop_StartsAtTwoSecondsAndAckDoesNotReplaceExitProof |
+| Root stop starts at1sec total native time, one actual call shared by reentrant close; request ack is not exit | OwnedRootStop_StartsAtOneSecondAndAckDoesNotReplaceExitProof |
 | Timely graceful exit and missing independent watch never dispatch root stop | OwnedRootStop_TimelyGracefulExitNeverDispatchesFallback; OwnedRootStop_RequiresAnIndependentWatchBeforeAnyDispatch |
 | Root-stop rejection is sanitized and sticky despite later root exit | OwnedRootStop_FailureIsStickyEvenWhenTransportLaterConfirmsRootExit |
 | Actual SDK rejection remains a failure after native exit | OwnedRootStop_NativeExitCannotWaiveAnActuallyRejectedSdkClose |
@@ -121,7 +121,7 @@ OwnedChromiumProcess now retains the same CDP-confirmed handle and waits for act
 | Requirement | Evidence |
 | --- | --- |
 | Actual root wait completes outside the shared pool only after kernel exit, preserving another browser | ActualOwnedExitWatch_ConfirmsKernelExitOutsideSharedThreadPoolAndPreservesAnotherBrowser |
-| Timely root stop acknowledgement cannot replace actual exit or waive the deadline | OwnedRootStop_StartsAtTwoSecondsAndAckDoesNotReplaceExitProof; OwnedRootStop_ConfirmationStillMustPrecedeTheOriginalFourSecondDeadline |
+| Timely root stop acknowledgement cannot replace actual exit or waive the deadline | OwnedRootStop_StartsAtOneSecondAndAckDoesNotReplaceExitProof; OwnedRootStop_ConfirmationStillMustPrecedeTheOriginalFourSecondDeadline |
 | Actual pending callbacks and rejected SDK calls remain failures | OwnedRootStop_TimelyExitAndCancelledWaitCannotDrainItsStillPendingActualCallback; OwnedRootStop_NativeExitCannotWaiveAnActuallyRejectedSdkClose |
 
 Focused local Windows validation passed64/64, failed/skipped0, including the previously failed tree test. Receipt: artifacts/worker-validation/exit-watch-focused.trx. Full regression and replacement CI pending; VPS deployment has not started.
@@ -133,3 +133,13 @@ CI39685067675 passed all shutdown checks, Ubuntu1,352/1,352, SQL161/161 and work
 The painted-control correction passes local Windows1,352/1,352, failed/skipped0, all prior1,352 identities retained. Receipt: artifacts/worker-validation/paint-control-regression.trx. Focused ChromiumCaptureProbeTests passes4/4. Formatting verification passes. The production binaries retain the previously accepted strict local build; this correction changes only test setup/assertion diagnostics and documentation. Replacement full CI remains required before deployment.
 
 CI39687306453 accepted the dedicated exit watch and painted decoder control: all nine jobs passed, Windows/Ubuntu1,352 each, SQL161 and worker17, with all CLI checks. The full native4,000/5,000ms constraints and original first/last-frame assertions remained. Subsequent private worker deployment is a separate increment.
+
+## One-second grace with unchanged exit and ownership deadlines
+
+CI39898416359 and CI39900043409 at b164e04 each failed one different Windows native-exit check, with root confirmation at4,136.757ms and4,504.472ms respectively. In the latter driver-only path, actual transport disposal took2,511.0872ms after the previous2,000ms grace. Neither late exit is accepted. These receipts establish insufficient remaining cleanup time; they do not establish the exact OS scheduling cause of the other miss.
+
+The internal grace now ends at1,000ms of total native time, leaving3,000ms for the existing owned root or driver stop and independent exit confirmation. Context close still shares this origin. Strict exit confirmation before4,000ms, actual callback/transport joining and the outer5,000ms ownership deadline are unchanged. No retry, extra privilege, arbitrary process lookup or broader target access is introduced.
+
+DriverCleanup_ReservesThreeSecondsWithoutExtendingTheActualExitDeadline covers2,500ms and2,999ms cleanup success and3,000ms cleanup failure at the absolute4,000ms boundary. All three cases failed against the old grace; the repaired focused Windows run passed69/69, including real retained-root and driver-only Chromium witnesses and the previously failed paragraph test. Boundary and reentrant-call tests now assert999/1,000ms escalation while retaining3,999/4,000ms confirmation assertions. Full Windows regression, remote Linux/Windows CI and private deployment remain separate gates until fresh receipts confirm them.
+
+Final local Windows validation discovers, executes and passes1,740/1,740 with zero failures/skips, including all three new cleanup-budget cases. The nonincremental Release build passes with zero warnings/errors and complete format verification exits0. Remote Windows/Linux CI, packaged Linux native acceptance and exact-artifact VPS promotion/readback are still separate gates; no hosted reader API lifecycle is claimed by these local checks.

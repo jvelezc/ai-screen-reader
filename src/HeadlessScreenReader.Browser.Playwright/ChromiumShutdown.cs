@@ -110,9 +110,10 @@ internal sealed class ChromiumShutdown(Func<Task> closeContext, Func<Task> close
                 }
                 else
                 {
-                    // Reserve half the existing native budget for our driver's shutdown and OS confirmation.
+                    // Reserve three seconds of the existing native budget for shutdown and OS confirmation.
+                    // Windows driver disposal has exceeded 2.5 seconds; a two-second grace leaves too little cleanup time.
                     // This is a soft grace period, not acknowledgement of a still-running process.
-                    var grace = TimeSpan.FromSeconds(2) - _time.GetElapsedTime(nativeStarted.Value);
+                    var grace = TimeSpan.FromSeconds(1) - _time.GetElapsedTime(nativeStarted.Value);
                     if (grace > TimeSpan.Zero)
                     {
                         try
@@ -120,7 +121,7 @@ internal sealed class ChromiumShutdown(Func<Task> closeContext, Func<Task> close
                             var first = await Task.WhenAny(browser, process).WaitAsync(grace, _time).ConfigureAwait(false);
                             if (first == browser && !await browser.ConfigureAwait(false))
                             { Fail("CHROMIUM_BROWSER_CLOSE_UNCONFIRMED"); return; }
-                            grace = TimeSpan.FromSeconds(2) - _time.GetElapsedTime(nativeStarted.Value);
+                            grace = TimeSpan.FromSeconds(1) - _time.GetElapsedTime(nativeStarted.Value);
                             if (!process.IsCompleted && grace > TimeSpan.Zero)
                                 await process.WaitAsync(grace, _time).ConfigureAwait(false);
                         }
