@@ -16,12 +16,19 @@ Prioritize an independently usable core API and MCP. The Lovable UI consumes thi
 
 ## Next: isolated hosted reader sessions
 
-**Next action:** run the existing owned read-only reader-session lifecycle in a
-credential-free isolated browser worker. Reuse native ownership, limits and
-recovery; keep user JWTs, database and S3 authority in trusted services. Prove
-open, two observations of the same browser context, expiry/cancellation drain and
-confirmed native close on Windows/Linux and the private VPS before enabling
-navigation or recording. This adds no public endpoint or arbitrary target.
+**Current increment:** document-fenced read-only navigation and paged command
+history reuse the existing reader engine and isolated capture broker. The private
+isolated lifecycle source3471fd3 already passed all nine CI jobs, Windows/Ubuntu
+1,801 each, native Linux30, operator122, exact deployment39925519783 and independent
+VPS service/broker/native checks. This increment's delivery gates are tracked in
+[navigation validation](validation/hosted-reader-navigation-v1.md).
+
+**Next acceptance action:** verify a confirmed application user's deployed reader
+lifecycle, navigation and timeline. A local masked account prompt is prepared;
+the identity-method question remains pending. MCP/dashboard login is a separate
+identity. Do not substitute synthetic identities for this gate. Continue core
+implementation independently while that account test is pending. Authenticated
+Edge-to-core reachability, human/AT acceptance and public publication stay separate.
 Open [the next increment and its six delivery steps](next-isolated-reader-sessions.md)
 for the implementation scope and exact completion gates.
 
@@ -50,8 +57,8 @@ See [the ownership decision](decisions/0046-isolated-reader-supervision.md) and
 exact private deployment39910679532 and a fresh actual VPS Podman4.9 reader canary.
 The original four-second exit and five-second ownership deadlines remain intact.
 
-**Do next:** finish validation and private delivery of the authenticated isolated
-reader API, then verify a signed-in VPS reader lifecycle. The implementation now
+**Isolated API delivery accepted:** source3471fd3 passed CI39924056549 and exact
+private deployment39925519783; signed-in reader acceptance remains open. The implementation
 connects the registry to the trusted worker through a private loopback broker;
 the HTTP service keeps its existing read-only filesystem. Packaged Chromium proof
 passes28/28 and Linux operator checks122/122. These synthetic identities do not
@@ -78,12 +85,14 @@ in the core repository.
 [Tenant-owned reader sessions](decisions/0044-tenant-reader-sessions.md) now add
 core HTTP open/read/observe/close operations with subject and current workspace
 authorization, monotonic expiry, capacity limits, actual cancellation drain and
-quarantined cleanup failures. Contract 1.1.0 describes their real response shapes.
+quarantined cleanup failures. Contract 1.2.0 adds read-only navigation and paged command history.
 Only the bundled Foundation fixture is admitted; no browser input or recording is
 enabled. A real Chromium/Kestrel consumer test exercises the lifecycle.
 
-**After the isolated session gate:** adapt shared reader navigation and timeline to owned HTTP
-sessions with stale-document checks and explicit input outcomes. Define gateway
+**Navigation implementation:** [decision0048](decisions/0048-hosted-read-only-navigation.md)
+adds an explicit browse-command allowlist, prior-observation/document fences,
+fresh isolated captures and bounded, explicitly truncated history. No keyboard
+input or activation is admitted. Define gateway
 authentication/tenant delegation and an approved
 Edge-to-core network path before wiring Supabase Edge Functions or expanding the
 Lovable screens. The UI is a third-party consumer even though we own both repos.
@@ -158,14 +167,15 @@ flowchart LR
     Worker --> Portal[Private workspace and report implementation]
     Portal --> Sessions[Tenant-owned read-only fixture sessions]
     Sessions --> Accepted[Signed-in hosted fixture and S3 report accepted]
-    Accepted --> Next[NEXT: credential-free isolated reader sessions]
-    Next --> CoreParity[Document-fenced navigation and timeline]
-    Next --> Durable[Durable hosted scan jobs and recovery]
+    Accepted --> Isolated[Privately deployed isolated reader API]
+    Isolated --> CoreParity[Read-only navigation and timeline: validation in progress]
+    CoreParity --> Next[NEXT: signed-in reader acceptance]
+    Next --> Durable[Broader hosted recovery and workflow acceptance]
     Client --> ViewerControl[Human takeover acceptance]
     classDef done fill:#dcfce7,stroke:#166534,color:#14532d
     classDef next fill:#dbeafe,stroke:#1d4ed8,color:#1e3a8a
     classDef planned fill:#f3f4f6,stroke:#6b7280,color:#374151
-    class Reader,Trace,Privacy,Timing,Recording,Viewer,ReaderGate,Features,Replay,Owned,Controller,Headed,Handoff,PrivateViewer,Pixels,Client,Admission,Leases,Worker,Portal,Sessions,Accepted done
+    class Reader,Trace,Privacy,Timing,Recording,Viewer,ReaderGate,Features,Replay,Owned,Controller,Headed,Handoff,PrivateViewer,Pixels,Client,Admission,Leases,Worker,Portal,Sessions,Accepted,Isolated done
     class Next next
     class ViewerControl,Durable,CoreParity planned
     click Client "validation/private-fixture-client-v1.md"

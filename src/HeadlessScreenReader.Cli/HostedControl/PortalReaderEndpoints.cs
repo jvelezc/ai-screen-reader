@@ -26,6 +26,18 @@ internal static class PortalReaderEndpoints
             await HostedControlServer.BodyAsync<PortalEmptyRequest>(context, token).ConfigureAwait(false);
             return TypedResults.Json(await readers.ObserveAsync(HostedControlServer.Actor(context), organization, session, token).ConfigureAwait(false), PortalJson.Options);
         }).WithName("ObserveReaderSession").WithSummary("Capture exposed fixture semantics without input, recording or a verified goal claim");
+        app.MapPost(resource + "/commands", async (HttpContext context, PortalReaderSessions readers,
+            Guid organization, Guid session, CancellationToken token) =>
+        {
+            var request = await HostedControlServer.BodyAsync<PortalReaderCommandRequest>(context, token).ConfigureAwait(false);
+            return TypedResults.Json(await readers.CommandAsync(HostedControlServer.Actor(context), organization, session, request, token).ConfigureAwait(false), PortalJson.Options);
+        }).WithName("NavigateReaderSession").WithSummary("Navigate exposed semantics using a fresh capture and an observed document fence; no browser input");
+        app.MapPost(resource + "/timeline", async (HttpContext context, PortalReaderSessions readers,
+            Guid organization, Guid session, CancellationToken token) =>
+        {
+            var request = await HostedControlServer.BodyAsync<PortalReaderTimelineRequest>(context, token).ConfigureAwait(false);
+            return TypedResults.Json(await readers.TimelineAsync(HostedControlServer.Actor(context), organization, session, request, token).ConfigureAwait(false), PortalJson.Options);
+        }).WithName("GetReaderTimeline").WithSummary("Page transient reader events; hasMore and timelineTruncated distinguish paging from incomplete retained history");
         app.MapDelete(resource, async (HttpContext context, PortalReaderSessions readers,
             Guid organization, Guid session, CancellationToken token) =>
             TypedResults.Json(await readers.CloseAsync(HostedControlServer.Actor(context), organization, session, token).ConfigureAwait(false), PortalJson.Options))

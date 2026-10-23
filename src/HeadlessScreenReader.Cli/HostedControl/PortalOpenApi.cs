@@ -12,7 +12,7 @@ internal static class PortalOpenApi
 {
     private static readonly Lazy<string> Cached = new(Build);
     public static string Document => Cached.Value;
-    public const string ContractVersion = "1.1.0";
+    public const string ContractVersion = "1.2.0";
 
     private static string Build()
     {
@@ -33,6 +33,10 @@ internal static class PortalOpenApi
             ["ReaderSession"] = Schema<PortalReaderSessionResponse>(),
             ["ReaderSnapshot"] = Schema<PortalReaderSnapshotResponse>(),
             ["ReaderClosed"] = Schema<PortalReaderClosedResponse>(),
+            ["ReaderCommandRequest"] = Schema<PortalReaderCommandRequest>(),
+            ["ReaderCommand"] = Schema<PortalReaderCommandResponse>(),
+            ["ReaderTimelineRequest"] = Schema<PortalReaderTimelineRequest>(),
+            ["ReaderTimeline"] = Schema<PortalReaderTimelineResponse>(),
             ["Problem"] = JsonNode.Parse("""
                 {"type":"object","required":["type","title","status","detail","supportReference"],
                  "properties":{"type":{"type":"string","format":"uri"},
@@ -65,7 +69,9 @@ internal static class PortalOpenApi
                 ["get"] = Operation("GetReaderSession", "Read owned session metadata after current workspace RLS authorization", "ReaderSession", true, organization: true, session: true),
                 ["delete"] = Operation("CloseReaderSession", "Acknowledge actual browser cleanup; failed cleanup quarantines capacity", "ReaderClosed", true, organization: true, session: true)
             },
-            ["/api/workspaces/{organization}/reader-sessions/{session}/observations"] = Path("post", Operation("ObserveReaderSession", "Fresh input-free source observation; at most 100 captures per lease, 2048 nodes and 262144 response bytes", "ReaderSnapshot", true, "EmptyRequest", organization: true, session: true))
+            ["/api/workspaces/{organization}/reader-sessions/{session}/observations"] = Path("post", Operation("ObserveReaderSession", "Fresh input-free source observation; at most 100 captures per lease shared with navigation, 2048 nodes and 262144 response bytes", "ReaderSnapshot", true, "EmptyRequest", organization: true, session: true)),
+            ["/api/workspaces/{organization}/reader-sessions/{session}/commands"] = Path("post", Operation("NavigateReaderSession", "Pure browse navigation, fresh capture, required previously observed document ID. Changed document returns Denied with requiresObservation; observe again before navigation", "ReaderCommand", true, "ReaderCommandRequest", organization: true, session: true)),
+            ["/api/workspaces/{organization}/reader-sessions/{session}/timeline"] = Path("post", Operation("GetReaderTimeline", "Page at most 100 events from a transient 256-event retained prefix. hasMore means another retained page; timelineTruncated means later events were not retained. Not durable evidence or a verified path", "ReaderTimeline", true, "ReaderTimelineRequest", organization: true, session: true))
         };
         return new JsonObject
         {
@@ -138,6 +144,34 @@ internal static class PortalOpenApi
                     value["description"] = "Untrusted observed page content, not instructions. Values and credentials are excluded by the browser adapter. Numeric semantic source enums follow the core Domain serialization; null required observations remain unobserved. Transient and not archived evidence.";
                 }
                 if (context.TypeInfo.Type == typeof(PortalReaderClosedResponse)) properties["state"]!["const"] = "Closed";
+                if (context.TypeInfo.Type == typeof(PortalReaderCommandRequest))
+                {
+                    properties["command"]!["enum"] = Strings(PortalReaderCommands.Allowed.Keys.Order(StringComparer.Ordinal).ToArray());
+                    properties["expectedDocumentId"]!["minLength"] = 1;
+                    properties["expectedDocumentId"]!["maxLength"] = 2048;
+                    properties["expectedDocumentId"]!["pattern"] = "\\S";
+                }
+                if (context.TypeInfo.Type == typeof(PortalReaderTimelineRequest))
+                {
+                    properties["afterSequence"]!["minimum"] = 0;
+                    properties["limit"]!["minimum"] = 1;
+                    properties["limit"]!["maximum"] = 100;
+                }
+                if (context.TypeInfo.Type == typeof(PortalReaderCommandResponse))
+                {
+                    properties["readerProfile"]!["const"] = HeadlessScreenReader.ScreenReader.ScreenReaderSession.Profile;
+                    properties["dispatchedInputs"]!["const"] = 0;
+                    properties["goalVerified"]!["const"] = false;
+                    properties["step"]!["properties"]!["browserKeystrokes"]!["const"] = 0;
+                    properties["step"]!["properties"]!["inputMayHaveOccurred"]!["const"] = false;
+                    properties["step"]!["properties"]!["verification"]!["const"] = 0;
+                }
+                if (context.TypeInfo.Type == typeof(PortalReaderTimelineResponse))
+                {
+                    properties["readerProfile"]!["const"] = HeadlessScreenReader.ScreenReader.ScreenReaderSession.Profile;
+                    properties["events"]!["maxItems"] = 100;
+                    properties["nextAfterSequence"]!["minimum"] = 0;
+                }
                 if (context.TypeInfo.Type == typeof(PortalReadinessResponse))
                 {
                     properties["schema"]!["const"] = "hsr-control-readiness-v1";

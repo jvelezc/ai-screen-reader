@@ -35,7 +35,7 @@ internal sealed class PortalFixtureReaderBrowser(ChromiumFixtureBrowser browser)
 /// Process-local read-only sessions, with fresh RLS authorization and bounded browser ownership.
 /// These resources are deliberately separate from the durable scan queue and stdio MCP workspace.
 /// </summary>
-internal sealed class PortalReaderSessions : IAsyncDisposable
+internal sealed partial class PortalReaderSessions : IAsyncDisposable
 {
     internal const int MaximumSessions = 2;
     internal const int MaximumObservations = 100;
@@ -142,6 +142,7 @@ internal sealed class PortalReaderSessions : IAsyncDisposable
                 var response = new PortalReaderSnapshotResponse(entry.Id, ScreenReaderSession.Profile, snapshot, 0, false);
                 if (snapshot.Nodes.Length > MaximumNodes || JsonSerializer.SerializeToUtf8Bytes(response, PortalJson.Options).Length > MaximumResponseBytes)
                     throw new PortalFault(503, "CONTROL_READER_OBSERVATION_TOO_LARGE");
+                entry.PublishedDocumentId = snapshot.DocumentId;
                 return response;
             }
             catch
@@ -201,10 +202,16 @@ internal sealed class PortalReaderSessions : IAsyncDisposable
         try { await entry.Browser.DisposeAsync().ConfigureAwait(false); }
         catch
         {
-            if (entry.Browser.CleanupConfirmed) _sessions.Remove(entry.Id);
+            if (entry.Browser.CleanupConfirmed) Remove(entry);
             else entry.Quarantined = true;
             throw new PortalFault(503, "CONTROL_READER_CLOSE_UNCONFIRMED");
         }
+        Remove(entry);
+    }
+
+    private void Remove(Entry entry)
+    {
+        entry.Reader?.Dispose();
         _sessions.Remove(entry.Id);
     }
 
@@ -251,6 +258,9 @@ internal sealed class PortalReaderSessions : IAsyncDisposable
         public DateTimeOffset ExpiresAt { get; } = expiresAt;
         public IPortalReaderBrowser Browser { get; } = browser;
         public int Observations { get; set; }
+        public string? PublishedDocumentId { get; set; }
+        public string? CapturedDocumentId { get; set; }
+        public ScreenReaderSession? Reader { get; set; }
         public bool Quarantined { get; set; }
         public bool OpenFailed { get; set; }
     }

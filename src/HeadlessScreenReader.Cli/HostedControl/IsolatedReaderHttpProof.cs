@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Diagnostics;
 using HeadlessScreenReader.Worker;
+using HeadlessScreenReader.Domain;
 
 namespace HeadlessScreenReader.Cli.HostedControl;
 
@@ -93,6 +94,30 @@ internal static class IsolatedReaderHttpProof
         if (first.Snapshot.DocumentId != second.Snapshot.DocumentId || first.Snapshot.Nodes.IsDefaultOrEmpty
             || first.DispatchedInputs != 0 || second.DispatchedInputs != 0 || first.GoalVerified || second.GoalVerified)
             throw new InvalidDataException();
+        setStage?.Invoke("reader-navigation");
+        using var headingResponse = await http.PostAsJsonAsync(resource + "/commands",
+            new PortalReaderCommandRequest("NextHeading", second.Snapshot.DocumentId), PortalJson.Options).ConfigureAwait(false);
+        var heading = await ReadAsync<PortalReaderCommandResponse>(headingResponse).ConfigureAwait(false);
+        using var buttonResponse = await http.PostAsJsonAsync(resource + "/commands",
+            new PortalReaderCommandRequest("NextButton", second.Snapshot.DocumentId), PortalJson.Options).ConfigureAwait(false);
+        var button = await ReadAsync<PortalReaderCommandResponse>(buttonResponse).ConfigureAwait(false);
+        if (heading.Step.Outcome != ReaderOutcome.CursorMoved || button.Step.Outcome != ReaderOutcome.CursorMoved
+            || second.Snapshot.Nodes.Single(node => node.Id == heading.Step.CursorNodeId).Name != "Screen reader fixture"
+            || second.Snapshot.Nodes.Single(node => node.Id == button.Step.CursorNodeId).Name != "Open details"
+            || heading.RequiresObservation || button.RequiresObservation || heading.DispatchedInputs != 0 || button.DispatchedInputs != 0
+            || button.GoalVerified || heading.GoalVerified || button.Step.InputMayHaveOccurred
+            || button.Step.BrowserKeystrokes != 0 || heading.Step.FocusedNodeId != button.Step.FocusedNodeId) throw new InvalidDataException();
+        using var timelineResponse = await http.PostAsJsonAsync(resource + "/timeline",
+            new PortalReaderTimelineRequest(0, 1), PortalJson.Options).ConfigureAwait(false);
+        var timeline = await ReadAsync<PortalReaderTimelineResponse>(timelineResponse).ConfigureAwait(false);
+        using var restResponse = await http.PostAsJsonAsync(resource + "/timeline",
+            new PortalReaderTimelineRequest(timeline.NextAfterSequence, 100), PortalJson.Options).ConfigureAwait(false);
+        var rest = await ReadAsync<PortalReaderTimelineResponse>(restResponse).ConfigureAwait(false);
+        if (timeline.Events.Length != 1 || !timeline.HasMore || rest.HasMore || rest.TimelineTruncated
+            || !rest.Events.Any(item => item.Kind == ReaderEventKind.Announcement && item.NodeId == button.Step.CursorNodeId
+                && item.DocumentId == second.Snapshot.DocumentId)
+            || rest.Events.Any(item => item.Kind is ReaderEventKind.InputAttempted or ReaderEventKind.InputCompleted or ReaderEventKind.GoalVerified))
+            throw new InvalidDataException();
         setStage?.Invoke("authority-denial");
         http.DefaultRequestHeaders.Authorization = new("Bearer", SyntheticReaderProject.Other);
         using var wrongOwner = await http.DeleteAsync(resource).ConfigureAwait(false);
@@ -120,6 +145,9 @@ internal static class IsolatedReaderHttpProof
             Image = image,
             SameDocument = true,
             FreshHttpObservations = 2,
+            FreshNavigationCaptures = 2,
+            ReaderCursorProgressionConfirmed = true,
+            PagedCommandTimelineConfirmed = true,
             InitialNativeCaptures = 1,
             ObservedNodes = second.Snapshot.Nodes.Length,
             AnonymousDenied = true,

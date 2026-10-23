@@ -31,6 +31,14 @@ public sealed class PortalOpenApiTests
         forged["goalVerified"] = true;
         using var invalid = JsonDocument.Parse(forged.ToJsonString());
         Assert.False(Matches(invalid.RootElement, Component(spec.RootElement, "ReaderSnapshot"), spec.RootElement));
+        using var command = await http.PostAsync(created.Headers.Location + "/commands", Json("{\"command\":\"NextHeading\",\"expectedDocumentId\":\"document\"}"));
+        Assert.Equal(HttpStatusCode.OK, command.StatusCode);
+        using var step = JsonDocument.Parse(await command.Content.ReadAsStringAsync());
+        Assert.True(Matches(step.RootElement, Component(spec.RootElement, "ReaderCommand"), spec.RootElement));
+        using var timeline = await http.PostAsync(created.Headers.Location + "/timeline", Json("{\"afterSequence\":0,\"limit\":100}"));
+        Assert.Equal(HttpStatusCode.OK, timeline.StatusCode);
+        using var events = JsonDocument.Parse(await timeline.Content.ReadAsStringAsync());
+        Assert.True(Matches(events.RootElement, Component(spec.RootElement, "ReaderTimeline"), spec.RootElement));
         using var closed = await http.DeleteAsync(created.Headers.Location);
         Assert.Equal(HttpStatusCode.OK, closed.StatusCode);
         using var receipt = JsonDocument.Parse(await closed.Content.ReadAsStringAsync());
@@ -52,7 +60,7 @@ public sealed class PortalOpenApiTests
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         var spec = document.RootElement;
         Assert.Equal("3.1.0", spec.GetProperty("openapi").GetString());
-        Assert.Equal("1.1.0", spec.GetProperty("info").GetProperty("version").GetString());
+        Assert.Equal("1.2.0", spec.GetProperty("info").GetProperty("version").GetString());
         Assert.Equal("https://json-schema.org/draft/2020-12/schema", spec.GetProperty("jsonSchemaDialect").GetString());
         Assert.Equal("http", spec.GetProperty("components").GetProperty("securitySchemes").GetProperty("bearerAuth").GetProperty("type").GetString());
         var operations = new[]
@@ -68,7 +76,9 @@ public sealed class PortalOpenApiTests
             ("/api/workspaces/{organization}/reader-sessions", "post", "201", "ReaderSession", true),
             ("/api/workspaces/{organization}/reader-sessions/{session}", "get", "200", "ReaderSession", true),
             ("/api/workspaces/{organization}/reader-sessions/{session}", "delete", "200", "ReaderClosed", true),
-            ("/api/workspaces/{organization}/reader-sessions/{session}/observations", "post", "200", "ReaderSnapshot", true)
+            ("/api/workspaces/{organization}/reader-sessions/{session}/observations", "post", "200", "ReaderSnapshot", true),
+            ("/api/workspaces/{organization}/reader-sessions/{session}/commands", "post", "200", "ReaderCommand", true),
+            ("/api/workspaces/{organization}/reader-sessions/{session}/timeline", "post", "200", "ReaderTimeline", true)
         };
         foreach (var (path, method, status, schema, authenticated) in operations)
         {
@@ -255,6 +265,22 @@ public sealed class PortalOpenApiTests
             using var value = JsonDocument.Parse(body);
             Assert.Equal(accepted, Matches(value.RootElement, Component(spec.RootElement, schema), spec.RootElement));
         }
+    }
+
+    [Theory]
+    [InlineData("ReaderCommandRequest", "{\"command\":\"NextHeading\",\"expectedDocumentId\":\"document\"}", true)]
+    [InlineData("ReaderCommandRequest", "{\"command\":\"Activate\",\"expectedDocumentId\":\"document\"}", false)]
+    [InlineData("ReaderCommandRequest", "{\"command\":\"NextHeading\",\"expectedDocumentId\":\" \"}", false)]
+    [InlineData("ReaderCommandRequest", "{\"command\":\"NextHeading\"}", false)]
+    [InlineData("ReaderCommandRequest", "{\"command\":\"NextHeading\",\"expectedDocumentId\":\"document\",\"key\":\"Enter\"}", false)]
+    [InlineData("ReaderTimelineRequest", "{\"afterSequence\":0,\"limit\":100}", true)]
+    [InlineData("ReaderTimelineRequest", "{\"afterSequence\":-1,\"limit\":1}", false)]
+    [InlineData("ReaderTimelineRequest", "{\"afterSequence\":0,\"limit\":101}", false)]
+    public void NavigationRequestSchemasMatchTheReadOnlyPolicyAndPagingBounds(string schema, string json, bool accepted)
+    {
+        using var spec = JsonDocument.Parse(PortalOpenApi.Document);
+        using var body = JsonDocument.Parse(json);
+        Assert.Equal(accepted, Matches(body.RootElement, Component(spec.RootElement, schema), spec.RootElement));
     }
 
     [Theory]

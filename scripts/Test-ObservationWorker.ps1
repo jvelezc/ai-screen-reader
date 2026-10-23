@@ -106,7 +106,9 @@ try {
     $httpProbe | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $folder 'isolated-reader-http.json') -Encoding utf8NoBOM
     Assert-Proof ($httpExit -eq 0 -and $httpProbe.Schema -eq 'hsr-isolated-reader-http-proof-v1' -and
         $httpProbe.State -eq 'IsolatedReaderHttpReady' -and $httpProbe.Image -eq $imageId -and $httpProbe.SameDocument -and
-        $httpProbe.FreshHttpObservations -eq 2 -and $httpProbe.InitialNativeCaptures -eq 1 -and $httpProbe.ObservedNodes -gt 0 -and
+        $httpProbe.FreshHttpObservations -eq 2 -and $httpProbe.FreshNavigationCaptures -eq 2 -and
+        $httpProbe.ReaderCursorProgressionConfirmed -and $httpProbe.PagedCommandTimelineConfirmed -and
+        $httpProbe.InitialNativeCaptures -eq 1 -and $httpProbe.ObservedNodes -gt 0 -and
         $httpProbe.AnonymousDenied -and $httpProbe.OtherSubjectDenied -and $httpProbe.RevokedWorkspaceDenied -and $httpProbe.StaleSessionDenied -and
         $httpProbe.NativeShutdownConfirmed -and $httpProbe.ContainerAbsenceConfirmed -and $httpProbe.NativeExecutionOutsideApi -and
         $httpProbe.GlobalSubjectReservationConfirmed -and $httpProbe.GlobalCapacityConfirmed -and $httpProbe.WorkerScopeDenied -and

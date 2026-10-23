@@ -7,8 +7,11 @@ Native container supervision and separately locked recovery are now implemented;
 see [decision 0046](decisions/0046-isolated-reader-supervision.md). Authenticated
 registry composition and host recovery/readiness integration are implemented in
 [decision0047](decisions/0047-isolated-reader-http-composition.md). The current
-gate is to finish validation, promote the exact accepted artifact privately and
-verify a signed-in hosted reader lifecycle.
+isolated lifecycle source3471fd3 passed all nine CI jobs39924056549, exact private
+deployment39925519783 and independent VPS service/broker/native checks. Real
+application-identity acceptance remains open. The next implementation increment
+adds [document-fenced browse navigation and history](decisions/0048-hosted-read-only-navigation.md);
+its current delivery checks are recorded separately from that identity gate.
 
 The Windows shutdown repair is accepted as `2bc8405`: all nine jobs in CI39909237769,
 exact private deployment39910679532 and the actual VPS reader-runtime canary.
@@ -82,7 +85,8 @@ native cleanup and sibling survival. Its identities are synthetic. Current-sourc
 CI, private promotion and signed-in tenant acceptance are recorded separately in
 [HTTP composition validation](validation/isolated-reader-http-v1.md).
 
-After this gate, add document-fenced reader navigation and timeline operations.
+Document-fenced read-only navigation and timeline operations are implemented;
+see [their exact validation gates](validation/hosted-reader-navigation-v1.md).
 An approved authenticated Edge-to-core network path is still needed for the
 separate Lovable consumer. Public MCP hosting, plugins, human takeover and real
 assistive-technology acceptance remain distinct later gates.

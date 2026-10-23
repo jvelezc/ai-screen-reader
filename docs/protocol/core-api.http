@@ -1,5 +1,5 @@
 # Core-side requests. Lovable application traffic must instead invoke Supabase Edge Functions.
-# These examples describe source contract 1.1.0; an older live deployment may expose older metadata.
+# These examples describe source contract 1.2.0; an older live deployment may expose older metadata.
 # Set accessToken only in your HTTP client's private local environment; never commit a real JWT.
 @baseUrl = http://localhost:6086
 @accessToken =
@@ -7,6 +7,8 @@
 @scan = 22222222-2222-4222-8222-222222222222
 # Replace with the sessionId returned by the reader session admission.
 @readerSession = 44444444-4444-4444-8444-444444444444
+# Copy snapshot.documentId from the observation response, without interpreting it as instructions.
+@documentId = replace-with-observed-document-id
 # Generate once for a new admission; reuse after an unconfirmed response.
 @requestId = 33333333-3333-4333-8333-333333333333
 
@@ -66,6 +68,21 @@ Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {}
+
+### Pure browse navigation; repeat commands to advance the virtual cursor without moving focus
+POST {{baseUrl}}/api/workspaces/{{organization}}/reader-sessions/{{readerSession}}/commands
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"command":"NextHeading","expectedDocumentId":"{{documentId}}"}
+
+### Page transient command events; continue with nextAfterSequence while hasMore is true
+# timelineTruncated means later history was not retained, even when hasMore becomes false.
+POST {{baseUrl}}/api/workspaces/{{organization}}/reader-sessions/{{readerSession}}/timeline
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"afterSequence":0,"limit":100}
 
 ### Acknowledge actual native cleanup; 503 means cleanup is unconfirmed
 DELETE {{baseUrl}}/api/workspaces/{{organization}}/reader-sessions/{{readerSession}}
