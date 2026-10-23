@@ -59,10 +59,10 @@ public sealed class ChromiumProcessShutdownTests
     {
         var time = new FakeTimeProvider(); var process = Signal(); var disposed = Signal();
         var shutdown = new ChromiumShutdown(() => Task.CompletedTask, () => Task.CompletedTask, () => disposed.SetResult(), time, waitProcessExit: () => process.Task);
-        var actual = shutdown.CloseAsync(); time.Advance(TimeSpan.FromMilliseconds(999)); Assert.False(disposed.Task.IsCompleted);
+        var actual = shutdown.CloseAsync(); time.Advance(TimeSpan.FromMilliseconds(249)); Assert.False(disposed.Task.IsCompleted);
         time.Advance(TimeSpan.FromMilliseconds(1)); await disposed.Task.WaitAsync(TimeSpan.FromSeconds(5)); await NativeShutdownTestSync.UntilAsync(() => shutdown.Status.TransportCallSettled);
         Assert.False(shutdown.Status.BrowserDeadlineExceeded); Assert.False(actual.IsCompleted);
-        time.Advance(TimeSpan.FromMilliseconds(2999)); Assert.False(shutdown.Status.BrowserDeadlineExceeded);
+        time.Advance(TimeSpan.FromMilliseconds(3749)); Assert.False(shutdown.Status.BrowserDeadlineExceeded);
         time.Advance(TimeSpan.FromMilliseconds(1));
         await WaitForDeadline(shutdown);
         Assert.False(actual.IsCompleted); Assert.Equal(1, shutdown.Status.ActiveCalls); Assert.True(shutdown.Status.BrowserDeadlineExceeded);

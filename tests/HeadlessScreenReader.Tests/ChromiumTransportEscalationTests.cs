@@ -13,7 +13,7 @@ public sealed class ChromiumTransportEscalationTests
     [InlineData(1000, false)]
     [InlineData(0, true)]
     [InlineData(1000, true)]
-    public async Task OwnedTransport_StopsAtOneSecondOfTotalNativeTimeAndStillRequiresActualExit(int contextTime, bool sdkAcknowledged)
+    public async Task OwnedTransport_StopsAtQuarterSecondOfTotalNativeTimeAndStillRequiresActualExit(int contextTime, bool sdkAcknowledged)
     {
         var time = new GraceTimerTimeProvider(); var context = Signal(); var browser = Signal(); var process = Signal(); var stopped = Signal(); var started = Signal(); var stops = 0;
         var shutdown = new ChromiumShutdown(() => context.Task, () => { time.BeginBrowserClose(); started.SetResult(); return sdkAcknowledged ? Task.CompletedTask : browser.Task; },
@@ -22,37 +22,37 @@ public sealed class ChromiumTransportEscalationTests
         await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
         // The callback starts before WaitAsync registers its relative timer. Advancing
         // fake time in that gap would move the deadline; wait for the actual timer.
-        if (contextTime < 1000)
+        if (contextTime < 250)
         {
             await time.GraceTimerArmed.WaitAsync(TimeSpan.FromSeconds(5));
-            time.Advance(TimeSpan.FromMilliseconds(999 - contextTime)); Assert.False(stopped.Task.IsCompleted); Assert.False(actual.IsCompleted);
+            time.Advance(TimeSpan.FromMilliseconds(249 - contextTime)); Assert.False(stopped.Task.IsCompleted); Assert.False(actual.IsCompleted);
             time.Advance(TimeSpan.FromMilliseconds(1));
         }
         await stopped.Task.WaitAsync(TimeSpan.FromSeconds(5)); await NativeShutdownTestSync.UntilAsync(() => shutdown.Status.TransportCallSettled);
         Assert.True(shutdown.Status.TransportDisposed); Assert.True(shutdown.Status.TransportEscalatedBeforeProcessExit);
         Assert.False(shutdown.Status.ProcessExitConfirmed); Assert.False(shutdown.Status.BrowserDeadlineExceeded); Assert.False(actual.IsCompleted);
-        time.Advance(TimeSpan.FromMilliseconds(2999)); Assert.False(actual.IsCompleted); process.SetResult(); await actual;
+        time.Advance(TimeSpan.FromMilliseconds(3999 - Math.Max(contextTime, 250))); Assert.False(actual.IsCompleted); process.SetResult(); await actual;
         Assert.Equal(1, stops); Assert.Equal(BrowserShutdownPhase.Closed, shutdown.Status.Phase); Assert.Equal(0, shutdown.Status.ActiveCalls);
         Assert.True(shutdown.Status.ProcessExitConfirmed); Assert.True(shutdown.Status.ProcessCallSettled); Assert.True(shutdown.Status.BrowserCallSettled);
         Assert.Equal(sdkAcknowledged, shutdown.Status.BrowserCloseAcknowledgedBeforeTransport);
         Assert.False(shutdown.Status.TransportEscalatedAfterProcessExit); Assert.Equal(3999d, shutdown.Status.NativeElapsedMilliseconds);
     }
     [Theory]
-    [InlineData(2999, false)]
-    [InlineData(3000, true)]
-    [InlineData(3500, true)]
+    [InlineData(3749, false)]
+    [InlineData(3750, true)]
+    [InlineData(4250, true)]
     public async Task OwnedTransport_StopCostConsumesTheOriginalFourSecondBudget(int stopCost, bool fails)
     {
         var time = new FakeTimeProvider(); var browser = Signal(); var process = Signal();
         var shutdown = new ChromiumShutdown(() => Task.CompletedTask, () => browser.Task, () =>
         { time.Advance(TimeSpan.FromMilliseconds(stopCost)); process.SetResult(); browser.SetResult(); }, time, waitProcessExit: () => process.Task);
-        var actual = shutdown.CloseAsync(); time.Advance(TimeSpan.FromSeconds(1));
+        var actual = shutdown.CloseAsync(); time.Advance(TimeSpan.FromMilliseconds(250));
         if (fails) Assert.Equal("CHROMIUM_BROWSER_CLOSE_UNCONFIRMED", (await Assert.ThrowsAsync<BrowserOperationException>(() => actual)).Code);
         else await actual;
         Assert.Equal(fails ? BrowserShutdownPhase.Faulted : BrowserShutdownPhase.Closed, shutdown.Status.Phase);
-        Assert.Equal(fails, shutdown.Status.BrowserDeadlineExceeded); Assert.Equal(1000d + stopCost, shutdown.Status.NativeElapsedMilliseconds);
+        Assert.Equal(fails, shutdown.Status.BrowserDeadlineExceeded); Assert.Equal(250d + stopCost, shutdown.Status.NativeElapsedMilliseconds);
         Assert.True(shutdown.Status.ProcessExitConfirmed); Assert.Equal(0, shutdown.Status.ActiveCalls);
-        Assert.Equal(1000d + stopCost, shutdown.Status.ProcessExitConfirmationMilliseconds);
+        Assert.Equal(250d + stopCost, shutdown.Status.ProcessExitConfirmationMilliseconds);
     }
     [Fact]
     public async Task OwnedTransport_CancelledCallerCannotAcknowledgeTheStillPendingProcessWatch()
@@ -132,7 +132,7 @@ public sealed class ChromiumTransportEscalationTests
         private readonly TaskCompletionSource _armed = Signal();
         private readonly DateTimeOffset _deadline;
         private bool _browserClosing;
-        public GraceTimerTimeProvider() => _deadline = _clock.GetUtcNow() + TimeSpan.FromSeconds(1);
+        public GraceTimerTimeProvider() => _deadline = _clock.GetUtcNow() + TimeSpan.FromMilliseconds(250);
         public Task GraceTimerArmed => _armed.Task;
         public override long TimestampFrequency => _clock.TimestampFrequency;
         public override long GetTimestamp() => _clock.GetTimestamp();

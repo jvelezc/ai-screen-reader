@@ -10,8 +10,9 @@ session acceptance remain the next gates.
 
 Before registry composition, accept the Windows shutdown repair through all nine
 CI jobs, promote the exact artifact and pass the private VPS reader-runtime
-canary. The internal native grace is now one second, reserving three seconds for
-cleanup while retaining exit confirmation strictly below four seconds and the
+canary. Internal native grace is one second with a scoped root stop, and 250ms
+for driver-only disposal. Both retain exit confirmation strictly below four
+seconds and the
 five-second ownership bound. See the [shutdown repair evidence](validation/browser-shutdown-v1.md#one-second-grace-with-unchanged-exit-and-ownership-deadlines).
 
 The next increment lets an authorized API consumer open one reader, inspect the
