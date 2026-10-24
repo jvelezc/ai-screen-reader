@@ -144,9 +144,46 @@ public sealed class ChromiumFrameTests
         Assert.Equal(remove ? TextCursorResetReason.NodeRemoved : TextCursorResetReason.DocumentChanged, invalidated.TextCursorReset);
         Assert.Null(invalidated.TextRange);
         Assert.DoesNotContain(settled.Nodes, node => node.Id == text.CursorNodeId);
+        var stillInvalid = await reader.ExecuteAsync(ReaderCommand.ReadCurrentText);
+        Assert.Equal(ReaderOutcome.Unknown, stillInvalid.Outcome);
+        Assert.Equal(invalidated.TextCursorReset, stillInvalid.TextCursorReset);
+        Assert.Null(stillInvalid.TextRange);
+        await reader.ExecuteAsync(ReaderCommand.DocumentStart);
+        var anchored = await reader.ExecuteAsync(ReaderCommand.NextWord);
+        Assert.Equal("Frame", anchored.Announcement);
+        Assert.Equal(initial.DocumentId, anchored.TextRange?.DocumentId);
+        Assert.Equal(0, anchored.TextRange?.Start); Assert.Null(anchored.TextCursorReset);
         Assert.Contains(reader.Timeline, item => item.Kind == ReaderEventKind.FrameChanged &&
             (remove ? item.Frame?.ReasonCode == "FRAME_DETACHED" : item.Frame?.FrameId == oldFrame.FrameId && item.Frame.DocumentId != oldFrame.DocumentId));
         Assert.DoesNotContain(reader.Timeline, item => item.Kind == ReaderEventKind.InputAttempted);
+    }
+
+    [Fact]
+    public async Task Frames_Chromium_ExplicitTextAnchorsKeepCurrentParentAndChildProvenance()
+    {
+        await using var browser = await ChromiumFixtureBrowser.LaunchAsync(fixture: BundledFixture.Frames);
+        using var reader = new ScreenReaderSession(browser);
+        var snapshot = await browser.CaptureAsync();
+        await reader.ExecuteAsync(ReaderCommand.DocumentStart);
+        var parent = await reader.ExecuteAsync(ReaderCommand.NextWord);
+        Assert.Equal("Frame", parent.Announcement); Assert.Equal(snapshot.DocumentId, parent.TextRange?.DocumentId);
+        Assert.Equal(snapshot.Frames.Single(frame => frame.ParentFrameId is null).FrameId, parent.TextRange?.FrameId);
+        await reader.ExecuteAsync(ReaderCommand.DocumentStart);
+        await reader.ExecuteAsync(ReaderCommand.NextHeading);
+        await reader.ExecuteAsync(ReaderCommand.NextHeading);
+        var child = await reader.ExecuteAsync(ReaderCommand.NextWord);
+        Assert.Equal("Child", child.Announcement); Assert.Equal(0, child.TextRange?.Start);
+        Assert.NotEqual(parent.TextRange?.DocumentId, child.TextRange?.DocumentId);
+        Assert.NotEqual(parent.TextRange?.FrameId, child.TextRange?.FrameId);
+        Assert.Equal(child.TextRange, (await reader.ExecuteAsync(ReaderCommand.ReadCurrentText)).TextRange);
+        var next = await reader.ExecuteAsync(ReaderCommand.NextWord);
+        Assert.Equal("heading", next.Announcement); Assert.Equal(6, next.TextRange?.Start);
+        Assert.Equal(child.TextRange?.DocumentId, next.TextRange?.DocumentId);
+        Assert.Equal(child.TextRange?.FrameId, next.TextRange?.FrameId);
+        await reader.ExecuteAsync(ReaderCommand.DocumentStart);
+        var returned = await reader.ExecuteAsync(ReaderCommand.NextWord);
+        Assert.Equal(parent.TextRange, returned.TextRange); Assert.Null(returned.TextCursorReset);
+        Assert.DoesNotContain(reader.Timeline, item => item.Kind is ReaderEventKind.InputAttempted or ReaderEventKind.GoalVerified);
     }
 
     private static async Task TabToAsync(ScreenReaderSession reader, IScreenReaderBrowser browser, string name)

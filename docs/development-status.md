@@ -10,17 +10,27 @@ Prioritize an independently usable core API and MCP. The Lovable UI consumes thi
 | 1: local screen reader | Substantial local implementation | Reader profile v13, fixtures, bounded events/observations, policy checks and CI | Capture/privacy feasibility remains a prerequisite to editable entry and recording; broader supported-control scope is explicit |
 | 2: evidence-backed workflow | In progress | Bounded routes, append-only JSON, node/edge reports, controlled recording canaries, 20-marker timing proof and original route media with capture/action/event intervals and passive local viewer; bounded diagnostic provenance, explicit fresh-run replay and owned evidence writes | Broader workflow acceptance and diagnostics/search coverage |
 | 3: intervention and isolation | Partial | Exact public-host policy, independent Linux egress fence and exclusive local controller leases, headed Xvfb continuity and explicitly simulated excluded input and scoped loopback semantic and pixel viewing | Actual human/AT acceptance and hosted identity/capture/persistence fencing |
-| 4: durable hosted execution | In progress | Admission and fenced leases installed; accepted worker/control release a56c7c7 deployed privately with native readiness; actual signed-in tenant fixture completed with S3-backed report, independent object readback and anonymous denial;196 local PostgreSQL/pgmq cases | Credential-free hosted interactive reader execution; broader tenant restart/recovery acceptance |
+| 4: durable hosted execution | In progress | Installed admission/fenced leases; signed-in one-shot tenant/S3 report accepted; isolated credential-free reader, read-only navigation, paged events and state/edge trace accepted privately at25b2ecb;196 PostgreSQL/pgmq cases | Real application-user interactive-reader JWT/RLS acceptance; broader tenant restart/recovery; authenticated Edge-to-core |
 | 5: public MCP pilot | Deferred | Existing local stdio adapter | Public MCP HTTPS endpoint, client onboarding, plugin and pilot operations; private report remains active milestone4 work |
 | 6: measured extensions | Later | Bounded reader improvements through v13 | Broader validated widgets and compatible-run comparisons; public plugins remain deferred |
 
-## Next: isolated hosted reader sessions
+<a id="next-isolated-hosted-reader-sessions"></a>
 
-**Current increment:** [state nodes and directed cursor-command edges](decisions/0049-hosted-reader-state-edge-trace.md)
-retain actual fresh snapshots and explicit observation refresh links, with bounded
-paging and visible truncation. This transient trace does not establish a keyboard
-path or verified objective. Its gates are tracked in
-[trace validation](validation/hosted-reader-trace-v1.md).
+## Next: signed-in private reader workflow
+
+**Current increment:** [text cursor ownership](decisions/0050-text-cursor-ownership.md)
+invalidates retained offsets when the same node moves to another frame/document.
+Unknown state persists until explicit re-anchoring; unchanged owners retain their
+position. Hosted trace preserves the reset instead of presenting stale text as
+current evidence. See [ownership validation](validation/text-cursor-ownership-v1.md).
+
+**Accepted state/edge baseline:** source25b2ecb passed all nine jobs in
+[CI40080149650](https://github.com/jvelezc/ai-screen-reader/actions/runs/40080149650):
+Windows/Ubuntu1,872 each, native Linux30, operator122. Exact private
+[deployment40081051473](https://github.com/jvelezc/ai-screen-reader/actions/runs/40081051473)
+and independent VPS checks confirm contract1.3.0, paged snapshot/state/edge
+evidence, scoped native cleanup/recovery and unchanged public ingress.
+AppJwtValidated=false and HostedTenantReaderAccepted=false remain explicit.
 
 **Accepted navigation baseline:** source4468405 passed all nine CI jobs39992719717,
 Windows/Ubuntu1,847 each, native Linux30, operator122 and exact private
@@ -173,16 +183,17 @@ flowchart LR
     Portal --> Sessions[Tenant-owned read-only fixture sessions]
     Sessions --> Accepted[Signed-in hosted fixture and S3 report accepted]
     Accepted --> Isolated[Privately deployed isolated reader API]
-    Isolated --> CoreParity[Read-only navigation and timeline: validation in progress]
-    CoreParity --> Next[NEXT: signed-in reader acceptance]
+    Isolated --> CoreParity[Accepted navigation, events and state/edge trace]
+    CoreParity --> Ownership[Locally validated text ownership reset and re-anchor]
+    Ownership --> Next[NEXT: signed-in reader acceptance]
     Next --> Durable[Broader hosted recovery and workflow acceptance]
     Client --> ViewerControl[Human takeover acceptance]
     classDef done fill:#dcfce7,stroke:#166534,color:#14532d
     classDef next fill:#dbeafe,stroke:#1d4ed8,color:#1e3a8a
     classDef planned fill:#f3f4f6,stroke:#6b7280,color:#374151
-    class Reader,Trace,Privacy,Timing,Recording,Viewer,ReaderGate,Features,Replay,Owned,Controller,Headed,Handoff,PrivateViewer,Pixels,Client,Admission,Leases,Worker,Portal,Sessions,Accepted,Isolated done
+    class Reader,Trace,Privacy,Timing,Recording,Viewer,ReaderGate,Features,Replay,Owned,Controller,Headed,Handoff,PrivateViewer,Pixels,Client,Admission,Leases,Worker,Portal,Sessions,Accepted,Isolated,CoreParity,Ownership done
     class Next next
-    class ViewerControl,Durable,CoreParity planned
+    class ViewerControl,Durable planned
     click Client "validation/private-fixture-client-v1.md"
     click Worker "validation/observation-worker-v1.md"
     click Portal "decisions/0040-private-workspace-control.md"

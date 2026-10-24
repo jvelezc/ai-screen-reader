@@ -15,3 +15,5 @@ This is **transient completed-command evidence**, not a durable attempt journal,
 The credential-free worker, private broker, read-only API filesystem, database, S3 policy and private SSH ingress are unchanged. Real application JWT/RLS acceptance, authenticated Edge-to-core connectivity, human/AT acceptance and public MCP/plugin publication remain distinct gates. Durable graph storage and objective-path analysis are later capabilities.
 
 See [validation](../validation/hosted-reader-trace-v1.md).
+
+The [text cursor ownership repair](0050-text-cursor-ownership.md) makes frame/node-document changes invalidate retained text offsets, even when node IDs and text are unchanged. Trace keeps that unknown/reset outcome alongside the fresh snapshot. It does not infer character-position continuity from matching node IDs.

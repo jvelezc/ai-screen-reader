@@ -1,4 +1,28 @@
-# Next: isolated hosted reader sessions
+# Next: signed-in private reader workflow
+
+**Delivery accepted:** fixed-fixture isolated sessions, read-only navigation,
+paged events and state/edge evidence are privately deployed at25b2ecb after
+CI40080149650 and deployment40081051473. Windows/Ubuntu each passed1,872;
+native Linux30 and operator122 passed. Independent VPS native and API checks
+passed with explicitly synthetic identities.
+
+**Do next:** use a confirmed application identity through the prepared local
+masked prompt to verify observations, heading/button navigation, paged matching
+events and state/edge snapshots, denied authority and independently confirmed
+native close. The original-user JWT and workspace RLS must pass; MCP/dashboard
+login is separate. The identity-method choice remains pending.
+
+**Current reader repair:** [text ownership reset and re-anchor](decisions/0050-text-cursor-ownership.md)
+prevents stale offsets after a reused node changes frame/document. Its
+[validation record](validation/text-cursor-ownership-v1.md) separates local,
+CI, private delivery and actual application acceptance. This does not expand
+the hosted fixture allowlist or enable input.
+
+The implementation sequence below is historical delivery context. Its old
+pending-gate language is superseded by the status above and the current
+[architecture status](development-status.md#next-isolated-hosted-reader-sessions).
+
+## Historical delivery sequence
 
 Status: in progress. The signed-in shop run and its private S3 report are
 accepted. The first delivery step now implements the persistent fixed-fixture

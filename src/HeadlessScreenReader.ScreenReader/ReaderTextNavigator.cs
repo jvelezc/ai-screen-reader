@@ -29,7 +29,9 @@ internal sealed class ReaderTextNavigator
             var currentDocument = previous.FrameId is null ? snapshot.DocumentId
                 : snapshot.Frames.FirstOrDefault(frame => frame.FrameId == previous.FrameId)?.DocumentId ?? oldNode?.DocumentId;
             reset = _rootDocumentId != snapshot.DocumentId
-                || currentDocument is not null && previous.DocumentId != currentDocument ? TextCursorResetReason.DocumentChanged
+                || currentDocument is not null && previous.DocumentId != currentDocument
+                || oldNode is not null && (oldNode.FrameId != previous.FrameId
+                    || (oldNode.DocumentId ?? snapshot.DocumentId) != previous.DocumentId) ? TextCursorResetReason.DocumentChanged
                 : oldNode?.Text is null || oldNode.Role is not "StaticText" and not "LineBreak" ? TextCursorResetReason.NodeRemoved
                 : oldNode.Text.Text != _sourceText || oldNode.Text.Source != previous.Source ? TextCursorResetReason.TextChanged : null;
             if (reset is not null || anchorId != previous.NodeId) Clear();
