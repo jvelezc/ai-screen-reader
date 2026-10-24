@@ -39,6 +39,18 @@ public sealed class PortalOpenApiTests
         Assert.Equal(HttpStatusCode.OK, timeline.StatusCode);
         using var events = JsonDocument.Parse(await timeline.Content.ReadAsStringAsync());
         Assert.True(Matches(events.RootElement, Component(spec.RootElement, "ReaderTimeline"), spec.RootElement));
+        using var traceResponse = await http.PostAsync(created.Headers.Location + "/trace", Json("{\"afterSequence\":0,\"limit\":20}"));
+        Assert.Equal(HttpStatusCode.OK, traceResponse.StatusCode);
+        using var trace = JsonDocument.Parse(await traceResponse.Content.ReadAsStringAsync());
+        Assert.True(Matches(trace.RootElement, Component(spec.RootElement, "ReaderTrace"), spec.RootElement));
+        var falseInput = JsonNode.Parse(trace.RootElement.GetRawText())!;
+        falseInput["entries"]![0]!["edge"]!["browserKeystrokes"] = 1;
+        using var invalidInput = JsonDocument.Parse(falseInput.ToJsonString());
+        Assert.False(Matches(invalidInput.RootElement, Component(spec.RootElement, "ReaderTrace"), spec.RootElement));
+        var falseHistory = JsonNode.Parse(trace.RootElement.GetRawText())!;
+        falseHistory["traceTruncated"] = true;
+        using var invalidHistory = JsonDocument.Parse(falseHistory.ToJsonString());
+        Assert.False(Matches(invalidHistory.RootElement, Component(spec.RootElement, "ReaderTrace"), spec.RootElement));
         using var closed = await http.DeleteAsync(created.Headers.Location);
         Assert.Equal(HttpStatusCode.OK, closed.StatusCode);
         using var receipt = JsonDocument.Parse(await closed.Content.ReadAsStringAsync());
@@ -60,7 +72,7 @@ public sealed class PortalOpenApiTests
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         var spec = document.RootElement;
         Assert.Equal("3.1.0", spec.GetProperty("openapi").GetString());
-        Assert.Equal("1.2.0", spec.GetProperty("info").GetProperty("version").GetString());
+        Assert.Equal("1.3.0", spec.GetProperty("info").GetProperty("version").GetString());
         Assert.Equal("https://json-schema.org/draft/2020-12/schema", spec.GetProperty("jsonSchemaDialect").GetString());
         Assert.Equal("http", spec.GetProperty("components").GetProperty("securitySchemes").GetProperty("bearerAuth").GetProperty("type").GetString());
         var operations = new[]
@@ -78,7 +90,8 @@ public sealed class PortalOpenApiTests
             ("/api/workspaces/{organization}/reader-sessions/{session}", "delete", "200", "ReaderClosed", true),
             ("/api/workspaces/{organization}/reader-sessions/{session}/observations", "post", "200", "ReaderSnapshot", true),
             ("/api/workspaces/{organization}/reader-sessions/{session}/commands", "post", "200", "ReaderCommand", true),
-            ("/api/workspaces/{organization}/reader-sessions/{session}/timeline", "post", "200", "ReaderTimeline", true)
+            ("/api/workspaces/{organization}/reader-sessions/{session}/timeline", "post", "200", "ReaderTimeline", true),
+            ("/api/workspaces/{organization}/reader-sessions/{session}/trace", "post", "200", "ReaderTrace", true)
         };
         foreach (var (path, method, status, schema, authenticated) in operations)
         {

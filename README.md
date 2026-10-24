@@ -20,7 +20,7 @@ through Edge Functions in existing Supabase project `gpnijaxrgtwzwtrqsbcu`; it i
 third-party consumer. Reader, jobs and evidence logic stay here.
 
 The current bounded workspace/report API and [tenant-owned read-only fixture sessions](docs/decisions/0044-tenant-reader-sessions.md) publish
-[contract 1.2.0](docs/decisions/0048-hosted-read-only-navigation.md) at `/openapi/v1.json`,
+[contract 1.3.0](docs/decisions/0049-hosted-reader-state-edge-trace.md) at `/openapi/v1.json`,
 including response schemas and safe errors. See [HTTP examples](docs/protocol/core-api.http)
 and [the next core acceptance step](docs/development-status.md#next-isolated-hosted-reader-sessions).
 The private listener is not a public deployment, and the current HTTP surface does

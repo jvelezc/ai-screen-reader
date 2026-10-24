@@ -9,9 +9,10 @@ registry composition and host recovery/readiness integration are implemented in
 [decision0047](decisions/0047-isolated-reader-http-composition.md). The current
 isolated lifecycle source3471fd3 passed all nine CI jobs39924056549, exact private
 deployment39925519783 and independent VPS service/broker/native checks. Real
-application-identity acceptance remains open. The next implementation increment
-adds [document-fenced browse navigation and history](decisions/0048-hosted-read-only-navigation.md);
-its current delivery checks are recorded separately from that identity gate.
+application-identity acceptance remains open. [Document-fenced browse navigation and history](decisions/0048-hosted-read-only-navigation.md)
+are accepted as4468405 in CI39992719717 and private deployment39995270368.
+The current increment adds [actual state nodes, cursor edges and snapshot evidence](decisions/0049-hosted-reader-state-edge-trace.md);
+its [delivery checks](validation/hosted-reader-trace-v1.md) remain separate from that identity gate.
 
 The Windows shutdown repair is accepted as `2bc8405`: all nine jobs in CI39909237769,
 exact private deployment39910679532 and the actual VPS reader-runtime canary.

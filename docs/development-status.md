@@ -1,6 +1,6 @@
 # Original development goals and next step
 
-Updated October 23, 2026. The original proposal under `outputs/` remains unchanged. This status document tracks implementation against its acceptance gates.
+Updated October 24, 2026. The original proposal under `outputs/` remains unchanged. This status document tracks implementation against its acceptance gates.
 
 Prioritize an independently usable core API and MCP. The Lovable UI consumes this service through Edge Functions in existing Supabase project `gpnijaxrgtwzwtrqsbcu`. Public MCP hosting and official plugin publication remain separate from implementing the core protocols.
 
@@ -16,15 +16,19 @@ Prioritize an independently usable core API and MCP. The Lovable UI consumes thi
 
 ## Next: isolated hosted reader sessions
 
-**Current increment:** document-fenced read-only navigation and paged command
-history reuse the existing reader engine and isolated capture broker. The private
-isolated lifecycle source3471fd3 already passed all nine CI jobs, Windows/Ubuntu
-1,801 each, native Linux30, operator122, exact deployment39925519783 and independent
-VPS service/broker/native checks. This increment's delivery gates are tracked in
-[navigation validation](validation/hosted-reader-navigation-v1.md).
+**Current increment:** [state nodes and directed cursor-command edges](decisions/0049-hosted-reader-state-edge-trace.md)
+retain actual fresh snapshots and explicit observation refresh links, with bounded
+paging and visible truncation. This transient trace does not establish a keyboard
+path or verified objective. Its gates are tracked in
+[trace validation](validation/hosted-reader-trace-v1.md).
+
+**Accepted navigation baseline:** source4468405 passed all nine CI jobs39992719717,
+Windows/Ubuntu1,847 each, native Linux30, operator122 and exact private
+deployment39995270368. Independent VPS service/broker/native checks confirmed
+document-fenced navigation and paged history with synthetic identities.
 
 **Next acceptance action:** verify a confirmed application user's deployed reader
-lifecycle, navigation and timeline. A local masked account prompt is prepared;
+lifecycle, navigation, timeline and trace. A local masked account prompt is prepared;
 the identity-method question remains pending. MCP/dashboard login is a separate
 identity. Do not substitute synthetic identities for this gate. Continue core
 implementation independently while that account test is pending. Authenticated
@@ -85,7 +89,8 @@ in the core repository.
 [Tenant-owned reader sessions](decisions/0044-tenant-reader-sessions.md) now add
 core HTTP open/read/observe/close operations with subject and current workspace
 authorization, monotonic expiry, capacity limits, actual cancellation drain and
-quarantined cleanup failures. Contract 1.2.0 adds read-only navigation and paged command history.
+quarantined cleanup failures. Contract1.2.0 adds read-only navigation and paged command history;
+contract1.3.0 adds actual state/edge trace pages with capture evidence and explicit truncation.
 Only the bundled Foundation fixture is admitted; no browser input or recording is
 enabled. A real Chromium/Kestrel consumer test exercises the lifecycle.
 

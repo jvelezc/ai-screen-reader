@@ -38,6 +38,12 @@ internal static class PortalReaderEndpoints
             var request = await HostedControlServer.BodyAsync<PortalReaderTimelineRequest>(context, token).ConfigureAwait(false);
             return TypedResults.Json(await readers.TimelineAsync(HostedControlServer.Actor(context), organization, session, request, token).ConfigureAwait(false), PortalJson.Options);
         }).WithName("GetReaderTimeline").WithSummary("Page transient reader events; hasMore and timelineTruncated distinguish paging from incomplete retained history");
+        app.MapPost(resource + "/trace", async (HttpContext context, PortalReaderSessions readers,
+            Guid organization, Guid session, CancellationToken token) =>
+        {
+            var request = await HostedControlServer.BodyAsync<PortalReaderTraceRequest>(context, token).ConfigureAwait(false);
+            return TypedResults.Json(await readers.TraceAsync(HostedControlServer.Actor(context), organization, session, request, token).ConfigureAwait(false), PortalJson.Options);
+        }).WithName("GetReaderTrace").WithSummary("Page observed state nodes and reader-cursor command edges with fresh capture evidence; no browser input or goal claim");
         app.MapDelete(resource, async (HttpContext context, PortalReaderSessions readers,
             Guid organization, Guid session, CancellationToken token) =>
             TypedResults.Json(await readers.CloseAsync(HostedControlServer.Actor(context), organization, session, token).ConfigureAwait(false), PortalJson.Options))

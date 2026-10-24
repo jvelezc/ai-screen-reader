@@ -1,5 +1,5 @@
 # Core-side requests. Lovable application traffic must instead invoke Supabase Edge Functions.
-# These examples describe source contract 1.2.0; an older live deployment may expose older metadata.
+# These examples describe source contract 1.3.0; an older live deployment may expose older metadata.
 # Set accessToken only in your HTTP client's private local environment; never commit a real JWT.
 @baseUrl = http://localhost:6086
 @accessToken =
@@ -83,6 +83,15 @@ Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {"afterSequence":0,"limit":100}
+
+### Page actual state nodes, ReaderCursor edges and fresh snapshot evidence together
+# Retention is transient. traceTruncated means later commands were omitted; hasMore only covers retained pages.
+# RefreshedFromStateId is an observation link; zero input and false goal verification remain explicit.
+POST {{baseUrl}}/api/workspaces/{{organization}}/reader-sessions/{{readerSession}}/trace
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"afterSequence":0,"limit":20}
 
 ### Acknowledge actual native cleanup; 503 means cleanup is unconfirmed
 DELETE {{baseUrl}}/api/workspaces/{{organization}}/reader-sessions/{{readerSession}}

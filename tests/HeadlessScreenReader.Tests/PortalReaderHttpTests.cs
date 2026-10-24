@@ -65,6 +65,7 @@ public sealed class PortalReaderHttpTests
     [InlineData("observe")]
     [InlineData("command")]
     [InlineData("timeline")]
+    [InlineData("trace")]
     [InlineData("close")]
     public async Task HttpAuthenticationPrecedesEveryReaderResource(string operation)
     {
@@ -79,6 +80,7 @@ public sealed class PortalReaderHttpTests
             "observe" => await http.PostAsJsonAsync(path + "/observations", new { }),
             "command" => await http.PostAsJsonAsync(path + "/commands", new PortalReaderCommandRequest("NextHeading", "document")),
             "timeline" => await http.PostAsJsonAsync(path + "/timeline", new PortalReaderTimelineRequest(0, 100)),
+            "trace" => await http.PostAsJsonAsync(path + "/trace", new PortalReaderTraceRequest(0, 20)),
             "close" => await http.DeleteAsync(path),
             _ => await http.GetAsync(path)
         };
@@ -93,6 +95,7 @@ public sealed class PortalReaderHttpTests
     [InlineData("observe")]
     [InlineData("command")]
     [InlineData("timeline")]
+    [InlineData("trace")]
     [InlineData("close")]
     public async Task HttpOtherSubjectCannotUseOrCloseAnOwnedSession(string operation)
     {
@@ -107,6 +110,7 @@ public sealed class PortalReaderHttpTests
             "observe" => await other.PostAsJsonAsync(path + "/observations", new { }),
             "command" => await other.PostAsJsonAsync(path + "/commands", new PortalReaderCommandRequest("NextHeading", "document")),
             "timeline" => await other.PostAsJsonAsync(path + "/timeline", new PortalReaderTimelineRequest(0, 100)),
+            "trace" => await other.PostAsJsonAsync(path + "/trace", new PortalReaderTraceRequest(0, 20)),
             "close" => await other.DeleteAsync(path),
             _ => await other.GetAsync(path)
         };

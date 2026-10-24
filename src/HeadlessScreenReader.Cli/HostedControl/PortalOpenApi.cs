@@ -12,7 +12,7 @@ internal static class PortalOpenApi
 {
     private static readonly Lazy<string> Cached = new(Build);
     public static string Document => Cached.Value;
-    public const string ContractVersion = "1.2.0";
+    public const string ContractVersion = "1.3.0";
 
     private static string Build()
     {
@@ -37,6 +37,8 @@ internal static class PortalOpenApi
             ["ReaderCommand"] = Schema<PortalReaderCommandResponse>(),
             ["ReaderTimelineRequest"] = Schema<PortalReaderTimelineRequest>(),
             ["ReaderTimeline"] = Schema<PortalReaderTimelineResponse>(),
+            ["ReaderTraceRequest"] = Schema<PortalReaderTraceRequest>(),
+            ["ReaderTrace"] = Schema<PortalReaderTraceResponse>(),
             ["Problem"] = JsonNode.Parse("""
                 {"type":"object","required":["type","title","status","detail","supportReference"],
                  "properties":{"type":{"type":"string","format":"uri"},
@@ -71,7 +73,8 @@ internal static class PortalOpenApi
             },
             ["/api/workspaces/{organization}/reader-sessions/{session}/observations"] = Path("post", Operation("ObserveReaderSession", "Fresh input-free source observation; at most 100 captures per lease shared with navigation, 2048 nodes and 262144 response bytes", "ReaderSnapshot", true, "EmptyRequest", organization: true, session: true)),
             ["/api/workspaces/{organization}/reader-sessions/{session}/commands"] = Path("post", Operation("NavigateReaderSession", "Pure browse navigation, fresh capture, required previously observed document ID. Changed document returns Denied with requiresObservation; observe again before navigation", "ReaderCommand", true, "ReaderCommandRequest", organization: true, session: true)),
-            ["/api/workspaces/{organization}/reader-sessions/{session}/timeline"] = Path("post", Operation("GetReaderTimeline", "Page at most 100 events from a transient 256-event retained prefix. hasMore means another retained page; timelineTruncated means later events were not retained. Not durable evidence or a verified path", "ReaderTimeline", true, "ReaderTimelineRequest", organization: true, session: true))
+            ["/api/workspaces/{organization}/reader-sessions/{session}/timeline"] = Path("post", Operation("GetReaderTimeline", "Page at most 100 events from a transient 256-event retained prefix. hasMore means another retained page; timelineTruncated means later events were not retained. Not durable evidence or a verified path", "ReaderTimeline", true, "ReaderTimelineRequest", organization: true, session: true)),
+            ["/api/workspaces/{organization}/reader-sessions/{session}/trace"] = Path("post", Operation("GetReaderTrace", "Transient completed-command state/edge evidence. Fresh-observation links differ from cursor commands. Retains a prefix of at most64 commands and8MiB, at most20 entries and262144 bytes per page. Truncation is explicit; not durable evidence or an accessibility/goal assessment", "ReaderTrace", true, "ReaderTraceRequest", organization: true, session: true))
         };
         return new JsonObject
         {
@@ -156,6 +159,43 @@ internal static class PortalOpenApi
                     properties["afterSequence"]!["minimum"] = 0;
                     properties["limit"]!["minimum"] = 1;
                     properties["limit"]!["maximum"] = 100;
+                }
+                if (context.TypeInfo.Type == typeof(PortalReaderTraceRequest))
+                {
+                    properties["afterSequence"]!["minimum"] = 0;
+                    properties["limit"]!["minimum"] = 1;
+                    properties["limit"]!["maximum"] = PortalReaderTrace.MaximumPage;
+                }
+                if (context.TypeInfo.Type == typeof(PortalReaderTraceResponse))
+                {
+                    properties["schema"]!["const"] = "hsr-reader-navigation-trace-v1";
+                    properties["retention"]!["const"] = "Transient";
+                    properties["readerProfile"]!["const"] = HeadlessScreenReader.ScreenReader.ScreenReaderSession.Profile;
+                    properties["entries"]!["maxItems"] = PortalReaderTrace.MaximumPage;
+                    properties["retainedCommands"]!["minimum"] = 0;
+                    properties["retainedCommands"]!["maximum"] = PortalReaderTrace.MaximumCommands;
+                    properties["dispatchedInputs"]!["const"] = 0;
+                    properties["goalVerified"]!["const"] = false;
+                    properties["truncationReason"]!["enum"] = new JsonArray(null, "CommandLimit", "ByteLimit", "EntryTooLarge");
+                    value["allOf"] = JsonNode.Parse("""
+                        [{"if":{"properties":{"traceTruncated":{"const":false}}},
+                          "then":{"properties":{"truncationReason":{"const":null}}},
+                          "else":{"properties":{"truncationReason":{"enum":["CommandLimit","ByteLimit","EntryTooLarge"]}}}}]
+                        """);
+                }
+                if (context.TypeInfo.Type == typeof(ReaderNavigationTraceEntry))
+                {
+                    properties["snapshot"]!["properties"]!["nodes"]!["maxItems"] = PortalReaderSessions.MaximumNodes;
+                    properties["step"]!["properties"]!["browserKeystrokes"]!["const"] = 0;
+                    properties["step"]!["properties"]!["inputMayHaveOccurred"]!["const"] = false;
+                    properties["step"]!["properties"]!["verification"]!["const"] = 0;
+                }
+                if (context.TypeInfo.Type == typeof(ReaderTraceEdge))
+                {
+                    properties["mechanism"]!["const"] = "ReaderCursor";
+                    properties["browserKeystrokes"]!["const"] = 0;
+                    properties["inputMayHaveOccurred"]!["const"] = false;
+                    properties["verification"]!["const"] = 0;
                 }
                 if (context.TypeInfo.Type == typeof(PortalReaderCommandResponse))
                 {

@@ -118,6 +118,23 @@ internal static class IsolatedReaderHttpProof
                 && item.DocumentId == second.Snapshot.DocumentId)
             || rest.Events.Any(item => item.Kind is ReaderEventKind.InputAttempted or ReaderEventKind.InputCompleted or ReaderEventKind.GoalVerified))
             throw new InvalidDataException();
+        setStage?.Invoke("state-edge-trace");
+        using var traceResponse = await http.PostAsJsonAsync(resource + "/trace", new PortalReaderTraceRequest(0, 1), PortalJson.Options).ConfigureAwait(false);
+        var trace = await ReadAsync<PortalReaderTraceResponse>(traceResponse).ConfigureAwait(false);
+        using var nextTraceResponse = await http.PostAsJsonAsync(resource + "/trace", new PortalReaderTraceRequest(trace.NextAfterSequence, 20), PortalJson.Options).ConfigureAwait(false);
+        var nextTrace = await ReadAsync<PortalReaderTraceResponse>(nextTraceResponse).ConfigureAwait(false);
+        if (trace.Entries.Length != 1 || nextTrace.Entries.Length != 1 || !trace.HasMore || nextTrace.HasMore
+            || trace.TraceTruncated || nextTrace.TraceTruncated || trace.Retention != "Transient"
+            || trace.Entries[0].CaptureSequence != 4 || nextTrace.Entries[0].CaptureSequence != 5
+            || trace.Entries[0].ResultState.CursorNodeId != heading.Step.CursorNodeId
+            || nextTrace.Entries[0].SourceState.CursorNodeId != heading.Step.CursorNodeId
+            || nextTrace.Entries[0].ResultState.CursorNodeId != button.Step.CursorNodeId
+            || nextTrace.Entries[0].RefreshedFromStateId != trace.Entries[0].ResultState.Id
+            || nextTrace.Entries[0].Edge.SourceStateId != nextTrace.Entries[0].SourceState.Id
+            || nextTrace.Entries[0].Edge.ResultStateId != nextTrace.Entries[0].ResultState.Id
+            || nextTrace.Entries[0].Snapshot.DocumentId != second.Snapshot.DocumentId
+            || nextTrace.Entries[0].Snapshot.Nodes.Single(node => node.Id == button.Step.CursorNodeId).Name != "Open details"
+            || nextTrace.DispatchedInputs != 0 || nextTrace.GoalVerified) throw new InvalidDataException();
         setStage?.Invoke("authority-denial");
         http.DefaultRequestHeaders.Authorization = new("Bearer", SyntheticReaderProject.Other);
         using var wrongOwner = await http.DeleteAsync(resource).ConfigureAwait(false);
@@ -148,6 +165,7 @@ internal static class IsolatedReaderHttpProof
             FreshNavigationCaptures = 2,
             ReaderCursorProgressionConfirmed = true,
             PagedCommandTimelineConfirmed = true,
+            StateEdgeTraceConfirmed = true,
             InitialNativeCaptures = 1,
             ObservedNodes = second.Snapshot.Nodes.Length,
             AnonymousDenied = true,

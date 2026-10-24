@@ -54,15 +54,21 @@ internal sealed partial class PortalReaderSessions
             if (entry.Observations >= MaximumObservations) throw new PortalFault(409, "CONTROL_READER_BUDGET_EXHAUSTED");
             try
             {
+                entry.CommandSnapshot = null;
+                entry.CommandCaptureWindow = null;
                 entry.Reader ??= new ScreenReaderSession(new ReadOnlyReaderBrowser(async () =>
                 {
                     if (entry.Observations >= MaximumObservations) throw new PortalFault(409, "CONTROL_READER_BUDGET_EXHAUSTED");
                     entry.Observations++;
+                    var start = _time.GetElapsedTime(entry.OpenedAt).TotalMilliseconds;
                     var snapshot = await entry.Browser.CaptureAsync().ConfigureAwait(false);
+                    var end = _time.GetElapsedTime(entry.OpenedAt).TotalMilliseconds;
                     var observed = new PortalReaderSnapshotResponse(entry.Id, ScreenReaderSession.Profile, snapshot, 0, false);
                     if (snapshot.Nodes.Length > MaximumNodes || TooLarge(observed))
                         throw new PortalFault(503, "CONTROL_READER_OBSERVATION_TOO_LARGE");
                     entry.CapturedDocumentId = snapshot.DocumentId;
+                    entry.CommandSnapshot = snapshot;
+                    entry.CommandCaptureWindow = new(start, end);
                     return snapshot;
                 }), timeProvider: _time, maxTimelineEvents: MaximumTimelineEvents);
                 // Hold ownership until the actual capture/reader operation joins, even if the caller disconnects.
@@ -71,7 +77,7 @@ internal sealed partial class PortalReaderSessions
                 token.ThrowIfCancellationRequested();
                 EnsureOpen();
                 if (Expired(entry)) throw new PortalFault(404, "CONTROL_READER_NOT_FOUND");
-                if (step.Outcome == ReaderOutcome.BrowserError || step.BrowserKeystrokes != 0 || step.InputMayHaveOccurred
+                if (step.Outcome == ReaderOutcome.BrowserError || step.Mode != ReaderMode.Browse || step.BrowserKeystrokes != 0 || step.InputMayHaveOccurred
                     || step.Verification != VerificationStatus.NotRequested)
                     throw new PortalFault(503, "CONTROL_READER_COMMAND_UNCONFIRMED");
                 var changed = entry.CapturedDocumentId != request.ExpectedDocumentId;
@@ -79,6 +85,13 @@ internal sealed partial class PortalReaderSessions
                 var response = new PortalReaderCommandResponse(entry.Id, ScreenReaderSession.Profile,
                     entry.CapturedDocumentId!, changed, step, 0, false);
                 if (TooLarge(response)) throw new PortalFault(503, "CONTROL_READER_COMMAND_TOO_LARGE");
+                var snapshot = entry.CommandSnapshot ?? throw new PortalFault(503, "CONTROL_READER_COMMAND_UNCONFIRMED");
+                var sourceCursor = entry.ReaderDocumentId == snapshot.DocumentId && entry.ReaderCaptureEpoch == snapshot.CaptureEpoch
+                    && snapshot.Nodes.Any(node => node.Id == entry.ReaderCursorNodeId) ? entry.ReaderCursorNodeId : null;
+                entry.Trace.Append(entry.Id, entry.Observations, snapshot, entry.CommandCaptureWindow!, sourceCursor, step, request.ExpectedDocumentId);
+                entry.ReaderDocumentId = snapshot.DocumentId;
+                entry.ReaderCaptureEpoch = snapshot.CaptureEpoch;
+                entry.ReaderCursorNodeId = step.CursorNodeId;
                 return response;
             }
             catch

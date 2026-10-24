@@ -212,6 +212,7 @@ internal sealed partial class PortalReaderSessions : IAsyncDisposable
     private void Remove(Entry entry)
     {
         entry.Reader?.Dispose();
+        entry.Trace.Clear();
         _sessions.Remove(entry.Id);
     }
 
@@ -261,6 +262,12 @@ internal sealed partial class PortalReaderSessions : IAsyncDisposable
         public string? PublishedDocumentId { get; set; }
         public string? CapturedDocumentId { get; set; }
         public ScreenReaderSession? Reader { get; set; }
+        public PortalReaderTrace Trace { get; } = new();
+        public AccessibilitySnapshot? CommandSnapshot { get; set; }
+        public EvidenceInterval? CommandCaptureWindow { get; set; }
+        public string? ReaderDocumentId { get; set; }
+        public long ReaderCaptureEpoch { get; set; }
+        public string? ReaderCursorNodeId { get; set; }
         public bool Quarantined { get; set; }
         public bool OpenFailed { get; set; }
     }
