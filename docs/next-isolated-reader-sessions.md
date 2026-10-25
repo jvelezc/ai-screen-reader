@@ -1,18 +1,20 @@
-# Next: signed-in private reader workflow
+# Signed-in private reader accepted; Edge connection next
 
 **Delivery accepted:** fixed-fixture isolated sessions, read-only navigation,
-paged events and state/edge evidence are privately deployed at54c9451 after
-CI40182776742 and deployment40183760877. Windows/Ubuntu each passed1,944;
+paged events and state/edge evidence are privately deployed at1a5c6dc after
+CI40229319948 and deployment40230505705. Windows/Ubuntu each passed2,004;
 native Linux30 and operator122 passed. Independent VPS native and API checks
 passed with explicitly synthetic identities.
 
-**Do next:** use a confirmed application identity through the prepared local
-masked prompt to verify observations, heading/button navigation, paged matching
-events and state/edge snapshots, denied authority and independently confirmed
-native close. The original-user JWT and workspace RLS must pass; MCP/dashboard
-login is separate. The identity-method choice remains pending.
+**Confirmed application workflow accepted:** the [real original-user JWT/RLS
+check](validation/private-tenant-reader-v1.md) passed observations, heading/button
+navigation, matching paged events and graph evidence, denied authority and
+independent normal native close. Actual membership revocation/expiry and human/AT
+remain separate. **Do next:** [connect hosted Supabase Edge Functions to the
+core](next-edge-to-core-connection.md); the core remains private through SSH
+until an authenticated reachable path is chosen.
 
-**Current core increment:** [durable scan/report tools](decisions/0052-private-mcp-durable-scans.md) complete fixed-fixture admission, recent history and saved evidence through private MCP, alongside live reading and transient graph pages. Explicit retries retain the original request UUID; report pages recheck authority and immutable response identity after reconnect. These synthetic protocol/Chromium tests remain separate from the confirmed-account gate above. Public MCP/plugin publication stays deferred.
+**Current core increment:** [durable scan/report tools](decisions/0052-private-mcp-durable-scans.md) complete fixed-fixture admission, recent history and saved evidence through private MCP, alongside live reading and transient graph pages. Explicit retries retain the original request UUID; report pages recheck authority and immutable response identity after reconnect. These synthetic protocol/Chromium tests remain separate from the accepted real HTTP account workflow above. Public MCP/plugin publication stays deferred.
 
 **Accepted reader repair:** [text ownership reset and re-anchor](decisions/0050-text-cursor-ownership.md)
 prevents stale offsets after a reused node changes frame/document. Its

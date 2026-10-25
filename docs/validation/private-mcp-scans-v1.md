@@ -28,8 +28,9 @@ and private S3 execution are covered separately by their existing harnesses.
 Full local Windows, Windows/Ubuntu CI and private backend delivery are separate
 gates, recorded on the architecture Page after completion. The MCP consumer
 runs in the client's process; backend promotion does not publish an MCP service.
-The real signed-in reader, authenticated Edge-to-core and human/AT gates remain
-open. Public MCP, client onboarding and official plugins remain deferred.
+The [real signed-in HTTP reader](private-tenant-reader-v1.md) is now accepted
+separately. Authenticated Edge-to-core and human/AT remain open. Public MCP,
+client onboarding and official plugins remain deferred.
 
 
 Final local Windows: **2,004/2,004 discovered/executed/passed**, zero failures/skips, including60 new scan cases. Strict nonincremental Release build and architecture dependency checks pass with zero warnings/errors; full solution formatting passes. All 20 exact requirement method names are present and passed in the final full TRX. No production deadline or assertion was relaxed. Remote CI, private delivery and real provider acceptance remain separate receipts.

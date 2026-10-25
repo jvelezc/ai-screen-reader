@@ -21,8 +21,8 @@ JSON; no production fence or deadline was relaxed.
 
 Final Windows, Linux CI and private delivery results are recorded separately on
 the architecture Page when complete. Real Chromium uses a synthetic API
-authenticator; application-user JWT/RLS, hosted tenant reader acceptance,
-authenticated Edge-to-core and human/AT remain separate open gates. Public MCP,
+authenticator; [application-user HTTP reader JWT/RLS and native close](private-tenant-reader-v1.md)
+are now accepted separately. Authenticated Edge-to-core and human/AT remain open. Public MCP,
 official plugin and user onboarding remain deferred.
 
 
