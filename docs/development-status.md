@@ -10,13 +10,13 @@ Prioritize an independently usable core API and MCP. The Lovable UI consumes thi
 | 1: local screen reader | Substantial local implementation | Reader profile v13, fixtures, bounded events/observations, policy checks and CI | Capture/privacy feasibility remains a prerequisite to editable entry and recording; broader supported-control scope is explicit |
 | 2: evidence-backed workflow | In progress | Bounded routes, append-only JSON, node/edge reports, controlled recording canaries, 20-marker timing proof and original route media with capture/action/event intervals and passive local viewer; bounded diagnostic provenance, explicit fresh-run replay and owned evidence writes | Broader workflow acceptance and diagnostics/search coverage |
 | 3: intervention and isolation | Partial | Exact public-host policy, independent Linux egress fence and exclusive local controller leases, headed Xvfb continuity and explicitly simulated excluded input and scoped loopback semantic and pixel viewing | Actual human/AT acceptance and hosted identity/capture/persistence fencing |
-| 4: durable hosted execution | In progress | Admission/fenced leases and196 PostgreSQL/pgmq cases; signed-in one-shot/S3; ten private MCP tools; real application-user isolated reader accepted at1a5c6dc; trusted API IP HTTPS at2485c53; original-user Edge gateway v1 and notebook source1331a75 | Real signed-in notebook -> Edge -> core fixture/report; live reader UI controls; broader tenant restart/recovery; real revoked/expired reader authority acceptance |
+| 4: durable hosted execution | In progress | Admission/fenced leases and196 PostgreSQL/pgmq cases; signed-in one-shot/S3; ten private MCP tools; real HTTP reader accepted at1a5c6dc; trusted API IP HTTPS at2485c53; actual notebook -> Edge v1 -> core fixture/report/S3/download/sign-out; UI53533d4 passes132 per OS; corebeea0b9 passes2,005 per OS and exact deployment | Live reader UI controls; broader tenant restart/recovery; real revoked/expired reader authority and human/AT acceptance |
 | 5: public MCP pilot | Deferred | Local stdio and private HTTP-backed read-only stdio adapter | Public MCP HTTPS endpoint, client onboarding, plugin and pilot operations; private report remains active milestone4 work |
 | 6: measured extensions | Later | Bounded reader improvements through v13 | Broader validated widgets and compatible-run comparisons; public plugins remain deferred |
 
 <a id="next-isolated-hosted-reader-sessions"></a>
 
-## Next: signed-in Reader Notebook acceptance
+## Next: live reader controls in the notebook
 
 **Signed-in reader accepted:** [the real application-user check](validation/private-tenant-reader-v1.md)
 passed at1a5c6dc: original-user provider authentication/RLS, two observations,
@@ -26,15 +26,28 @@ and foreign-workspace denial, API close and independent normal native removal.
 specific deployed HTTP workflow; actual revoked/expired membership and human/AT
 acceptance remain separate. No browser input or goal verification was introduced.
 
-**Do next:** [verify the real signed-in notebook through Edge](next-edge-to-core-connection.md).
-The user approved authenticated API HTTPS on the VPS IP. That transport is
-accepted at `https://89.117.17.81`. The separate Lovable notebook is committed
-as1331a75 and passes Windows/Ubuntu UI CI40240113719, 130/130 each. `hsr-core` v1
-is deployed in the existing Supabase project; source readback matches all three
-reviewed files. Live preflight, missing/invalid JWT, foreign-Origin and actor-
-injection denial pass. **Real original-user Edge-to-core and visible notebook
-tenant use remain unaccepted until the user signs in at localhost6087.**
+**Do next:** [implement live reader controls through Edge](next-edge-to-core-connection.md).
+Trusted API IP HTTPS, Edge v1 and the real original-user notebook fixture/report
+flow are accepted. The confirmed user opened a workspace, admitted one fixture,
+refreshed it to observed/Available/S3, inspected32 nodes/input0/goalfalse, downloaded
+a matching20,094-byte JSON projection and signed out, clearing tenant data. The
+320px evidence view had no document or control overflow. This acceptance is tied
+to UI1331a75/core2485c53. Subsequent UI53533d4 passes
+[UI CI40242659975](https://github.com/jvelezc/ai-screen-reader-ui/actions/runs/40242659975),
+132/132 per OS, including honest download initiation and fresh report/list state.
+`hsr-core` v1's three deployed files still match reviewed source; denial/CORS
+gates passed. These facts do not establish actual AT, new-account email callbacks,
+membership revocation/expiry or live reader controls through the notebook.
 The worker/broker and deployment remain private/SSH; public MCP/plugins stay deferred.
+
+**Current accepted core:**beea0b9 passed all nine jobs in
+[CI40242081847](https://github.com/jvelezc/ai-screen-reader/actions/runs/40242081847),
+Windows/Ubuntu2,005/2,005 each, native Linux30 and operator144. Exact
+[deployment40243214756](https://github.com/jvelezc/ai-screen-reader/actions/runs/40243214756)
+and fresh release/operator/Caddy/broker/TLS checks passed. Failed documentation-
+only792c26f was not promoted. The [Windows driver test repair](validation/windows-driver-shutdown-v1.md)
+preserves actual native-exit evidence and the original four-second deadline;
+production code is unchanged from2485c53.
 
 **Accepted HTTPS release:**2485c53 passed all nine jobs in
 [CI40235556893](https://github.com/jvelezc/ai-screen-reader/actions/runs/40235556893),
@@ -86,7 +99,7 @@ Windows/Ubuntu1,847 each, native Linux30, operator122 and exact private
 deployment39995270368. Independent VPS service/broker/native checks confirmed
 document-fenced navigation and paged history with synthetic identities.
 
-**Next acceptance action:** complete [signed-in notebook acceptance](next-edge-to-core-connection.md)
+**Next acceptance action:** implement [live notebook reader controls](next-edge-to-core-connection.md)
 through the existing Supabase project. The original-user HTTP reader acceptance
 has passed; synthetic MCP/native checks do not become real identity-provider
 MCP execution or human/AT acceptance. The [isolated-reader delivery sequence](next-isolated-reader-sessions.md)
@@ -237,14 +250,15 @@ flowchart LR
     MCPScans --> SignedIn[Accepted real application-user HTTP reader]
     SignedIn --> ApiHttps[Accepted API-only HTTPS on VPS IP]
     ApiHttps --> Edge[Edge v1 deployed; notebook CI passed]
-    Edge --> Next[NEXT: real signed-in notebook fixture/report]
+    Edge --> Notebook[Accepted real notebook fixture/report/S3/download]
+    Notebook --> Next[NEXT: live notebook reader controls]
     Next --> Durable[Broader hosted recovery and workflow acceptance]
     Client --> ViewerControl[Human takeover acceptance]
     classDef done fill:#dcfce7,stroke:#166534,color:#14532d
     classDef next fill:#dbeafe,stroke:#1d4ed8,color:#1e3a8a
     classDef partial fill:#fef3c7,stroke:#92400e,color:#78350f
     classDef planned fill:#f3f4f6,stroke:#6b7280,color:#374151
-    class Reader,Trace,Privacy,Timing,Recording,Viewer,ReaderGate,Features,Replay,Owned,Controller,Headed,Handoff,PrivateViewer,Pixels,Client,Admission,Leases,Worker,Portal,Sessions,Accepted,Isolated,CoreParity,Ownership,MCP,MCPScans,SignedIn,ApiHttps done
+    class Reader,Trace,Privacy,Timing,Recording,Viewer,ReaderGate,Features,Replay,Owned,Controller,Headed,Handoff,PrivateViewer,Pixels,Client,Admission,Leases,Worker,Portal,Sessions,Accepted,Isolated,CoreParity,Ownership,MCP,MCPScans,SignedIn,ApiHttps,Notebook done
     class Edge partial
     class Next next
     class ViewerControl,Durable planned

@@ -38,3 +38,14 @@ passes2,005/2,005, zero failed/skipped, with a strict nonincremental Release bui
 (zero warnings/errors) and full format verification. Replacement CI and exact
 deployment remain separate gates; their accepted source receipts belong in the
 workflow results and the canonical progress Page.
+
+Replacement sourcebeea0b9 passed all nine jobs in
+[CI40242081847](https://github.com/jvelezc/ai-screen-reader/actions/runs/40242081847):
+Windows/Ubuntu2,005/2,005 each, native Linux30 and operator144. Both downloaded
+TRX files contain the real Chromium repair and all four deterministic cleanup
+partitions as passed, with zero failed/skipped. Exact
+[deployment40243214756](https://github.com/jvelezc/ai-screen-reader/actions/runs/40243214756)
+and fresh host checks passed, image
+`sha256:3d51219fe07246bbaf076dc035e34ab07ca928419e0f432105dedc9583b075cf`.
+Trusted TLS/IP identity, private broker/read-only API, release/operator hashes
+and unchanged unrelated Caddy configuration were independently rechecked.
