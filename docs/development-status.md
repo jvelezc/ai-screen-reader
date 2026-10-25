@@ -1,6 +1,6 @@
 # Original development goals and next step
 
-Updated October 24, 2026. The original proposal under `outputs/` remains unchanged. This status document tracks implementation against its acceptance gates.
+Updated October 25, 2026. The original proposal under `outputs/` remains unchanged. This status document tracks implementation against its acceptance gates.
 
 Prioritize an independently usable core API and MCP. The Lovable UI consumes this service through Edge Functions in existing Supabase project `gpnijaxrgtwzwtrqsbcu`. Public MCP hosting and official plugin publication remain separate from implementing the core protocols.
 
@@ -11,14 +11,26 @@ Prioritize an independently usable core API and MCP. The Lovable UI consumes thi
 | 2: evidence-backed workflow | In progress | Bounded routes, append-only JSON, node/edge reports, controlled recording canaries, 20-marker timing proof and original route media with capture/action/event intervals and passive local viewer; bounded diagnostic provenance, explicit fresh-run replay and owned evidence writes | Broader workflow acceptance and diagnostics/search coverage |
 | 3: intervention and isolation | Partial | Exact public-host policy, independent Linux egress fence and exclusive local controller leases, headed Xvfb continuity and explicitly simulated excluded input and scoped loopback semantic and pixel viewing | Actual human/AT acceptance and hosted identity/capture/persistence fencing |
 | 4: durable hosted execution | In progress | Installed admission/fenced leases; signed-in one-shot tenant/S3 report accepted; isolated credential-free reader, read-only navigation, paged events and state/edge trace accepted privately at25b2ecb;196 PostgreSQL/pgmq cases | Real application-user interactive-reader JWT/RLS acceptance; broader tenant restart/recovery; authenticated Edge-to-core |
-| 5: public MCP pilot | Deferred | Existing local stdio adapter | Public MCP HTTPS endpoint, client onboarding, plugin and pilot operations; private report remains active milestone4 work |
+| 5: public MCP pilot | Deferred | Local stdio and private HTTP-backed read-only stdio adapter | Public MCP HTTPS endpoint, client onboarding, plugin and pilot operations; private report remains active milestone4 work |
 | 6: measured extensions | Later | Bounded reader improvements through v13 | Broader validated widgets and compatible-run comparisons; public plugins remain deferred |
 
 <a id="next-isolated-hosted-reader-sessions"></a>
 
 ## Next: signed-in private reader workflow
 
-**Current increment:** [text cursor ownership](decisions/0050-text-cursor-ownership.md)
+**Current increment:** [private HTTP-backed MCP](decisions/0051-private-http-backed-mcp.md)
+adds a read-only stdio consumer of the independently usable core API. It uses
+the configured isolated worker, original caller and shared command policy;
+bounded snapshot/event/graph paging preserves uncertainty and cleanup ownership.
+It adds no public listener or plugin. [Validation](validation/private-http-mcp-v1.md)
+separates synthetic protocol tests from the real signed-in acceptance below.
+
+**Accepted ownership repair:** d7d63d5 passed all nine jobs in
+[CI40134920784](https://github.com/jvelezc/ai-screen-reader/actions/runs/40134920784),
+Windows/Ubuntu1,886 each, and exact private
+[deployment40135905906](https://github.com/jvelezc/ai-screen-reader/actions/runs/40135905906).
+Independent VPS checks confirmed the isolated reader baseline; provider identity
+and human acceptance remain separate. [Text cursor ownership](decisions/0050-text-cursor-ownership.md)
 invalidates retained offsets when the same node moves to another frame/document.
 Unknown state persists until explicit re-anchoring; unchanged owners retain their
 position. Hosted trace preserves the reset instead of presenting stale text as

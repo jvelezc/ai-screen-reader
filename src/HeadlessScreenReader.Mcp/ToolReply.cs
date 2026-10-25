@@ -18,8 +18,12 @@ public sealed record ToolReply(string Status, string? SessionId, string Profile,
         var json = JsonSerializer.Serialize(this, JsonOptions);
         if (Encoding.UTF8.GetByteCount(json) <= 131_072) return json;
         // Preserve input uncertainty even when a result cannot fit in the protocol budget.
-        object? evidence = Data is ReaderStep step
-            ? new { step.BrowserKeystrokes, step.InputMayHaveOccurred, step.Verification, step.Outcome } : null;
+        object? evidence = Data switch
+        {
+            HostedReaderCommand hosted => new { hosted.Step.BrowserKeystrokes, hosted.Step.InputMayHaveOccurred, hosted.Step.Verification, hosted.Step.Outcome, hosted.DispatchedInputs, hosted.GoalVerified },
+            ReaderStep step => new { step.BrowserKeystrokes, step.InputMayHaveOccurred, step.Verification, step.Outcome },
+            _ => null
+        };
         return JsonSerializer.Serialize(new ToolReply("error", SessionId, Profile, evidence, "RESPONSE_TOO_LARGE"), JsonOptions);
     }
 

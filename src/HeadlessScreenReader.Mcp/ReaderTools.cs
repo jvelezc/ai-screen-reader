@@ -43,7 +43,7 @@ public sealed class ReaderTools(ReaderWorkspace workspace)
     [McpServerTool(Name = "reader_close", Destructive = false, OpenWorld = false), Description("Close and dispose this session and its Chromium browser. A stale sessionId cannot close a replacement session.")]
     public async Task<CallToolResult> Close(string sessionId, CancellationToken cancellationToken = default) =>
         Result(await workspace.CloseAsync(sessionId, cancellationToken));
-    private static CallToolResult Result(ToolReply reply)
+    internal static CallToolResult Result(ToolReply reply)
     {
         var json = reply.ToJson();
         using var document = JsonDocument.Parse(json);

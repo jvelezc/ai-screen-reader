@@ -1,8 +1,8 @@
 # Next: signed-in private reader workflow
 
 **Delivery accepted:** fixed-fixture isolated sessions, read-only navigation,
-paged events and state/edge evidence are privately deployed at25b2ecb after
-CI40080149650 and deployment40081051473. Windows/Ubuntu each passed1,872;
+paged events and state/edge evidence are privately deployed atd7d63d5 after
+CI40134920784 and deployment40135905906. Windows/Ubuntu each passed1,886;
 native Linux30 and operator122 passed. Independent VPS native and API checks
 passed with explicitly synthetic identities.
 
@@ -12,7 +12,9 @@ events and state/edge snapshots, denied authority and independently confirmed
 native close. The original-user JWT and workspace RLS must pass; MCP/dashboard
 login is separate. The identity-method choice remains pending.
 
-**Current reader repair:** [text ownership reset and re-anchor](decisions/0050-text-cursor-ownership.md)
+**Current core increment:** [private HTTP-backed MCP](decisions/0051-private-http-backed-mcp.md) consumes the same independent API through stdio, including transient graph trace pages. Synthetic protocol and real Chromium tests are separate from the confirmed-account gate above. Public MCP/plugin publication remains deferred.
+
+**Accepted reader repair:** [text ownership reset and re-anchor](decisions/0050-text-cursor-ownership.md)
 prevents stale offsets after a reused node changes frame/document. Its
 [validation record](validation/text-cursor-ownership-v1.md) separates local,
 CI, private delivery and actual application acceptance. This does not expand
