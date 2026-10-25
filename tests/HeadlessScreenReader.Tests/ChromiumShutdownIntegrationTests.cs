@@ -58,7 +58,7 @@ public sealed class ChromiumShutdownIntegrationTests
         finally { pending.TrySetResult(); await browser.CloseAsync(); }
     }
     [Fact]
-    public async Task ActualOwnedDriverStop_ConfirmsChromiumRootExitWithAnInjectedStalledCloseCallback()
+    public async Task ActualOwnedDriverStop_ConfirmsExitAndPreservesTheOriginalDeadlineOutcome()
     {
         using var playwright = await Microsoft.Playwright.Playwright.CreateAsync();
         await using var browser = await playwright.Chromium.LaunchAsync(new() { Headless = true, ChromiumSandbox = true });
@@ -75,13 +75,30 @@ public sealed class ChromiumShutdownIntegrationTests
         Assert.False(watch.Exited.IsCompleted);
         try
         {
-            await shutdown.CloseAsync().WaitAsync(TimeSpan.FromSeconds(8));
+            var error = await Record.ExceptionAsync(() => shutdown.CloseAsync().WaitAsync(TimeSpan.FromSeconds(8)));
             Assert.True(root.HasExited); Assert.True(watch.Exited.IsCompletedSuccessfully);
-            Assert.Equal(1, stops); Assert.Equal(BrowserShutdownPhase.Closed, shutdown.Status.Phase);
+            Assert.Equal(1, stops); Assert.True(shutdown.Status.TransportCallSettled);
             Assert.True(shutdown.Status.TransportEscalatedBeforeProcessExit); Assert.False(shutdown.Status.TransportEscalatedAfterProcessExit);
             Assert.False(shutdown.Status.BrowserCloseAcknowledgedBeforeTransport); Assert.True(shutdown.Status.BrowserCloseAcknowledged);
             Assert.True(shutdown.Status.ProcessExitConfirmed); Assert.True(shutdown.Status.ProcessCallSettled);
-            Assert.Equal(0, shutdown.Status.ActiveCalls); Assert.Null(shutdown.Status.ErrorCode);
+            Assert.True(shutdown.Status.ContextCallSettled); Assert.True(shutdown.Status.BrowserCallSettled);
+            Assert.False(shutdown.Status.OwnedProcessStopRequested); Assert.False(shutdown.Status.BrowserCallRejected);
+            Assert.Equal(0, shutdown.Status.ActiveCalls); Assert.NotNull(shutdown.Status.ProcessExitConfirmationMilliseconds);
+            // Real SDK disposal can exceed four seconds on a busy Windows runner.
+            // Actual exit is still witnessed, but it cannot waive the original native deadline.
+            var late = shutdown.Status.ProcessExitConfirmationMilliseconds.Value >= 4000;
+            Assert.Equal(late, shutdown.Status.BrowserDeadlineExceeded);
+            if (late)
+            {
+                Assert.Equal("CHROMIUM_BROWSER_CLOSE_UNCONFIRMED", Assert.IsType<BrowserOperationException>(error).Code);
+                Assert.Equal("CHROMIUM_BROWSER_CLOSE_UNCONFIRMED", shutdown.Status.ErrorCode);
+                Assert.Equal(BrowserShutdownPhase.Faulted, shutdown.Status.Phase);
+            }
+            else
+            {
+                Assert.Null(error); Assert.Null(shutdown.Status.ErrorCode);
+                Assert.Equal(BrowserShutdownPhase.Closed, shutdown.Status.Phase);
+            }
         }
         finally
         {

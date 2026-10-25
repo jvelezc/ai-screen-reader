@@ -10,6 +10,7 @@ public sealed class ChromiumCleanupBudgetTests
     [InlineData(3500, false)]
     [InlineData(3749, false)]
     [InlineData(3750, true)]
+    [InlineData(5400, true)]
     public async Task DriverCleanup_ReservesItsMeasuredCostWithoutExtendingTheActualExitDeadline(int cleanupMilliseconds, bool late)
     {
         var time = new FakeTimeProvider();

@@ -93,3 +93,8 @@ foreign-Origin and actor-injection denials pass. These negative gates do not
 establish original-user Edge-to-core, signed-in notebook tenant use, published
 Lovable hosting, native cleanup through that consumer or human/AT acceptance.
 The [next action](../next-edge-to-core-connection.md) names that remaining gate.
+
+The following documentation push792c26f encountered an existing Windows
+driver-only shutdown test expectation failure and was not deployed. See the
+[deadline-preserving test repair](windows-driver-shutdown-v1.md); the production
+four-second native budget and real process-exit requirement remain unchanged.
