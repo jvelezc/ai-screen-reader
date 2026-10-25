@@ -1,0 +1,29 @@
+# The core API is one independently authenticated upstream. Worker/broker ports
+# remain private. Public MCP and legacy portal assets are not published here.
+https://89.117.17.81 {
+	tls {
+		issuer acme https://acme-v02.api.letsencrypt.org/directory {
+			profile shortlived
+		}
+	}
+
+	header -Server
+	@core path /api/session /api/workspace /api/workspaces/* /openapi/v1.json
+	handle @core {
+		request_body {
+			max_size 4096
+		}
+		reverse_proxy 127.0.0.1:8086 {
+			# Preserve core's fixed private Host guard and the original caller bearer.
+			# Retain Origin: foreign browser origins must still be denied by core.
+			header_up Host localhost:6086
+			transport http {
+				dial_timeout 3s
+				response_header_timeout 25s
+			}
+		}
+	}
+	handle {
+		respond 404
+	}
+}

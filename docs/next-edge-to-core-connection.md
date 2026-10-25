@@ -17,13 +17,14 @@ flowchart LR
     class Path next
 ```
 
-**Current blocker:** the core is available only through private SSH. Hosted
-Edge Functions cannot use this computer's `localhost:6086` tunnel. An approved
-reachable path and, if HTTPS is chosen, a hostname owned by the user are needed.
-Keep the private deployment in place until that choice is made. API connectivity
-does not publish MCP, Claude onboarding or an official plugin.
+**Current step:** the user approved authenticated HTTPS on VPS IP
+`89.117.17.81`, with DNS later. Implement and validate the
+[API-only Caddy route](decisions/0053-authenticated-core-api-ingress.md), then
+connect the existing project's Edge Functions. The backend and worker/broker
+listeners remain private; only the selected API routes gain HTTPS reachability.
+API connectivity does not publish MCP, Claude onboarding or an official plugin.
 
-## Work after the network path is chosen
+## Work for the approved HTTPS path
 
 1. Prepare the exact host/TLS/reverse-proxy configuration for review. Preserve
    unrelated Caddy routes and keep worker/broker ports private. Verify host and
