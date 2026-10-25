@@ -2,7 +2,7 @@
 
 Local .NET screen-reader foundation for the architecture in [the development plan](outputs/HeadlessScreenReader-Architecture-Review-and-Development-Plan.md).
 
-The [leased observation worker](docs/decisions/0037-isolated-observation-worker.md) connects tenant-authorized admission to isolated synthetic-shop observation, private saved bytes and fenced queue completion. Its private VPS deployment and rollback are accepted. A real signed-in tenant fixture completed and its report matched independently verified private S3 evidence. Private MCP now supports durable fixture scans and paged saved reports alongside live reading. The [real application-user reader](docs/validation/private-tenant-reader-v1.md) also passes authentication/RLS, navigation, matching graph evidence and independent native close. **Next: [connect existing-project Supabase Edge Functions to the core](docs/next-edge-to-core-connection.md); the network path is still private through SSH.** [Current status](docs/development-status.md) separates local, CI and hosted acceptance.
+The [leased observation worker](docs/decisions/0037-isolated-observation-worker.md) connects tenant-authorized admission to isolated synthetic-shop observation, private saved bytes and fenced queue completion. Its private VPS deployment and rollback are accepted. A real signed-in tenant fixture completed and its report matched independently verified private S3 evidence. Private MCP now supports durable fixture scans and paged saved reports alongside live reading. The [real application-user reader](docs/validation/private-tenant-reader-v1.md) also passes authentication/RLS, navigation, matching graph evidence and independent native close. **The [authenticated core API](docs/validation/core-api-ingress-v1.md) is live at [https://89.117.17.81](https://89.117.17.81/openapi/v1.json); the separate UI's original-user Edge gateway is deployed. Next: [verify a signed-in Reader Notebook fixture/report flow](docs/next-edge-to-core-connection.md).** [Current status](docs/development-status.md) separates local, CI and hosted acceptance.
 
 **Active work: the original evidence-backed workflow.** Bounded authored traversal, immutable attempt receipts, an observation graph and linked local reports are implemented. Run `--traversal` below. See [original milestone status and the next acceptance gate](docs/development-status.md). Public MCP hosting and plugin publication are deferred.
 
@@ -27,7 +27,8 @@ The [private HTTP-backed MCP mode](docs/decisions/0051-private-http-backed-mcp.m
 consumes that same API through stdio, with original caller scope, read-only
 navigation and graph trace pages. It uses the API's isolated worker instead of
 a second local browser. The [durable scan tools](docs/decisions/0052-private-mcp-durable-scans.md) add idempotent fixed-fixture admission, recent runs and saved reports. Public MCP/plugin publication stays deferred.
-The private listener is not a public deployment, and the HTTP surface does
+The backend listener and worker/broker remain private. Selected API paths are
+available through authenticated HTTPS; public MCP remains deferred. The HTTP surface does
 not yet expose every interactive capability available through local stdio MCP.
 
 ## Run the fixture demo
