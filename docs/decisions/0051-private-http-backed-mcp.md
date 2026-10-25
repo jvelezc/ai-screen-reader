@@ -59,3 +59,8 @@ human/AT testing, Edge reachability or public onboarding. Those remain separate
 gates. Lovable continues through existing-project Supabase Edge Functions to
 the independently usable core; public MCP/plugin publication stays deferred.
 See [validation](../validation/private-http-mcp-v1.md).
+
+[Decision0052](0052-private-mcp-durable-scans.md) subsequently adds three
+fixed-fixture durable scan/report tools using the existing API. Current hosted
+discovery has ten tools. Live reader and durable job lifetimes remain separate;
+transient reader trace is not durably archived by that extension.

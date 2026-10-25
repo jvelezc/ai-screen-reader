@@ -43,6 +43,18 @@ public sealed partial class HostedReaderClient : IAsyncDisposable
             SnapshotPageNodes = 100,
             TracePageEntries = 20,
             TraceRetention = "Transient",
+            DurableScans = new
+            {
+                Tools = new[] { "scan_start_fixture", "scan_list", "scan_report" },
+                Fixture = "synthetic-shop",
+                AdmissionCreatesJob = true,
+                CallerRequestIdRequired = true,
+                AutomaticRetry = false,
+                AutomaticPolling = false,
+                ContinuesAfterDisconnect = true,
+                ReportPageNodes = 100,
+                Authorization = "Core API rechecks current caller/tenant authority per operation"
+            },
             AdmissionUnconfirmed = _admissionUnconfirmed,
             SessionUnconfirmed = _sessionUnconfirmed,
             CleanupConfirmed,

@@ -18,12 +18,21 @@ Prioritize an independently usable core API and MCP. The Lovable UI consumes thi
 
 ## Next: signed-in private reader workflow
 
-**Current increment:** [private HTTP-backed MCP](decisions/0051-private-http-backed-mcp.md)
-adds a read-only stdio consumer of the independently usable core API. It uses
-the configured isolated worker, original caller and shared command policy;
-bounded snapshot/event/graph paging preserves uncertainty and cleanup ownership.
-It adds no public listener or plugin. [Validation](validation/private-http-mcp-v1.md)
-separates synthetic protocol tests from the real signed-in acceptance below.
+**Current increment:** [private MCP durable scans](decisions/0052-private-mcp-durable-scans.md)
+adds fixed-fixture job admission, recent history and saved reports to the existing
+private consumer. Caller request IDs preserve idempotent retries. Reports retain
+execution/evidence states and storage provenance, with fresh authority and
+response-fenced byte paging across reconnect. The worker remains responsible
+for durable execution; client disconnect does not cancel it. There are ten
+hosted tools. [Validation](validation/private-mcp-scans-v1.md) separates actual
+stdio/Chromium saved-byte tests from provider identity and hosted acceptance.
+
+**Accepted private reader/MCP baseline:**54c9451 passed all nine jobs in
+[CI40182776742](https://github.com/jvelezc/ai-screen-reader/actions/runs/40182776742),
+Windows/Ubuntu1,944 each, native Linux30 and operator122. Exact private backend
+[deployment40183760877](https://github.com/jvelezc/ai-screen-reader/actions/runs/40183760877)
+and independent VPS checks passed. The consumer runs in the client's process;
+that backend delivery is not a public MCP service or application JWT acceptance.
 
 **Accepted ownership repair:** d7d63d5 passed all nine jobs in
 [CI40134920784](https://github.com/jvelezc/ai-screen-reader/actions/runs/40134920784),
