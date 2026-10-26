@@ -26,13 +26,13 @@ That backend delivery does not enable hosted recording.
 | 1: local screen reader | Substantial local implementation | Reader profile v13, fixtures, bounded events/observations, policy checks and CI | Capture/privacy feasibility remains a prerequisite to editable entry and recording; broader supported-control scope is explicit |
 | 2: evidence-backed workflow | In progress | Bounded routes, append-only JSON, node/edge reports, controlled recording canaries, 20-marker timing proof and original route media with capture/action/event intervals and passive local viewer; bounded diagnostic provenance, explicit fresh-run replay and owned evidence writes | Broader workflow acceptance and diagnostics/search coverage |
 | 3: intervention and isolation | Partial | Exact public-host policy, independent Linux egress fence and exclusive local controller leases, headed Xvfb continuity and explicitly simulated excluded input and scoped loopback semantic and pixel viewing | Actual human/AT acceptance and hosted identity/capture/persistence fencing |
-| 4: durable hosted execution | In progress | Admission/fenced leases and196 PostgreSQL/pgmq cases; signed-in one-shot/S3; ten private MCP tools; real HTTP reader accepted at1a5c6dc; trusted API IP HTTPS; actual notebook -> Edge v1 -> core fixture/report/S3/download/sign-out; live reader controls at UIe473aea pass182 per OS; core148cde1 passes2,047 per OS and exact deployment | Original-user live reader UI acceptance; broader tenant restart/recovery; real revoked/expired reader authority and human/AT acceptance |
+| 4: durable hosted execution | In progress | Admission/fenced leases and196 PostgreSQL/pgmq cases; signed-in one-shot/S3; ten private MCP tools; real HTTP reader accepted at1a5c6dc; trusted API IP HTTPS; actual notebook -> Edge v1 -> core fixture/report/S3/download/sign-out; live reader controls at UIe473aea pass182 per OS; core148cde1 passes2,047 per OS and exact deployment | Durable traversal/media retrieval; broader tenant restart/recovery; real revoked/expired reader authority and human/AT acceptance |
 | 5: public MCP pilot | Deferred | Local stdio and private HTTP-backed read-only stdio adapter | Public MCP HTTPS endpoint, client onboarding, plugin and pilot operations; private report remains active milestone4 work |
 | 6: measured extensions | Later | Bounded reader improvements through v13 | Broader validated widgets and compatible-run comparisons; public plugins remain deferred |
 
 <a id="next-isolated-hosted-reader-sessions"></a>
 
-## Next: verify live reader controls in the notebook
+## Next: durable traversal and media retrieval
 
 **Signed-in reader accepted:** [the real application-user check](validation/private-tenant-reader-v1.md)
 passed at1a5c6dc: original-user provider authentication/RLS, two observations,
@@ -42,7 +42,7 @@ and foreign-workspace denial, API close and independent normal native removal.
 specific deployed HTTP workflow; actual revoked/expired membership and human/AT
 acceptance remain separate. No browser input or goal verification was introduced.
 
-**Do next:** [verify live reader controls through Edge](next-edge-to-core-connection.md).
+**Accepted consumer:** [live reader controls through Edge](next-edge-to-core-connection.md).
 UIe473aea now implements the separate live Foundation reader: explicit open/status,
 fresh observe, document-fenced read-current/next-heading/next-button, paged actual
 events and directed state/edge evidence, and matching close acknowledgement.
@@ -50,8 +50,11 @@ events and directed state/edge evidence, and matching close acknowledgement.
 passes182/182 on Windows and Linux, plus type checking/lint/build. Initial missing
 input/goal facts stay Unobserved; lost opens/closes stay unconfirmed, access loss
 clears tenant views and stale documents disable navigation. These are consumer
-checks. The original-user live reader walkthrough, keyboard/320px inspection and
-independent native-close proof remain NEXT, waiting for application sign-in at6087.
+checks. The [actual original-user notebook walkthrough](validation/notebook-live-reader-v1.md)
+now passes:31 exposed nodes, ReadCurrent/NextHeading/NextButton,14 actual events,
+three linked graph entries, keyboard operation,320px reflow, explicit close and
+independent exact-container absence. Session expiry cleared reader/workspace data;
+this is separate from provider token expiry or membership revocation.
 Trusted API IP HTTPS, Edge v1 and the real original-user notebook fixture/report
 flow are accepted. The confirmed user opened a workspace, admitted one fixture,
 refreshed it to observed/Available/S3, inspected32 nodes/input0/goalfalse, downloaded
@@ -62,8 +65,14 @@ to UI1331a75/core2485c53. Subsequent UI53533d4 passes
 132/132 per OS, including honest download initiation and fresh report/list state.
 `hsr-core` v1's three deployed files still match reviewed source; denial/CORS
 gates passed. These facts do not establish actual AT, new-account email callbacks,
-membership revocation/expiry or live reader controls through the notebook.
+membership revocation/expiry or actual assistive-technology operation.
 The worker/broker and deployment remain private/SSH; public MCP/plugins stay deferred.
+
+**Do next:** durable tenant-scoped traversal/media finalization and API/MCP
+retrieval, then the notebook's original-evidence graph view through Edge. Preserve
+actual source/action/result links, media/capture exclusions, separately verified
+integrity and explicit partial/cancelled outcomes. The new live graph remains
+transient and is not a hosted recording or custody attestation.
 
 **Current accepted core delivery:**148cde1 passed all nine jobs in
 [CI40268393362](https://github.com/jvelezc/ai-screen-reader/actions/runs/40268393362),

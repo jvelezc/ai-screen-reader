@@ -1,4 +1,4 @@
-# Next: verify live reader controls in the notebook
+# Accepted notebook connection; next durable traversal retrieval
 
 The [signed-in private reader](validation/private-tenant-reader-v1.md) now
 passes provider authentication, workspace RLS, observation, navigation,
@@ -13,9 +13,10 @@ flowchart LR
     Edge --> Path[Accepted authenticated IP HTTPS]
     Path --> Core[Independent core API]
     Core --> Worker[Isolated reader and durable worker]
-    UI --> Acceptance[NEXT: original-user live reader acceptance]
+    UI --> Acceptance[Accepted: original-user live reader lifecycle]
+    Core --> Durable[NEXT: durable traversal and media retrieval]
     classDef next fill:#dbeafe,stroke:#1d4ed8,color:#1e3a8a
-    class Acceptance next
+    class Durable next
 ```
 
 **Current step:** API IP HTTPS and the original-user notebook -> Edge v1 -> core
@@ -28,10 +29,13 @@ passes182/182 on each OS, with type checking, lint and production builds. Core14
 passes2,047/2,047 per OS, native Linux30 and operator152 in [CI40268393362](https://github.com/jvelezc/ai-screen-reader/actions/runs/40268393362),
 with exact [deployment40269381448](https://github.com/jvelezc/ai-screen-reader/actions/runs/40269381448).
 The private notebook is available at http://localhost:6087/.
-**Next verify the new live Foundation reader with the original application user
-through the existing Edge gateway, including keyboard/320px checks and independent
-native close evidence.** The current browser is signed out; application sign-in
-is required for this remaining check. Keep tenant scope,
+**Accepted:** the [actual original-user Foundation reader walkthrough](validation/notebook-live-reader-v1.md)
+passed through Edge:31 nodes, three commands,14 events, three actual linked graph
+entries, keyboard operation,320px reflow and independently verified native close.
+Actual expired sessions cleared reader/workspace views; provider token expiry and
+membership revocation remain separate. **Next implement durable tenant-scoped
+traversal/media finalization and API/MCP retrieval**, then the notebook's
+original-evidence graph view. Keep tenant scope,
 document fencing, event/graph provenance, bounds and native-cleanup uncertainty.
 The backend and worker/broker listeners remain private; only the selected API routes gain HTTPS reachability.
 API connectivity does not publish MCP, Claude onboarding or an official plugin.
@@ -53,7 +57,7 @@ API connectivity does not publish MCP, Claude onboarding or an official plugin.
 4. **Accepted:** real signed-in UI -> Edge -> core fixture admission/report,
    matched evidence/storage/input/goal fields and an actual freshly authorized
    download. Sign-out clearing and320px reflow passed for that earlier report flow.
-   **Implemented, acceptance NEXT:** live reader lifecycle controls through the
+   **Accepted:** live reader lifecycle controls through the
    existing session contract. The new session uses Foundation, separate from
    synthetic-shop reports. Open one reader,
    observe a fresh document, navigate the virtual cursor, inspect paged actual
@@ -61,7 +65,8 @@ API connectivity does not publish MCP, Claude onboarding or an official plugin.
    reader/native-close proof remains separately tied to1a5c6dc. The browser must
    not fetch core directly or depend on a frontend proxy.
    The consumer's [live reader contract and named tests](https://github.com/jvelezc/ai-screen-reader-ui/blob/e473aea2a82887fe3d4e4910cd968baf5de71c2f/docs/live-reader-v1.md)
-   record local182/182 and distinguish UI CI from the pending real tenant check.
+   record local182/182. The new real tenant receipt separately records actual
+   browser integration, expiry handling and native close evidence.
 5. Record network reachability, Edge deployment, original-user authorization
    and visible UI acceptance separately. A healthy HTTP listener is insufficient.
 
