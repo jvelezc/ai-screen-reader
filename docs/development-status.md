@@ -8,6 +8,18 @@ Prioritize an independently usable core API and MCP. The Lovable UI consumes thi
 
 **Next for recorded evidence:** durable tenant-scoped traversal/media finalization and API/MCP retrieval, then the notebook's original-evidence graph view through Edge. The live reader controls below remain the UI prerequisite; human/NVDA comparison recordings and custody review are distinct later gates.
 
+**Owned CI canary:** [screenreader.privensic.com](validation/owned-public-canary-v1.md)
+now serves two fixed v1 HTTPS pages. The actual isolated MCP task passed locally,
+including unchanged focus/NoMatch/Tab+Enter/goal/cleanup gates. CI uses this owned
+host instead of the intermittently failing example.com/IANA dependency. Linux
+operator checks pass152/152, including eight new canary ownership/rollback cases;
+live default-trust TLS, method/path denials and unchanged existing Caddy imports
+are independently verified. This static site is separate from the API, notebook
+and deferred public MCP/plugin publication. The recorded package source062ddd5
+passed all nine jobs in [CI40248172759](https://github.com/jvelezc/ai-screen-reader/actions/runs/40248172759)
+and was subsequently promoted by [deployment40249603876](https://github.com/jvelezc/ai-screen-reader/actions/runs/40249603876).
+That backend delivery does not enable hosted recording.
+
 | Original milestone | Status | Delivered | Remaining gate |
 | --- | --- | --- | --- |
 | 0: core assumptions | Partial | Real Chromium semantics, separate cursor/focus, bounded keyboard input, same-context browser/reader exclusion, owned local persistence, headed Xvfb continuity, controlled video canaries and combined synthetic excluded-input handoff and scoped loopback semantic and pixel viewing | Authenticated remote provider and handshake; human/AT viewing acceptance |

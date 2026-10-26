@@ -2,6 +2,12 @@
 
 The prototype uses the actual stdio server, Linux container fence, validating proxy and sandboxed Chromium. See [installation and first Claude task](../prototype/claude.md) and [decision 0015](../decisions/0015-isolated-public-reader-prototype.md).
 
+Current acceptance uses the [project-owned HTTPS canary](owned-public-canary-v1.md).
+The historical example.com/IANA receipt below remains historical; current CI
+requires the fixed v1 source/destination and the same isolation, missing-heading,
+focus, actual input, goal verification and cleanup checks. It has no fallback to
+third-party pages or successful synthetic replay.
+
 | Requirement | Evidence |
 | --- | --- |
 | Exact HTTPS host policy and malformed/private targets rejected | PublicTargetPolicyTests.TargetPolicy_RejectsUnsupportedOrUnapprovedUrls; TargetPolicy_AllowsExactHttpsHostWithCaseAndDefaultPort; PolicyConfiguration_RejectsAmbiguousHosts |

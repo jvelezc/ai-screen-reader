@@ -43,6 +43,10 @@ python3 api_site.py install --site hsr-api-ip.caddy --baseline reviewed-baseline
 ```
 
 The operator uses fixed `/etc/caddy` paths and an exclusive operation lock.
+Its optional `--site-name` accepts only `hsr-api.caddy` (the default) and
+`hsr-canary.caddy`. Each selection protects the other file as unrelated
+configuration. The [static canary](owned-public-canary-v1.md) has its own fresh
+baseline and reviewed digest; API provisioning remains unchanged.
 The root-owned site is persistent host provisioning; ordinary restricted CI
 backend promotions continue without rewriting Caddy. On activation failure,
 retain the safe error and inspect rollback status before retrying. Explicit

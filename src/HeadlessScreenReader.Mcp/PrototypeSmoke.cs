@@ -7,6 +7,12 @@ namespace HeadlessScreenReader.Mcp;
 /// <summary>A deterministic public-page task over the same stdio entry point used by Claude.</summary>
 public static class PrototypeSmoke
 {
+    public const string CanaryVersion = "hsr-public-reader-canary-v1";
+    public const string SourceUrl = "https://screenreader.privensic.com/ci/v1/source";
+    public const string DestinationUrl = "https://screenreader.privensic.com/ci/v1/destination";
+    public const string SourceTitle = "Reader CI source v1";
+    public const string DestinationHeading = "Reader CI destination v1";
+
     public static async Task<int> RunAsync(string configPath)
     {
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(120));
@@ -37,22 +43,22 @@ public static class PrototypeSmoke
             Require(status.GetProperty("data").GetProperty("isolation").GetProperty("passed").GetBoolean(), "ISOLATION_MISSING");
             var denied = await Call("reader_open_url", new() { ["url"] = "https://127.0.0.1/" }, error: true);
             Require(denied.GetProperty("errorCode").GetString() == "TARGET_URL_UNSUPPORTED", "PRIVATE_URL_NOT_DENIED");
-            var opened = await Call("reader_open_url", new() { ["url"] = "https://example.com/" });
+            var opened = await Call("reader_open_url", new() { ["url"] = SourceUrl });
             var id = opened.GetProperty("sessionId").GetString()!;
             var first = (await Call("reader_snapshot", new() { ["sessionId"] = id, ["limit"] = 100 })).GetProperty("data");
             await File.WriteAllTextAsync(Path.Combine(Path.GetDirectoryName(Path.GetFullPath(configPath))!, "public-source-observation.json"),
                 first.GetRawText(), deadline.Token);
             var document = first.GetProperty("documentId").GetString()!;
             Require(first.GetProperty("nodes").EnumerateArray().Any(n => n.GetProperty("role").GetString() == "RootWebArea"
-                && n.GetProperty("name").GetString() == "Example Domain"), "PUBLIC_TITLE_MISSING");
+                && n.GetProperty("name").GetString() == SourceTitle), "PUBLIC_TITLE_MISSING");
             Task<JsonElement> Execute(string command, object? goal = null) => Call("reader_execute", new()
             { ["sessionId"] = id, ["documentId"] = document, ["command"] = command, ["goal"] = goal });
-            var title = await Execute("DocumentStart", new { role = "RootWebArea", name = "Example Domain" });
+            var title = await Execute("DocumentStart", new { role = "RootWebArea", name = SourceTitle });
             Require(title.GetProperty("data").GetProperty("verification").GetString() == "Satisfied", "PUBLIC_TITLE_NOT_VERIFIED");
             var missingHeading = await Execute("NextHeading");
             Require(missingHeading.GetProperty("data").GetProperty("outcome").GetString() == "NoMatch", "UNEXPECTED_PAGE_HEADING");
             var paragraph = await Execute("NextParagraph");
-            Require(paragraph.GetProperty("data").GetProperty("passage").GetProperty("text").GetString()!.StartsWith("This domain", StringComparison.Ordinal), "PUBLIC_PASSAGE_MISSING");
+            Require(paragraph.GetProperty("data").GetProperty("passage").GetProperty("text").GetString()!.StartsWith("Controlled reader acceptance page.", StringComparison.Ordinal), "PUBLIC_PASSAGE_MISSING");
             var link = await Execute("NextLink");
             Require(link.GetProperty("data").GetProperty("outcome").GetString() == "CursorMoved", "PUBLIC_LINK_MISSING");
             var noFocus = await Execute("Activate");
@@ -81,15 +87,15 @@ public static class PrototypeSmoke
             var newDocument = destination.GetProperty("documentId").GetString()!;
             Require(newDocument != document, "LINK_DID_NOT_NAVIGATE");
             var destinationUrl = new Uri(destination.GetProperty("documentUrl").GetString()!);
-            Require(destinationUrl.Host is "iana.org" or "www.iana.org", "WRONG_LINK_DESTINATION");
+            Require(destinationUrl.AbsoluteUri == DestinationUrl, "WRONG_LINK_DESTINATION");
             // This is the declared destination predicate; names do not come from arbitrary page instructions.
             var expected = destinationNodes.FirstOrDefault(n => n.GetProperty("role").GetString() == "heading"
-                && string.Equals(n.GetProperty("name").GetString(), "Example Domains", StringComparison.OrdinalIgnoreCase));
-            Require(expected.ValueKind != JsonValueKind.Undefined, "IANA_GOAL_HEADING_MISSING");
+                && n.GetProperty("name").GetString() == DestinationHeading);
+            Require(expected.ValueKind != JsonValueKind.Undefined, "DESTINATION_GOAL_HEADING_MISSING");
             document = newDocument;
             var verified = await Execute("NextHeading", new { role = "heading", name = expected.GetProperty("name").GetString() });
-            Require(verified.GetProperty("data").GetProperty("verification").GetString() == "Satisfied", "IANA_GOAL_NOT_VERIFIED");
-            Require(verified.GetProperty("data").GetProperty("cursorNodeId").GetString() == expected.GetProperty("id").GetString(), "IANA_CURSOR_NOT_AT_GOAL");
+            Require(verified.GetProperty("data").GetProperty("verification").GetString() == "Satisfied", "DESTINATION_GOAL_NOT_VERIFIED");
+            Require(verified.GetProperty("data").GetProperty("cursorNodeId").GetString() == expected.GetProperty("id").GetString(), "DESTINATION_CURSOR_NOT_AT_GOAL");
             var timeline = (await Call("reader_timeline", new() { ["sessionId"] = id, ["limit"] = 100 })).GetProperty("data");
             var inputs = timeline.GetProperty("events").EnumerateArray().Where(e => e.GetProperty("kind").GetString() == "InputAttempted")
                 .Select(e => e.GetProperty("detail").GetString()).ToArray();
@@ -98,6 +104,8 @@ public static class PrototypeSmoke
             Console.WriteLine(JsonSerializer.Serialize(new
             {
                 PrototypePassed = true,
+                CanaryVersion,
+                Source = SourceUrl,
                 IsolationVerified = true,
                 PrivateTargetDenied = true,
                 PublicTitleVerified = true,
@@ -106,7 +114,7 @@ public static class PrototypeSmoke
                 ReadOnlyBrowseObserved = true,
                 FocusRequiredObserved = true,
                 FocusedLinkNavigationObserved = true,
-                IanaDestinationVerified = true,
+                DestinationVerified = true,
                 Inputs = inputs,
                 SessionClosed = true,
                 Destination = destinationUrl.GetLeftPart(UriPartial.Path)

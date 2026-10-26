@@ -110,9 +110,9 @@ jobs:
         with:
           global-json-file: global.json
       - name: Build isolated prototype
-        run: pwsh -NoProfile -File scripts/Install-IsolatedReader.ps1 -Runtime docker
+        run: pwsh -NoProfile -File scripts/Install-IsolatedReader.ps1 -Runtime docker -AllowedHosts screenreader.privensic.com
       - name: Prove namespace fence and proxy policy
-        run: pwsh -NoProfile -File scripts/Test-ReaderIsolation.ps1 -Runtime docker | Set-Content artifacts/isolated/isolation.json
+        run: pwsh -NoProfile -File scripts/Test-ReaderIsolation.ps1 -Runtime docker -AllowedHosts screenreader.privensic.com | Set-Content artifacts/isolated/isolation.json
       - name: Exercise public task through real stdio MCP and sandboxed Chromium
         run: |
           pwsh -NoProfile -File scripts/Test-ReaderPrototype.ps1 -Runtime docker | Set-Content artifacts/isolated/public-smoke.json

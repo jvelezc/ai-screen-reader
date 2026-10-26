@@ -1,4 +1,4 @@
-param([ValidateSet('podman', 'docker')][string]$Runtime = 'podman', [string]$AllowedHosts = 'example.com,iana.org,www.iana.org')
+param([ValidateSet('podman', 'docker')][string]$Runtime = 'podman', [string]$AllowedHosts = 'screenreader.privensic.com')
 $ErrorActionPreference = 'Stop'
 Import-Module (Join-Path $PSScriptRoot 'ReaderIsolation.psm1') -Force -DisableNameChecking
 $ctx = Start-ReaderIsolation -Runtime $Runtime -AllowedHosts $AllowedHosts

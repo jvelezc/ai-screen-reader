@@ -1,6 +1,6 @@
 param(
     [ValidateSet('podman', 'docker')][string]$Runtime = 'podman',
-    [string]$AllowedHosts = 'example.com,iana.org,www.iana.org',
+    [string]$AllowedHosts = 'screenreader.privensic.com',
     [switch]$SkipBuild,
     [switch]$InstallClaudeCode
 )

@@ -65,7 +65,7 @@ function Get-ReaderWorkerArguments {
 }
 
 function Start-ReaderIsolation {
-    param([ValidateSet('podman', 'docker')][string]$Runtime = 'podman', [string]$AllowedHosts = 'example.com,www.iana.org')
+    param([ValidateSet('podman', 'docker')][string]$Runtime = 'podman', [string]$AllowedHosts = 'screenreader.privensic.com')
     $owner = [Guid]::NewGuid().ToString('N')
     $acceptanceLabels = @()
     if ($env:HSR_ACCEPTANCE_RUN_ID -match '^[0-9a-f]{32}$') {
