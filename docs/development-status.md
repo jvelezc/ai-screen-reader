@@ -6,7 +6,7 @@ Prioritize an independently usable core API and MCP. The Lovable UI consumes thi
 
 **Recorded-journey increment:** the local [recorded traversal package](decisions/0054-recorded-traversal-package.md) now binds the four synthetic routes' original media, actual node/action graphs, passive viewers, source fixture and collector build identity into a portable ZIP. A read-only CLI verifies extracted files against a separately retained manifest digest. [Local Windows validation](validation/recorded-evidence-package-v1.md) passed 2,047/2,047 tests and independent verification of the actual four-route ZIP; Windows/Linux CI extraction is wired separately. Partial/cancelled runs retain their failures; integrity never upgrades reachability, human/NVDA comparison or legal acceptance. This does not enable hosted or general-site recording.
 
-**Next for recorded evidence:** durable tenant-scoped traversal/media finalization and API/MCP retrieval, then the notebook's original-evidence graph view through Edge. The live reader controls below remain the UI prerequisite; human/NVDA comparison recordings and custody review are distinct later gates.
+**Next for recorded evidence:** durable tenant-scoped traversal/media finalization and API/MCP retrieval, then the notebook's original-evidence graph view through Edge. The live reader acceptance below remains the UI prerequisite; human/NVDA comparison recordings and custody review are distinct later gates.
 
 **Owned CI canary:** [screenreader.privensic.com](validation/owned-public-canary-v1.md)
 now serves two fixed v1 HTTPS pages. The actual isolated MCP task passed locally,
@@ -26,13 +26,13 @@ That backend delivery does not enable hosted recording.
 | 1: local screen reader | Substantial local implementation | Reader profile v13, fixtures, bounded events/observations, policy checks and CI | Capture/privacy feasibility remains a prerequisite to editable entry and recording; broader supported-control scope is explicit |
 | 2: evidence-backed workflow | In progress | Bounded routes, append-only JSON, node/edge reports, controlled recording canaries, 20-marker timing proof and original route media with capture/action/event intervals and passive local viewer; bounded diagnostic provenance, explicit fresh-run replay and owned evidence writes | Broader workflow acceptance and diagnostics/search coverage |
 | 3: intervention and isolation | Partial | Exact public-host policy, independent Linux egress fence and exclusive local controller leases, headed Xvfb continuity and explicitly simulated excluded input and scoped loopback semantic and pixel viewing | Actual human/AT acceptance and hosted identity/capture/persistence fencing |
-| 4: durable hosted execution | In progress | Admission/fenced leases and196 PostgreSQL/pgmq cases; signed-in one-shot/S3; ten private MCP tools; real HTTP reader accepted at1a5c6dc; trusted API IP HTTPS at2485c53; actual notebook -> Edge v1 -> core fixture/report/S3/download/sign-out; UI53533d4 passes132 per OS; corebeea0b9 passes2,005 per OS and exact deployment | Live reader UI controls; broader tenant restart/recovery; real revoked/expired reader authority and human/AT acceptance |
+| 4: durable hosted execution | In progress | Admission/fenced leases and196 PostgreSQL/pgmq cases; signed-in one-shot/S3; ten private MCP tools; real HTTP reader accepted at1a5c6dc; trusted API IP HTTPS; actual notebook -> Edge v1 -> core fixture/report/S3/download/sign-out; live reader controls at UIe473aea pass182 per OS; core148cde1 passes2,047 per OS and exact deployment | Original-user live reader UI acceptance; broader tenant restart/recovery; real revoked/expired reader authority and human/AT acceptance |
 | 5: public MCP pilot | Deferred | Local stdio and private HTTP-backed read-only stdio adapter | Public MCP HTTPS endpoint, client onboarding, plugin and pilot operations; private report remains active milestone4 work |
 | 6: measured extensions | Later | Bounded reader improvements through v13 | Broader validated widgets and compatible-run comparisons; public plugins remain deferred |
 
 <a id="next-isolated-hosted-reader-sessions"></a>
 
-## Next: live reader controls in the notebook
+## Next: verify live reader controls in the notebook
 
 **Signed-in reader accepted:** [the real application-user check](validation/private-tenant-reader-v1.md)
 passed at1a5c6dc: original-user provider authentication/RLS, two observations,
@@ -42,7 +42,16 @@ and foreign-workspace denial, API close and independent normal native removal.
 specific deployed HTTP workflow; actual revoked/expired membership and human/AT
 acceptance remain separate. No browser input or goal verification was introduced.
 
-**Do next:** [implement live reader controls through Edge](next-edge-to-core-connection.md).
+**Do next:** [verify live reader controls through Edge](next-edge-to-core-connection.md).
+UIe473aea now implements the separate live Foundation reader: explicit open/status,
+fresh observe, document-fenced read-current/next-heading/next-button, paged actual
+events and directed state/edge evidence, and matching close acknowledgement.
+[UI CI40272688892](https://github.com/jvelezc/ai-screen-reader-ui/actions/runs/40272688892)
+passes182/182 on Windows and Linux, plus type checking/lint/build. Initial missing
+input/goal facts stay Unobserved; lost opens/closes stay unconfirmed, access loss
+clears tenant views and stale documents disable navigation. These are consumer
+checks. The original-user live reader walkthrough, keyboard/320px inspection and
+independent native-close proof remain NEXT, waiting for application sign-in at6087.
 Trusted API IP HTTPS, Edge v1 and the real original-user notebook fixture/report
 flow are accepted. The confirmed user opened a workspace, admitted one fixture,
 refreshed it to observed/Available/S3, inspected32 nodes/input0/goalfalse, downloaded
@@ -56,7 +65,15 @@ gates passed. These facts do not establish actual AT, new-account email callback
 membership revocation/expiry or live reader controls through the notebook.
 The worker/broker and deployment remain private/SSH; public MCP/plugins stay deferred.
 
-**Current accepted core:**beea0b9 passed all nine jobs in
+**Current accepted core delivery:**148cde1 passed all nine jobs in
+[CI40268393362](https://github.com/jvelezc/ai-screen-reader/actions/runs/40268393362),
+Windows/Ubuntu2,047/2,047 each, native Linux30 and operator152, with exact
+[deployment40269381448](https://github.com/jvelezc/ai-screen-reader/actions/runs/40269381448).
+Independent VPS readback verified its current release and every bundled file,
+matching immutable image, preserved Caddy imports and trusted static-canary/API
+HTTPS. This includes local recorded-package code, not hosted recording.
+
+**Earlier Windows driver repair:**beea0b9 passed all nine jobs in
 [CI40242081847](https://github.com/jvelezc/ai-screen-reader/actions/runs/40242081847),
 Windows/Ubuntu2,005/2,005 each, native Linux30 and operator144. Exact
 [deployment40243214756](https://github.com/jvelezc/ai-screen-reader/actions/runs/40243214756)
