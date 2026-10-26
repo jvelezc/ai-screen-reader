@@ -2,7 +2,7 @@
 
 Local .NET screen-reader foundation for the architecture in [the development plan](outputs/HeadlessScreenReader-Architecture-Review-and-Development-Plan.md).
 
-The [leased observation worker](docs/decisions/0037-isolated-observation-worker.md) connects tenant-authorized admission to isolated synthetic-shop observation, private saved bytes and fenced queue completion. Its private VPS deployment and rollback are accepted. A real signed-in tenant fixture completed and its report matched independently verified private S3 evidence. Private MCP now supports durable fixture scans and paged saved reports alongside live reading. The [real application-user reader](docs/validation/private-tenant-reader-v1.md) also passes authentication/RLS, navigation, matching graph evidence and independent native close. **The [authenticated core API](docs/validation/core-api-ingress-v1.md) is live at [https://89.117.17.81](https://89.117.17.81/openapi/v1.json). The separate notebook's real original-user Edge fixture/report/download and sign-out flow is accepted. Next: [live reader controls in the notebook](docs/next-edge-to-core-connection.md).** [Current status](docs/development-status.md) separates local, CI and hosted acceptance.
+The [leased observation worker](docs/decisions/0037-isolated-observation-worker.md) connects tenant-authorized admission to isolated synthetic-shop observation, private saved bytes and fenced queue completion. Its private VPS deployment and rollback are accepted. A real signed-in tenant fixture completed and its report matched independently verified private S3 evidence. Private MCP supports durable fixture scans, saved reports and explicit archive reads alongside live reading. The [real application-user reader](docs/validation/private-tenant-reader-v1.md) also passes authentication/RLS, navigation, matching graph evidence and independent native close. **The [authenticated core API](docs/validation/core-api-ingress-v1.md) is live at [https://89.117.17.81](https://89.117.17.81/openapi/v1.json). The separate notebook's [original-user live reader](docs/validation/notebook-live-reader-v1.md) and earlier fixture/report/download/sign-out workflows are accepted. Next: [archive reads through Edge and the notebook](docs/development-status.md#next-isolated-hosted-reader-sessions), followed by fresh original-user reconnect and complete original-hash acceptance.** [Current status](docs/development-status.md) separates local, CI and hosted acceptance.
 
 **Active work: the original evidence-backed workflow.** Bounded authored traversal, immutable attempt receipts, an observation graph and linked local reports are implemented. Run `--traversal` below. See [original milestone status and the next acceptance gate](docs/development-status.md). Public MCP hosting and plugin publication are deferred.
 
@@ -20,13 +20,19 @@ through Edge Functions in existing Supabase project `gpnijaxrgtwzwtrqsbcu`; it i
 third-party consumer. Reader, jobs and evidence logic stay here.
 
 The current bounded workspace/report API and [tenant-owned read-only fixture sessions](docs/decisions/0044-tenant-reader-sessions.md) publish
-[contract 1.3.0](docs/decisions/0049-hosted-reader-state-edge-trace.md) at `/openapi/v1.json`,
+[contract 1.4.0](docs/decisions/0056-authorized-archive-retrieval.md) at `/openapi/v1.json`,
 including response schemas and safe errors. See [HTTP examples](docs/protocol/core-api.http)
 and [the next core acceptance step](docs/development-status.md#next-isolated-hosted-reader-sessions).
 The [private HTTP-backed MCP mode](docs/decisions/0051-private-http-backed-mcp.md)
 consumes that same API through stdio, with original caller scope, read-only
 navigation and graph trace pages. It uses the API's isolated worker instead of
 a second local browser. The [durable scan tools](docs/decisions/0052-private-mcp-durable-scans.md) add idempotent fixed-fixture admission, recent runs and saved reports. Public MCP/plugin publication stays deferred.
+The [archive reads](docs/decisions/0056-authorized-archive-retrieval.md) add
+`archive_manifest` and `archive_file`, bringing the private mode to twelve tools.
+Retain the operator import identity; every page reauthorizes the original caller
+and workspace. Inventory pages contain at most 32 files and original-byte pages
+at most 64 KiB. Reconstruct every original and verify its whole-file digest.
+These reads add no capture, scan admission binding, custody or verified-goal claim.
 The backend listener and worker/broker remain private. Selected API paths are
 available through authenticated HTTPS; public MCP remains deferred. The HTTP surface does
 not yet expose every interactive capability available through local stdio MCP.

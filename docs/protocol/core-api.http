@@ -1,5 +1,5 @@
 # Core-side requests. Lovable application traffic must instead invoke Supabase Edge Functions.
-# These examples describe source contract 1.3.0; an older live deployment may expose older metadata.
+# These examples describe source contract 1.4.0; an older live deployment may expose older metadata.
 # Set accessToken only in your HTTP client's private local environment; never commit a real JWT.
 @baseUrl = http://localhost:6086
 @accessToken =
@@ -11,6 +11,24 @@
 @documentId = replace-with-observed-document-id
 # Generate once for a new admission; reuse after an unconfirmed response.
 @requestId = 33333333-3333-4333-8333-333333333333
+# Copy both values from a separately retained operator import receipt in this workspace.
+# An import is not a scan admission or permission grant.
+@archive = 55555555-5555-4555-8555-555555555555
+@indexSha256 = replace-with-retained-index-sha256
+
+### Bounded original-file metadata; follow nextOffset with the same retained identity
+POST {{baseUrl}}/api/workspaces/{{organization}}/archives/{{archive}}/manifest
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"indexSha256":"{{indexSha256}}","offset":0}
+
+### Exact original bytes; follow nextOffset, decode base64 and verify whole fileSha256
+POST {{baseUrl}}/api/workspaces/{{organization}}/archives/{{archive}}/file
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"indexSha256":"{{indexSha256}}","path":"evidence-manifest.json","offset":0}
 
 ### Published protocol; anonymous, no secrets
 GET {{baseUrl}}/openapi/v1.json
