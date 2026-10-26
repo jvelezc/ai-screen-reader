@@ -28,10 +28,17 @@ if (args.Length == 3 && args[0] == "--check-s3-local")
 if (args.Length == 3 && args[0] == "--verify-evidence")
     return await TraversalEvidencePackage.VerifyCommandAsync(args[1], args[2], Console.Out);
 
+if (args.Length > 0 && args[0] is "--archive-evidence-local" or "--archive-evidence-s3" or "--verify-archive-local" or "--verify-archive-s3")
+    return await TraversalArchiveCommands.RunAsync(args, Console.Out);
+
 if (args.Contains("--help", StringComparer.Ordinal))
 {
     Console.WriteLine("HeadlessScreenReader. Usage: --hosted-control | --check-control | --check-s3-local <port> <ownerN> | --view-fixture | --private-client | --headed-private-client | --private-pixels | --headed-private-pixels | --private-viewer | --synthetic-handoff | --headed-synthetic-handoff | --headed-session | --controller | --owned-scan | --replay | --features | --traversal-recording | --recording-sync | --capture-probe | [--traversal | --widgets | --observe-live | --text | --frames | --ranges | --composites | --tables | --paragraphs | --multiselect | --typeahead] [--headed] | --reference-template | --reference-case <id> | --assess-reference <file>");
     Console.WriteLine("  --verify-evidence <extracted-directory> <trusted-manifest-sha256>: read-only recorded package integrity check");
+    Console.WriteLine("  --archive-evidence-local <directory> <trusted-manifest-sha256> <organization-guid> <archive-guid> <owned-store-directory>");
+    Console.WriteLine("  --archive-evidence-s3 <directory> <trusted-manifest-sha256> <organization-guid> <archive-guid>");
+    Console.WriteLine("  --verify-archive-local <owned-store-directory> <organization-guid> <archive-guid> <index-sha256>");
+    Console.WriteLine("  --verify-archive-s3 <organization-guid> <archive-guid> <index-sha256>");
     foreach (var item in ReferenceValidation.Cases) Console.WriteLine($"  {item.Id}: {item.Task}");
     return 0;
 }

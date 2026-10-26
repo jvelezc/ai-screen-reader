@@ -243,6 +243,17 @@ jobs:
           Expand-Archive -LiteralPath $recorded.EvidencePackage.Archive -DestinationPath $reviewDirectory
           dotnet run --project src/HeadlessScreenReader.Cli -c Release --no-build -- --verify-evidence $reviewDirectory $recorded.EvidencePackage.ManifestSha256 | Tee-Object -FilePath artifacts/recorded-evidence-verification.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $archiveDirectory = Join-Path $env:RUNNER_TEMP 'recorded-traversal-objects'
+          $archiveOrganization = [guid]::NewGuid().ToString('D')
+          $archiveIdentity = [guid]::NewGuid().ToString('D')
+          dotnet run --project src/HeadlessScreenReader.Cli -c Release --no-build -- --archive-evidence-local $reviewDirectory $recorded.EvidencePackage.ManifestSha256 $archiveOrganization $archiveIdentity $archiveDirectory | Tee-Object -FilePath artifacts/traversal-archive-import.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $archived = Get-Content artifacts/traversal-archive-import.json -Raw | ConvertFrom-Json
+          if (-not $archived.ObjectReadbackVerified -or -not $archived.IndexReadbackVerified -or $archived.Files -ne $recorded.EvidencePackage.Files + 1 -or $archived.Identity.OrganizationId -ne $archiveOrganization -or $archived.Identity.ArchiveId -ne $archiveIdentity) { throw 'Traversal archive import is unconfirmed.' }
+          dotnet run --project src/HeadlessScreenReader.Cli -c Release --no-build -- --verify-archive-local $archiveDirectory $archiveOrganization $archiveIdentity $archived.Identity.IndexSha256 | Tee-Object -FilePath artifacts/traversal-archive-verification.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $archiveVerified = Get-Content artifacts/traversal-archive-verification.json -Raw | ConvertFrom-Json
+          if (-not $archiveVerified.IntegrityMatches -or $archiveVerified.Files -ne $archived.Files -or $archiveVerified.Bytes -ne $archived.Bytes -or $archiveVerified.Identity.IndexSha256 -ne $archived.Identity.IndexSha256) { throw 'Fresh-process traversal archive verification failed.' }
       - name: Check manual reference remains pending
         run: |
           dotnet run --project src/HeadlessScreenReader.Cli -c Release --no-build -- --reference-template | Set-Content -Encoding utf8 artifacts/reference-template.json

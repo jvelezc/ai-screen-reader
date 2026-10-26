@@ -6,7 +6,22 @@ Prioritize an independently usable core API and MCP. The Lovable UI consumes thi
 
 **Recorded-journey increment:** the local [recorded traversal package](decisions/0054-recorded-traversal-package.md) now binds the four synthetic routes' original media, actual node/action graphs, passive viewers, source fixture and collector build identity into a portable ZIP. A read-only CLI verifies extracted files against a separately retained manifest digest. [Local Windows validation](validation/recorded-evidence-package-v1.md) passed 2,047/2,047 tests and independent verification of the actual four-route ZIP; Windows/Linux CI extraction is wired separately. Partial/cancelled runs retain their failures; integrity never upgrades reachability, human/NVDA comparison or legal acceptance. This does not enable hosted or general-site recording.
 
-**Next for recorded evidence:** durable tenant-scoped traversal/media finalization and API/MCP retrieval, then the notebook's original-evidence graph view through Edge. The live reader acceptance below remains the UI prerequisite; human/NVDA comparison recordings and custody review are distinct later gates.
+**Durable archive storage:** [original traversal archives](decisions/0055-durable-traversal-archive.md)
+now import already verified packages into scoped local/private S3 objects.4MiB
+chunks preserve original bytes; the index is published last after actual readback.
+Fresh64KiB file pages and complete hash verification survive reconnect. The real
+four-route package round-tripped through both local and private Supabase S3:
+101 files,2,738,815 bytes. [Local validation](validation/durable-traversal-archive-v1.md)
+passes2,112/2,112 with65 new cases, strict build and format. Windows/Linux CI
+now imports and independently verifies its newly recorded package; remote CI and
+exact deployment remain separate gates until reported.
+
+**Next for recorded evidence:** freshly tenant-authorized bounded archive
+manifest/file retrieval through core API/private MCP, then the notebook's
+original-evidence graph/media view through Edge. Storage prefixes alone are not
+application-user authorization. The accepted live reader lifecycle remains a
+separate prerequisite; hosted collection/admission linkage, human/NVDA recordings
+and custody review retain their gates.
 
 **Owned CI canary:** [screenreader.privensic.com](validation/owned-public-canary-v1.md)
 now serves two fixed v1 HTTPS pages. The actual isolated MCP task passed locally,
@@ -32,7 +47,7 @@ That backend delivery does not enable hosted recording.
 
 <a id="next-isolated-hosted-reader-sessions"></a>
 
-## Next: durable traversal and media retrieval
+## Next: authorized archive retrieval through API and private MCP
 
 **Signed-in reader accepted:** [the real application-user check](validation/private-tenant-reader-v1.md)
 passed at1a5c6dc: original-user provider authentication/RLS, two observations,
@@ -68,8 +83,8 @@ gates passed. These facts do not establish actual AT, new-account email callback
 membership revocation/expiry or actual assistive-technology operation.
 The worker/broker and deployment remain private/SSH; public MCP/plugins stay deferred.
 
-**Do next:** durable tenant-scoped traversal/media finalization and API/MCP
-retrieval, then the notebook's original-evidence graph view through Edge. Preserve
+**Do next:** freshly tenant-authorized traversal/media retrieval through API and
+private MCP over the new archive storage contract, then the notebook's original-evidence graph view through Edge. Preserve
 actual source/action/result links, media/capture exclusions, separately verified
 integrity and explicit partial/cancelled outcomes. The new live graph remains
 transient and is not a hosted recording or custody attestation.
