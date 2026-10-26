@@ -4,6 +4,10 @@ Updated October 25, 2026. The original proposal under `outputs/` remains unchang
 
 Prioritize an independently usable core API and MCP. The Lovable UI consumes this service through Edge Functions in existing Supabase project `gpnijaxrgtwzwtrqsbcu`. Public MCP hosting and official plugin publication remain separate from implementing the core protocols.
 
+**Recorded-journey increment:** the local [recorded traversal package](decisions/0054-recorded-traversal-package.md) now binds the four synthetic routes' original media, actual node/action graphs, passive viewers, source fixture and collector build identity into a portable ZIP. A read-only CLI verifies extracted files against a separately retained manifest digest. [Local Windows validation](validation/recorded-evidence-package-v1.md) passed 2,047/2,047 tests and independent verification of the actual four-route ZIP; Windows/Linux CI extraction is wired separately. Partial/cancelled runs retain their failures; integrity never upgrades reachability, human/NVDA comparison or legal acceptance. This does not enable hosted or general-site recording.
+
+**Next for recorded evidence:** durable tenant-scoped traversal/media finalization and API/MCP retrieval, then the notebook's original-evidence graph view through Edge. The live reader controls below remain the UI prerequisite; human/NVDA comparison recordings and custody review are distinct later gates.
+
 | Original milestone | Status | Delivered | Remaining gate |
 | --- | --- | --- | --- |
 | 0: core assumptions | Partial | Real Chromium semantics, separate cursor/focus, bounded keyboard input, same-context browser/reader exclusion, owned local persistence, headed Xvfb continuity, controlled video canaries and combined synthetic excluded-input handoff and scoped loopback semantic and pixel viewing | Authenticated remote provider and handshake; human/AT viewing acceptance |

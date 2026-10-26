@@ -237,6 +237,12 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           dotnet run --project src/HeadlessScreenReader.Cli -c Release --no-build -- --traversal-recording | Tee-Object -FilePath artifacts/traversal-recording.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $recorded = Get-Content artifacts/traversal-recording.json -Raw | ConvertFrom-Json
+          if (-not $recorded.RecordedRoutesReady -or $recorded.Routes -ne 4) { throw 'Recorded shop routes are incomplete.' }
+          $reviewDirectory = Join-Path $env:RUNNER_TEMP 'recorded-evidence-review'
+          Expand-Archive -LiteralPath $recorded.EvidencePackage.Archive -DestinationPath $reviewDirectory
+          dotnet run --project src/HeadlessScreenReader.Cli -c Release --no-build -- --verify-evidence $reviewDirectory $recorded.EvidencePackage.ManifestSha256 | Tee-Object -FilePath artifacts/recorded-evidence-verification.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Check manual reference remains pending
         run: |
           dotnet run --project src/HeadlessScreenReader.Cli -c Release --no-build -- --reference-template | Set-Content -Encoding utf8 artifacts/reference-template.json

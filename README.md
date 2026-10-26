@@ -86,6 +86,8 @@ The traversal demo runs four independent synthetic shop routes: verified checkou
 
 The owned evidence demo runs with `--owned-scan`. It persists command intents before dispatch, drains real file writes before acknowledging exclusion, resumes with a fresh epoch baseline and closes with no pending work. Open the printed folder for typed JSON and hashes. This proves a bounded local owner; hosted privacy, human takeover and credential entry remain separate gates. See [owned evidence exclusion](docs/decisions/0027-owned-evidence-exclusion.md).
 
+Recorded synthetic shop routes also produce a [portable evidence ZIP](docs/decisions/0054-recorded-traversal-package.md) with original videos, selectable state/action reports, fixture source, collector identity and a SHA-256 manifest. Run `--traversal-recording`, keep the printed manifest digest separately, and verify an extracted copy with `--verify-evidence <directory> <trusted-manifest-sha256>`. Hash verification does not assert human/NVDA validation or court admissibility; hosted recording and real-site collection remain separate gates.
+
 The CLI also supports an optional manual comparison with NVDA:
 
 ```powershell

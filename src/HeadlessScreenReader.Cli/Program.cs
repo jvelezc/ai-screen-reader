@@ -25,9 +25,13 @@ if (args.SequenceEqual(["--check-isolated-reader-api"]))
 if (args.Length == 3 && args[0] == "--check-s3-local")
     return await S3ProofDemo.RunAsync(args[1], args[2]);
 
+if (args.Length == 3 && args[0] == "--verify-evidence")
+    return await TraversalEvidencePackage.VerifyCommandAsync(args[1], args[2], Console.Out);
+
 if (args.Contains("--help", StringComparer.Ordinal))
 {
     Console.WriteLine("HeadlessScreenReader. Usage: --hosted-control | --check-control | --check-s3-local <port> <ownerN> | --view-fixture | --private-client | --headed-private-client | --private-pixels | --headed-private-pixels | --private-viewer | --synthetic-handoff | --headed-synthetic-handoff | --headed-session | --controller | --owned-scan | --replay | --features | --traversal-recording | --recording-sync | --capture-probe | [--traversal | --widgets | --observe-live | --text | --frames | --ranges | --composites | --tables | --paragraphs | --multiselect | --typeahead] [--headed] | --reference-template | --reference-case <id> | --assess-reference <file>");
+    Console.WriteLine("  --verify-evidence <extracted-directory> <trusted-manifest-sha256>: read-only recorded package integrity check");
     foreach (var item in ReferenceValidation.Cases) Console.WriteLine($"  {item.Id}: {item.Task}");
     return 0;
 }

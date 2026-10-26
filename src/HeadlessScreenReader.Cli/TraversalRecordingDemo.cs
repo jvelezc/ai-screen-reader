@@ -111,7 +111,15 @@ public static class TraversalRecordingDemo
                 : $"- [{r.Receipt.Plan.Name}](route-{i + 1}.html): {r.Receipt.Reachability}; {r.Recording.Alignment?.ReasonCode ?? r.Recording.ErrorCode}. [Readable report](route-{i + 1}.md) · [Trace](route-{i + 1}.svg)"))
             + "\n\nNo recording of private inputs, arbitrary pages, human takeover or automatic replay. "
             + "Missing or partial media never changes the route's barrier assessment.\n").ConfigureAwait(false);
-        Console.WriteLine(JsonSerializer.Serialize(new { RecordedRoutesReady = ready, Routes = results.Count, Report = Path.Combine(folder, "index.md") }));
+        var package = await TraversalEvidencePackage.CreateAsync(folder, results, DateTimeOffset.UtcNow).ConfigureAwait(false);
+        Console.WriteLine(JsonSerializer.Serialize(new
+        {
+            RecordedRoutesReady = ready,
+            Routes = results.Count,
+            Report = Path.Combine(folder, "index.md"),
+            EvidencePackage = package,
+            IntegrityScope = "File correspondence to a separately retained digest; no human, NVDA or legal acceptance"
+        }));
         return cancellationToken.IsCancellationRequested ? 130 : ready ? 0 : 3;
     }
 }

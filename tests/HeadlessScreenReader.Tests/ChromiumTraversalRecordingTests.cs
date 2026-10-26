@@ -102,6 +102,14 @@ public sealed class ChromiumTraversalRecordingTests
         var original = await File.ReadAllTextAsync(Path.Combine(folder, "route-1.json"));
         await Assert.ThrowsAsync<IOException>(() => TraversalArtifactWriter.WriteAsync(folder, 1, receipt, result.Environment, result.Recording));
         Assert.Equal(original, await File.ReadAllTextAsync(Path.Combine(folder, "route-1.json")));
+        var package = await TraversalEvidencePackage.CreateAsync(folder, [result], DateTimeOffset.UtcNow);
+        var verified = await TraversalEvidencePackage.VerifyAsync(folder, package.ManifestSha256);
+        Assert.True(verified.IntegrityMatches);
+        Assert.Equal(package.Files, verified.Files);
+        using var archive = System.IO.Compression.ZipFile.OpenRead(package.Archive);
+        var originalEntry = Assert.Single(archive.Entries, entry => entry.FullName == "route-1-media/original.webm");
+        await using var videoStream = originalEntry.Open();
+        Assert.Equal(result.Recording.Alignment.VideoSha256, Convert.ToHexStringLower(await SHA256.HashDataAsync(videoStream)));
     }
 
     [Fact]
@@ -141,6 +149,12 @@ public sealed class ChromiumTraversalRecordingTests
         Assert.Equal(JsonValueKind.Null, recording.GetProperty("Alignment").ValueKind);
         Assert.Equal(JsonValueKind.Null, recording.GetProperty("Media").ValueKind);
         Assert.Empty(Directory.GetFiles(batch, "*.webm", SearchOption.AllDirectories));
+        using var manifest = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(batch, TraversalEvidencePackage.ManifestFile)));
+        Assert.Equal(4, manifest.RootElement.GetProperty("PlannedRoutes").GetInt32());
+        var route = Assert.Single(manifest.RootElement.GetProperty("Routes").EnumerateArray());
+        Assert.Equal("Unknown", route.GetProperty("Reachability").GetString());
+        Assert.False(route.GetProperty("HasRecording").GetBoolean());
+        Assert.False(route.GetProperty("TimingCalibrated").GetBoolean());
     }
 
     [Fact]
