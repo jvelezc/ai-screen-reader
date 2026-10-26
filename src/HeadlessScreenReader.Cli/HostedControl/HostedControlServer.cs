@@ -27,7 +27,7 @@ internal sealed class HostedControlServer : IAsyncDisposable
 
     public static async Task<HostedControlServer> StartAsync(PortalOptions options, IPortalProjectClient project,
         IPortalObservationReader observations, CancellationToken token = default, PortalReaderSessions? readerSessions = null,
-        Func<Task<bool>>? readerRuntimeReady = null)
+        Func<Task<bool>>? readerRuntimeReady = null, HeadlessScreenReader.Worker.TraversalArchive? traversalArchive = null)
     {
         options.Validate();
         var builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions
@@ -47,6 +47,7 @@ internal sealed class HostedControlServer : IAsyncDisposable
         });
         builder.Services.AddSingleton(options);
         builder.Services.AddSingleton(project);
+        builder.Services.AddSingleton(new PortalArchiveReader(project, traversalArchive));
         builder.Services.AddSingleton<IPortalScanService>(new PortalScanService(project, observations));
         builder.Services.AddSingleton(_ => readerSessions ?? new PortalReaderSessions(project, TimeProvider.System));
         builder.Services.AddProblemDetails();
@@ -86,6 +87,7 @@ internal sealed class HostedControlServer : IAsyncDisposable
         });
         app.MapPortal(options, readerRuntimeReady);
         app.MapReaderSessions();
+        app.MapArchiveReads();
         try
         {
             await app.StartAsync(token).ConfigureAwait(false);

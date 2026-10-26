@@ -11,6 +11,25 @@ namespace HeadlessScreenReader.Tests;
 public sealed class PortalOpenApiTests
 {
     [Fact]
+    public async Task ArchivePayloadsAndOptionalOffsetMatchPublishedContract()
+    {
+        var fixture = await ArchiveHttpFixture.Create(); await using var server = await fixture.Start();
+        using var http = PortalHttpTests.Authorized(server);
+        using var spec = JsonDocument.Parse(await http.GetStringAsync("/openapi/v1.json"));
+        foreach (var operation in new[] { "manifest", "file" })
+        {
+            using var response = await http.PostAsync(fixture.Path + "/" + operation, Json(operation == "manifest"
+                ? JsonSerializer.Serialize(new { fixture.Identity.IndexSha256 }, PortalJson.Options) : JsonSerializer.Serialize(new { fixture.Identity.IndexSha256, path = "original-000.bin" }, PortalJson.Options)));
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode); using var payload = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            Assert.True(Matches(payload.RootElement, Component(spec.RootElement, operation == "manifest" ? "ArchiveManifest" : "ArchiveFile"), spec.RootElement));
+            var path = spec.RootElement.GetProperty("paths").GetProperty("/api/workspaces/{organization}/archives/{archive}/" + operation).GetProperty("post");
+            Assert.Equal(new[] { "organization", "archive" }, path.GetProperty("parameters").EnumerateArray().Select(p => p.GetProperty("name").GetString()));
+            Assert.Single(path.GetProperty("security").EnumerateArray());
+            Assert.DoesNotContain("offset", Component(spec.RootElement, operation == "manifest" ? "ArchiveManifestRequest" : "ArchiveFileRequest").GetProperty("required").EnumerateArray().Select(p => p.GetString()));
+        }
+    }
+
+    [Fact]
     public async Task ReaderLifecycleHttpPayloadsMatchPublishedContractsAndTruthConstraints()
     {
         var project = new ReaderProjectStub();
@@ -72,7 +91,7 @@ public sealed class PortalOpenApiTests
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         var spec = document.RootElement;
         Assert.Equal("3.1.0", spec.GetProperty("openapi").GetString());
-        Assert.Equal("1.3.0", spec.GetProperty("info").GetProperty("version").GetString());
+        Assert.Equal("1.4.0", spec.GetProperty("info").GetProperty("version").GetString());
         Assert.Equal("https://json-schema.org/draft/2020-12/schema", spec.GetProperty("jsonSchemaDialect").GetString());
         Assert.Equal("http", spec.GetProperty("components").GetProperty("securitySchemes").GetProperty("bearerAuth").GetProperty("type").GetString());
         var operations = new[]
@@ -80,6 +99,8 @@ public sealed class PortalOpenApiTests
             ("/api/config", "get", "200", "Configuration", false),
             ("/internal/ready", "get", "200", "Readiness", false),
             ("/api/session", "get", "200", "Session", true),
+            ("/api/workspaces/{organization}/archives/{archive}/manifest", "post", "200", "ArchiveManifest", true),
+            ("/api/workspaces/{organization}/archives/{archive}/file", "post", "200", "ArchiveFile", true),
             ("/api/workspace", "post", "201", "Workspace", true),
             ("/api/workspaces/{organization}", "get", "200", "Workspace", true),
             ("/api/workspaces/{organization}/scans", "get", "200", "ScanList", true),

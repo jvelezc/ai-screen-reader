@@ -1,6 +1,6 @@
 # Original development goals and next step
 
-Updated October 25, 2026. The original proposal under `outputs/` remains unchanged. This status document tracks implementation against its acceptance gates.
+Updated October 26, 2026. The original proposal under `outputs/` remains unchanged. This status document tracks implementation against its acceptance gates.
 
 Prioritize an independently usable core API and MCP. The Lovable UI consumes this service through Edge Functions in existing Supabase project `gpnijaxrgtwzwtrqsbcu`. Public MCP hosting and official plugin publication remain separate from implementing the core protocols.
 
@@ -16,12 +16,23 @@ passes2,112/2,112 with65 new cases, strict build and format. Windows/Linux CI
 now imports and independently verifies its newly recorded package; remote CI and
 exact deployment remain separate gates until reported.
 
-**Next for recorded evidence:** freshly tenant-authorized bounded archive
-manifest/file retrieval through core API/private MCP, then the notebook's
-original-evidence graph/media view through Edge. Storage prefixes alone are not
-application-user authorization. The accepted live reader lifecycle remains a
-separate prerequisite; hosted collection/admission linkage, human/NVDA recordings
-and custody review retain their gates.
+**Archive retrieval implemented:** [core contract 1.4.0](decisions/0056-authorized-archive-retrieval.md)
+adds fresh original-caller/workspace authorization before and after storage,
+32-entry manifest pages and exact 64 KiB original-byte pages. The private MCP
+now has twelve tools including `archive_manifest` and `archive_file`; retained
+import identities survive reconnect, with independent response/cursor/hash checks.
+Missing/corrupt/unavailable evidence stays an error. [Validation](validation/authorized-archive-retrieval-v1.md)
+includes actual HTTP and stdio retrieval of a real Chromium observation, separately
+from provider-user/S3 acceptance. Local Windows passes **2,199/2,199**, with87
+new cases, strict build and format; remote CI/deployment remain separately
+reported gates. Operator imports are not scan admissions.
+
+**Next for recorded evidence:** adapt bounded archive reads through the existing
+Supabase Edge Function and notebook, then verify the original application user
+can reconnect and reconstruct unchanged archived originals. Show source graphs,
+media, exclusions and partial outcomes without inventing goal/custody claims.
+Hosted collection/admission linkage, human/NVDA recordings and custody review
+retain their separate gates.
 
 **Owned CI canary:** [screenreader.privensic.com](validation/owned-public-canary-v1.md)
 now serves two fixed v1 HTTPS pages. The actual isolated MCP task passed locally,
@@ -41,13 +52,13 @@ That backend delivery does not enable hosted recording.
 | 1: local screen reader | Substantial local implementation | Reader profile v13, fixtures, bounded events/observations, policy checks and CI | Capture/privacy feasibility remains a prerequisite to editable entry and recording; broader supported-control scope is explicit |
 | 2: evidence-backed workflow | In progress | Bounded routes, append-only JSON, node/edge reports, controlled recording canaries, 20-marker timing proof and original route media with capture/action/event intervals and passive local viewer; bounded diagnostic provenance, explicit fresh-run replay and owned evidence writes | Broader workflow acceptance and diagnostics/search coverage |
 | 3: intervention and isolation | Partial | Exact public-host policy, independent Linux egress fence and exclusive local controller leases, headed Xvfb continuity and explicitly simulated excluded input and scoped loopback semantic and pixel viewing | Actual human/AT acceptance and hosted identity/capture/persistence fencing |
-| 4: durable hosted execution | In progress | Admission/fenced leases and196 PostgreSQL/pgmq cases; signed-in one-shot/S3; ten private MCP tools; real HTTP reader accepted at1a5c6dc; trusted API IP HTTPS; actual notebook -> Edge v1 -> core fixture/report/S3/download/sign-out; live reader controls at UIe473aea pass182 per OS; core148cde1 passes2,047 per OS and exact deployment | Durable traversal/media retrieval; broader tenant restart/recovery; real revoked/expired reader authority and human/AT acceptance |
+| 4: durable hosted execution | In progress | Admission/fenced leases and196 PostgreSQL/pgmq cases; signed-in one-shot/S3; twelve private MCP tools including archive manifest/original-byte reads; real HTTP reader accepted at1a5c6dc; trusted API IP HTTPS; actual notebook -> Edge v1 -> core fixture/report/S3/download/sign-out; live reader controls at UIe473aea pass182 per OS; new core archive retrieval passes2,199 locally | Archive reads through Edge/notebook and fresh original-user acceptance; broader tenant restart/recovery; real revoked/expired reader authority and human/AT acceptance |
 | 5: public MCP pilot | Deferred | Local stdio and private HTTP-backed read-only stdio adapter | Public MCP HTTPS endpoint, client onboarding, plugin and pilot operations; private report remains active milestone4 work |
 | 6: measured extensions | Later | Bounded reader improvements through v13 | Broader validated widgets and compatible-run comparisons; public plugins remain deferred |
 
 <a id="next-isolated-hosted-reader-sessions"></a>
 
-## Next: authorized archive retrieval through API and private MCP
+## Next: archive retrieval through Edge and the notebook
 
 **Signed-in reader accepted:** [the real application-user check](validation/private-tenant-reader-v1.md)
 passed at1a5c6dc: original-user provider authentication/RLS, two observations,
@@ -83,13 +94,13 @@ gates passed. These facts do not establish actual AT, new-account email callback
 membership revocation/expiry or actual assistive-technology operation.
 The worker/broker and deployment remain private/SSH; public MCP/plugins stay deferred.
 
-**Do next:** freshly tenant-authorized traversal/media retrieval through API and
-private MCP over the new archive storage contract, then the notebook's original-evidence graph view through Edge. Preserve
+**Do next:** bounded archive retrieval through Edge and the notebook over the new
+core API/private MCP contract, with fresh original-user reconnect acceptance. Preserve
 actual source/action/result links, media/capture exclusions, separately verified
 integrity and explicit partial/cancelled outcomes. The new live graph remains
 transient and is not a hosted recording or custody attestation.
 
-**Current accepted core delivery:**148cde1 passed all nine jobs in
+**Earlier accepted core delivery:**148cde1 passed all nine jobs in
 [CI40268393362](https://github.com/jvelezc/ai-screen-reader/actions/runs/40268393362),
 Windows/Ubuntu2,047/2,047 each, native Linux30 and operator152, with exact
 [deployment40269381448](https://github.com/jvelezc/ai-screen-reader/actions/runs/40269381448).
@@ -115,7 +126,7 @@ configuration and publishes only selected API routes, using a publicly trusted
 IP certificate with configured automatic short-lived renewal. Negative access
 checks do not establish real tenant use, future renewal or human/AT acceptance.
 
-**Current increment:** [private MCP durable scans](decisions/0052-private-mcp-durable-scans.md)
+**Earlier increment:** [private MCP durable scans](decisions/0052-private-mcp-durable-scans.md)
 adds fixed-fixture job admission, recent history and saved reports to the existing
 private consumer. Caller request IDs preserve idempotent retries. Reports retain
 execution/evidence states and storage provenance, with fresh authority and

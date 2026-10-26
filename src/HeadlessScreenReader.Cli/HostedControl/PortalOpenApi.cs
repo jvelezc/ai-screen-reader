@@ -12,7 +12,7 @@ internal static class PortalOpenApi
 {
     private static readonly Lazy<string> Cached = new(Build);
     public static string Document => Cached.Value;
-    public const string ContractVersion = "1.3.0";
+    public const string ContractVersion = "1.4.0";
 
     private static string Build()
     {
@@ -39,6 +39,10 @@ internal static class PortalOpenApi
             ["ReaderTimeline"] = Schema<PortalReaderTimelineResponse>(),
             ["ReaderTraceRequest"] = Schema<PortalReaderTraceRequest>(),
             ["ReaderTrace"] = Schema<PortalReaderTraceResponse>(),
+            ["ArchiveManifestRequest"] = Schema<PortalArchiveManifestRequest>(),
+            ["ArchiveFileRequest"] = Schema<PortalArchiveFileRequest>(),
+            ["ArchiveManifest"] = Schema<TraversalArchiveManifestPage>(),
+            ["ArchiveFile"] = Schema<TraversalArchiveReadPage>(),
             ["Problem"] = JsonNode.Parse("""
                 {"type":"object","required":["type","title","status","detail","supportReference"],
                  "properties":{"type":{"type":"string","format":"uri"},
@@ -50,6 +54,8 @@ internal static class PortalOpenApi
         };
         var paths = new JsonObject
         {
+            ["/api/workspaces/{organization}/archives/{archive}/manifest"] = Path("post", Operation("ReadArchiveManifest", "Read32 entries at most; indexSha256 is caller-retained authority for content identity, not tenant access. Original user/workspace RLS checked before and after storage. Metadata does not establish original availability, scan admission, custody or a goal", "ArchiveManifest", true, "ArchiveManifestRequest", organization: true, archive: true)),
+            ["/api/workspaces/{organization}/archives/{archive}/file"] = Path("post", Operation("ReadArchiveFile", "Read64KiB at most; exact path and retained indexSha256, 64KiB-aligned offset or exact EOF. Base64 bytes checked against actual archive part. Follow nextOffset; reconstruct full file and compare fileSha256 before claiming whole-file integrity. Original user/workspace RLS checked every page", "ArchiveFile", true, "ArchiveFileRequest", organization: true, archive: true)),
             ["/"] = Path("get", Operation("PortalHome", "Legacy private portal page", "string", media: "text/html")),
             ["/portal.js"] = Path("get", Operation("PortalScript", "Legacy portal script", "string", media: "text/javascript")),
             ["/portal.css"] = Path("get", Operation("PortalStyles", "Legacy portal stylesheet", "string", media: "text/css")),
@@ -119,8 +125,26 @@ internal static class PortalOpenApi
                 if (schema is not JsonObject value || value["properties"] is not JsonObject properties) return schema;
                 // Response serialization emits every property, including nullable and
                 // optional-constructor defaults such as evidenceStorage.
-                if (context.TypeInfo.Type != typeof(PortalEmptyRequest) && context.TypeInfo.Type != typeof(PortalCreateScanRequest))
+                if (context.TypeInfo.Type != typeof(PortalEmptyRequest) && context.TypeInfo.Type != typeof(PortalCreateScanRequest)
+                    && context.TypeInfo.Type != typeof(PortalArchiveManifestRequest) && context.TypeInfo.Type != typeof(PortalArchiveFileRequest))
                     value["required"] = Strings(properties.Select(property => property.Key).ToArray());
+                if (context.TypeInfo.Type == typeof(PortalArchiveManifestRequest) || context.TypeInfo.Type == typeof(PortalArchiveFileRequest))
+                {
+                    properties["indexSha256"]!["pattern"] = "^[a-f0-9]{64}$";
+                    properties["offset"]!["minimum"] = 0;
+                    properties["offset"]!["maximum"] = context.TypeInfo.Type == typeof(PortalArchiveManifestRequest) ? 4097 : 134217728;
+                }
+                if (context.TypeInfo.Type == typeof(TraversalArchiveManifestPage))
+                {
+                    properties["files"]!["maxItems"] = PortalArchiveReader.ManifestFiles;
+                    properties["totalFiles"]!["minimum"] = 1; properties["totalFiles"]!["maximum"] = 4097;
+                    properties["totalBytes"]!["minimum"] = 0; properties["totalBytes"]!["maximum"] = 541065216;
+                }
+                if (context.TypeInfo.Type == typeof(TraversalArchiveEntry))
+                {
+                    properties["bytes"]!["minimum"] = 0; properties["bytes"]!["maximum"] = 134217728;
+                    properties["path"]!["maxLength"] = 240; properties["sha256"]!["pattern"] = "^[a-f0-9]{64}$";
+                }
                 if (context.TypeInfo.Type == typeof(PortalCreateScanRequest))
                     properties["requestId"]!["not"] = new JsonObject { ["const"] = Guid.Empty.ToString("D") };
                 if (context.TypeInfo.Type == typeof(PortalConfigurationResponse) || context.TypeInfo.Type == typeof(PortalScanResponse))
@@ -263,7 +287,7 @@ internal static class PortalOpenApi
     };
 
     private static JsonObject Operation(string id, string summary, string output, bool authenticated = false,
-        string? body = null, int success = 200, bool organization = false, bool scan = false, string media = "application/json", bool session = false)
+        string? body = null, int success = 200, bool organization = false, bool scan = false, string media = "application/json", bool session = false, bool archive = false)
     {
         var response = Response("Successful scoped response", output, media);
         if (success == 201) response["headers"] = new JsonObject
@@ -289,7 +313,7 @@ internal static class PortalOpenApi
         if (body is not null) result["requestBody"] = new JsonObject
         { ["required"] = true, ["content"] = new JsonObject { ["application/json"] = new JsonObject { ["schema"] = Reference(body) } } };
         var parameters = new JsonArray();
-        foreach (var name in new[] { organization ? "organization" : null, scan ? "scan" : null, session ? "session" : null }.OfType<string>())
+        foreach (var name in new[] { organization ? "organization" : null, scan ? "scan" : null, session ? "session" : null, archive ? "archive" : null }.OfType<string>())
             parameters.Add(new JsonObject { ["name"] = name, ["in"] = "path", ["required"] = true, ["schema"] = new JsonObject { ["type"] = "string", ["format"] = "uuid" } });
         if (parameters.Count > 0) result["parameters"] = parameters;
         return result;

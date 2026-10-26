@@ -16,7 +16,7 @@ public sealed class HostedMcpChromiumTests
         var project = new ReaderProjectStub(); await using var server = await PortalReaderHttpTests.Start(project);
         await using var client = await Connect(server.BaseAddress);
         var tools = await client.ListToolsAsync();
-        Assert.Equal(new[] { "reader_close", "reader_execute", "reader_open_fixture", "reader_snapshot", "reader_status", "reader_timeline", "reader_trace", "scan_list", "scan_report", "scan_start_fixture" }, tools.Select(t => t.Name).Order(StringComparer.Ordinal));
+        Assert.Equal(new[] { "archive_file", "archive_manifest", "reader_close", "reader_execute", "reader_open_fixture", "reader_snapshot", "reader_status", "reader_timeline", "reader_trace", "scan_list", "scan_report", "scan_start_fixture" }, tools.Select(t => t.Name).Order(StringComparer.Ordinal));
         var admissionSchema = tools.Single(t => t.Name == "scan_start_fixture").JsonSchema;
         Assert.Equal("requestId", Assert.Single(admissionSchema.GetProperty("properties").EnumerateObject()).Name);
         Assert.Equal("requestId", Assert.Single(admissionSchema.GetProperty("required").EnumerateArray()).GetString());

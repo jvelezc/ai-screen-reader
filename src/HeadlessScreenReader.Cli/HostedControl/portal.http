@@ -4,6 +4,24 @@
 @organization = 00000000-0000-0000-0000-000000000000
 @scan = 00000000-0000-0000-0000-000000000000
 @request = 00000000-0000-0000-0000-000000000000
+@archive = 00000000-0000-0000-0000-000000000000
+# Replace with the separately retained import receipt. Possession grants no access.
+@indexSha256 = REPLACE_WITH_RETAINED_INDEX_SHA256
+
+### Read a bounded inventory page; retain identity and follow nextOffset
+POST {{origin}}/api/workspaces/{{organization}}/archives/{{archive}}/manifest
+Authorization: Bearer {{userJwt}}
+Content-Type: application/json
+
+{"indexSha256":"{{indexSha256}}","offset":0}
+
+### Read original source manifest bytes; other paths come from the inventory
+# Follow nextOffset exactly, concatenate decoded base64, verify whole fileSha256.
+POST {{origin}}/api/workspaces/{{organization}}/archives/{{archive}}/file
+Authorization: Bearer {{userJwt}}
+Content-Type: application/json
+
+{"indexSha256":"{{indexSha256}}","path":"evidence-manifest.json","offset":0}
 
 ### Workspace page
 GET {{origin}}/

@@ -32,7 +32,7 @@ public sealed partial class HostedReaderClient : IAsyncDisposable
         {
             Transport = "stdio",
             Backend = "private core HTTP API",
-            ExpectedApiContract = "1.3.0",
+            ExpectedApiContract = "1.4.0",
             OrganizationId = _options.Organization,
             Fixture = "Foundation",
             ReadOnly = true,
@@ -56,6 +56,16 @@ public sealed partial class HostedReaderClient : IAsyncDisposable
                 Authorization = "Core API rechecks current caller/tenant authority per operation"
             },
             AdmissionUnconfirmed = _admissionUnconfirmed,
+            Archives = new
+            {
+                Tools = new[] { "archive_manifest", "archive_file" },
+                ManifestPageFiles = 32,
+                FilePageBytes = 65536,
+                RequiresImportReceipt = true,
+                WholeFileVerification = "Consumer must reconstruct all pages and compare fileSha256",
+                Authorization = "Current original caller/workspace on every page",
+                AdmissionBinding = "Operator import; not a scan admission receipt"
+            },
             SessionUnconfirmed = _sessionUnconfirmed,
             CleanupConfirmed,
             BrowserInput = false,
