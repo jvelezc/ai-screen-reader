@@ -15,3 +15,5 @@ public sealed record TraversalArchiveReceipt(TraversalArchiveIdentity Identity, 
 public sealed record TraversalArchiveFilePage(TraversalArchiveIdentity Identity, string Path, long FileBytes,
     string FileSha256, long Offset, byte[] Data, long? NextOffset);
 public sealed record TraversalArchiveVerification(TraversalArchiveIdentity Identity, int Files, long Bytes, bool IntegrityMatches);
+/// <summary>Complete original hash verification plus a bounded format prefix; not an authenticity or custody attestation.</summary>
+public sealed record TraversalArchiveOriginalVerification(string Path, long Bytes, string Sha256, ImmutableArray<byte> Header);

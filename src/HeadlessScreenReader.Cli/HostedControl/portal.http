@@ -70,3 +70,17 @@ Content-Type: application/json
 ### Verified result
 GET {{origin}}/api/workspaces/{{organization}}/scans/{{scan}}
 Authorization: Bearer {{userJwt}}
+
+### URL alone returns ScanResultsRequired; it does not start a live scanner
+POST {{origin}}/api/workspaces/{{organization}}/evidence-readiness
+Authorization: Bearer {{userJwt}}
+Content-Type: application/json
+
+{"targetUrl":"https://example.com/"}
+
+### Explicitly fictional scenario (complete, gaps, none); never authentic evidence
+POST {{origin}}/api/workspaces/{{organization}}/evidence-readiness
+Authorization: Bearer {{userJwt}}
+Content-Type: application/json
+
+{"example":"gaps"}

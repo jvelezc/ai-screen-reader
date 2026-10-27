@@ -1,6 +1,17 @@
 # Original development goals and next step
 
-Updated October 26, 2026. The original proposal under `outputs/` remains unchanged. This status document tracks implementation against its acceptance gates.
+Updated October 27, 2026. The original proposal under `outputs/` remains unchanged. This status document tracks implementation against its acceptance gates.
+
+**Privensic Screen Reader — automated evidence assessment:** [contract1.5.0](decisions/0057-automated-website-evidence-readiness.md)
+adds eight operational conditions and the private `evidence_assess` MCP tool.
+It distinguishes documented/suspected findings, retained completed input,
+repeat/comparator attempts, missing artifacts and server-verified original hashes.
+Outcomes are Ready, Insufficient evidence, or No blocking barrier documented.
+URL-only requests remain ScanResultsRequired; examples are fictional and never
+authorize a real package. No human-review task is added. Plaintiff disability,
+injury/encounter, standing and legal/admissibility determinations remain outside
+scan scope. [Validation and exact tests](validation/evidence-readiness-v1.md)
+separate source/local, CI, deployment and original-user acceptance gates.
 
 Prioritize an independently usable core API and MCP. The Lovable UI consumes this service through Edge Functions in existing Supabase project `gpnijaxrgtwzwtrqsbcu`. Public MCP hosting and official plugin publication remain separate from implementing the core protocols.
 
@@ -27,12 +38,14 @@ from provider-user/S3 acceptance. Local Windows passes **2,199/2,199**, with87
 new cases, strict build and format; remote CI/deployment remain separately
 reported gates. Operator imports are not scan admissions.
 
-**Next for recorded evidence:** adapt bounded archive reads through the existing
-Supabase Edge Function and notebook, then verify the original application user
-can reconnect and reconstruct unchanged archived originals. Show source graphs,
-media, exclusions and partial outcomes without inventing goal/custody claims.
-Hosted collection/admission linkage, human/NVDA recordings and custody review
-retain their separate gates.
+**Next for recorded evidence:** bind queue-produced recordings and archive
+receipts to the actual tenant, scan, job and fenced worker attempt. The original
+user's notebook archive reconnect, graph/video playback and persistent sign-in
+already passed at UI2d628d3/core13df2c3 through Edge v2. Operator imports remain
+distinct from admitted runs. The new assessment evaluates supplied records; it
+does not implement arbitrary-site collection or manufacture missing originals.
+Human/AT comparison remains separate validation, with no review task in the
+automated website-evidence workflow. Custody/legal determinations are outside it.
 
 **Owned CI canary:** [screenreader.privensic.com](validation/owned-public-canary-v1.md)
 now serves two fixed v1 HTTPS pages. The actual isolated MCP task passed locally,

@@ -135,9 +135,60 @@ def install(root, site, expected, expected_site_hash, validate=validate_caddy, r
             "CaddyReloaded": True, "TlsAccepted": False}
 
 
+def replace(root, site, expected, previous_hash, expected_site_hash, validate=validate_caddy, reload=reload_caddy, *, site_name=SITE_NAME):
+    """Compare-and-replace only the reviewed owned site; preserve all unrelated configuration."""
+    root = Path(root)
+    if len(site) not in range(1, 8193) or not re.fullmatch("[a-f0-9]{64}", expected_site_hash) or digest(site) != expected_site_hash:
+        raise IngressError("INGRESS_REVIEWED_SITE_REQUIRED")
+    require_snapshot(root, expected, site_name=site_name)
+    owned = root / "sites" / site_name
+    previous = read_file(owned)
+    if not re.fullmatch("[a-f0-9]{64}", previous_hash) or digest(previous) != previous_hash:
+        raise IngressError("INGRESS_SITE_OWNERSHIP_DENIED")
+
+    def write(data, before_hash):
+        require_snapshot(root, expected, site_name=site_name)
+        if digest(read_file(owned)) != before_hash:
+            raise IngressError("INGRESS_SITE_OWNERSHIP_DENIED")
+        descriptor, name = tempfile.mkstemp(prefix=".hsr-replace-", dir=owned.parent)
+        try:
+            with os.fdopen(descriptor, "wb") as stream:
+                os.fchmod(stream.fileno(), 0o644)
+                stream.write(data)
+                stream.flush()
+                os.fsync(stream.fileno())
+            require_snapshot(root, expected, site_name=site_name)
+            if digest(read_file(owned)) != before_hash:
+                raise IngressError("INGRESS_SITE_OWNERSHIP_DENIED")
+            os.replace(name, owned)
+        finally:
+            Path(name).unlink(missing_ok=True)
+
+    write(site, previous_hash)
+    try:
+        validate(root / "Caddyfile")
+        require_snapshot(root, expected, site_name=site_name)
+        if digest(read_file(owned)) != expected_site_hash:
+            raise IngressError("INGRESS_SITE_OWNERSHIP_DENIED")
+        reload(root)
+        require_snapshot(root, expected, site_name=site_name)
+    except Exception as error:
+        try:
+            write(previous, expected_site_hash)
+            validate(root / "Caddyfile")
+            reload(root)
+            require_snapshot(root, expected, site_name=site_name)
+        except Exception as rollback_error:
+            raise IngressError("INGRESS_REPLACEMENT_AND_ROLLBACK_UNCONFIRMED") from rollback_error
+        raise IngressError("INGRESS_REPLACEMENT_FAILED_ROLLED_BACK") from error
+    return {"State": "Replaced", "SiteSha256": expected_site_hash, "PreviousSiteSha256": previous_hash,
+            "UnrelatedConfigurationPreserved": True, "CaddyReloaded": True, "TlsAccepted": False}
+
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("operation", choices=("install", "rollback"))
+    parser.add_argument("operation", choices=("install", "rollback", "replace"))
+    parser.add_argument("--previous-site-sha256")
     parser.add_argument("--site", required=True)
     parser.add_argument("--baseline", required=True)
     parser.add_argument("--site-sha256", required=True)
@@ -157,6 +208,8 @@ def main():
         expected = json.loads(read_file(Path(args.baseline)))
         if args.operation == "install":
             receipt = install(root, read_file(Path(args.site)), expected, args.site_sha256, site_name=args.site_name)
+        elif args.operation == "replace":
+            receipt = replace(root, read_file(Path(args.site)), expected, args.previous_site_sha256 or "", args.site_sha256, site_name=args.site_name)
         else:
             receipt = rollback(root, expected, args.site_sha256, site_name=args.site_name)
         print(json.dumps({"Schema": "hsr-core-api-ingress-v1", "SiteName": args.site_name, **receipt}))

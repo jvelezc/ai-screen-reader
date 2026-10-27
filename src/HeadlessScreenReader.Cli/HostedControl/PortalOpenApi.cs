@@ -12,7 +12,7 @@ internal static class PortalOpenApi
 {
     private static readonly Lazy<string> Cached = new(Build);
     public static string Document => Cached.Value;
-    public const string ContractVersion = "1.4.0";
+    public const string ContractVersion = "1.5.0";
 
     private static string Build()
     {
@@ -43,6 +43,8 @@ internal static class PortalOpenApi
             ["ArchiveFileRequest"] = Schema<PortalArchiveFileRequest>(),
             ["ArchiveManifest"] = Schema<TraversalArchiveManifestPage>(),
             ["ArchiveFile"] = Schema<TraversalArchiveReadPage>(),
+            ["EvidenceReadinessRequest"] = Schema<EvidenceReadinessRequest>(),
+            ["EvidenceReadinessResponse"] = Schema<EvidenceReadinessResponse>(),
             ["Problem"] = JsonNode.Parse("""
                 {"type":"object","required":["type","title","status","detail","supportReference"],
                  "properties":{"type":{"type":"string","format":"uri"},
@@ -82,6 +84,9 @@ internal static class PortalOpenApi
             ["/api/workspaces/{organization}/reader-sessions/{session}/timeline"] = Path("post", Operation("GetReaderTimeline", "Page at most 100 events from a transient 256-event retained prefix. hasMore means another retained page; timelineTruncated means later events were not retained. Not durable evidence or a verified path", "ReaderTimeline", true, "ReaderTimelineRequest", organization: true, session: true)),
             ["/api/workspaces/{organization}/reader-sessions/{session}/trace"] = Path("post", Operation("GetReaderTrace", "Transient completed-command state/edge evidence. Fresh-observation links differ from cursor commands. Retains a prefix of at most64 commands and8MiB, at most20 entries and262144 bytes per page. Truncation is explicit; not durable evidence or an accessibility/goal assessment", "ReaderTrace", true, "ReaderTraceRequest", organization: true, session: true))
         };
+        paths["/api/workspaces/{organization}/evidence-readiness"] = Path("post", Operation("AssessWebsiteEvidence",
+            "Assess supplied scanner records or explicitly fictional examples against eight operational conditions. URL alone returns ScanResultsRequired. No live scan, human-review task or legal eligibility decision. Originals require an exact authorized archive identity.",
+            "EvidenceReadinessResponse", true, "EvidenceReadinessRequest", organization: true));
         return new JsonObject
         {
             ["openapi"] = "3.1.0",
@@ -126,7 +131,8 @@ internal static class PortalOpenApi
                 // Response serialization emits every property, including nullable and
                 // optional-constructor defaults such as evidenceStorage.
                 if (context.TypeInfo.Type != typeof(PortalEmptyRequest) && context.TypeInfo.Type != typeof(PortalCreateScanRequest)
-                    && context.TypeInfo.Type != typeof(PortalArchiveManifestRequest) && context.TypeInfo.Type != typeof(PortalArchiveFileRequest))
+                    && context.TypeInfo.Type != typeof(PortalArchiveManifestRequest) && context.TypeInfo.Type != typeof(PortalArchiveFileRequest)
+                    && context.TypeInfo.Type != typeof(EvidenceReadinessRequest))
                     value["required"] = Strings(properties.Select(property => property.Key).ToArray());
                 if (context.TypeInfo.Type == typeof(PortalArchiveManifestRequest) || context.TypeInfo.Type == typeof(PortalArchiveFileRequest))
                 {

@@ -8,6 +8,22 @@ https://89.117.17.81 {
 	}
 
 	header -Server
+	@assessment {
+		method POST
+		path_regexp assessment ^/api/workspaces/[a-fA-F0-9-]{36}/evidence-readiness$
+	}
+	handle @assessment {
+		request_body {
+			max_size 131072
+		}
+		reverse_proxy 127.0.0.1:8086 {
+			header_up Host localhost:6086
+			transport http {
+				dial_timeout 3s
+				response_header_timeout 25s
+			}
+		}
+	}
 	@core path /api/session /api/workspace /api/workspaces/* /openapi/v1.json
 	handle @core {
 		request_body {

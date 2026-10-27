@@ -193,6 +193,31 @@ public sealed class TraversalArchive(ITraversalObjectStore store)
         return new(identity, path, file.Bytes, file.Sha256, offset, bytes.AsSpan(start, length).ToArray(), next < file.Bytes ? next : null);
     }
 
+    public async Task<TraversalArchiveOriginalVerification> VerifyOriginalAsync(TraversalArchiveIdentity identity, string path,
+        string expectedSha256, long maximumBytes, CancellationToken token = default)
+    {
+        if (!SafePath(path) || !IsHash(expectedSha256) || maximumBytes is < 1 or > MaximumFileBytes) throw Invalid();
+        var index = await ReadIndexAsync(identity, token).ConfigureAwait(false);
+        var file = index.Files.SingleOrDefault(f => f.Path == path) ?? throw new TraversalArchiveException(TraversalArchiveFailure.Missing);
+        if (file.Bytes < 1 || file.Bytes > maximumBytes || file.Sha256 != expectedSha256) throw Invalid();
+        using var digest = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        ImmutableArray<byte> header = [];
+        long total = 0;
+        foreach (var part in file.Parts)
+        {
+            var bytes = await store.ReadAsync(identity, part.Sha256, token).ConfigureAwait(false);
+            token.ThrowIfCancellationRequested();
+            if (bytes is null) throw new TraversalArchiveException(TraversalArchiveFailure.Missing);
+            ValidateObject(identity, part.Sha256, bytes);
+            if (bytes.Length != part.Bytes) throw Invalid();
+            if (total == 0) header = bytes.AsSpan(0, Math.Min(16, bytes.Length)).ToArray().ToImmutableArray();
+            total += bytes.Length;
+            digest.AppendData(bytes);
+        }
+        if (total != file.Bytes || Convert.ToHexStringLower(digest.GetHashAndReset()) != expectedSha256) throw Invalid();
+        return new(path, total, expectedSha256, header);
+    }
+
     public async Task<TraversalArchiveVerification> VerifyAsync(TraversalArchiveIdentity identity, CancellationToken token = default)
     {
         var index = await ReadIndexAsync(identity, token).ConfigureAwait(false);

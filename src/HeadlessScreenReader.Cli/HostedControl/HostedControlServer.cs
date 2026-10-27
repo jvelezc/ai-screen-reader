@@ -48,6 +48,7 @@ internal sealed class HostedControlServer : IAsyncDisposable
         builder.Services.AddSingleton(options);
         builder.Services.AddSingleton(project);
         builder.Services.AddSingleton(new PortalArchiveReader(project, traversalArchive));
+        builder.Services.AddSingleton<IPortalEvidenceReadiness>(new PortalEvidenceReadiness(project, traversalArchive));
         builder.Services.AddSingleton<IPortalScanService>(new PortalScanService(project, observations));
         builder.Services.AddSingleton(_ => readerSessions ?? new PortalReaderSessions(project, TimeProvider.System));
         builder.Services.AddProblemDetails();
@@ -88,6 +89,7 @@ internal sealed class HostedControlServer : IAsyncDisposable
         app.MapPortal(options, readerRuntimeReady);
         app.MapReaderSessions();
         app.MapArchiveReads();
+        app.MapEvidenceReadiness();
         try
         {
             await app.StartAsync(token).ConfigureAwait(false);

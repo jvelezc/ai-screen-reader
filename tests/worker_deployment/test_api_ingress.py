@@ -7,7 +7,7 @@ import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "ops" / "ingress"))
-from api_site import IngressError, SITE_NAME, digest, install, rollback, snapshot
+from api_site import IngressError, SITE_NAME, digest, install, replace, rollback, snapshot
 
 SITE = b"https://89.117.17.81 { respond 401 }\n"
 
@@ -39,6 +39,39 @@ class ApiIngressTests(unittest.TestCase):
 
     def apply(self, validate=None, reload=None):
         return install(self.root, SITE, self.expected, digest(SITE), validate or self.validate, reload or self.reload)
+
+    def test_replace_checks_previous_hash_and_preserves_unrelated_configuration(self):
+        self.apply()
+        updated = b"https://89.117.17.81 { respond 403 }\n"
+        receipt = replace(self.root, updated, self.expected, digest(SITE), digest(updated), self.validate, self.reload)
+        self.assertEqual("Replaced", receipt["State"])
+        self.assertEqual(updated, self.owned.read_bytes())
+        self.assertEqual(self.expected, snapshot(self.root))
+        self.assertFalse(receipt["TlsAccepted"])
+        with self.assertRaisesRegex(IngressError, "INGRESS_SITE_OWNERSHIP_DENIED"):
+            replace(self.root, SITE, self.expected, digest(SITE), digest(SITE), self.validate, self.reload)
+        self.assertEqual(updated, self.owned.read_bytes())
+
+    def test_replace_validation_failure_restores_previous_owned_bytes(self):
+        self.apply()
+        updated = b"invalid reviewed caddy"
+        def reject_new(path):
+            if self.owned.read_bytes() == updated:
+                raise IngressError("SIMULATED_INVALID")
+        with self.assertRaisesRegex(IngressError, "INGRESS_REPLACEMENT_FAILED_ROLLED_BACK"):
+            replace(self.root, updated, self.expected, digest(SITE), digest(updated), reject_new, self.reload)
+        self.assertEqual(SITE, self.owned.read_bytes())
+        self.assertEqual(self.expected, snapshot(self.root))
+
+    def test_replace_does_not_overwrite_concurrent_owned_change_during_rollback(self):
+        self.apply()
+        updated = b"updated reviewed caddy"
+        def concurrent(path):
+            self.owned.write_bytes(b"concurrent operator")
+            raise IngressError("SIMULATED_CONCURRENT")
+        with self.assertRaisesRegex(IngressError, "INGRESS_REPLACEMENT_AND_ROLLBACK_UNCONFIRMED"):
+            replace(self.root, updated, self.expected, digest(SITE), digest(updated), concurrent, self.reload)
+        self.assertEqual(b"concurrent operator", self.owned.read_bytes())
 
     def test_install_preserves_unrelated_bytes_and_separates_reload_from_tls(self):
         original = self.main.read_bytes()
