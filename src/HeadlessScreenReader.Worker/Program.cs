@@ -121,8 +121,11 @@ try
     var archiveConfiguration = S3EvidenceConfiguration.Optional(Environment.GetEnvironmentVariable("HSR_EVIDENCE_S3_ACCESS_KEY"),
         Environment.GetEnvironmentVariable("HSR_EVIDENCE_S3_SECRET"));
     using var archive = archiveConfiguration is null ? null : new S3ObservationArchive(archiveConfiguration);
+    using var producerObjects = archiveConfiguration is null ? null : new S3TraversalObjectStore(archiveConfiguration);
+    var producer = new WorkerEvidenceFinalizer(new TraversalArchive(producerObjects is null
+        ? new FileTraversalObjectStore(Path.Combine(evidence, "archives")) : producerObjects));
     await using var leases = new PostgresWorkerLeases(connection);
-    var coordinator = new ObservationCoordinator(leases, executor, new(evidence, archive));
+    var coordinator = new ObservationCoordinator(leases, executor, new(evidence, archive, producer));
     // The trusted coordinator owns native execution. The separate read-only HTTP service uses the protected loopback broker.
     await using var readerHost = args[0] == "--poll" ? await ReaderHost.StartAsync(evidence, runtime, image,
         Environment.GetEnvironmentVariable("HSR_WORKER_SECCOMP")) : null;

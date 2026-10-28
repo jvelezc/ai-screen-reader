@@ -66,12 +66,18 @@ public sealed class PostgresWorkerLeases : IWorkerLeases, IAsyncDisposable
 
     public Task<bool> RenewAsync(WorkerLease lease, CancellationToken token) =>
         ExecuteAsync("select hsr.renew_scan_job($1,$2,$3,$4,$5,30)", lease, [], token);
-    public Task<bool> CompleteAsync(WorkerLease lease, StoredObservation stored, CancellationToken token) =>
-        ExecuteAsync("select hsr.complete_scan_job($1,$2,$3,$4,$5,$6,$7)", lease, [stored.Sha256, stored.Reference], token);
+    public Task<bool> CompleteAsync(WorkerLease lease, StoredObservation stored, CancellationToken token)
+    {
+        if (stored.WorkerArchive is not { } producer)
+            return ExecuteAsync("select hsr.complete_scan_job($1,$2,$3,$4,$5,$6,$7)", lease, [stored.Sha256, stored.Reference], token);
+        producer.Validate(lease.Job, lease.WorkerId);
+        return ExecuteAsync("select hsr.complete_scan_job_with_archive($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)", lease,
+            [stored.Sha256, stored.Reference, producer.Receipt.Identity.IndexSha256, producer.Receipt.SourceManifestSha256, producer.Receipt.Bytes], token);
+    }
     public Task<bool> BlockAsync(WorkerLease lease, string code, CancellationToken token) =>
         ExecuteAsync("select hsr.block_scan_job($1,$2,$3,$4,$5,$6)", lease, [code], token);
 
-    private async Task<bool> ExecuteAsync(string sql, WorkerLease lease, string[] values, CancellationToken token)
+    private async Task<bool> ExecuteAsync(string sql, WorkerLease lease, object[] values, CancellationToken token)
     {
         await using var command = _source.CreateCommand(sql);
         command.Parameters.AddWithValue(lease.Job.OrganizationId);

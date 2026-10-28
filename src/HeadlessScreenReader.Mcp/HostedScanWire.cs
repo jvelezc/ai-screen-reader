@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using HeadlessScreenReader.Domain;
 
 namespace HeadlessScreenReader.Mcp;
 
@@ -13,4 +14,7 @@ internal sealed record HostedScanObservation(string DocumentId, string Digest, s
     int DispatchedInputs, bool GoalVerified, ImmutableArray<HostedScanNode> Nodes,
     ImmutableArray<string> Limitations, string EvidenceStorage);
 internal sealed record HostedScanReport(HostedScan Scan, string EvidenceState, string? ErrorCode,
-    HostedScanObservation? Observation);
+    HostedScanObservation? Observation)
+{
+    public WorkerEvidenceArchive? WorkerArchive { get; init; }
+}

@@ -53,8 +53,11 @@ public sealed class HostedScanChromiumTests
             var job = new HeadlessScreenReader.Domain.FixtureJob(PortalProjectClientTests.Organization, PortalProjectClientTests.Scan, PortalProjectClientTests.Job, 1);
             var original = await FixtureWorker.ObserveAsync(job);
             Assert.True(original.Shutdown.ProcessExitConfirmed); Assert.Equal(0, original.DispatchedInputs); Assert.False(original.GoalVerified);
-            var stored = await new ObservationStore(root).PersistAsync(JsonSerializer.SerializeToUtf8Bytes(original, ObservationStore.Json), job, default);
-            project.Job = new(job.OrganizationId, job.ScanId, job.JobId, "completed", job.Generation, stored.Sha256, job.Reference, null);
+            var producerObjects = new FileTraversalObjectStore(Path.Combine(root, "archives"));
+            var stored = await new ObservationStore(root, producer: new(new(producerObjects))).PersistAsync(
+                JsonSerializer.SerializeToUtf8Bytes(original, ObservationStore.Json), job, default, Guid.NewGuid());
+            project.Job = new(job.OrganizationId, job.ScanId, job.JobId, "completed", job.Generation, stored.Sha256, job.Reference, null)
+            { WorkerArchive = stored.WorkerArchive };
             project.Record = project.Record with { State = "observed" };
 
             await using var second = await Connect(server.BaseAddress);
@@ -62,6 +65,9 @@ public sealed class HostedScanChromiumTests
             Assert.Equal(Guid.Parse(scan), Assert.Single(listed.GetProperty("items").EnumerateArray()).GetProperty("id").GetGuid());
             var page = (await Call(second, "scan_report", new() { ["scanId"] = scan, ["limit"] = 2 })).GetProperty("data");
             Assert.Equal("Available", page.GetProperty("evidenceState").GetString()); var observation = page.GetProperty("observation");
+            Assert.Equal(job.JobId, page.GetProperty("workerArchive").GetProperty("job").GetProperty("jobId").GetGuid());
+            Assert.Equal(stored.WorkerArchive!.Receipt.Identity.IndexSha256,
+                page.GetProperty("workerArchive").GetProperty("receipt").GetProperty("identity").GetProperty("indexSha256").GetString());
             Assert.Equal(stored.Sha256, observation.GetProperty("digest").GetString()); Assert.Equal("Local", observation.GetProperty("evidenceStorage").GetString());
             var reportId = page.GetProperty("reportId").GetString(); var ids = new List<string?>();
             while (true)

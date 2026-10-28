@@ -2,6 +2,22 @@
 
 Updated October 27, 2026. The original proposal under `outputs/` remains unchanged. This status document tracks implementation against its acceptance gates.
 
+**Admitted observation provenance:** [core contract 1.6.0](decisions/0058-admitted-observation-provenance.md)
+now produces a two-file archive from actual input-free queue worker observations.
+Its original descriptor, actual worker, source bytes and content-addressed index
+are published only through fenced atomic completion. Wrong workers, stale leases,
+changed retries and retrospective legacy promotion are rejected. Existing API
+reports and private MCP return the retained receipt for reconnect retrieval;
+historical readback never upgrades missing current originals. [Named validation](validation/admitted-observation-provenance-v1.md)
+includes real Chromium, actual stdio/HTTP, 223/223 Linux database cases and the
+separate native admitted-worker CI gate. Local Windows passes 2,311/2,311, strict
+nonincremental build and full format. The existing Lovable consumer validates
+the optional field (380/380 local tests, CI40613860385 green on Windows/Ubuntu).
+Core CI and exact promotion remain separate gates until their receipts pass.
+Hosted video is **not collected** by
+this observation protocol; the next step is the actual recorded collector under
+this admission/attempt boundary, with capture exclusions and cleanup proven.
+
 **Privensic Screen Reader — automated evidence assessment:** [contract1.5.0](decisions/0057-automated-website-evidence-readiness.md)
 adds eight operational conditions and the private `evidence_assess` MCP tool.
 It distinguishes documented/suspected findings, retained completed input,
@@ -38,8 +54,8 @@ from provider-user/S3 acceptance. Local Windows passes **2,199/2,199**, with87
 new cases, strict build and format; remote CI/deployment remain separately
 reported gates. Operator imports are not scan admissions.
 
-**Next for recorded evidence:** bind queue-produced recordings and archive
-receipts to the actual tenant, scan, job and fenced worker attempt. The original
+**Next for recorded evidence:** extend the actual recorded collector under the
+proven tenant/scan/job/attempt boundary and fenced archive completion. The original
 user's notebook archive reconnect, graph/video playback and persistent sign-in
 already passed at UI2d628d3/core13df2c3 through Edge v2. Operator imports remain
 distinct from admitted runs. The new assessment evaluates supplied records; it
@@ -71,7 +87,18 @@ That backend delivery does not enable hosted recording.
 
 <a id="next-isolated-hosted-reader-sessions"></a>
 
-## Next: archive retrieval through Edge and the notebook
+## Next: recorded collection under an admitted attempt
+
+The input-free worker's producer identity and atomic archive publication are
+implemented in [0058](decisions/0058-admitted-observation-provenance.md). Extend
+the actual isolated collector to retain original media and source/action/result
+graphs under that admitted attempt. Prove acknowledged exclusion, collection
+timing, complete original/index readback and native cleanup before completion.
+Keep partial, cancelled and unconfirmed recordings explicit. The existing
+two-file observation package reports `Recording=NotCollected`; it cannot be
+promoted into a recorded journey or objective result.
+
+### Accepted prerequisites
 
 **Signed-in reader accepted:** [the real application-user check](validation/private-tenant-reader-v1.md)
 passed at1a5c6dc: original-user provider authentication/RLS, two observations,
@@ -180,12 +207,14 @@ Windows/Ubuntu1,847 each, native Linux30, operator122 and exact private
 deployment39995270368. Independent VPS service/broker/native checks confirmed
 document-fenced navigation and paged history with synthetic identities.
 
-**Next acceptance action:** implement [live notebook reader controls](next-edge-to-core-connection.md)
-through the existing Supabase project. The original-user HTTP reader acceptance
-has passed; synthetic MCP/native checks do not become real identity-provider
-MCP execution or human/AT acceptance. The [isolated-reader delivery sequence](next-isolated-reader-sessions.md)
-remains as historical context. Original-user membership revocation/expiry,
-broader hosted recovery and public publication retain distinct gates.
+**Accepted prerequisite:** [live notebook reader controls](next-edge-to-core-connection.md)
+through the existing Supabase project and the original-user HTTP reader check
+have passed in their recorded scopes. The current next collector step is
+[recorded collection under an admitted attempt](#next-isolated-hosted-reader-sessions).
+Synthetic MCP/native checks do not become real identity-provider MCP execution
+or human/AT acceptance. The isolated-reader delivery sequence remains historical
+context. Actual membership revocation/expiry, broader recovery and public
+publication retain distinct gates.
 
 **Persistent child accepted:** source `5d87312` passed all nine jobs in
 [CI 39875200017](https://github.com/jvelezc/ai-screen-reader/actions/runs/39875200017),

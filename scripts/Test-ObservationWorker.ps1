@@ -11,7 +11,7 @@ $created=$false; $built=$false; $removed=$false; $imageRemoved=$false; $ready=$f
 $cases=[Collections.Generic.List[string]]::new()
 $releaseCreated=$false
 $script:executed=0; $script:failed=0
-$expected=if($IsLinux){30}else{28}; $linuxSignalPerformed=$false
+$expected=if($IsLinux){33}else{31}; $linuxSignalPerformed=$false
 $recoveryResources=[Collections.Generic.List[string]]::new()
 $names=@('POSTGRES_PASSWORD','HSR_WORKER_DATABASE','HSR_WORKER_IMAGE','HSR_WORKER_EVIDENCE','HSR_WORKER_RUNTIME','HSR_WORKER_SECCOMP',
     'HSR_CONTROL_PUBLISHABLE_KEY','HSR_CONTROL_EVIDENCE','HSR_CONTROL_PORT','HSR_CONTROL_ORIGIN','HSR_RELEASE_COMMIT')
@@ -186,6 +186,16 @@ try {
     Assert-Proof ($facts.state -eq 'observed' -and $facts.digest -eq (Get-FileHash $path -Algorithm SHA256).Hash.ToLowerInvariant() -and $facts.reference -eq $result.Reference) 'DatabaseCompletionAcknowledgesExactPersistedBytes'
     Assert-Proof ($facts.queue -eq 0 -and $facts.leases -eq 0 -and $facts.attempts -eq 1 -and $facts.completed -eq 1) 'ActualQueueAckRemovesCapabilityAndRetainsOneImmutableAttempt'
     Assert-Proof ($facts.renewed -ge 1) 'ActualNativeAdapterRenewsCurrentServerCapabilityBeforeExecution'
+    $producer=(Invoke-ProofSql "select json_build_object('index',j.archive_index_sha256,'manifest',j.archive_manifest_sha256,'bytes',j.archive_bytes,'worker',j.archive_worker_id,'actual_worker',a.worker_id,'generation',a.generation) from hsr.scan_jobs j join hsr.job_attempts a on a.organization_id=j.organization_id and a.job_id=j.id and a.generation=j.generation where j.id='$($job.job_id)'" ) | ConvertFrom-Json
+    Assert-Proof ($producer.index -cmatch '^[a-f0-9]{64}$' -and $producer.manifest -cmatch '^[a-f0-9]{64}$' -and $producer.worker -eq $producer.actual_worker -and $producer.generation -eq 1) 'FencedCompletionPublishesArchiveForActualWorkerAttempt'
+    $archiveRoot=Join-Path $env:HSR_WORKER_EVIDENCE "archives/traversal-v1/$(([Guid]$org).ToString('N'))/$(([Guid]$job.job_id).ToString('N'))/$($producer.index)"
+    $indexPath=Join-Path $archiveRoot 'index.json'; $index=Get-Content $indexPath -Raw | ConvertFrom-Json
+    $original=@($index.Files | Where-Object Path -CEQ 'observation.json'); $manifest=@($index.Files | Where-Object Path -CEQ 'evidence-manifest.json')
+    $originalPath=if($original.Count -eq 1 -and $original[0].Parts.Count -eq 1){Join-Path $archiveRoot "objects/$($original[0].Parts[0].Sha256)"}else{throw 'WORKER_ARCHIVE_ORIGINAL_UNCONFIRMED'}
+    Assert-Proof ((Get-FileHash $indexPath -Algorithm SHA256).Hash.ToLowerInvariant() -ceq $producer.index -and $index.OrganizationId -eq $org -and $index.ArchiveId -eq $job.job_id -and $index.SourceManifestSha256 -ceq $producer.manifest -and $index.Files.Count -eq 2 -and $original[0].Sha256 -ceq $facts.digest -and $original[0].Bytes -eq $bytes.Length -and (Get-Item $originalPath).Length -eq $bytes.Length -and (Get-FileHash $originalPath -Algorithm SHA256).Hash.ToLowerInvariant() -ceq $facts.digest -and $producer.bytes -eq ($index.Files | Measure-Object Bytes -Sum).Sum) 'ProducerArchiveIndexBindsJobAndExactOriginalBytes'
+    if($manifest.Count -ne 1 -or $manifest[0].Parts.Count -ne 1){throw 'WORKER_ARCHIVE_MANIFEST_UNCONFIRMED'}
+    $manifestPath=Join-Path $archiveRoot "objects/$($manifest[0].Parts[0].Sha256)"; $source=Get-Content $manifestPath -Raw | ConvertFrom-Json
+    Assert-Proof ((Get-FileHash $manifestPath -Algorithm SHA256).Hash.ToLowerInvariant() -ceq $producer.manifest -and $source.Schema -ceq 'hsr-worker-observation-package-v1' -and $source.Job.OrganizationId -eq $org -and $source.Job.ScanId -eq $job.scan_id -and $source.Job.JobId -eq $job.job_id -and $source.Job.Generation -eq 1 -and $source.WorkerId -eq $producer.actual_worker -and $source.ObservationSha256 -ceq $facts.digest -and $source.Origin -ceq 'QueueWorkerObservation' -and $source.Recording -ceq 'NotCollected' -and $source.DispatchedInputs -eq 0 -and -not $source.GoalVerified) 'ProducerManifestPreservesNoRecordingNoInputAndActualAttemptScope'
     $remaining=Invoke-ReaderRuntime $Runtime @('ps','--all','--filter','name=^hsr-observation-','--format','{{.ID}}')
     Assert-Proof ([string]::IsNullOrWhiteSpace($remaining.Text)) 'OwnedObservationContainerIsRemovedBeforeCompletion'
     $stage='blocked-execution'

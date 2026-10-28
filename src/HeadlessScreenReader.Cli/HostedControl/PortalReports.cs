@@ -80,6 +80,8 @@ internal sealed class PortalScanService(IPortalProjectClient project, IPortalObs
         if (job is null) return new(record, "Unavailable", "CONTROL_JOB_NOT_FOUND", null);
         if (job.OrganizationId != organization || job.ScanId != scan)
             throw new PortalFault(503, "CONTROL_PROVIDER_RESPONSE_UNCONFIRMED");
+        if (job.WorkerArchive is not null && job.State != "completed")
+            throw new PortalFault(503, "CONTROL_EVIDENCE_IDENTITY_UNCONFIRMED");
         var expectedState = job.State switch
         {
             "queued" => "queued",
@@ -98,15 +100,18 @@ internal sealed class PortalScanService(IPortalProjectClient project, IPortalObs
         }
         if (job.State == "blocked") return new(record, "NotCollected", job.ErrorCode, null);
         if (job.State != "completed") return new(record, "Pending", job.ErrorCode, null);
+        try { job.WorkerArchive?.Validate(new(organization, scan, job.JobId, job.Generation)); }
+        catch (BrowserOperationException) { throw new PortalFault(503, "CONTROL_EVIDENCE_IDENTITY_UNCONFIRMED"); }
         try
         {
             var observation = await observations.ReadAsync(job, token).ConfigureAwait(false);
-            return observation is null ? new(record, "Unavailable", "CONTROL_EVIDENCE_UNAVAILABLE", null)
-                : new(record, "Available", null, observation);
+            return observation is null ? new(record, "Unavailable", "CONTROL_EVIDENCE_UNAVAILABLE", null) { WorkerArchive = job.WorkerArchive }
+                : new(record, "Available", null, observation) { WorkerArchive = job.WorkerArchive };
         }
         catch (PortalFault fault)
         {
-            return new(record, fault.Code == "CONTROL_EVIDENCE_REMOTE_UNAVAILABLE" ? "Unavailable" : "Invalid", fault.Code, null);
+            return new(record, fault.Code == "CONTROL_EVIDENCE_REMOTE_UNAVAILABLE" ? "Unavailable" : "Invalid", fault.Code, null)
+            { WorkerArchive = job.WorkerArchive };
         }
     }
 }

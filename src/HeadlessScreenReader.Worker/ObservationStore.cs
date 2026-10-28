@@ -8,10 +8,11 @@ namespace HeadlessScreenReader.Worker;
 public sealed record StoredObservation(string Reference, string Sha256)
 {
     public bool OffHostReadbackVerified { get; init; }
+    public WorkerEvidenceArchive? WorkerArchive { get; init; }
 }
 
 /// <summary>Private local evidence. Flush and readback precede database completion.</summary>
-public sealed class ObservationStore(string root, IObservationArchive? archive = null)
+public sealed class ObservationStore(string root, IObservationArchive? archive = null, WorkerEvidenceFinalizer? producer = null)
 {
     public static readonly JsonSerializerOptions Json = new()
     {
@@ -41,7 +42,7 @@ public sealed class ObservationStore(string root, IObservationArchive? archive =
         return observation;
     }
 
-    public async Task<StoredObservation> PersistAsync(byte[] bytes, FixtureJob job, CancellationToken token)
+    public async Task<StoredObservation> PersistAsync(byte[] bytes, FixtureJob job, CancellationToken token, Guid? worker = null)
     {
         bytes = bytes.ToArray();
         Validate(bytes, job);
@@ -65,7 +66,9 @@ public sealed class ObservationStore(string root, IObservationArchive? archive =
             var digest = Convert.ToHexStringLower(SHA256.HashData(readback));
             if (archive is not null)
                 await archive.FinalizeAsync(job, readback, digest, token).ConfigureAwait(false);
-            return new(job.Reference, digest) { OffHostReadbackVerified = archive is not null };
+            var receipt = producer is null ? null : await producer.FinalizeAsync(job,
+                worker ?? throw new BrowserOperationException("WORKER_EVIDENCE_PROVENANCE_UNCONFIRMED"), readback, digest, token).ConfigureAwait(false);
+            return new(job.Reference, digest) { OffHostReadbackVerified = archive is not null, WorkerArchive = receipt };
         }
         finally { if (File.Exists(pending)) File.Delete(pending); }
     }

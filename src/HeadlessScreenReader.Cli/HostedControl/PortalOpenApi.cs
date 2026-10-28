@@ -12,7 +12,7 @@ internal static class PortalOpenApi
 {
     private static readonly Lazy<string> Cached = new(Build);
     public static string Document => Cached.Value;
-    public const string ContractVersion = "1.5.0";
+    public const string ContractVersion = "1.6.0";
 
     private static string Build()
     {
@@ -140,6 +140,21 @@ internal static class PortalOpenApi
                     properties["offset"]!["minimum"] = 0;
                     properties["offset"]!["maximum"] = context.TypeInfo.Type == typeof(PortalArchiveManifestRequest) ? 4097 : 134217728;
                 }
+                if (context.TypeInfo.Type == typeof(WorkerEvidenceArchive))
+                {
+                    properties["origin"]!["const"] = "QueueWorkerObservation";
+                    var receipt = properties["receipt"]!["properties"]!;
+                    receipt["files"]!["const"] = 2;
+                    receipt["bytes"]!["minimum"] = 1; receipt["bytes"]!["maximum"] = FixtureObservation.MaximumBytes + 4096;
+                    receipt["objectReadbackVerified"]!["const"] = true; receipt["indexReadbackVerified"]!["const"] = true;
+                    receipt["sourceManifestSha256"]!["pattern"] = "^[a-f0-9]{64}$";
+                    value["description"] = "Atomic admitted attempt receipt. Runtime validation binds organization, scan, job, generation and archive identity. Historical original/index readback does not establish current availability. No recording, dispatched input or verified goal is produced by this observation-only worker.";
+                }
+                if (context.TypeInfo.Type == typeof(FixtureJob))
+                {
+                    properties["generation"]!["minimum"] = 1; properties["generation"]!["maximum"] = 3;
+                    properties["reference"]!["maxLength"] = 200;
+                }
                 if (context.TypeInfo.Type == typeof(TraversalArchiveManifestPage))
                 {
                     properties["files"]!["maxItems"] = PortalArchiveReader.ManifestFiles;
@@ -262,7 +277,7 @@ internal static class PortalOpenApi
                 if (context.TypeInfo.Type == typeof(PortalReportResponse))
                 {
                     properties["evidenceState"]!["enum"] = Strings("Pending", "Available", "Unavailable", "NotCollected", "Invalid");
-                    value["description"] = "Execution and evidence are separate. Only Available carries an observation. Required-state null means unobserved, never false. A blocked job is not proof of an accessibility barrier.";
+                    value["description"] = "Execution and evidence are separate. Only Available carries an observation. Optional workerArchive is the completed job's atomic producer receipt, with historical readback; current availability requires archive reads. Null means no admitted archive, including legacy jobs/operator imports. This input-free observation package contains no recording or verified goal. Required-state null means unobserved. A blocked job is not an accessibility barrier.";
                     value["allOf"] = JsonNode.Parse("""
                         [
                           {"if":{"properties":{"evidenceState":{"const":"Available"}}},

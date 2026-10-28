@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using HeadlessScreenReader.Domain;
 using HeadlessScreenReader.ScreenReader;
 
 namespace HeadlessScreenReader.Mcp;
@@ -65,6 +66,13 @@ public sealed class HostedScanClient : IAsyncDisposable
             using var document = await _transport.SendAsync(HttpMethod.Get, Collection + $"/{id:D}").ConfigureAwait(false);
             var report = Parse<HostedScanReport>(document); ValidateScan(report.Scan);
             Require(report.Scan.Id == id && SafeCode(report.ErrorCode));
+            if (report.WorkerArchive is { } producer)
+            {
+                Require(report.Scan.State == "observed" && producer.Job is not null
+                    && producer.Job.OrganizationId == report.Scan.OrganizationId && producer.Job.ScanId == id);
+                try { producer.Validate(producer.Job!); }
+                catch (BrowserOperationException) { Require(false); }
+            }
             var fingerprint = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(document.RootElement.GetRawText())));
             if (reportId is not null && reportId != fingerprint) return ToolReply.Error("HOSTED_SCAN_REPORT_CHANGED");
             if (report.EvidenceState == "Available")
@@ -85,6 +93,7 @@ public sealed class HostedScanClient : IAsyncDisposable
                     report.Scan,
                     report.EvidenceState,
                     report.ErrorCode,
+                    report.WorkerArchive,
                     ReportId = fingerprint,
                     ReportIdMeaning = "SHA256 of core response for immutable pagination; separate from original observation digest",
                     EvidenceAuthority = "Core API validates original job-bound evidence",
@@ -112,6 +121,7 @@ public sealed class HostedScanClient : IAsyncDisposable
                 report.Scan,
                 report.EvidenceState,
                 report.ErrorCode,
+                report.WorkerArchive,
                 ReportId = fingerprint,
                 Observation = (object?)null,
                 GoalVerification = "NotAssessed",

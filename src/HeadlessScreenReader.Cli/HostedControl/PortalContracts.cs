@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
+using HeadlessScreenReader.Domain;
 
 namespace HeadlessScreenReader.Cli.HostedControl;
 
@@ -75,7 +76,10 @@ internal sealed record PortalScanResponse(Guid OrganizationId, Guid Id, string F
 internal sealed record PortalScanListResponse(PortalScanResponse[] Items, bool HasMore);
 /// <summary>Fenced job result metadata; no lease bearer or token hash is exposed.</summary>
 internal sealed record PortalJobResult(Guid OrganizationId, Guid ScanId, Guid JobId, string State, long Generation,
-    string? Digest, string? Reference, string? ErrorCode);
+    string? Digest, string? Reference, string? ErrorCode)
+{
+    public WorkerEvidenceArchive? WorkerArchive { get; init; }
+}
 /// <summary>Stored source semantics. Null required state remains unobserved.</summary>
 internal sealed record PortalNodeResponse(string Id, string? ParentId, string Role, string Name,
     bool Focused, bool Disabled, int? HeadingLevel, string? Checked, bool? Expanded, bool? Selected,
@@ -85,7 +89,10 @@ internal sealed record PortalObservationResponse(string DocumentId, string Diges
     int DispatchedInputs, bool GoalVerified, PortalNodeResponse[] Nodes, string[] Limitations, string EvidenceStorage = "Local");
 /// <summary>Report metadata and explicit evidence availability are independent facts.</summary>
 internal sealed record PortalReportResponse(PortalScanResponse Scan, string EvidenceState,
-    string? ErrorCode, PortalObservationResponse? Observation);
+    string? ErrorCode, PortalObservationResponse? Observation)
+{
+    public WorkerEvidenceArchive? WorkerArchive { get; init; }
+}
 
 internal sealed class PortalFault(int status, string code) : Exception(code)
 {

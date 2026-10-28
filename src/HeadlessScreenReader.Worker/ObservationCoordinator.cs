@@ -36,11 +36,16 @@ public sealed class ObservationCoordinator(IWorkerLeases leases, IFixtureExecuto
         {
             var bytes = await executor.ExecuteAsync(lease.Job, execution.Token);
             execution.Token.ThrowIfCancellationRequested();
-            stored = await store.PersistAsync(bytes, lease.Job, execution.Token);
+            stored = await store.PersistAsync(bytes, lease.Job, execution.Token, lease.WorkerId);
         }
         catch (Exception exception)
         {
-            evidenceError = exception is ObservationArchiveException archiveFailure ? archiveFailure.Message : null;
+            evidenceError = exception switch
+            {
+                ObservationArchiveException archiveFailure => archiveFailure.Message,
+                TraversalArchiveException archiveFailure => archiveFailure.Message,
+                _ => null
+            };
             error = exception is BrowserOperationException { Code: "WORKER_NATIVE_OWNERSHIP_UNCONFIRMED" }
                 ? "WORKER_NATIVE_OWNERSHIP_UNCONFIRMED"
                 : exception is BrowserOperationException { Code: "WORKER_CONTAINER_CLEANUP_UNCONFIRMED" }

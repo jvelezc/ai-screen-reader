@@ -10,6 +10,31 @@ namespace HeadlessScreenReader.Tests;
 
 public sealed class PortalOpenApiTests
 {
+    [Theory]
+    [InlineData("valid")]
+    [InlineData("origin")]
+    [InlineData("files")]
+    [InlineData("bytes")]
+    [InlineData("readback")]
+    public void ProducerReceiptSchemaPreservesReadbackAndObservationOnlyBounds(string change)
+    {
+        using var spec = JsonDocument.Parse(PortalOpenApi.Document);
+        var project = new PortalProjectStub();
+        var job = new HeadlessScreenReader.Domain.FixtureJob(project.Job.OrganizationId, project.Job.ScanId, project.Job.JobId, 1);
+        var value = JsonSerializer.SerializeToNode(new PortalReportResponse(project.Record with { State = "observed" },
+            "Available", null, Observation())
+        { WorkerArchive = WorkerEvidenceTests.Receipt(job) }, PortalJson.Options)!;
+        switch (change)
+        {
+            case "origin": value["workerArchive"]!["origin"] = "OperatorImport"; break;
+            case "files": value["workerArchive"]!["receipt"]!["files"] = 3; break;
+            case "bytes": value["workerArchive"]!["receipt"]!["bytes"] = 1052673; break;
+            case "readback": value["workerArchive"]!["receipt"]!["objectReadbackVerified"] = false; break;
+        }
+        using var body = JsonDocument.Parse(value.ToJsonString());
+        Assert.Equal(change == "valid", Matches(body.RootElement, Component(spec.RootElement, "Report"), spec.RootElement));
+    }
+
     [Fact]
     public async Task ArchivePayloadsAndOptionalOffsetMatchPublishedContract()
     {
@@ -91,7 +116,7 @@ public sealed class PortalOpenApiTests
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         var spec = document.RootElement;
         Assert.Equal("3.1.0", spec.GetProperty("openapi").GetString());
-        Assert.Equal("1.5.0", spec.GetProperty("info").GetProperty("version").GetString());
+        Assert.Equal("1.6.0", spec.GetProperty("info").GetProperty("version").GetString());
         Assert.Equal("https://json-schema.org/draft/2020-12/schema", spec.GetProperty("jsonSchemaDialect").GetString());
         Assert.Equal("http", spec.GetProperty("components").GetProperty("securitySchemes").GetProperty("bearerAuth").GetProperty("type").GetString());
         var operations = new[]

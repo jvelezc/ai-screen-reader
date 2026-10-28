@@ -96,7 +96,7 @@ internal sealed class SupabasePortalClient(HttpClient http, string publishableKe
 
     public async Task<PortalJobResult?> JobAsync(PortalIdentity actor, Guid organization, Guid scan, CancellationToken token)
     {
-        var path = "rest/v1/scan_jobs?select=organization_id,scan_id,id,state,generation,result_digest,result_reference,last_error_code"
+        var path = "rest/v1/scan_jobs?select=organization_id,scan_id,id,state,generation,result_digest,result_reference,last_error_code,archive_index_sha256,archive_manifest_sha256,archive_bytes,archive_worker_id"
             + "&organization_id=eq." + organization.ToString("D") + "&scan_id=eq." + scan.ToString("D")
             + "&stage=eq.observe-fixture&limit=2";
         using var request = Request(HttpMethod.Get, path, actor.Token);
@@ -120,6 +120,20 @@ internal sealed class SupabasePortalClient(HttpClient http, string publishableKe
                 || !Regex.IsMatch(result.Digest, "\\A[a-f0-9]{64}\\z")) throw InvalidResponse();
         }
         else if (result.Digest is not null || result.Reference is not null) throw InvalidResponse();
+        var indexHash = Optional(row, "archive_index_sha256", 64);
+        var manifestHash = Optional(row, "archive_manifest_sha256", 64);
+        var workerId = Optional(row, "archive_worker_id", 36);
+        var hasBytes = row.TryGetProperty("archive_bytes", out var archiveBytes) && archiveBytes.ValueKind != JsonValueKind.Null;
+        if (indexHash is not null || manifestHash is not null || workerId is not null || hasBytes)
+        {
+            if (result.State != "completed" || indexHash is null || manifestHash is null
+                || !Guid.TryParse(workerId, out var producer) || !hasBytes || !archiveBytes.TryGetInt64(out var length)) throw InvalidResponse();
+            var receipt = new WorkerEvidenceArchive(new(organization, scan, result.JobId, result.Generation), producer,
+                new(new(organization, result.JobId, indexHash), manifestHash, 2, length, true, true));
+            try { receipt.Validate(new(organization, scan, result.JobId, result.Generation)); }
+            catch (BrowserOperationException) { throw InvalidResponse(); }
+            result = result with { WorkerArchive = receipt };
+        }
         return result;
     }
 
