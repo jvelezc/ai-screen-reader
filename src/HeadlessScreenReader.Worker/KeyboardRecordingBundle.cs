@@ -19,6 +19,10 @@ public sealed record KeyboardRecordingBundle(byte[] Observation, byte[] Video, b
         var recording = JsonSerializer.Deserialize<AdmittedKeyboardRecording>(Traversal, ObservationStore.Json)
             ?? throw new BrowserOperationException("WORKER_KEYBOARD_RECORDING_UNCONFIRMED");
         recording.Validate(baseline, Hash(Observation), Hash(Video), Video.Length, Hash(Sources));
+        if (!baseline.RecordedSnapshots.IsDefault && !JsonElement.DeepEquals(
+            JsonSerializer.SerializeToElement(baseline.RecordedSnapshots, ObservationStore.Json),
+            JsonSerializer.SerializeToElement(recording.Receipt.Observations, ObservationStore.Json)))
+            throw new BrowserOperationException("WORKER_KEYBOARD_SNAPSHOTS_CHANGED");
         if (!JsonElement.DeepEquals(JsonSerializer.SerializeToElement(baseline.Snapshot, ObservationStore.Json),
                 JsonSerializer.SerializeToElement(recording.Receipt.Observations[0].Snapshot, ObservationStore.Json)))
             throw new BrowserOperationException("WORKER_KEYBOARD_BASELINE_CHANGED");

@@ -47,6 +47,7 @@ public sealed class HostedEvidenceTests
     [InlineData("forged-count")]
     [InlineData("missing-condition")]
     [InlineData("invented-url-assessment")]
+    [InlineData("injected-admitted-proof")]
     public async Task PrivateMcpRejectsForgedOrForeignAssessmentResponses(string scenario)
     {
         var response = await new PortalEvidenceReadiness(new ReaderProjectStub(), null).AssessAsync(PortalReaderSessionTests.Actor, Organization, new(Example: "complete"), default);
@@ -57,6 +58,7 @@ public sealed class HostedEvidenceTests
             case "example-claims-real": tree["assessment"]!["websitePackageReady"] = true; break;
             case "forged-count": tree["assessment"]!["conditionsMet"] = 9; break;
             case "missing-condition": tree["assessment"]!["conditions"]!.AsArray().RemoveAt(0); break;
+            case "injected-admitted-proof": tree["sourceProof"]!["state"] = "Verified"; break;
             default: tree["status"] = "ScanResultsRequired"; break;
         }
         using var client = new HostedEvidenceClient(Options(), new Handler(_ => Task.FromResult(Json(tree))));

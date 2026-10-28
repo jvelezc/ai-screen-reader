@@ -27,10 +27,17 @@ public sealed record FixtureObservation(string Schema, FixtureJob Job, string Fi
     public const string ContentSha256 = "61327e8f2f92a817a6e4616bcebeb93b1c162ffe6937a36f000cf9313c646a8b";
     public const string RecordingContentSha256 = "b49eef1ff4f1e225ea263fc559c2e4ab5ea75a75a3c6ee091b57980e210a0d7b";
     public const int MaximumBytes = 1_048_576;
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public System.Collections.Immutable.ImmutableArray<TraversalObservation> RecordedSnapshots { get; init; }
 
     public void Validate(FixtureJob expected)
     {
         expected.Validate();
+        if (!RecordedSnapshots.IsDefault && (expected.TraversalRoute == 0 || Snapshot is null || RecordedSnapshots.IsEmpty || RecordedSnapshots.Length > 32
+            || RecordedSnapshots.Any(o => o is null || o.Snapshot is null || o.Snapshot.DocumentId != Snapshot.DocumentId
+                || o.Snapshot.CaptureEpoch != Snapshot.CaptureEpoch || o.Snapshot.Nodes.IsDefaultOrEmpty || o.Snapshot.Nodes.Length > 2048
+                || o.Snapshot.Nodes.Any(n => n.Role is "textbox" or "code"))))
+            throw new BrowserOperationException("WORKER_RECORDED_SNAPSHOTS_INVALID");
         if (Job != expected || Schema != CurrentSchema || Fixture != "synthetic-shop" || ReaderProfile != Profile
             || FixtureSha256 != (expected.RecordObservation ? RecordingContentSha256 : ContentSha256) || DispatchedInputs != 0 || GoalVerified
             || Snapshot is null || string.IsNullOrWhiteSpace(Snapshot.DocumentId)

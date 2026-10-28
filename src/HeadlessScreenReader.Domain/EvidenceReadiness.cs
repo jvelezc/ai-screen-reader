@@ -7,6 +7,7 @@ namespace HeadlessScreenReader.Domain;
 public sealed record EvidenceScanRecord
 {
     public bool Demo { get; init; }
+    public string SubjectKind { get; init; } = "Website";
     public string Target { get; init; } = "";
     public EvidenceScanTest Test { get; init; } = new();
     public EvidenceEnvironment Environment { get; init; } = new();
@@ -103,7 +104,7 @@ public sealed record EvidenceAssessment(string PolicyVersion, string Decision, s
 /// <summary>Pure eight-condition evaluator. No browser, storage, human-review queue or legal determination.</summary>
 public static class EvidenceReadiness
 {
-    public const string PolicyVersion = "hsr-website-evidence-v1";
+    public const string PolicyVersion = "hsr-website-evidence-v2";
     public const int MaximumInputBytes = 65_536;
     public static readonly ImmutableArray<string> OutsideScope =
         ["A particular plaintiff's disability", "A particular plaintiff's personal injury or actual encounter",
@@ -136,6 +137,7 @@ public static class EvidenceReadiness
     {
         ArgumentNullException.ThrowIfNull(record);
         _ = Website(record.Target);
+        if (record.SubjectKind is not ("Website" or "ControlledFixture")) throw new ArgumentException("EVIDENCE_RECORD_INVALID");
         if (record.Test is null || record.Environment is null || record.Instrumentation is null
             || record.Findings.IsDefault || record.Events.IsDefault || record.Artifacts.IsDefault || record.Attempts.IsDefault
             || record.Findings.Length > 32 || record.Events.Length > 128 || record.Artifacts.Length > 32 || record.Attempts.Length > 16
@@ -166,15 +168,21 @@ public static class EvidenceReadiness
     }
 
     public static EvidenceAssessment Assess(EvidenceScanRecord record, ImmutableArray<EvidenceArtifactProof> proofs = default,
-        bool illustrative = false)
+        bool illustrative = false, EvidenceSourceProof? source = null)
     {
         Validate(record);
         var test = record.Test; var environment = record.Environment;
+        source ??= EvidenceSourceProof.Missing;
+        var sourceVerified = source.State == "Verified" && source.SubjectKind == record.SubjectKind && source.OutcomeVerified;
+        bool RecordedEvent(EvidenceEvent e) => illustrative || sourceVerified && !source.VerifiedEventIds.IsDefault && source.VerifiedEventIds.Contains(e.Id);
+        bool RecordedAttempt(EvidenceAttempt a) => illustrative || sourceVerified && !source.VerifiedAttemptIds.IsDefault && source.VerifiedAttemptIds.Contains(a.Id);
         var events = record.Events.ToDictionary(e => e.Id, StringComparer.Ordinal);
         var sameOrigin = Uri.TryCreate(test.Url, UriKind.Absolute, out var testUri)
             && testUri.GetLeftPart(UriPartial.Authority) == new Uri(Website(record.Target)).GetLeftPart(UriPartial.Authority)
             && testUri.UserInfo.Length == 0 && testUri.Fragment.Length == 0;
-        bool Failure(EvidenceEvent e) => e.Tone == "fail" && e.FailureKind == "accessibility" && e.InputStatus == "completed"
+        bool Failure(EvidenceEvent e) => RecordedEvent(e)
+            && (illustrative || !source.AccessibilityFailureEventIds.IsDefault && source.AccessibilityFailureEventIds.Contains(e.Id))
+            && e.Tone == "fail" && e.FailureKind == "accessibility" && e.InputStatus == "completed"
             && Present(e.Key) && !e.Key.Contains("pointer", StringComparison.OrdinalIgnoreCase) && !e.Key.Contains("click", StringComparison.OrdinalIgnoreCase)
             && Present(e.Focus) && Present(e.Result) && Present(e.Ax);
         bool SameTask(string url, string goal) => Present(url) && Present(goal)
@@ -185,10 +193,10 @@ public static class EvidenceReadiness
         var documented = record.Findings.Where(Blocked).ToArray();
         var candidate = record.Findings.Any(f => f.Material || f.TestedTaskBlocked) || test.KeyboardOutcome == "blocked";
         var linkedFailures = record.Findings.Where(f => events.TryGetValue(f.EventRef, out var e) && Failure(e)).Select(f => f.EventRef).Distinct().ToImmutableArray();
-        var failures = record.Attempts.Where(a => a.Mode == "keyboard" && a.Outcome == "blocked" && SameTask(a.TaskUrl, a.Goal)
+        var failures = record.Attempts.Where(a => RecordedAttempt(a) && a.Mode == "keyboard" && a.Outcome == "blocked" && SameTask(a.TaskUrl, a.Goal)
             && events.TryGetValue(a.EventRef, out var e) && e.AttemptId == a.Id && Failure(e)).ToArray();
-        var comparator = record.Attempts.Where(a => a.Mode == "pointer" && a.Outcome == "completed" && SameTask(a.TaskUrl, a.Goal)
-            && events.TryGetValue(a.EventRef, out var e) && e.AttemptId == a.Id && e.Tone == "pass"
+        var comparator = record.Attempts.Where(a => RecordedAttempt(a) && a.Mode == "pointer" && a.Outcome == "completed" && SameTask(a.TaskUrl, a.Goal)
+            && events.TryGetValue(a.EventRef, out var e) && RecordedEvent(e) && e.AttemptId == a.Id && e.Tone == "pass"
             && e.InputStatus == "completed" && e.FailureKind == "none" && e.Key is "Pointer click" or "Click" && Present(e.Focus) && Present(e.Result)).ToArray();
         var conditions = ImmutableArray.CreateBuilder<EvidenceCondition>();
         void Add(string id, string title, bool met, string reason, string missing,
@@ -203,7 +211,7 @@ public static class EvidenceReadiness
         Add("G3", "Action and failure are linked", linkedFailures.Length > 0,
             "Finding references resolve to actual recorded input, focus, AX and failed-result fields.",
             "Retain a finding-linked failure event with completed input, focused target, AX and observed result; engine/policy errors do not qualify.", linkedFailures);
-        var diagnosticEvents = record.Events.Where(e => Present(e.Ax) && Present(e.Focus) && e.InputStatus == "completed").Select(e => e.Id).ToArray();
+        var diagnosticEvents = record.Events.Where(e => RecordedEvent(e) && Present(e.Ax) && Present(e.Focus) && e.InputStatus == "completed").Select(e => e.Id).ToArray();
         Add("G4", "Keyboard, focus and AX diagnostics captured", record.Instrumentation.KeyboardCapture && record.Instrumentation.FocusCapture
             && record.Instrumentation.AccessibilityTreeCapture && diagnosticEvents.Length > 0,
             "The record declares all three captures and supplies linked diagnostic events.",
@@ -217,7 +225,8 @@ public static class EvidenceReadiness
             "Retain a completed-input pointer attempt and observed success for the exact same task and URL.", comparator.Select(a => a.EventRef));
         var timestamp = DateTimeOffset.TryParse(environment.CapturedAt, CultureInfo.InvariantCulture, DateTimeStyles.None, out _)
             && environment.CapturedAt.Contains('T') && (environment.CapturedAt.EndsWith('Z') || environment.CapturedAt.Length >= 6 && environment.CapturedAt[^6] is '+' or '-');
-        Add("G7", "Environment and capture context recorded", timestamp && sameOrigin && Present(environment.Browser) && Present(environment.Os) && Present(test.Mode),
+        Add("G7", "Environment and capture context recorded", (illustrative || sourceVerified && source.EnvironmentVerified)
+            && timestamp && sameOrigin && Present(environment.Browser) && Present(environment.Os) && Present(test.Mode),
             "A timestamp with offset, URL, browser, operating system and test mode contextualize the record.",
             "Record an ISO timestamp with offset, same-site URL, browser, operating system and test mode.");
         var verified = proofs.IsDefault ? [] : proofs;
@@ -244,15 +253,16 @@ public static class EvidenceReadiness
             conditions[^1] = conditions[^1] with { Missing = missing };
         }
         var count = conditions.Count(c => c.Met);
-        var noBarrier = !candidate && test.Completion == "completed" && test.KeyboardOutcome == "completed"
+        var noBarrier = (illustrative || sourceVerified && source.OutcomeVerified) && !candidate && test.Completion == "completed" && test.KeyboardOutcome == "completed"
             && conditions[0].Met && conditions[6].Met && record.Events.Any(e => e.Tone == "pass" && Present(e.Result));
-        var decision = count == 8 ? "Ready" : noBarrier ? "NoBlockingBarrierDocumented" : "InsufficientEvidence";
+        var decision = count == 8 && (illustrative || sourceVerified && record.SubjectKind == "Website")
+            ? "Ready" : noBarrier ? "NoBlockingBarrierDocumented" : "InsufficientEvidence";
         return new(PolicyVersion, decision, decision == "Ready" ? "Ready to proceed with the website evidence package"
             : decision == "NoBlockingBarrierDocumented" ? "No blocking barrier documented" : "Insufficient supporting evidence",
-            count, decision == "Ready" && !illustrative && !record.Demo, illustrative, conditions.ToImmutable(),
+            count, decision == "Ready" && !illustrative && !record.Demo && sourceVerified && source.SubjectKind == "Website", illustrative, conditions.ToImmutable(),
             record.Findings.Select(f => new EvidenceFindingAssessment(f.Id, Blocked(f) ? "Documented" : "Suspected",
                 Blocked(f) ? "Supported by the linked completed-input accessibility failure in the supplied record."
-                    : "Reported issue lacks a complete task-blocking accessibility failure trace; it is not established by engine, policy or timeout state.",
+                    : "This is a reported issue, not a verified blocking barrier. Retain matching recorded actions and independently supported accessibility-failure evidence; engine, policy and timeout states do not establish it.",
                 events.ContainsKey(f.EventRef) ? [f.EventRef] : [])).ToImmutableArray(), OutsideScope);
     }
 }

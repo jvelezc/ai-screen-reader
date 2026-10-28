@@ -27,7 +27,8 @@ public static class KeyboardFixtureWorker
             // These zero-input facts describe only the retained pre-traversal capture.
             // The actual route's attempted/completed inputs and verification remain in traversal.json.
             var baseline = new FixtureObservation(FixtureObservation.CurrentSchema, job, "synthetic-shop", FixtureObservation.Profile,
-                FixtureObservation.RecordingContentSha256, receipt.Observations[0].Snapshot, 0, false, shutdown);
+                FixtureObservation.RecordingContentSha256, receipt.Observations[0].Snapshot, 0, false, shutdown)
+            { RecordedSnapshots = receipt.Observations };
             baseline.Validate(job);
             var observation = JsonSerializer.SerializeToUtf8Bytes(baseline, ObservationStore.Json);
             var video = await File.ReadAllBytesAsync(Path.Combine(folder, PassiveObservationRecording.VideoFile), token);
@@ -51,7 +52,11 @@ public static class KeyboardFixtureWorker
                 TraversalProjection.Build(receipt), alignment, capture, result.Recording.ClockSamples, origin, media.Source, media.Video,
                 TraversalArchive.Hash(await File.ReadAllBytesAsync(typeof(KeyboardFixtureWorker).Assembly.Location, token)),
                 typeof(KeyboardFixtureWorker).Assembly.GetName().Version?.ToString() ?? "unknown", result.Recording.Stage, result.Recording.ErrorCode)
-            { SourcePresentationOrder = media.SourcePresentationOrder };
+            {
+                SourcePresentationOrder = media.SourcePresentationOrder,
+                Environment = new(result.Environment!.BrowserVersion, result.Environment.PlaywrightVersion,
+                    System.Runtime.InteropServices.RuntimeInformation.OSDescription, "320x240")
+            };
             return new KeyboardRecordingBundle(observation, video, JsonSerializer.SerializeToUtf8Bytes(recording, ObservationStore.Json), frames).Encode(job);
         }
         finally

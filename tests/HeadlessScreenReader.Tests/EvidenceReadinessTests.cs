@@ -9,6 +9,38 @@ public sealed class EvidenceReadinessTests
     internal static ImmutableArray<EvidenceArtifactProof> Proofs(EvidenceScanRecord record) =>
         record.Artifacts.Select(a => new EvidenceArtifactProof(a.Id, "HashVerified", a.Sha256)).ToImmutableArray();
 
+    // Isolated policy tests supply a trusted-source seam. HTTP tests separately prove how the host obtains it.
+    internal static EvidenceSourceProof Trusted(EvidenceScanRecord record) => new("Verified", record.SubjectKind,
+        null, null, null, null, null, record.Events.Select(e => e.Id).ToImmutableArray(),
+        record.Attempts.Select(a => a.Id).ToImmutableArray(),
+        record.Events.Where(e => e.FailureKind == "accessibility").Select(e => e.Id).ToImmutableArray(), true, true, []);
+    private static EvidenceAssessment AssessTrusted(EvidenceScanRecord record, ImmutableArray<EvidenceArtifactProof> proofs = default,
+        bool illustrative = false) => EvidenceReadiness.Assess(record, proofs, illustrative, Trusted(record));
+
+    [Fact]
+    public void VerifiedFileHashesCannotVerifyUploadedActionsBarrierOrSuccessfulOutcome()
+    {
+        var blocked = Complete(); var result = EvidenceReadiness.Assess(blocked, Proofs(blocked));
+        Assert.Equal("InsufficientEvidence", result.Decision); Assert.False(result.WebsitePackageReady);
+        Assert.Equal("Suspected", Assert.Single(result.Findings).Classification);
+        Assert.True(result.Conditions[7].Met); Assert.False(result.Conditions[1].Met);
+        Assert.False(result.Conditions[3].Met); Assert.False(result.Conditions[6].Met);
+        var reached = EvidenceReadinessExamples.Create("none") with { Demo = false };
+        Assert.Equal("InsufficientEvidence", EvidenceReadiness.Assess(reached, Proofs(reached)).Decision);
+    }
+
+    [Fact]
+    public void MismatchedOutcomeScopeAndControlledFixtureCannotAuthorizeWebsiteReadiness()
+    {
+        var record = Complete(); var proof = Trusted(record);
+        Assert.False(EvidenceReadiness.Assess(record, Proofs(record), source: proof with { OutcomeVerified = false }).WebsitePackageReady);
+        Assert.False(EvidenceReadiness.Assess(record, Proofs(record), source: proof with { State = "Mismatch" }).WebsitePackageReady);
+        Assert.False(EvidenceReadiness.Assess(record, Proofs(record), source: proof with { SubjectKind = "ControlledFixture" }).WebsitePackageReady);
+        var fixture = record with { SubjectKind = "ControlledFixture" };
+        var result = EvidenceReadiness.Assess(fixture, Proofs(fixture), source: Trusted(fixture));
+        Assert.Equal(8, result.ConditionsMet); Assert.Equal("InsufficientEvidence", result.Decision); Assert.False(result.WebsitePackageReady);
+    }
+
     [Theory]
     [InlineData("complete", "Ready", 8)]
     [InlineData("gaps", "InsufficientEvidence", 4)]
@@ -16,7 +48,7 @@ public sealed class EvidenceReadinessTests
     public void ExamplesRemainIllustrativeAndNeverAuthorizeARealWebsitePackage(string scenario, string decision, int met)
     {
         var record = EvidenceReadinessExamples.Create(scenario);
-        var result = EvidenceReadiness.Assess(record, EvidenceReadinessExamples.IllustrativeProofs(record), illustrative: true);
+        var result = AssessTrusted(record, EvidenceReadinessExamples.IllustrativeProofs(record), illustrative: true);
         Assert.Equal(decision, result.Decision); Assert.Equal(met, result.ConditionsMet);
         Assert.True(result.Illustrative); Assert.False(result.WebsitePackageReady);
         Assert.Equal(Enumerable.Range(1, 8).Select(i => "G" + i), result.Conditions.Select(c => c.Id));
@@ -26,7 +58,7 @@ public sealed class EvidenceReadinessTests
     [Fact]
     public void ReadyRequiresAllEightConditionsAndTrustedOriginalHashProofs()
     {
-        var record = Complete(); var result = EvidenceReadiness.Assess(record, Proofs(record));
+        var record = Complete(); var result = AssessTrusted(record, Proofs(record));
         Assert.Equal("Ready", result.Decision); Assert.True(result.WebsitePackageReady);
         Assert.Equal(8, result.ConditionsMet); Assert.All(result.Conditions, c => { Assert.True(c.Met); Assert.Empty(c.Missing); });
         var finding = Assert.Single(result.Findings); Assert.Equal("Documented", finding.Classification); Assert.Equal(new[] { "EV-02" }, finding.EventIds.ToArray());
@@ -38,7 +70,7 @@ public sealed class EvidenceReadinessTests
     [Fact]
     public void DeclaredHashesAndBooleanCaptureFlagsCannotVerifyOriginalArtifacts()
     {
-        var result = EvidenceReadiness.Assess(Complete());
+        var result = AssessTrusted(Complete());
         Assert.Equal("InsufficientEvidence", result.Decision); Assert.False(result.WebsitePackageReady);
         Assert.False(result.Conditions[7].Met); Assert.Equal(7, result.ConditionsMet);
         Assert.Equal(3, result.Conditions[7].Missing.Length);
@@ -69,7 +101,7 @@ public sealed class EvidenceReadinessTests
             _ => record
         };
         if (condition == "G8") proofs = [];
-        var result = EvidenceReadiness.Assess(record, proofs);
+        var result = AssessTrusted(record, proofs);
         Assert.Equal("InsufficientEvidence", result.Decision); Assert.False(result.WebsitePackageReady);
         Assert.False(result.Conditions.Single(c => c.Id == condition).Met);
         Assert.NotEmpty(result.Conditions.Single(c => c.Id == condition).Missing);
@@ -82,7 +114,7 @@ public sealed class EvidenceReadinessTests
     public void EnginePolicyAndUnclassifiedFailuresNeverBecomeDocumentedBarriers(string kind)
     {
         var record = Complete(); record = record with { Events = record.Events.Select(e => e.Tone == "fail" ? e with { FailureKind = kind } : e).ToImmutableArray() };
-        var result = EvidenceReadiness.Assess(record, Proofs(record));
+        var result = AssessTrusted(record, Proofs(record));
         Assert.Equal("InsufficientEvidence", result.Decision); Assert.Equal("Suspected", Assert.Single(result.Findings).Classification);
         Assert.False(result.Conditions[1].Met); Assert.False(result.Conditions[2].Met); Assert.False(result.Conditions[4].Met);
     }
@@ -96,9 +128,9 @@ public sealed class EvidenceReadinessTests
     public void IncompleteCollectionCannotBecomeReadyOrNoBarrier(string completion)
     {
         var record = Complete(); record = record with { Test = record.Test with { Completion = completion } };
-        Assert.Equal("InsufficientEvidence", EvidenceReadiness.Assess(record, Proofs(record)).Decision);
+        Assert.Equal("InsufficientEvidence", AssessTrusted(record, Proofs(record)).Decision);
         var empty = record with { Findings = [], Test = record.Test with { KeyboardOutcome = "completed" } };
-        Assert.Equal("InsufficientEvidence", EvidenceReadiness.Assess(empty).Decision);
+        Assert.Equal("InsufficientEvidence", AssessTrusted(empty).Decision);
     }
 
     [Theory]
@@ -107,7 +139,7 @@ public sealed class EvidenceReadinessTests
     public void AttemptedOrUnknownInputIsNotACompletedFailureTrace(string input)
     {
         var record = Complete(); record = record with { Events = record.Events.Select(e => e.Tone == "fail" ? e with { InputStatus = input } : e).ToImmutableArray() };
-        var result = EvidenceReadiness.Assess(record, Proofs(record));
+        var result = AssessTrusted(record, Proofs(record));
         Assert.False(result.Conditions[1].Met); Assert.False(result.Conditions[2].Met);
         Assert.Equal("Suspected", Assert.Single(result.Findings).Classification);
     }
@@ -116,22 +148,22 @@ public sealed class EvidenceReadinessTests
     public void RepetitionCountsCannotReplaceDistinctSameTaskAttemptEvents()
     {
         var record = Complete(); var countOnly = record with { Attempts = [] };
-        Assert.False(EvidenceReadiness.Assess(countOnly).Conditions[4].Met);
+        Assert.False(AssessTrusted(countOnly).Conditions[4].Met);
         var duplicated = record with { Attempts = [record.Attempts[0], record.Attempts[1] with { EventRef = "EV-02" }, record.Attempts[2]] };
-        Assert.False(EvidenceReadiness.Assess(duplicated).Conditions[4].Met);
+        Assert.False(AssessTrusted(duplicated).Conditions[4].Met);
         var foreign = record with { Attempts = [record.Attempts[0], record.Attempts[1] with { Goal = "A different task" }, record.Attempts[2]] };
-        Assert.False(EvidenceReadiness.Assess(foreign).Conditions[4].Met);
+        Assert.False(AssessTrusted(foreign).Conditions[4].Met);
     }
 
     [Fact]
     public void ForeignTaskAndPointerEventsCannotSupportKeyboardBarrierOrComparator()
     {
         var record = Complete(); var foreign = record with { Test = record.Test with { Url = "https://different.example/checkout" } };
-        Assert.Equal("Suspected", Assert.Single(EvidenceReadiness.Assess(foreign).Findings).Classification);
+        Assert.Equal("Suspected", Assert.Single(AssessTrusted(foreign).Findings).Classification);
         var keyboard = record with { Events = record.Events.Select(e => e.Tone == "fail" ? e with { Key = "Pointer click" } : e).ToImmutableArray() };
-        Assert.False(EvidenceReadiness.Assess(keyboard).Conditions[1].Met);
+        Assert.False(AssessTrusted(keyboard).Conditions[1].Met);
         var comparator = record with { Attempts = record.Attempts.Select(a => a.Mode == "pointer" ? a with { TaskUrl = "https://shop.northstar.example/other" } : a).ToImmutableArray() };
-        Assert.False(EvidenceReadiness.Assess(comparator).Conditions[5].Met);
+        Assert.False(AssessTrusted(comparator).Conditions[5].Met);
     }
 
     [Theory]
@@ -143,29 +175,29 @@ public sealed class EvidenceReadinessTests
     public void UnverifiedArtifactStatesCannotSatisfyRealPackageIntegrity(string state)
     {
         var record = Complete(); var proofs = Proofs(record).SetItem(0, new(record.Artifacts[0].Id, state, record.Artifacts[0].Sha256));
-        Assert.False(EvidenceReadiness.Assess(record, proofs).Conditions[7].Met);
+        Assert.False(AssessTrusted(record, proofs).Conditions[7].Met);
     }
 
     [Fact]
     public void WrongHashDuplicatePathAndIllustrativeImportsRemainInsufficient()
     {
         var record = Complete(); var wrong = Proofs(record).SetItem(0, new(record.Artifacts[0].Id, "HashVerified", new('d', 64)));
-        Assert.False(EvidenceReadiness.Assess(record, wrong).WebsitePackageReady);
+        Assert.False(AssessTrusted(record, wrong).WebsitePackageReady);
         var same = record with { Artifacts = record.Artifacts.Select(a => a with { Path = "one-file.json" }).ToImmutableArray() };
-        Assert.False(EvidenceReadiness.Assess(same, Proofs(same)).Conditions[7].Met);
-        Assert.False(EvidenceReadiness.Assess(record with { Demo = true }, Proofs(record)).WebsitePackageReady);
+        Assert.False(AssessTrusted(same, Proofs(same)).Conditions[7].Met);
+        Assert.False(AssessTrusted(record with { Demo = true }, Proofs(record)).WebsitePackageReady);
     }
 
     [Fact]
     public void NoBarrierIsLimitedToACompletedRecordedJourneyAndNeverAnEmptyUnknownScan()
     {
         var completed = EvidenceReadinessExamples.Create("none") with { Demo = false };
-        var result = EvidenceReadiness.Assess(completed);
+        var result = AssessTrusted(completed);
         Assert.Equal("NoBlockingBarrierDocumented", result.Decision); Assert.False(result.WebsitePackageReady);
         Assert.Empty(result.Findings); Assert.False(result.Conditions[1].Met);
         var empty = new EvidenceScanRecord { Target = completed.Target };
-        Assert.Equal("InsufficientEvidence", EvidenceReadiness.Assess(empty).Decision);
-        Assert.Equal(0, EvidenceReadiness.Assess(empty).ConditionsMet);
+        Assert.Equal("InsufficientEvidence", AssessTrusted(empty).Decision);
+        Assert.Equal(0, AssessTrusted(empty).ConditionsMet);
     }
 
     [Theory]
@@ -192,7 +224,7 @@ public sealed class EvidenceReadinessTests
             "unsafe-id" => record with { Findings = [record.Findings[0] with { Id = "unsafe/id" }] },
             _ => record with { Events = [record.Events[0] with { Tone = "anything" }] }
         };
-        Assert.Equal("EVIDENCE_RECORD_INVALID", Assert.Throws<ArgumentException>(() => EvidenceReadiness.Assess(record)).Message);
+        Assert.Equal("EVIDENCE_RECORD_INVALID", Assert.Throws<ArgumentException>(() => AssessTrusted(record)).Message);
     }
 
     [Fact]
@@ -205,7 +237,7 @@ public sealed class EvidenceReadinessTests
             Events = record.Events.AddRange(Enumerable.Range(0, 124).Select(i => new EvidenceEvent { Id = "More-" + i }))
         };
         EvidenceReadiness.Validate(record);
-        Assert.Equal(32, EvidenceReadiness.Assess(record).Findings.Length);
+        Assert.Equal(32, AssessTrusted(record).Findings.Length);
     }
 
     [Theory]

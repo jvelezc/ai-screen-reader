@@ -132,3 +132,12 @@ Content-Type: application/json
 ### Acknowledge actual native cleanup; 503 means cleanup is unconfirmed
 DELETE {{baseUrl}}/api/workspaces/{{organization}}/reader-sessions/{{readerSession}}
 Authorization: Bearer {{accessToken}}
+
+### Verify actual admitted keyboard originals and project controlled-fixture facts (contract 1.9)
+# Replace scan with a completed keyboard recording owned by this workspace.
+# This does not visit a caller-supplied website or manufacture a barrier, repeat or mouse success.
+POST {{baseUrl}}/api/workspaces/{{organization}}/evidence-readiness
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"admittedScanId":"{{scan}}"}

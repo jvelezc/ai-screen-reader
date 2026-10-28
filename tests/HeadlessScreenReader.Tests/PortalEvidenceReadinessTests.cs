@@ -27,6 +27,19 @@ public sealed class PortalEvidenceReadinessTests
     }
 
     [Theory]
+    [InlineData("queued", "Pending")]
+    [InlineData("completed", "Unsupported")]
+    public async Task AdmittedRunWithoutCompletedKeyboardOriginalExplainsNextStep(string state, string proofState)
+    {
+        var project = new PortalProjectStub(); project.Job = project.Job with { State = state };
+        var actor = new PortalIdentity(PortalProjectClientTests.Actor, "reader@example.invalid", PortalProjectClientTests.Bearer);
+        var result = await new PortalEvidenceReadiness(project, null).AssessAsync(actor, PortalProjectClientTests.Organization,
+            new(AdmittedScanId: PortalProjectClientTests.Scan), default);
+        Assert.Equal("RecordingRequired", result.Status); Assert.Equal(proofState, result.SourceProof.State);
+        Assert.Null(result.Scan); Assert.Null(result.Assessment); Assert.Empty(result.ArtifactProofs); Assert.NotEmpty(result.SourceProof.Issues);
+    }
+
+    [Theory]
     [InlineData("complete", "Ready")]
     [InlineData("gaps", "InsufficientEvidence")]
     [InlineData("none", "NoBlockingBarrierDocumented")]
@@ -96,7 +109,7 @@ public sealed class PortalEvidenceReadinessTests
     }
 
     [Theory]
-    [InlineData("valid", true, "HashVerified")]
+    [InlineData("valid", false, "HashVerified")]
     [InlineData("metadata-only", false, "Unverified")]
     [InlineData("missing", false, "Missing")]
     [InlineData("corrupt", false, "Invalid")]
@@ -142,11 +155,18 @@ public sealed class PortalEvidenceReadinessTests
         store.ReadOverride = (identity, part, token) => { if (part is not null) reads++; return Task.FromResult(store.Values.GetValueOrDefault(TraversalArchive.ObjectKey(identity, part))); };
         var proof = await archive.VerifyOriginalAsync(receipt.Identity, "route-1-media/original.webm", TraversalArchive.Hash(bytes), bytes.Length);
         Assert.Equal(2, reads); Assert.Equal(bytes.Length, proof.Bytes); Assert.Equal(bytes[..16], proof.Header.ToArray());
+        reads = 0;
+        Assert.Equal(bytes, await archive.ReadOriginalAsync(receipt.Identity, proof.Path, proof.Sha256, bytes.Length));
+        Assert.Equal(2, reads);
+        Assert.Equal(TraversalArchiveFailure.Invalid, (await Assert.ThrowsAsync<TraversalArchiveException>(() =>
+            archive.ReadOriginalAsync(receipt.Identity, proof.Path, proof.Sha256, bytes.Length - 1))).Failure);
         using var cancelled = new CancellationTokenSource(); cancelled.Cancel();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => archive.VerifyOriginalAsync(receipt.Identity, proof.Path, proof.Sha256, bytes.Length, cancelled.Token));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => archive.ReadOriginalAsync(receipt.Identity, proof.Path, proof.Sha256, bytes.Length, cancelled.Token));
         var error = await Assert.ThrowsAsync<TraversalArchiveException>(() => archive.VerifyOriginalAsync(receipt.Identity, proof.Path, proof.Sha256, bytes.Length - 1));
         Assert.Equal(TraversalArchiveFailure.Invalid, error.Failure);
         store.Values[TraversalArchive.ObjectKey(receipt.Identity, TraversalArchive.Hash(bytes[..(4 * 1024 * 1024)]))][0] ^= 1;
         Assert.Equal(TraversalArchiveFailure.Invalid, (await Assert.ThrowsAsync<TraversalArchiveException>(() => archive.VerifyOriginalAsync(receipt.Identity, proof.Path, proof.Sha256, bytes.Length))).Failure);
+        Assert.Equal(TraversalArchiveFailure.Invalid, (await Assert.ThrowsAsync<TraversalArchiveException>(() => archive.ReadOriginalAsync(receipt.Identity, proof.Path, proof.Sha256, bytes.Length))).Failure);
     }
 }

@@ -50,6 +50,12 @@ public sealed class HostedScanChromiumTests
             Assert.Equal(original.Traversal, restored.ToArray());
             var route = original.Validate(job); Assert.Equal(HeadlessScreenReader.Domain.TraversalReachability.Unknown, route.Receipt.Reachability);
             Assert.Equal(3, route.Receipt.CompletedKeystrokes); Assert.Equal(3, route.Graph.Edges.Length);
+            var assessment = (await Call(reconnected, "evidence_assess", new() { ["admittedScanId"] = job.ScanId.ToString("D") })).GetProperty("data");
+            Assert.Equal("Verified", assessment.GetProperty("sourceProof").GetProperty("state").GetString());
+            Assert.Equal("ControlledFixture", assessment.GetProperty("scan").GetProperty("subjectKind").GetString());
+            Assert.Equal("unknown", assessment.GetProperty("scan").GetProperty("test").GetProperty("keyboardOutcome").GetString());
+            Assert.Equal("InsufficientEvidence", assessment.GetProperty("assessment").GetProperty("decision").GetString());
+            Assert.False(assessment.GetProperty("assessment").GetProperty("websitePackageReady").GetBoolean());
             project.Revoked = true;
             Assert.Equal("CONTROL_AUTHENTICATION_REQUIRED", (await Call(reconnected, "archive_file", args, true)).GetProperty("errorCode").GetString());
         }

@@ -21,12 +21,15 @@ public sealed record AdmittedKeyboardRecording(string Schema, FixtureJob Job, st
     public string TimingSourceClock => "ChromiumCdpJsonDouble";
     public string FixtureSha256 => FixtureObservation.RecordingContentSha256;
     public ImmutableArray<int> SourcePresentationOrder { get; init; } = [];
+    public RecordedCollectorEnvironment? Environment { get; init; }
 
     public void Validate(FixtureObservation baseline, string baselineDigest, string videoDigest, long videoBytes, string framesDigest)
     {
         void Require(bool value) { if (!value) throw new BrowserOperationException("WORKER_KEYBOARD_RECORDING_UNCONFIRMED"); }
         Require(Schema == CurrentSchema && Job == baseline.Job && Job.RecordObservation && Job.TraversalRoute is >= 1 and <= 4);
         Require(Stage == "Complete" && ErrorCode is null);
+        Require(Environment is null || new[] { Environment.Browser, Environment.Playwright, Environment.OperatingSystem, Environment.Viewport }
+            .All(value => !string.IsNullOrWhiteSpace(value) && value.Length <= 500 && !value.Any(char.IsControl)));
         Require(BaselineSha256 == baselineDigest && VideoSha256 == videoDigest && VideoBytes == videoBytes
             && videoBytes is >= 4 and <= PassiveObservationRecording.MaximumBundleBytes && SourceFramesSha256 == framesDigest
             && DecodedVideoFrames is >= 1 and <= 10000);

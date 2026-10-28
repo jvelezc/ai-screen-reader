@@ -218,6 +218,30 @@ public sealed class TraversalArchive(ITraversalObjectStore store)
         return new(path, total, expectedSha256, header);
     }
 
+    /// <summary>Bounded original bytes for trusted semantic validation; each object is read once.</summary>
+    public async Task<byte[]> ReadOriginalAsync(TraversalArchiveIdentity identity, string path,
+        string expectedSha256, long maximumBytes, CancellationToken token = default)
+    {
+        if (!SafePath(path) || !IsHash(expectedSha256) || maximumBytes is < 1 or > MaximumFileBytes) throw Invalid();
+        var index = await ReadIndexAsync(identity, token).ConfigureAwait(false);
+        var file = index.Files.SingleOrDefault(f => f.Path == path) ?? throw new TraversalArchiveException(TraversalArchiveFailure.Missing);
+        if (file.Bytes < 1 || file.Bytes > maximumBytes || file.Sha256 != expectedSha256) throw Invalid();
+        using var output = new MemoryStream(checked((int)file.Bytes));
+        foreach (var part in file.Parts)
+        {
+            var bytes = await store.ReadAsync(identity, part.Sha256, token).ConfigureAwait(false);
+            token.ThrowIfCancellationRequested();
+            if (bytes is null) throw new TraversalArchiveException(TraversalArchiveFailure.Missing);
+            ValidateObject(identity, part.Sha256, bytes);
+            if (bytes.Length != part.Bytes || output.Length + bytes.Length > maximumBytes) throw Invalid();
+            output.Write(bytes);
+        }
+        var original = output.ToArray();
+        if (original.LongLength != file.Bytes || Hash(original) != expectedSha256) throw Invalid();
+        token.ThrowIfCancellationRequested();
+        return original;
+    }
+
     public async Task<TraversalArchiveVerification> VerifyAsync(TraversalArchiveIdentity identity, CancellationToken token = default)
     {
         var index = await ReadIndexAsync(identity, token).ConfigureAwait(false);

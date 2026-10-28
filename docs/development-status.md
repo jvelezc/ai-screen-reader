@@ -2,6 +2,14 @@
 
 Updated October 28, 2026. The original proposal under `outputs/` remains unchanged. This status document tracks implementation against its acceptance gates.
 
+**Recorded-claim verification:** [contract 1.9.0](decisions/0062-recorded-evidence-claims.md)
+adds admitted-source assessment through HTTP/private MCP. Complete originals and
+actual collector facts replace reliance on uploaded assertions; controlled
+fixtures, Unknown, missing context, repeats and comparator limits remain explicit.
+[Validation evidence](validation/recorded-evidence-claims-v1.md) separates source,
+local checks, CI, deployment and original-account acceptance. The ordered next
+gates remain in [the completion plan](completion-plan.md).
+
 **Admitted keyboard recording delivery:** [core contract 1.8.0](decisions/0060-admitted-keyboard-recordings.md)
 adds four fixed sanitized authored routes. Five originals retain actual keys,
 source/action/result edges, original video/JPEGs and measured timing. The report

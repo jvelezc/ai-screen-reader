@@ -33,7 +33,8 @@ internal sealed class PortalEvidenceReadiness(IPortalProjectClient project, Trav
         }
         await Authorize().ConfigureAwait(false);
         if (request is null || request.TargetUrl is null || request.Scan is not null && request.ScanJson is not null
-            || request.Example is not null && (request.Scan is not null || request.ScanJson is not null || request.Archive is not null))
+            || request.AdmittedScanId == Guid.Empty
+            || request.Example is not null && (request.Scan is not null || request.ScanJson is not null || request.Archive is not null || request.AdmittedScanId is not null))
             throw new PortalFault(400, "CONTROL_EVIDENCE_REQUEST_INVALID");
         EvidenceScanRecord? scan;
         string target;
@@ -48,7 +49,8 @@ internal sealed class PortalEvidenceReadiness(IPortalProjectClient project, Trav
                 scan = JsonSerializer.Deserialize<EvidenceScanRecord>(raw, PortalJson.Options)
                     ?? throw new PortalFault(400, "CONTROL_EVIDENCE_RECORD_INVALID");
             }
-            target = EvidenceReadiness.Website(scan?.Target ?? request.TargetUrl);
+            target = EvidenceReadiness.Website(scan?.Target ?? (request.TargetUrl.Length > 0 ? request.TargetUrl
+                : request.AdmittedScanId is not null ? RecordedEvidenceProjection.FixtureTarget : request.TargetUrl));
             if (request.TargetUrl.Length > 0 && EvidenceReadiness.Website(request.TargetUrl) != target)
                 throw new PortalFault(409, "CONTROL_EVIDENCE_TARGET_MISMATCH");
             if (scan is not null)
@@ -60,6 +62,34 @@ internal sealed class PortalEvidenceReadiness(IPortalProjectClient project, Trav
         }
         catch (ArgumentException) { throw new PortalFault(400, "CONTROL_EVIDENCE_RECORD_INVALID"); }
         catch (JsonException) { throw new PortalFault(400, "CONTROL_EVIDENCE_RECORD_INVALID"); }
+        var sourceProof = EvidenceSourceProof.Missing;
+        ImmutableArray<EvidenceArtifactProof> recordedProofs = [];
+        ImmutableArray<EvidenceArtifact> recordedArtifacts = [];
+        if (request.AdmittedScanId is { } admitted)
+        {
+            var original = await new PortalRecordedEvidence(project, archive).ReadAsync(actor, organization, admitted, Authorize, bounded).ConfigureAwait(false);
+            sourceProof = original.Proof;
+            if (request.Archive is { } requestedArchive && sourceProof.Archive is { } actualArchive
+                && (requestedArchive.ArchiveId != actualArchive.ArchiveId || requestedArchive.IndexSha256 != actualArchive.IndexSha256))
+                throw new PortalFault(409, "CONTROL_EVIDENCE_ARCHIVE_MISMATCH");
+            if (original.Record is { } retained)
+            {
+                if (scan is null && request.TargetUrl.Length > 0 && EvidenceReadiness.Website(request.TargetUrl) != retained.Target)
+                    throw new PortalFault(409, "CONTROL_EVIDENCE_TARGET_MISMATCH");
+                scan ??= retained;
+                target = EvidenceReadiness.Website(scan.Target);
+                sourceProof = RecordedEvidenceProjection.Compare(scan, retained, original.Proof);
+                recordedProofs = original.Artifacts;
+                recordedArtifacts = retained.Artifacts;
+            }
+            else if (scan is null)
+            {
+                await Authorize().ConfigureAwait(false);
+                return new(EvidenceReadinessResponse.CurrentSchema, organization, "Admitted", "RecordingRequired", target,
+                    null, null, [], sourceProof.Issues[0])
+                { SourceProof = sourceProof };
+            }
+        }
         if (scan is null)
         {
             if (request.Archive is not null) throw new PortalFault(400, "CONTROL_EVIDENCE_REQUEST_INVALID");
@@ -69,7 +99,10 @@ internal sealed class PortalEvidenceReadiness(IPortalProjectClient project, Trav
         }
         var proofs = illustrative ? EvidenceReadinessExamples.IllustrativeProofs(scan)
             : scan.Artifacts.Select(a => new EvidenceArtifactProof(a.Id, "Unverified")).ToImmutableArray();
-        if (!illustrative && request.Archive is { } reference)
+        if (request.AdmittedScanId is not null)
+            proofs = scan.Artifacts.Select(a => recordedProofs.FirstOrDefault(p => recordedArtifacts.Contains(a) && p.ArtifactId == a.Id
+                && p.VerifiedSha256 == a.Sha256) ?? new EvidenceArtifactProof(a.Id, "Unverified")).ToImmutableArray();
+        if (!illustrative && request.AdmittedScanId is null && request.Archive is { } reference)
         {
             var identity = new TraversalArchiveIdentity(organization, reference.ArchiveId, reference.IndexSha256);
             try { TraversalArchive.ValidateIdentity(identity); }
@@ -98,12 +131,15 @@ internal sealed class PortalEvidenceReadiness(IPortalProjectClient project, Trav
             }
             proofs = builder.ToImmutable();
         }
-        var assessment = EvidenceReadiness.Assess(scan, proofs, illustrative);
+        var assessment = EvidenceReadiness.Assess(scan, proofs, illustrative, sourceProof);
         await Authorize().ConfigureAwait(false);
-        var response = new EvidenceReadinessResponse(EvidenceReadinessResponse.CurrentSchema, organization, illustrative ? "Example" : "Imported",
+        var response = new EvidenceReadinessResponse(EvidenceReadinessResponse.CurrentSchema, organization, illustrative ? "Example" : request.AdmittedScanId is not null ? "Admitted" : "Imported",
             "Assessed", target, assessment, scan, proofs, illustrative
                 ? "Fictional example only. No authentic recordings are supplied and this result cannot authorize a real evidence package."
-                : "Eight operational website-evidence conditions evaluated from the supplied record. Original-file integrity is checked separately; no live website scan or legal determination occurred.");
+                : request.AdmittedScanId is not null
+                    ? "This recording used the built-in synthetic shop. Recorded actions and results are checked against its originals; it does not describe a live website or establish a legal claim."
+                    : "The uploaded record was evaluated, but its action and barrier assertions are not verified by an admitted recording. File fingerprints alone do not prove what happened.")
+        { SourceProof = sourceProof };
         if (JsonSerializer.SerializeToUtf8Bytes(response, PortalJson.Options).Length > 120_000)
             throw new PortalFault(413, "CONTROL_EVIDENCE_RESPONSE_TOO_LARGE");
         return response;

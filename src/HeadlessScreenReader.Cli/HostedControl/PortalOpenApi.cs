@@ -12,7 +12,7 @@ internal static class PortalOpenApi
 {
     private static readonly Lazy<string> Cached = new(Build);
     public static string Document => Cached.Value;
-    public const string ContractVersion = "1.8.0";
+    public const string ContractVersion = "1.9.0";
 
     private static string Build()
     {
@@ -139,6 +139,25 @@ internal static class PortalOpenApi
                     properties["indexSha256"]!["pattern"] = "^[a-f0-9]{64}$";
                     properties["offset"]!["minimum"] = 0;
                     properties["offset"]!["maximum"] = context.TypeInfo.Type == typeof(PortalArchiveManifestRequest) ? 4097 : 134217728;
+                }
+                if (context.TypeInfo.Type == typeof(EvidenceReadinessRequest))
+                {
+                    properties["admittedScanId"]!["description"] = "Optional original-user scan ID. Verify complete admitted keyboard originals and project actual recorded facts. Current routes are controlled synthetic fixtures, not arbitrary websites.";
+                    properties["admittedScanId"]!["not"] = new JsonObject { ["const"] = Guid.Empty.ToString("D") };
+                }
+                if (context.TypeInfo.Type == typeof(EvidenceScanRecord))
+                    properties["subjectKind"]!["enum"] = Strings("Website", "ControlledFixture");
+                if (context.TypeInfo.Type == typeof(EvidenceReadinessResponse))
+                {
+                    properties["source"]!["enum"] = Strings("None", "Example", "Imported", "Admitted");
+                    properties["status"]!["enum"] = Strings("Assessed", "ScanResultsRequired", "RecordingRequired");
+                }
+                if (context.TypeInfo.Type == typeof(EvidenceSourceProof))
+                {
+                    properties["schema"]!["const"] = "hsr-recorded-claim-proof-v1";
+                    properties["state"]!["enum"] = Strings("Missing", "Pending", "Unsupported", "Unavailable", "Invalid", "Verified", "Mismatch");
+                    properties["subjectKind"]!["enum"] = Strings("Unverified", "ControlledFixture");
+                    value["description"] = "Server verification against admitted job, worker attempt and complete originals. Imported assertions or matching file hashes alone cannot establish action, barrier, context, repeats or comparator success. Current fixed routes do not classify accessibility failures.";
                 }
                 if (context.TypeInfo.Type == typeof(WorkerEvidenceArchive))
                 {

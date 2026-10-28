@@ -74,11 +74,12 @@ public static class EvidenceReadinessExamples
 public sealed record EvidenceArchiveReference(Guid ArchiveId, string IndexSha256);
 /// <summary>Evaluate supplied observations or a named fictional example. A URL alone never starts a fabricated scan.</summary>
 public sealed record EvidenceReadinessRequest(string TargetUrl = "", EvidenceScanRecord? Scan = null, string? Example = null,
-    EvidenceArchiveReference? Archive = null, string? ScanJson = null);
+    EvidenceArchiveReference? Archive = null, string? ScanJson = null, Guid? AdmittedScanId = null);
 /// <summary>Stateless decision and its source record. No URL navigation or evidence collection is implied.</summary>
 public sealed record EvidenceReadinessResponse(string Schema, Guid OrganizationId, string Source, string Status,
     string TargetUrl, EvidenceAssessment? Assessment, EvidenceScanRecord? Scan,
     ImmutableArray<EvidenceArtifactProof> ArtifactProofs, string Message)
 {
     public const string CurrentSchema = "hsr-evidence-readiness-v1";
+    public EvidenceSourceProof SourceProof { get; init; } = EvidenceSourceProof.Missing;
 }
