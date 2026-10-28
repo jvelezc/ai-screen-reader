@@ -11,6 +11,56 @@ namespace HeadlessScreenReader.Tests;
 public sealed class HostedScanChromiumTests
 {
     [Fact]
+    public async Task AdmittedKeyboardGraphOriginalSurvivesHttpAndStdioReconnectWithoutPromotingUnknown()
+    {
+        // Synthetic provider identity; actual Chromium, original media, archive and protocols.
+        var root = Path.Combine(Path.GetTempPath(), "hsr-keyboard-mcp-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var project = new PortalProjectStub();
+            var job = new HeadlessScreenReader.Domain.FixtureJob(PortalProjectClientTests.Organization, PortalProjectClientTests.Scan, PortalProjectClientTests.Job, 1)
+            { RecordObservation = true, TraversalRoute = 3 };
+            var archive = new TraversalArchive(new FileTraversalObjectStore(Path.Combine(root, "archive")));
+            await using var server = await HostedControlServer.StartAsync(new(PortalProjectClientTests.Key, root, new string('a', 40), 0), project, new PortalObservationReader(root), traversalArchive: archive);
+            await using (var first = await Connect(server.BaseAddress))
+            {
+                var admission = (await Call(first, "scan_start_fixture", new() { ["requestId"] = Guid.NewGuid(), ["traversalRoute"] = 3 })).GetProperty("data");
+                Assert.Equal("KeyboardTraversal", admission.GetProperty("recordingRequested").GetString()); Assert.Equal(3, project.LastTraversalRoute);
+                Assert.Equal("NotEstablishedByAdmission", admission.GetProperty("evidence").GetString());
+            }
+            var encoded = await KeyboardFixtureWorker.RecordAsync(job); var original = KeyboardRecordingBundle.Decode(encoded, job);
+            var stored = await new ObservationStore(root, producer: new(archive)).PersistAsync(encoded, job, default, Guid.NewGuid());
+            project.Record = project.Record with { State = "observed" };
+            project.Job = new(job.OrganizationId, job.ScanId, job.JobId, "completed", 1, stored.Sha256, job.Reference, null)
+            { RecordObservation = true, TraversalRoute = 3, WorkerArchive = stored.WorkerArchive };
+            await using var reconnected = await Connect(server.BaseAddress);
+            var report = (await Call(reconnected, "scan_report", new() { ["scanId"] = job.ScanId })).GetProperty("data");
+            Assert.StartsWith("PreTraversalBaseline", report.GetProperty("observationScope").GetString());
+            Assert.Equal(0, report.GetProperty("observation").GetProperty("dispatchedInputs").GetInt32());
+            var identity = stored.WorkerArchive!.Receipt.Identity;
+            var args = new Dictionary<string, object?> { ["archiveId"] = identity.ArchiveId, ["indexSha256"] = identity.IndexSha256, ["path"] = "traversal.json", ["fileSha256"] = TraversalArchive.Hash(original.Traversal) };
+            using var restored = new MemoryStream(); long? offset = 0;
+            do
+            {
+                args["offset"] = offset.Value; var response = (await Call(reconnected, "archive_file", args)).GetProperty("data");
+                var page = response.GetProperty("page"); var bytes = page.GetProperty("data").GetBytesFromBase64();
+                Assert.Equal(TraversalArchive.Hash(bytes), response.GetProperty("pageSha256").GetString()); restored.Write(bytes);
+                offset = page.GetProperty("nextOffset").ValueKind == JsonValueKind.Null ? null : page.GetProperty("nextOffset").GetInt64();
+            } while (offset is not null);
+            Assert.Equal(original.Traversal, restored.ToArray());
+            var route = original.Validate(job); Assert.Equal(HeadlessScreenReader.Domain.TraversalReachability.Unknown, route.Receipt.Reachability);
+            Assert.Equal(3, route.Receipt.CompletedKeystrokes); Assert.Equal(3, route.Graph.Edges.Length);
+            project.Revoked = true;
+            Assert.Equal("CONTROL_AUTHENTICATION_REQUIRED", (await Call(reconnected, "archive_file", args, true)).GetProperty("errorCode").GetString());
+        }
+        finally
+        {
+            Assert.Equal(Path.TrimEndingDirectorySeparator(Path.GetFullPath(Path.GetTempPath())), Path.GetDirectoryName(Path.GetFullPath(root)));
+            if (Directory.Exists(root)) Directory.Delete(root, true);
+        }
+    }
+
+    [Fact]
     public async Task PassiveOriginalVideoSurvivesAuthorizedHttpAndStdioReconnectWithoutInventingTraversal()
     {
         var root = Path.Combine(Path.GetTempPath(), "hsr-passive-mcp-" + Guid.NewGuid().ToString("N"));

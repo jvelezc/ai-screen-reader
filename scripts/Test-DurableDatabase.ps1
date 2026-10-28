@@ -95,6 +95,8 @@ try {
     Invoke-DatabaseFile 'tests/database/worker-evidence.sql' 'worker-evidence' -Expected 27 -User 'supabase_admin'
     $stage = 'passive-recording'
     Invoke-DatabaseFile 'tests/database/passive-recording.sql' 'passive-recording' -Expected 25 -User 'supabase_admin'
+    $stage = 'keyboard-recording'
+    Invoke-DatabaseFile 'tests/database/keyboard-recording.sql' 'keyboard-recording' -Expected 27 -User 'supabase_admin'
     $stage = 'concurrent-leases'
     Invoke-DatabaseFile 'tests/database/concurrent-worker-leases.sql' 'concurrent-leases' -Expected 10 -User 'supabase_admin'
     $stage = 'persist'
@@ -128,13 +130,13 @@ try {
 }
 $receipt = [pscustomobject]@{
     Schema = 'hsr-database-admission-proof-v1'; Ready = $ready; Stage = $stage; ErrorCode = $errorCode
-    Runtime = $Runtime; Image = $image; Expected = 248; Discovered = $script:discovered
+    Runtime = $Runtime; Image = $image; Expected = 275; Discovered = $script:discovered
     Executed = $script:executed; Passed = $cases.Count; Failed = $script:failed
-    Unconfirmed = [Math]::Max(0, 248 - $script:executed); Skipped = 0; Cases = @($cases)
+    Unconfirmed = [Math]::Max(0, 275 - $script:executed); Skipped = 0; Cases = @($cases)
     ContainerRemoved = $removed; HostedProjectChanged = $false; WorkerExecutionPerformed = $false
     Folder = $folder
 }
 $receipt | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $folder 'run.json') -Encoding utf8NoBOM
 $receipt | ConvertTo-Json -Depth 4
-if (-not $ready -or -not $removed -or $cases.Count -ne 248 -or $script:discovered -ne 248 `
-    -or $script:executed -ne 248 -or $script:failed -ne 0) { exit 1 }
+if (-not $ready -or -not $removed -or $cases.Count -ne 275 -or $script:discovered -ne 275 `
+    -or $script:executed -ne 275 -or $script:failed -ne 0) { exit 1 }

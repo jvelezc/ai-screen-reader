@@ -1,6 +1,17 @@
 # Original development goals and next step
 
-Updated October 27, 2026. The original proposal under `outputs/` remains unchanged. This status document tracks implementation against its acceptance gates.
+Updated October 28, 2026. The original proposal under `outputs/` remains unchanged. This status document tracks implementation against its acceptance gates.
+
+**Admitted keyboard recording delivery:** [core contract 1.8.0](decisions/0060-admitted-keyboard-recordings.md)
+adds four fixed sanitized authored routes. Five originals retain actual keys,
+source/action/result edges, original video/JPEGs and measured timing. The report
+observation is a pre-traversal baseline; its zero-input fields do not describe
+the route. Reached, disabled and Unknown remain distinct. The real isolated DB
+passes275/275; notebook passes437/437 locally. [Named acceptance gates](validation/admitted-keyboard-recording-v1.md)
+separate local, Windows/Linux CI, native worker, exact deployment and actual-user
+playback. **Next after this delivery: bind scanner event assertions to recorded
+originals in the automated website-evidence assessment, then wider hosted
+recovery/authority acceptance.** No human-review task is introduced.
 
 **Explicit admitted passive recording:** [core contract 1.7.0](decisions/0059-admitted-passive-recording.md)
 adds an opt-in sanitized-fixture recording, original WebM, capture metadata and
@@ -9,7 +20,7 @@ zero input edges, no verified goal and no snapshot/video alignment are explicit.
 Default observations remain unrecorded. The isolated database suite passes
 248/248 and the separate notebook passes397/397 locally. [Validation](validation/admitted-passive-recording-v1.md)
 tracks full Windows, native Linux, CI, deployment and original-user playback
-separately. **Next: admitted keyboard traversal recordings.**
+separately. **Delivered next slice: [admitted keyboard recordings](decisions/0060-admitted-keyboard-recordings.md).**
 
 **Earlier admitted observation provenance:** [core contract 1.6.0](decisions/0058-admitted-observation-provenance.md)
 now produces a two-file archive from actual input-free queue worker observations.
@@ -62,15 +73,14 @@ from provider-user/S3 acceptance. Local Windows passes **2,199/2,199**, with87
 new cases, strict build and format; remote CI/deployment remain separately
 reported gates. Operator imports are not scan admissions.
 
-**Next for recorded evidence:** add actual keyboard source/action/result edges
-and measured recording timing under the proven tenant/scan/job/attempt boundary
-and fenced archive completion. The original
-user's notebook archive reconnect, graph/video playback and persistent sign-in
-already passed at UI2d628d3/core13df2c3 through Edge v2. Operator imports remain
-distinct from admitted runs. The new assessment evaluates supplied records; it
-does not implement arbitrary-site collection or manufacture missing originals.
-Human/AT comparison remains separate validation, with no review task in the
-automated website-evidence workflow. Custody/legal determinations are outside it.
+**Next for recorded evidence:** verify recorded source/action/result assertions
+against the admitted originals inside the core's automated assessment. A supplied
+scanner JSON finding is not itself a collector observation. Preserve the eight
+requirements, missing evidence, suspected findings and URL-only ScanResultsRequired.
+Then extend actual hosted recovery and revoked/expired authority acceptance.
+[Current delivery](validation/admitted-keyboard-recording-v1.md) retains its own
+CI/deployment/account proof; earlier operator imports remain distinct. Human/AT,
+custody/legal and deferred public MCP/plugin gates remain separate.
 
 **Owned CI canary:** [screenreader.privensic.com](validation/owned-public-canary-v1.md)
 now serves two fixed v1 HTTPS pages. The actual isolated MCP task passed locally,
@@ -96,16 +106,21 @@ That backend delivery does not enable hosted recording.
 
 <a id="next-isolated-hosted-reader-sessions"></a>
 
-## Next: admitted keyboard traversal recordings
+## Next: verify assessment claims against recorded originals
 
-The producer identity and atomic archive publication in [0058](decisions/0058-admitted-observation-provenance.md)
-now support [explicit passive recording](decisions/0059-admitted-passive-recording.md).
-Extend the admitted collector with bounded authored keyboard traversal, actual
-source/action/result edges and measured media/event timing. Prove acknowledged
-exclusion, complete originals/index readback and native cleanup before fenced
-completion. Retain partial/cancelled outcomes explicitly. Passive captures have
-one state and zero input edges; default observations remain `NotCollected`.
-Neither may be promoted into a completed keyboard journey or objective result.
+The fixed authored keyboard collector is implemented in [0060](decisions/0060-admitted-keyboard-recordings.md).
+Finish its [named delivery gates](validation/admitted-keyboard-recording-v1.md),
+then make the core check supplied event/action/goal assertions against the actual
+admitted `traversal.json` and video/source originals. Retain missing/contradictory
+facts as Insufficient supporting evidence; never promote Unknown to a barrier.
+Use exact run/document/event identities and original hashes, preserve tenant
+scope and keep diagnostic inference separate from reader observations. Done
+means a real admitted route can support only its actually retained facts after
+reconnect, and altered or unrelated scanner claims cannot yield Ready.
+
+The remaining sequence is broader hosted recovery/storage failures and real
+authority revocation/expiry, then bounded arbitrary-site collection and hosted
+intervention/AT acceptance. Public MCP/plugin publication remains deferred.
 
 ### Accepted prerequisites
 

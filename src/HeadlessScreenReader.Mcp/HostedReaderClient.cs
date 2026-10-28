@@ -32,7 +32,7 @@ public sealed partial class HostedReaderClient : IAsyncDisposable
         {
             Transport = "stdio",
             Backend = "private core HTTP API",
-            ExpectedApiContract = "1.7.0",
+            ExpectedApiContract = "1.8.0",
             OrganizationId = _options.Organization,
             Fixture = "Foundation",
             ReadOnly = true,

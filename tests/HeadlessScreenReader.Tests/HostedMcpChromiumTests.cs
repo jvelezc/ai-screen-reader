@@ -21,7 +21,7 @@ public sealed class HostedMcpChromiumTests
         Assert.Equal("InsufficientEvidence", assessment.GetProperty("assessment").GetProperty("decision").GetString());
         Assert.False(assessment.GetProperty("assessment").GetProperty("websitePackageReady").GetBoolean());
         var admissionSchema = tools.Single(t => t.Name == "scan_start_fixture").JsonSchema;
-        Assert.Equal(new[] { "recordObservation", "requestId" }, admissionSchema.GetProperty("properties").EnumerateObject().Select(p => p.Name).Order(StringComparer.Ordinal));
+        Assert.Equal(new[] { "recordObservation", "requestId", "traversalRoute" }, admissionSchema.GetProperty("properties").EnumerateObject().Select(p => p.Name).Order(StringComparer.Ordinal));
         Assert.False(admissionSchema.GetProperty("properties").GetProperty("recordObservation").GetProperty("default").GetBoolean());
         Assert.Equal("requestId", Assert.Single(admissionSchema.GetProperty("required").EnumerateArray()).GetString());
         var status = await Call(client, "reader_status");

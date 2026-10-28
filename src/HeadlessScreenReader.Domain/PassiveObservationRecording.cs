@@ -21,7 +21,7 @@ public sealed record PassiveObservationRecording(string Schema, FixtureJob Job, 
 
     public void Validate(FixtureObservation observation, string observationDigest, string videoDigest, int videoBytes)
     {
-        if (Schema != CurrentSchema || Job != observation.Job || !Job.RecordObservation
+        if (Schema != CurrentSchema || Job != observation.Job || !Job.RecordObservation || Job.TraversalRoute != 0
             || ObservationSha256 != observationDigest || VideoSha256 != videoDigest || VideoBytes != videoBytes
             || videoBytes is < 4 or > MaximumBundleBytes || DecodedVideoFrames is < 1 or > 10000
             || ObservedSourceFrames is < 1 or > 2048 || Capture is not { Phase: CapturePhase.Closed, EventsTruncated: false }

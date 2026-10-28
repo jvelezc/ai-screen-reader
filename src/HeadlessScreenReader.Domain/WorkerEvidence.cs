@@ -21,16 +21,27 @@ public sealed record WorkerEvidenceArchive(FixtureJob Job, Guid WorkerId, Traver
         expected.Validate();
         static bool Digest(string? value) => value is { Length: 64 } && value.All(char.IsAsciiHexDigitLower);
         var maximum = expected.RecordObservation ? PassiveObservationRecording.MaximumBundleBytes + 4096 : FixtureObservation.MaximumBytes + 4096;
-        if (Origin != "QueueWorkerObservation" || Job != expected || WorkerId == Guid.Empty || worker is not null && WorkerId != worker
-            || Recording != (expected.RecordObservation ? "PassiveObservation" : "NotCollected")
+        if (Origin != (expected.TraversalRoute > 0 ? "QueueWorkerTraversal" : "QueueWorkerObservation") || Job != expected || WorkerId == Guid.Empty || worker is not null && WorkerId != worker
+            || Recording != (expected.TraversalRoute > 0 ? "KeyboardTraversal" : expected.RecordObservation ? "PassiveObservation" : "NotCollected")
             || Receipt is not
             {
                 Identity: { } identity, Bytes: > 0,
                 ObjectReadbackVerified: true, IndexReadbackVerified: true
             }
-            || Receipt.Files != (expected.RecordObservation ? 4 : 2) || Receipt.Bytes > maximum
+            || Receipt.Files != (expected.TraversalRoute > 0 ? 5 : expected.RecordObservation ? 4 : 2) || Receipt.Bytes > maximum
             || identity.OrganizationId != expected.OrganizationId || identity.ArchiveId != expected.JobId
             || !Digest(identity.IndexSha256) || !Digest(Receipt.SourceManifestSha256))
             throw new BrowserOperationException("WORKER_EVIDENCE_PROVENANCE_UNCONFIRMED");
     }
+}
+
+/// <summary>The baseline observation is distinct from actual route input and outcome facts.</summary>
+public sealed record WorkerTraversalEvidenceManifest(string Schema, FixtureJob Job, Guid WorkerId, string ObservationSha256,
+    string TraversalSha256, string VideoSha256, string SourceFramesSha256, int AttemptedKeystrokes, int CompletedKeystrokes,
+    string Execution, string Reachability, string Barrier, string StopReason)
+{
+    public const string CurrentSchema = "hsr-worker-keyboard-package-v1";
+    public string Origin => "QueueWorkerTraversal";
+    public string Recording => "KeyboardTraversal";
+    public string ObservationScope => "PreTraversalBaseline";
 }

@@ -1,5 +1,5 @@
 # Core-side requests. Lovable application traffic must instead invoke Supabase Edge Functions.
-# These examples describe source contract 1.7.0; inspect live OpenAPI before use.
+# These examples describe source contract 1.8.0; inspect live OpenAPI before use.
 # Set accessToken only in your HTTP client's private local environment; never commit a real JWT.
 @baseUrl = http://localhost:6086
 @accessToken =
@@ -15,6 +15,15 @@
 # An import is not a scan admission or permission grant.
 @archive = 55555555-5555-4555-8555-555555555555
 @indexSha256 = replace-with-retained-index-sha256
+
+### Fixed authored keyboard route. NEW requestId, same route on uncertain retry.
+# 1=checkout, 2=disabled, 3=validation dialog, 4=unchanged. No passive option.
+# Report observation is pre-traversal; read traversal.json for actual keys/outcome.
+POST {{baseUrl}}/api/workspaces/{{organization}}/scans
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"requestId":"{{requestId}}","traversalRoute":1}
 
 ### Explicit passive sanitized-fixture recording. Use a NEW requestId for a new mode.
 # Retry the exact same requestId AND recordObservation value after an uncertain response.

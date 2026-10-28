@@ -11,7 +11,7 @@ $created=$false; $built=$false; $removed=$false; $imageRemoved=$false; $ready=$f
 $cases=[Collections.Generic.List[string]]::new()
 $releaseCreated=$false
 $script:executed=0; $script:failed=0
-$expected=if($IsLinux){39}else{37}; $linuxSignalPerformed=$false
+$expected=if($IsLinux){45}else{43}; $linuxSignalPerformed=$false
 $recoveryResources=[Collections.Generic.List[string]]::new()
 $names=@('POSTGRES_PASSWORD','HSR_WORKER_DATABASE','HSR_WORKER_IMAGE','HSR_WORKER_EVIDENCE','HSR_WORKER_RUNTIME','HSR_WORKER_SECCOMP',
     'HSR_CONTROL_PUBLISHABLE_KEY','HSR_CONTROL_EVIDENCE','HSR_CONTROL_PORT','HSR_CONTROL_ORIGIN','HSR_RELEASE_COMMIT')
@@ -221,6 +221,33 @@ try {
     Assert-Proof ((Get-FileHash $capturePath -Algorithm SHA256).Hash.ToLowerInvariant() -ceq $captureEntry.Sha256 -and $recordCapture.Schema -ceq 'hsr-passive-observation-recording-v1' -and $recordCapture.Job.JobId -eq $recordJob.job_id -and $recordCapture.Job.RecordObservation -and $recordCapture.States.Count -eq 1 -and $recordCapture.Edges.Count -eq 0 -and $recordCapture.States[0].DocumentId -ceq $recordObservation.Snapshot.DocumentId -and $recordCapture.States[0].ObservationSha256 -ceq $recordFacts.digest -and $recordCapture.Capture.Phase -ceq 'Closed' -and @($recordCapture.Capture.Events | Where-Object Phase -CEQ 'Excluded').Count -gt 0 -and $recordCapture.Timing -ceq 'NotAlignedToSnapshot') 'PassiveGraphRetainsSingleActualCaptureAndZeroInputEdges'
     $remaining=Invoke-ReaderRuntime $Runtime @('ps','--all','--filter','name=^hsr-observation-','--format','{{.ID}}')
     Assert-Proof ([string]::IsNullOrWhiteSpace($remaining.Text)) 'PassiveCaptureHasNoRemainingOwnedContainerBeforeCompletion'
+    $stage='keyboard-recording'
+    $keyboardRequest=[Guid]::NewGuid()
+    $admission=Invoke-ProofSql "begin; set local role authenticated; select set_config('request.jwt.claim.sub','$user',true); select row_to_json(r) from hsr.create_recorded_traversal('$org','$keyboardRequest',1) r; commit;"
+    $keyboardJob=($admission -split "`n" | Where-Object {$_ -match '^\{'}) | ConvertFrom-Json
+    $output=@(& dotnet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --once 2>&1)
+    $keyboardExit=$LASTEXITCODE; $keyboardResult=($output -join "`n") | ConvertFrom-Json
+    $output -join "`n" | Set-Content (Join-Path $folder 'keyboard-worker.log') -Encoding utf8NoBOM
+    $keyboardFacts=(Invoke-ProofSql "select json_build_object('state',j.state,'route',j.traversal_route,'index',j.archive_index_sha256,'manifest',j.archive_manifest_sha256,'bytes',j.archive_bytes,'worker',j.archive_worker_id,'actual_worker',a.worker_id) from hsr.scan_jobs j join hsr.job_attempts a on a.organization_id=j.organization_id and a.job_id=j.id and a.generation=j.generation where j.id='$($keyboardJob.job_id)'" ) | ConvertFrom-Json
+    Assert-Proof ($keyboardExit -eq 0 -and $keyboardResult.State -eq 'Observed' -and $keyboardResult.JobId -eq $keyboardJob.job_id -and $keyboardFacts.route -eq 1 -and $keyboardFacts.state -eq 'completed' -and $keyboardFacts.worker -eq $keyboardFacts.actual_worker) 'RealAdmittedKeyboardWorkerRetainsRouteAndActualAttempt'
+    $keyboardBaseline=Get-Content (Join-Path $env:HSR_WORKER_EVIDENCE $keyboardResult.Reference) -Raw | ConvertFrom-Json
+    $keyboardArchive=Join-Path $env:HSR_WORKER_EVIDENCE "archives/traversal-v1/$(([Guid]$org).ToString('N'))/$(([Guid]$keyboardJob.job_id).ToString('N'))/$($keyboardFacts.index)"
+    $keyboardIndexPath=Join-Path $keyboardArchive 'index.json'; $keyboardIndex=Get-Content $keyboardIndexPath -Raw|ConvertFrom-Json
+    function Read-KeyboardOriginal($entry) {
+        $buffer=[IO.MemoryStream]::new()
+        try {foreach($part in $entry.Parts){$path=Join-Path $keyboardArchive "objects/$($part.Sha256)"; $bytes=[IO.File]::ReadAllBytes($path); if($bytes.Length -ne $part.Bytes -or (Get-FileHash $path -Algorithm SHA256).Hash.ToLowerInvariant() -cne $part.Sha256){throw 'KEYBOARD_PART_UNCONFIRMED'}; $buffer.Write($bytes)}; $all=$buffer.ToArray()} finally {$buffer.Dispose()}
+        if($all.Length -ne $entry.Bytes -or [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($all)).ToLowerInvariant() -cne $entry.Sha256){throw 'KEYBOARD_FILE_UNCONFIRMED'}
+        return ,$all
+    }
+    $keyboardData=[Text.Encoding]::UTF8.GetString((Read-KeyboardOriginal ($keyboardIndex.Files|Where-Object Path -CEQ 'traversal.json'))) | ConvertFrom-Json
+    $keyboardProducer=[Text.Encoding]::UTF8.GetString((Read-KeyboardOriginal ($keyboardIndex.Files|Where-Object Path -CEQ 'evidence-manifest.json'))) | ConvertFrom-Json
+    Assert-Proof ($keyboardBaseline.Job.TraversalRoute -eq 1 -and $keyboardBaseline.DispatchedInputs -eq 0 -and -not $keyboardBaseline.GoalVerified -and $keyboardData.Receipt.CompletedKeystrokes -eq 2 -and $keyboardData.Receipt.AttemptedKeystrokes -eq 2 -and $keyboardData.Receipt.Reachability -ceq 'Reached') 'KeyboardBaselineCannotReplaceActualInputAndOutcome'
+    Assert-Proof ((Get-FileHash $keyboardIndexPath -Algorithm SHA256).Hash.ToLowerInvariant() -ceq $keyboardFacts.index -and $keyboardIndex.Files.Count -eq 5 -and $keyboardProducer.Origin -ceq 'QueueWorkerTraversal' -and $keyboardProducer.WorkerId -eq $keyboardFacts.actual_worker -and $keyboardProducer.CompletedKeystrokes -eq 2 -and $keyboardData.CollectorSha256 -match '^[a-f0-9]{64}$') 'KeyboardArchiveRetainsFiveOriginalsAndCollectorIdentity'
+    Assert-Proof ($keyboardData.Graph.Nodes.Count -eq 3 -and $keyboardData.Graph.Edges.Count -eq 2 -and @($keyboardData.Graph.Edges|Where-Object { $_.InputEvidenceComplete -and $_.KeyboardInputs.Count -eq 1 -and $null -ne $_.KeyboardInputs[0].AttemptEventSequence -and $null -ne $_.KeyboardInputs[0].CompletionEventSequence }).Count -eq 2) 'KeyboardGraphRetainsActualSourceActionResultAndCompletedKeys'
+    $keyboardVideo=Read-KeyboardOriginal ($keyboardIndex.Files|Where-Object Path -CEQ 'original.webm'); $keyboardFrames=Read-KeyboardOriginal ($keyboardIndex.Files|Where-Object Path -CEQ 'source-frames.zip')
+    Assert-Proof ($keyboardVideo[0] -eq 0x1a -and $keyboardFrames[0] -eq 0x50 -and $keyboardData.DecodedVideoFrames -gt 0 -and $keyboardData.SourceFiles.Count -gt 0 -and $keyboardData.VideoFrames.Count -eq $keyboardData.DecodedVideoFrames -and $keyboardData.ClockSamples.Count -eq 14 -and $keyboardData.Alignment.RunId -eq $keyboardData.Receipt.RunId -and $keyboardData.Capture.Phase -ceq 'Closed' -and @($keyboardData.Capture.Events|Where-Object Phase -CEQ 'Excluded').Count -gt 0) 'KeyboardRecordingRetainsOriginalFramesMeasuredTimingAndClosedCapture'
+    $remaining=Invoke-ReaderRuntime $Runtime @('ps','--all','--filter','name=^hsr-observation-','--format','{{.ID}}')
+    Assert-Proof ([string]::IsNullOrWhiteSpace($remaining.Text)) 'KeyboardContainerAbsentBeforeCompletion'
     $stage='blocked-execution'
     $failureRequest=[Guid]::NewGuid()
     $admission=Invoke-ProofSql "begin; set local role authenticated; select set_config('request.jwt.claim.sub','$user',true); select row_to_json(r) from hsr.create_scan('$org','$failureRequest') r; commit;"
@@ -281,7 +308,7 @@ try {
     $removal=Get-Content (Join-Path $env:HSR_WORKER_EVIDENCE ".runtime/removals/$($nativeOwner.ToString('N')).json") -Raw|ConvertFrom-Json
     Assert-Proof (-not (Test-Path $intentPath) -and $removal.ContainerAbsenceConfirmed -and $removal.RecoveredAfterRestart -and $removal.Intent.Job.JobId -eq $descriptor.JobId) 'RecoveryPersistsActualAbsenceBeforeRetiringIntent'
     $unchanged=(Invoke-ProofSql "select json_build_object('jobs',(select count(*) from hsr.scan_jobs),'attempts',(select count(*) from hsr.job_attempts),'completed',(select count(*) from hsr.attempt_events where kind='Completed'),'queue',(select count(*) from pgmq.q_hsr_scan_jobs))")|ConvertFrom-Json
-    Assert-Proof ($unchanged.jobs -eq 3 -and $unchanged.attempts -eq 3 -and $unchanged.completed -eq 2 -and $unchanged.queue -eq 0 -and @(Get-ChildItem $env:HSR_WORKER_EVIDENCE -Recurse -Filter observation.json).Count -eq 0) 'NativeRecoveryNeedsNoDatabaseCredentialAndCannotInventObservation'
+    Assert-Proof ($unchanged.jobs -eq 4 -and $unchanged.attempts -eq 4 -and $unchanged.completed -eq 3 -and $unchanged.queue -eq 0 -and @(Get-ChildItem $env:HSR_WORKER_EVIDENCE -Recurse -Filter observation.json).Count -eq 0) 'NativeRecoveryNeedsNoDatabaseCredentialAndCannotInventObservation'
     # A retained intent never authorizes deleting a same-name container with another owner.
     $badOwner=[Guid]::NewGuid();$badTarget="hsr-observation-$($badOwner.ToString('N'))"
     $intent.Owner="$badOwner"; $badPath=Join-Path $intentRoot "$($badOwner.ToString('N')).json"

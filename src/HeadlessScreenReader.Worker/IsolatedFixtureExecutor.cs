@@ -38,7 +38,7 @@ public sealed partial class IsolatedFixtureExecutor : IFixtureExecutor
         NativeOwnership intent;
         // Native cleanup journals retain only the original four-part identity.
         // Recovery never executes work; older rollback binaries can still remove this exact owned container.
-        try { intent = await _journal.BeginAsync(job with { RecordObservation = false }, _runtime, _image, token); }
+        try { intent = await _journal.BeginAsync(job with { RecordObservation = false, TraversalRoute = 0 }, _runtime, _image, token); }
         catch (Exception) { throw new BrowserOperationException("WORKER_NATIVE_OWNERSHIP_UNCONFIRMED"); }
         var name = intent.ContainerName;
         try
@@ -49,7 +49,8 @@ public sealed partial class IsolatedFixtureExecutor : IFixtureExecutor
                 job.RecordObservation ? PassiveObservationRecording.MaximumBundleBytes : FixtureObservation.MaximumBytes);
             if (result.Code != 0) throw new InvalidDataException("WORKER_CONTAINER_EXECUTION_UNCONFIRMED");
             // A valid observation also requires successful, independently confirmed container removal below.
-            if (job.RecordObservation) PassiveRecordingBundle.Decode(result.Bytes, job);
+            if (job.TraversalRoute > 0) KeyboardRecordingBundle.Decode(result.Bytes, job);
+            else if (job.RecordObservation) PassiveRecordingBundle.Decode(result.Bytes, job);
             else ObservationStore.Validate(result.Bytes, job);
             return result.Bytes;
         }

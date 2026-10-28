@@ -69,6 +69,7 @@ internal sealed record PortalWorkspaceBootstrap(Guid Id, bool Created);
 internal sealed record PortalCreateScanRequest(Guid RequestId)
 {
     public bool RecordObservation { get; init; }
+    public int TraversalRoute { get; init; }
 }
 /// <summary>Durable fixture admission receipt; it does not attest to execution.</summary>
 internal sealed record PortalScanCreatedResponse(Guid OrganizationId, Guid ScanId, Guid JobId);
@@ -82,6 +83,7 @@ internal sealed record PortalJobResult(Guid OrganizationId, Guid ScanId, Guid Jo
     string? Digest, string? Reference, string? ErrorCode)
 {
     public bool RecordObservation { get; init; }
+    public int TraversalRoute { get; init; }
     public WorkerEvidenceArchive? WorkerArchive { get; init; }
 }
 /// <summary>Stored source semantics. Null required state remains unobserved.</summary>

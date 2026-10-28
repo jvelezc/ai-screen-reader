@@ -5,10 +5,13 @@ public sealed record FixtureJob(Guid OrganizationId, Guid ScanId, Guid JobId, lo
 {
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     public bool RecordObservation { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public int TraversalRoute { get; init; }
     public string Reference => $"{OrganizationId:N}/{ScanId:N}/{JobId:N}/{Generation.ToString(System.Globalization.CultureInfo.InvariantCulture)}/observation.json";
     public void Validate()
     {
-        if (OrganizationId == Guid.Empty || ScanId == Guid.Empty || JobId == Guid.Empty || Generation is < 1 or > 3)
+        if (OrganizationId == Guid.Empty || ScanId == Guid.Empty || JobId == Guid.Empty || Generation is < 1 or > 3
+            || TraversalRoute is < 0 or > 4 || TraversalRoute > 0 && !RecordObservation)
             throw new BrowserOperationException("WORKER_DESCRIPTOR_INVALID");
     }
 }

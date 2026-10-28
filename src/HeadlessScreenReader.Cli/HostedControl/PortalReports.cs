@@ -15,7 +15,7 @@ internal sealed class PortalObservationReader(string root, IObservationArchive? 
 {
     public async Task<PortalObservationResponse?> ReadAsync(PortalJobResult job, CancellationToken token)
     {
-        var descriptor = new FixtureJob(job.OrganizationId, job.ScanId, job.JobId, job.Generation) { RecordObservation = job.RecordObservation };
+        var descriptor = new FixtureJob(job.OrganizationId, job.ScanId, job.JobId, job.Generation) { RecordObservation = job.RecordObservation, TraversalRoute = job.TraversalRoute };
         try { descriptor.Validate(); }
         catch (BrowserOperationException) { throw new PortalFault(503, "CONTROL_EVIDENCE_IDENTITY_UNCONFIRMED"); }
         if (job.State != "completed" || job.Reference != descriptor.Reference || job.Digest is null || job.Digest.Length != 64
@@ -57,8 +57,11 @@ internal sealed class PortalObservationReader(string root, IObservationArchive? 
         var nodes = observation.Snapshot.Nodes.Select(node => new PortalNodeResponse(node.Id, node.ParentId,
             node.Role, node.Name, node.IsFocused, node.IsDisabled, node.HeadingLevel, node.Checked, node.Expanded,
             node.Selected, node.Required?.Value, node.Required?.Source.ToString(), node.Description)).ToArray();
+        var limitations = observation.Snapshot.Limitations.ToArray();
+        if (descriptor.TraversalRoute > 0) limitations = [.. limitations,
+            "Pre-traversal baseline only. These zero-input/no-goal fields do not describe the recorded keyboard route. Read the bound traversal.json original for actual keys, graph and outcome."];
         return new(observation.Snapshot.DocumentId, digest, observation.ReaderProfile,
-            observation.DispatchedInputs, observation.GoalVerified, nodes, observation.Snapshot.Limitations.ToArray(), storage);
+            observation.DispatchedInputs, observation.GoalVerified, nodes, limitations, storage);
     }
 }
 
@@ -100,7 +103,7 @@ internal sealed class PortalScanService(IPortalProjectClient project, IPortalObs
         }
         if (job.State == "blocked") return new(record, "NotCollected", job.ErrorCode, null);
         if (job.State != "completed") return new(record, "Pending", job.ErrorCode, null);
-        try { job.WorkerArchive?.Validate(new(organization, scan, job.JobId, job.Generation) { RecordObservation = job.RecordObservation }); }
+        try { job.WorkerArchive?.Validate(new(organization, scan, job.JobId, job.Generation) { RecordObservation = job.RecordObservation, TraversalRoute = job.TraversalRoute }); }
         catch (BrowserOperationException) { throw new PortalFault(503, "CONTROL_EVIDENCE_IDENTITY_UNCONFIRMED"); }
         try
         {

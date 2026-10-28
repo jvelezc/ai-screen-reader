@@ -15,17 +15,7 @@ public static class TraversalDemo
         Converters = { new JsonStringEnumConverter() }
     };
 
-    public static ImmutableArray<TraversalPlan> Plans =>
-    [
-        new("Successful checkout preview", new("heading", "Synthetic shop"), new("heading", "Checkout preview", MustBeFocused: true),
-            [new(ReaderCommand.Tab), new(ReaderCommand.Activate)]),
-        new("Disabled checkout route", new("heading", "Synthetic shop"), new("heading", "Checkout preview"),
-            [new(ReaderCommand.DocumentEnd), new(ReaderCommand.PreviousButton), new(ReaderCommand.Activate)]),
-        new("Validation dialog instead of checkout", new("heading", "Synthetic shop"), new("heading", "Checkout preview"),
-            [new(ReaderCommand.Tab), new(ReaderCommand.Tab), new(ReaderCommand.Activate)]),
-        new("Unchanged checkout route", new("heading", "Synthetic shop"), new("heading", "Checkout preview"),
-            [new(ReaderCommand.Tab), new(ReaderCommand.Tab), new(ReaderCommand.Tab), new(ReaderCommand.Activate)])
-    ];
+    public static ImmutableArray<TraversalPlan> Plans => AuthoredKeyboardRoutes.Plans;
 
     public static async Task<int> RunAsync(bool headed, CancellationToken cancellationToken = default)
     {

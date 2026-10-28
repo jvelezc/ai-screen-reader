@@ -19,12 +19,14 @@ public sealed class HostedScanClient : IAsyncDisposable
     public HostedScanClient(HostedReaderOptions options, HttpMessageHandler? transport = null)
     { _options = options; _transport = new(options, transport); }
 
-    public Task<ToolReply> StartFixtureAsync(string requestId, CancellationToken token = default, bool recordObservation = false)
+    public Task<ToolReply> StartFixtureAsync(string requestId, CancellationToken token = default, bool recordObservation = false, int traversalRoute = 0)
     {
         if (!Guid.TryParse(requestId, out var id) || id == Guid.Empty) return Task.FromResult(ToolReply.Error("SCAN_REQUEST_ID_REQUIRED"));
+        if (traversalRoute is < 0 or > 4 || traversalRoute > 0 && recordObservation) return Task.FromResult(ToolReply.Error("TRAVERSAL_ROUTE_INVALID"));
         return LockedAsync(async () =>
         {
-            object request = recordObservation ? new { requestId = id, recordObservation = true } : new { requestId = id };
+            object request = traversalRoute > 0 ? new { requestId = id, traversalRoute }
+                : recordObservation ? new { requestId = id, recordObservation = true } : new { requestId = id };
             using var document = await _transport.SendAsync(HttpMethod.Post, Collection, request, 201).ConfigureAwait(false);
             var receipt = Parse<HostedScanAdmission>(document);
             Require(receipt.OrganizationId == _options.Organization && receipt.ScanId != Guid.Empty && receipt.JobId != Guid.Empty);
@@ -37,7 +39,8 @@ public sealed class HostedScanClient : IAsyncDisposable
                 Execution = "NotEstablishedByAdmission",
                 Evidence = "NotEstablishedByAdmission",
                 GoalVerification = "NotAssessed",
-                RecordingRequested = recordObservation ? "PassiveObservation" : "NotRequested",
+                RecordingRequested = traversalRoute > 0 ? "KeyboardTraversal" : recordObservation ? "PassiveObservation" : "NotRequested",
+                TraversalRoute = traversalRoute,
                 WorkerContinuesAfterDisconnect = true,
                 NextAction = "Read scan_report using scanId. An admission receipt does not establish execution or available evidence."
             });
@@ -99,6 +102,7 @@ public sealed class HostedScanClient : IAsyncDisposable
                     ReportId = fingerprint,
                     ReportIdMeaning = "SHA256 of core response for immutable pagination; separate from original observation digest",
                     EvidenceAuthority = "Core API validates original job-bound evidence",
+                    ObservationScope = report.WorkerArchive?.Recording == "KeyboardTraversal" ? "PreTraversalBaseline; read traversal.json for actual route inputs and outcome" : "FixedFixtureObservation",
                     Observation = observation with { Nodes = observation.Nodes.Skip(offset).Take(count).ToImmutableArray() },
                     Offset = offset,
                     TotalNodes = observation.Nodes.Length,

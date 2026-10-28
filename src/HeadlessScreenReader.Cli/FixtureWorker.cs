@@ -49,7 +49,8 @@ public static class FixtureWorker
             var job = JsonSerializer.Deserialize<FixtureJob>(bytes.ToArray(), Json)
                 ?? throw new BrowserOperationException("WORKER_DESCRIPTOR_INVALID");
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(90));
-            var result = job.RecordObservation ? await RecordAsync(job, timeout.Token)
+            var result = job.TraversalRoute > 0 ? await KeyboardFixtureWorker.RecordAsync(job, timeout.Token)
+                : job.RecordObservation ? await RecordAsync(job, timeout.Token)
                 : JsonSerializer.SerializeToUtf8Bytes(await ObserveAsync(job, timeout.Token), Json);
             if (result.Length > (job.RecordObservation ? PassiveObservationRecording.MaximumBundleBytes : FixtureObservation.MaximumBytes))
                 throw new BrowserOperationException("WORKER_OBSERVATION_TOO_LARGE");
@@ -67,7 +68,7 @@ public static class FixtureWorker
     public static async Task<byte[]> RecordAsync(FixtureJob job, CancellationToken token = default)
     {
         job.Validate();
-        if (!job.RecordObservation || BundledFixtureCatalog.Describe(BundledFixture.TraversalRecording).ContentSha256 != FixtureObservation.RecordingContentSha256)
+        if (!job.RecordObservation || job.TraversalRoute != 0 || BundledFixtureCatalog.Describe(BundledFixture.TraversalRecording).ContentSha256 != FixtureObservation.RecordingContentSha256)
             throw new BrowserOperationException("WORKER_RECORDING_DESCRIPTOR_INVALID");
         var folder = Path.Combine(Path.GetTempPath(), "hsr-passive-" + Guid.NewGuid().ToString("N"));
         try

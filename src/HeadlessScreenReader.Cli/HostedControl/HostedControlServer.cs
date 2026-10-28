@@ -205,7 +205,11 @@ internal static class PortalEndpoints
         {
             var input = await HostedControlServer.BodyAsync<PortalCreateScanRequest>(context, token).ConfigureAwait(false);
             if (organization == Guid.Empty || input.RequestId == Guid.Empty) throw new PortalFault(400, "CONTROL_REQUEST_INVALID");
-            var receipt = input.RecordObservation
+            if (input.TraversalRoute is < 0 or > 4 || input.TraversalRoute > 0 && input.RecordObservation)
+                throw new PortalFault(400, "CONTROL_TRAVERSAL_ROUTE_INVALID");
+            var receipt = input.TraversalRoute > 0
+                ? await project.CreateRecordedTraversalAsync(HostedControlServer.Actor(context), organization, input.RequestId, input.TraversalRoute, token).ConfigureAwait(false)
+                : input.RecordObservation
                 ? await project.CreateRecordedObservationAsync(HostedControlServer.Actor(context), organization, input.RequestId, token).ConfigureAwait(false)
                 : await project.CreateScanAsync(HostedControlServer.Actor(context), organization, input.RequestId, token).ConfigureAwait(false);
             return TypedResults.Created("/api/workspaces/" + organization.ToString("D") + "/scans/" + receipt.ScanId.ToString("D"), receipt);

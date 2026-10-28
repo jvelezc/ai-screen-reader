@@ -220,6 +220,7 @@ internal sealed class PortalProjectStub : IPortalProjectClient
     public int DataCalls { get; private set; }
     public int CreateCalls { get; private set; }
     public int RecordedCreateCalls { get; private set; }
+    public int LastTraversalRoute { get; private set; }
     public Guid LastRequest { get; private set; }
     public bool Revoked { get; set; }
     public bool WorkspaceHidden { get; set; }
@@ -250,6 +251,8 @@ internal sealed class PortalProjectStub : IPortalProjectClient
     { DataCalls++; CreateCalls++; LastRequest = request; SeenBearers.Add(actor.Token); return Task.FromResult(new PortalScanCreatedResponse(organization, Record.Id, Job.JobId)); }
     public Task<PortalScanCreatedResponse> CreateRecordedObservationAsync(PortalIdentity actor, Guid organization, Guid request, CancellationToken token)
     { RecordedCreateCalls++; return CreateScanAsync(actor, organization, request, token); }
+    public Task<PortalScanCreatedResponse> CreateRecordedTraversalAsync(PortalIdentity actor, Guid organization, Guid request, int route, CancellationToken token)
+    { LastTraversalRoute = route; return CreateScanAsync(actor, organization, request, token); }
     public Task<PortalScanResponse?> ScanAsync(PortalIdentity actor, Guid organization, Guid scan, CancellationToken token)
     { DataCalls++; ScanCalls++; return Task.FromResult(organization == PortalProjectClientTests.Organization && scan == PortalProjectClientTests.Scan ? ScanResult is null ? Record : ScanResult(ScanCalls) : null); }
     public Task<PortalJobResult?> JobAsync(PortalIdentity actor, Guid organization, Guid scan, CancellationToken token)
