@@ -70,7 +70,7 @@ public static class TraversalRecordingDemo
             stage = "AlignEvidence";
             alignment = TraversalRecording.Align(receipt, RecordingSynchronization.Calibrate(samples.ToImmutable()),
                 runnerOriginHostMilliseconds.Value, documentId,
-                media.Artifacts.Single(a => a.File == "original.webm").Sha256, media.Source, media.Video);
+                media.Artifacts.Single(a => a.File == "original.webm").Sha256, media.SourceInPresentationOrder, media.Video);
             stage = "Complete";
         }
         catch (OperationCanceledException) { error = "TRAVERSAL_RECORDING_CANCELLED"; }

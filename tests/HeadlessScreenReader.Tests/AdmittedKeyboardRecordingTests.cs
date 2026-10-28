@@ -31,6 +31,10 @@ public sealed class AdmittedKeyboardRecordingTests
     [InlineData("decode")]
     [InlineData("alignment")]
     [InlineData("collector")]
+    [InlineData("source-order-missing")]
+    [InlineData("source-order-duplicate")]
+    [InlineData("source-order-outside")]
+    [InlineData("source-frame-duplicate")]
     public async Task BoundKeyboardOriginalsRejectChangedScopeMediaGraphAndTiming(string change)
     {
         var (job, bundle) = await Original.Value;
@@ -54,6 +58,10 @@ public sealed class AdmittedKeyboardRecordingTests
             "decode" => recording with { DecodedVideoFrames = 0 },
             "alignment" => recording with { Alignment = recording.Alignment with { VideoSha256 = new('f', 64) } },
             "collector" => recording with { CollectorSha256 = "unknown" },
+            "source-order-missing" => recording with { SourcePresentationOrder = [] },
+            "source-order-duplicate" => recording with { SourcePresentationOrder = recording.SourcePresentationOrder.SetItem(1, recording.SourcePresentationOrder[0]) },
+            "source-order-outside" => recording with { SourcePresentationOrder = recording.SourcePresentationOrder.SetItem(0, -1) },
+            "source-frame-duplicate" => recording with { SourceFrames = recording.SourceFrames.SetItem(1, recording.SourceFrames[0]) },
             _ => throw new InvalidOperationException()
         };
         var changed = bundle with { Traversal = JsonSerializer.SerializeToUtf8Bytes(recording, ObservationStore.Json) };

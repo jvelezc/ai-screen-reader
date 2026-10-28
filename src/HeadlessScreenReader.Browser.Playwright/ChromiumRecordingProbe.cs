@@ -13,6 +13,11 @@ public sealed record RecordingProbeMedia(ImmutableArray<SourceMarkerFrame> Sourc
 {
     public string SourceClock => "ChromiumCdpJsonDouble";
     public int VideoFramesPerSecond => 25;
+    // CDP delivery order can differ from presentation order at startup. Retain
+    // raw deliveries and every timestamp; only timing uses this explicit index.
+    public ImmutableArray<int> SourcePresentationOrder => Source.IsDefault ? [] : Source.Select((frame, index) => (frame, index))
+        .OrderBy(item => item.frame.PresentationUnixMilliseconds).ThenBy(item => item.index).Select(item => item.index).ToImmutableArray();
+    public ImmutableArray<SourceMarkerFrame> SourceInPresentationOrder => SourcePresentationOrder.Select(index => Source[index]).ToImmutableArray();
 }
 
 /// <summary>Owns a trusted, input-free recording fixture; exposes neither arbitrary script nor general recording.</summary>

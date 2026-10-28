@@ -20,6 +20,7 @@ public sealed record AdmittedKeyboardRecording(string Schema, FixtureJob Job, st
     public string NvdaComparison => "NotPerformedForThisRecording";
     public string TimingSourceClock => "ChromiumCdpJsonDouble";
     public string FixtureSha256 => FixtureObservation.RecordingContentSha256;
+    public ImmutableArray<int> SourcePresentationOrder { get; init; } = [];
 
     public void Validate(FixtureObservation baseline, string baselineDigest, string videoDigest, long videoBytes, string framesDigest)
     {
@@ -81,10 +82,17 @@ public sealed record AdmittedKeyboardRecording(string Schema, FixtureJob Job, st
             && SourceFiles.All(f => f.Path.Length is > 0 and <= 100 && !f.Path.Contains('/') && !f.Path.Contains('\\')
                 && f.Path.EndsWith(".jpg", StringComparison.Ordinal) && f.Bytes is > 0 and <= 2 * 1024 * 1024
                 && f.Sha256.Length == 64 && f.Sha256.All(char.IsAsciiHexDigitLower)));
-        Require(!SourceFrames.IsDefault && SourceFrames.Length == SourceFiles.Length && SourceFrames.All(f => SourceFiles.Any(s => s.Path == f.File)
+        Require(!SourceFrames.IsDefault && SourceFrames.Length == SourceFiles.Length
+            && SourceFrames.Select(frame => frame.File).Distinct(StringComparer.Ordinal).Count() == SourceFiles.Length
+            && SourceFrames.All(f => SourceFiles.Any(s => s.Path == f.File)
             && double.IsFinite(f.PresentationUnixMilliseconds)) && !VideoFrames.IsDefault && VideoFrames.Length == DecodedVideoFrames
             && VideoFrames.All(f => f.Index >= 0 && double.IsFinite(f.PresentationMilliseconds) && f.PresentationMilliseconds >= 0)
             && VideoFrames.Select(f => f.Index).Distinct().Count() == VideoFrames.Length);
+        Require(!SourcePresentationOrder.IsDefault && SourcePresentationOrder.Length == SourceFrames.Length
+            && SourcePresentationOrder.Distinct().Count() == SourceFrames.Length
+            && SourcePresentationOrder.All(index => index >= 0 && index < SourceFrames.Length));
+        Require(!SourcePresentationOrder.Zip(SourcePresentationOrder.Skip(1)).Any(pair =>
+            SourceFrames[pair.Second].PresentationUnixMilliseconds < SourceFrames[pair.First].PresentationUnixMilliseconds));
         Require(CollectorSha256 is { Length: 64 } && CollectorSha256.All(char.IsAsciiHexDigitLower) && CollectorVersion is { Length: > 0 and <= 120 });
     }
 }

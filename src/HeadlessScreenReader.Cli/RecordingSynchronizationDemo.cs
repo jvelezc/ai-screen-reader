@@ -95,7 +95,7 @@ public static class RecordingSynchronizationDemo
             lifecycle = probe.CaptureStatus;
             stage = "AnalyzeSynchronization";
             analysis = RecordingSynchronization.Analyze(RecordingSynchronization.Calibrate(samples.ToImmutable()),
-                originUncertainty, actions, media.Source, media.Video);
+                originUncertainty, actions, media.SourceInPresentationOrder, media.Video);
             stage = "Complete";
         }
         catch (OperationCanceledException) { error = "RECORDING_PROBE_CANCELLED"; }

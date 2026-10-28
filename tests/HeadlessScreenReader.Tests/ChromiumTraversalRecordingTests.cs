@@ -62,7 +62,7 @@ public sealed class ChromiumTraversalRecordingTests
         var media = Assert.IsType<RecordingProbeMedia>(result.Recording.Media);
         var recomputed = TraversalRecording.Align(receipt, RecordingSynchronization.Calibrate(result.Recording.ClockSamples),
             result.Recording.RunnerOriginHostMilliseconds!.Value, receipt.Observations[0].Snapshot.DocumentId,
-            media.Artifacts.Single(a => a.File == "original.webm").Sha256, media.Source, media.Video);
+            media.Artifacts.Single(a => a.File == "original.webm").Sha256, media.SourceInPresentationOrder, media.Video);
         Assert.Equal(JsonSerializer.Serialize(result.Recording.Alignment), JsonSerializer.Serialize(recomputed));
         Assert.NotEmpty(media.Video);
         Assert.All(media.Video, f => Assert.NotNull(f.Marker));

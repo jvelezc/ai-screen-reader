@@ -14,6 +14,25 @@ public sealed class TraversalRecordingTests
         Enumerable.Range(0, count).Select(i => new VideoMarkerFrame(i, i * 40, new(0, i == 0 ? 7 : 8))).ToImmutableArray();
 
     [Fact]
+    public async Task PresentationIndexRetainsReversedRawDeliveriesAndCalibratesWithoutChangingTimestampsOrOutcome()
+    {
+        var receipt = await Receipt();
+        ImmutableArray<SourceMarkerFrame> raw = [new("source-0001.jpg", Epoch + 4.113, new(0, 7)),
+            new("source-0002.jpg", Epoch, new(0, 7)), new("source-0003.jpg", Epoch + 40, new(0, 8))];
+        var media = new HeadlessScreenReader.Browser.Playwright.RecordingProbeMedia(raw, Video(), [], []);
+        Assert.Equal("TRAVERSAL_RECORDING_FRAME_EVIDENCE_INVALID", TraversalRecording.Align(receipt,
+            new(Epoch, 0), 100, "doc", Hash, raw, media.Video).ReasonCode);
+        Assert.Equal(new[] { 1, 0, 2 }, media.SourcePresentationOrder.ToArray());
+        var aligned = TraversalRecording.Align(receipt, new(Epoch, 0), 100, "doc", Hash, media.SourceInPresentationOrder, media.Video);
+        Assert.True(aligned.Calibrated); Assert.InRange(aligned.UncertaintyMilliseconds!.Value, 43, 44);
+        Assert.NotEmpty(aligned.Cues); Assert.All(aligned.Cues, cue => Assert.Equal(RecordingCueCoverage.Covered, cue.Coverage));
+        Assert.Equal(raw, media.Source); Assert.Equal(Epoch + 4.113, media.Source[0].PresentationUnixMilliseconds);
+        Assert.Equal(Epoch, media.Source[1].PresentationUnixMilliseconds);
+        Assert.Equal(raw.OrderBy(frame => frame.File), media.SourceInPresentationOrder.OrderBy(frame => frame.File));
+        Assert.Equal(TraversalReachability.Unknown, receipt.Reachability);
+    }
+
+    [Fact]
     public async Task CaptureWindows_BracketActualAcquisitionOnTheRunnerClock()
     {
         var time = new FakeTimeProvider();

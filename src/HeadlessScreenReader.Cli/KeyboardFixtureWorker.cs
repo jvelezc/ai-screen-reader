@@ -50,7 +50,8 @@ public static class KeyboardFixtureWorker
                 original.Sha256, video.Length, original.DecodedFrames, TraversalArchive.Hash(frames), sources.ToImmutable(), receipt,
                 TraversalProjection.Build(receipt), alignment, capture, result.Recording.ClockSamples, origin, media.Source, media.Video,
                 TraversalArchive.Hash(await File.ReadAllBytesAsync(typeof(KeyboardFixtureWorker).Assembly.Location, token)),
-                typeof(KeyboardFixtureWorker).Assembly.GetName().Version?.ToString() ?? "unknown", result.Recording.Stage, result.Recording.ErrorCode);
+                typeof(KeyboardFixtureWorker).Assembly.GetName().Version?.ToString() ?? "unknown", result.Recording.Stage, result.Recording.ErrorCode)
+            { SourcePresentationOrder = media.SourcePresentationOrder };
             return new KeyboardRecordingBundle(observation, video, JsonSerializer.SerializeToUtf8Bytes(recording, ObservationStore.Json), frames).Encode(job);
         }
         finally

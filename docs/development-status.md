@@ -13,6 +13,12 @@ playback. **Next after this delivery: bind scanner event assertions to recorded
 originals in the automated website-evidence assessment, then wider hosted
 recovery/authority acceptance.** No human-review task is introduced.
 
+The first actual recorded path retained a CDP delivery/presentation-order
+reversal and correctly reported unconfirmed timing. [Decision0061](decisions/0061-recording-presentation-order.md)
+adds an explicit presentation index while retaining raw frames and strict timing
+checks. Its local Windows suite passes2,373/2,373. The current original-user/CI
+delivery receipt is maintained in the [architecture Page](https://chatgpt.com/space/page_9a835b55f9808191a2accbc9900a3e25).
+
 **Explicit admitted passive recording:** [core contract 1.7.0](decisions/0059-admitted-passive-recording.md)
 adds an opt-in sanitized-fixture recording, original WebM, capture metadata and
 four-file producer receipt under the actual fenced attempt. One capture state,
@@ -107,6 +113,9 @@ That backend delivery does not enable hosted recording.
 <a id="next-isolated-hosted-reader-sessions"></a>
 
 ## Next: verify assessment claims against recorded originals
+
+[Open the ordered completion plan](completion-plan.md) for implementation steps,
+done conditions and the remaining recovery, authority, target and intervention gates.
 
 The fixed authored keyboard collector is implemented in [0060](decisions/0060-admitted-keyboard-recordings.md).
 Finish its [named delivery gates](validation/admitted-keyboard-recording-v1.md),
@@ -383,9 +392,13 @@ flowchart LR
     MCP --> MCPScans[Durable fixture admission and saved report pages]
     MCPScans --> SignedIn[Accepted real application-user HTTP reader]
     SignedIn --> ApiHttps[Accepted API-only HTTPS on VPS IP]
-    ApiHttps --> Edge[Edge v1 deployed; notebook CI passed]
+    ApiHttps --> Edge[Existing Supabase Edge gateway]
     Edge --> Notebook[Accepted real notebook fixture/report/S3/download]
-    Notebook --> Next[NEXT: live notebook reader controls]
+    Notebook --> Live[Accepted live notebook reader]
+    Live --> Archive[Authorized original archive and graph playback]
+    Archive --> Passive[Admitted passive recording]
+    Passive --> Keyboard[Admitted keyboard recording delivery]
+    Keyboard --> Next[NEXT: verify assessment claims against originals]
     Next --> Durable[Broader hosted recovery and workflow acceptance]
     Client --> ViewerControl[Human takeover acceptance]
     classDef done fill:#dcfce7,stroke:#166534,color:#14532d
@@ -393,7 +406,8 @@ flowchart LR
     classDef partial fill:#fef3c7,stroke:#92400e,color:#78350f
     classDef planned fill:#f3f4f6,stroke:#6b7280,color:#374151
     class Reader,Trace,Privacy,Timing,Recording,Viewer,ReaderGate,Features,Replay,Owned,Controller,Headed,Handoff,PrivateViewer,Pixels,Client,Admission,Leases,Worker,Portal,Sessions,Accepted,Isolated,CoreParity,Ownership,MCP,MCPScans,SignedIn,ApiHttps,Notebook done
-    class Edge partial
+    class Edge,Live,Archive,Passive done
+    class Keyboard partial
     class Next next
     class ViewerControl,Durable planned
     click Client "validation/private-fixture-client-v1.md"
@@ -403,7 +417,8 @@ flowchart LR
     click Accepted "validation/supabase-s3-provider-v1.md#signed-in-tenant-acceptance"
     click MCPScans "decisions/0052-private-mcp-durable-scans.md"
     click SignedIn "validation/private-tenant-reader-v1.md"
-    click Next "next-edge-to-core-connection.md"
+    click Keyboard "validation/admitted-keyboard-recording-v1.md"
+    click Next "completion-plan.md#next-verify-assessment-claims-against-recorded-originals"
 ```
 
 Green means a named bounded capability is validated; amber means partial acceptance;

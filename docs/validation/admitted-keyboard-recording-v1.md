@@ -26,6 +26,59 @@ original-user graph/video/reconnect acceptance are separate gates. Their final
 receipts belong below after successful runs; a passing test is not a substitute
 for the original-user hosted recording or a human/NVDA comparison.
 
+## First delivery and hosted timing finding
+
+Core `4b96372` passed all nine jobs in
+[CI40665140483](https://github.com/jvelezc/ai-screen-reader/actions/runs/40665140483):
+Windows and Ubuntu each discovered/executed/passed **2,368**, zero failed or
+not-executed cases. Native Linux passed **45/45** and the database **275/275**;
+both owned test images/databases were removed. Exact private
+[deployment40667311888](https://github.com/jvelezc/ai-screen-reader/actions/runs/40667311888)
+and all 151 independent file hashes passed. Default-trust HTTPS publishes 1.8.0;
+anonymous session 401 and private root/MCP/config paths 404 remain in force.
+
+UI `055c060` passed 437/437 on Windows and Ubuntu in
+[CI40664585722](https://github.com/jvelezc/ai-screen-reader-ui/actions/runs/40664585722).
+Existing Edge v5 matches its three reviewed files. The original saved account
+admitted route 1 through notebook → Edge → core. Scan
+`b86dd5b3-f0e7-496b-9545-beb5dbb777ce`, job/archive
+`e47c4fd3-ac04-43ee-86ec-239150007bf5`, generation 1 and actual worker
+`5c4606f8-d948-48e5-9677-f401e8613242` agree with the fenced database receipt.
+Index `c4d1232b5767a2d2efeb960aa8ed8321d5f4f82b9f9f7ab578936e7c8f5cdc60`
+independently reconstructs **five files, 439,717 bytes** from private S3.
+
+The notebook verified all five originals, displayed three states/two edges/two
+completed keys/Reached independently of the zero-input baseline, and played the
+actual 1.6-second original to its end. All five actual downloads verify; all 18
+source JPEG hashes match their original ZIP. The freshly authorized report is
+16,165 bytes, SHA256
+`3427dffa4681abc28ba58c3d082b3b0bb5a688956ee67a8ed6919ce654b8e226`.
+Independent rootless Podman inspection found no owned observation container.
+
+Timing correctly stayed **FRAME_EVIDENCE_INVALID**, so synchronized selection
+was not accepted. The original metadata retains a 4.113 ms startup reversal in
+CDP delivery versus presentation order. [Decision0061](../decisions/0061-recording-presentation-order.md)
+records the explicit presentation-index repair, unchanged raw originals and its
+separate fresh deployment/account acceptance. The first package is never rewritten
+or retrospectively labeled calibrated.
+
+## Presentation-order repair validation
+
+The final Windows run after decision0061 discovers/executes/passes **2,373**,
+with zero failures or not-executed cases. The strict nonincremental Release build
+has zero warnings/errors and full solution format verification passes.
+`PresentationIndexRetainsReversedRawDeliveriesAndCalibratesWithoutChangingTimestampsOrOutcome`
+also passes independently. The first focused attempt caught an incorrect test
+expectation of Reached for an intentionally Unknown receipt; the assertion was
+corrected to preserve Unknown before the clean full run.
+
+The native harness now requires measured calibrated timing within the unchanged
+250 ms target and retention of the explicit original-frame index. Fresh CI,
+exact promotion and original-user calibrated seek/reconnect remain separate
+gates. The [architecture plan](https://chatgpt.com/space/page_9a835b55f9808191a2accbc9900a3e25)
+is the canonical latest delivery receipt; earlier named records above retain
+their original source and measured limits.
+
 ## Remaining product gates
 
 The website-evidence assessment still evaluates supplied scanner records. Bind
