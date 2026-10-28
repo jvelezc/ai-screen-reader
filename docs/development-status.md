@@ -2,7 +2,16 @@
 
 Updated October 27, 2026. The original proposal under `outputs/` remains unchanged. This status document tracks implementation against its acceptance gates.
 
-**Admitted observation provenance:** [core contract 1.6.0](decisions/0058-admitted-observation-provenance.md)
+**Explicit admitted passive recording:** [core contract 1.7.0](decisions/0059-admitted-passive-recording.md)
+adds an opt-in sanitized-fixture recording, original WebM, capture metadata and
+four-file producer receipt under the actual fenced attempt. One capture state,
+zero input edges, no verified goal and no snapshot/video alignment are explicit.
+Default observations remain unrecorded. The isolated database suite passes
+248/248 and the separate notebook passes397/397 locally. [Validation](validation/admitted-passive-recording-v1.md)
+tracks full Windows, native Linux, CI, deployment and original-user playback
+separately. **Next: admitted keyboard traversal recordings.**
+
+**Earlier admitted observation provenance:** [core contract 1.6.0](decisions/0058-admitted-observation-provenance.md)
 now produces a two-file archive from actual input-free queue worker observations.
 Its original descriptor, actual worker, source bytes and content-addressed index
 are published only through fenced atomic completion. Wrong workers, stale leases,
@@ -14,9 +23,8 @@ separate native admitted-worker CI gate. Local Windows passes 2,311/2,311, stric
 nonincremental build and full format. The existing Lovable consumer validates
 the optional field (380/380 local tests, CI40613860385 green on Windows/Ubuntu).
 Core CI and exact promotion remain separate gates until their receipts pass.
-Hosted video is **not collected** by
-this observation protocol; the next step is the actual recorded collector under
-this admission/attempt boundary, with capture exclusions and cleanup proven.
+That earlier observation-only mode collects no video. The explicit passive mode
+above extends its admission/attempt boundary without changing the default.
 
 **Privensic Screen Reader — automated evidence assessment:** [contract1.5.0](decisions/0057-automated-website-evidence-readiness.md)
 adds eight operational conditions and the private `evidence_assess` MCP tool.
@@ -54,8 +62,9 @@ from provider-user/S3 acceptance. Local Windows passes **2,199/2,199**, with87
 new cases, strict build and format; remote CI/deployment remain separately
 reported gates. Operator imports are not scan admissions.
 
-**Next for recorded evidence:** extend the actual recorded collector under the
-proven tenant/scan/job/attempt boundary and fenced archive completion. The original
+**Next for recorded evidence:** add actual keyboard source/action/result edges
+and measured recording timing under the proven tenant/scan/job/attempt boundary
+and fenced archive completion. The original
 user's notebook archive reconnect, graph/video playback and persistent sign-in
 already passed at UI2d628d3/core13df2c3 through Edge v2. Operator imports remain
 distinct from admitted runs. The new assessment evaluates supplied records; it
@@ -87,16 +96,16 @@ That backend delivery does not enable hosted recording.
 
 <a id="next-isolated-hosted-reader-sessions"></a>
 
-## Next: recorded collection under an admitted attempt
+## Next: admitted keyboard traversal recordings
 
-The input-free worker's producer identity and atomic archive publication are
-implemented in [0058](decisions/0058-admitted-observation-provenance.md). Extend
-the actual isolated collector to retain original media and source/action/result
-graphs under that admitted attempt. Prove acknowledged exclusion, collection
-timing, complete original/index readback and native cleanup before completion.
-Keep partial, cancelled and unconfirmed recordings explicit. The existing
-two-file observation package reports `Recording=NotCollected`; it cannot be
-promoted into a recorded journey or objective result.
+The producer identity and atomic archive publication in [0058](decisions/0058-admitted-observation-provenance.md)
+now support [explicit passive recording](decisions/0059-admitted-passive-recording.md).
+Extend the admitted collector with bounded authored keyboard traversal, actual
+source/action/result edges and measured media/event timing. Prove acknowledged
+exclusion, complete originals/index readback and native cleanup before fenced
+completion. Retain partial/cancelled outcomes explicitly. Passive captures have
+one state and zero input edges; default observations remain `NotCollected`.
+Neither may be promoted into a completed keyboard journey or objective result.
 
 ### Accepted prerequisites
 

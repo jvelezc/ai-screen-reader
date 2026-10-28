@@ -15,7 +15,7 @@ internal sealed class PortalObservationReader(string root, IObservationArchive? 
 {
     public async Task<PortalObservationResponse?> ReadAsync(PortalJobResult job, CancellationToken token)
     {
-        var descriptor = new FixtureJob(job.OrganizationId, job.ScanId, job.JobId, job.Generation);
+        var descriptor = new FixtureJob(job.OrganizationId, job.ScanId, job.JobId, job.Generation) { RecordObservation = job.RecordObservation };
         try { descriptor.Validate(); }
         catch (BrowserOperationException) { throw new PortalFault(503, "CONTROL_EVIDENCE_IDENTITY_UNCONFIRMED"); }
         if (job.State != "completed" || job.Reference != descriptor.Reference || job.Digest is null || job.Digest.Length != 64
@@ -100,7 +100,7 @@ internal sealed class PortalScanService(IPortalProjectClient project, IPortalObs
         }
         if (job.State == "blocked") return new(record, "NotCollected", job.ErrorCode, null);
         if (job.State != "completed") return new(record, "Pending", job.ErrorCode, null);
-        try { job.WorkerArchive?.Validate(new(organization, scan, job.JobId, job.Generation)); }
+        try { job.WorkerArchive?.Validate(new(organization, scan, job.JobId, job.Generation) { RecordObservation = job.RecordObservation }); }
         catch (BrowserOperationException) { throw new PortalFault(503, "CONTROL_EVIDENCE_IDENTITY_UNCONFIRMED"); }
         try
         {

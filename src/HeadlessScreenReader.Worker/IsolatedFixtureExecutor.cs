@@ -36,17 +36,21 @@ public sealed partial class IsolatedFixtureExecutor : IFixtureExecutor
     {
         job.Validate();
         NativeOwnership intent;
-        try { intent = await _journal.BeginAsync(job, _runtime, _image, token); }
+        // Native cleanup journals retain only the original four-part identity.
+        // Recovery never executes work; older rollback binaries can still remove this exact owned container.
+        try { intent = await _journal.BeginAsync(job with { RecordObservation = false }, _runtime, _image, token); }
         catch (Exception) { throw new BrowserOperationException("WORKER_NATIVE_OWNERSHIP_UNCONFIRMED"); }
         var name = intent.ContainerName;
         try
         {
             await CreateAndInspectAsync(intent, token);
             var result = await InvokeAsync(["start", "--attach", "--interactive", name],
-                JsonSerializer.SerializeToUtf8Bytes(job), token, TimeSpan.FromSeconds(120));
+                JsonSerializer.SerializeToUtf8Bytes(job), token, TimeSpan.FromSeconds(120),
+                job.RecordObservation ? PassiveObservationRecording.MaximumBundleBytes : FixtureObservation.MaximumBytes);
             if (result.Code != 0) throw new InvalidDataException("WORKER_CONTAINER_EXECUTION_UNCONFIRMED");
             // A valid observation also requires successful, independently confirmed container removal below.
-            ObservationStore.Validate(result.Bytes, job);
+            if (job.RecordObservation) PassiveRecordingBundle.Decode(result.Bytes, job);
+            else ObservationStore.Validate(result.Bytes, job);
             return result.Bytes;
         }
         finally
@@ -214,7 +218,7 @@ public sealed partial class IsolatedFixtureExecutor : IFixtureExecutor
     }
 
     private async Task<(int Code, byte[] Bytes)> InvokeAsync(IEnumerable<string> args, byte[]? input,
-        CancellationToken token, TimeSpan? budget = null)
+        CancellationToken token, TimeSpan? budget = null, int maximumOutputBytes = FixtureObservation.MaximumBytes)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
         timeout.CancelAfter(budget ?? TimeSpan.FromSeconds(20));
@@ -232,7 +236,7 @@ public sealed partial class IsolatedFixtureExecutor : IFixtureExecutor
         using var process = new Process { StartInfo = start };
         if (!process.Start()) throw new IOException("WORKER_RUNTIME_START_UNCONFIRMED");
         using var kill = timeout.Token.Register(() => { try { if (!process.HasExited) process.Kill(); } catch (Exception) { } });
-        var output = ReadBoundedAsync(process.StandardOutput.BaseStream, timeout);
+        var output = ReadBoundedAsync(process.StandardOutput.BaseStream, timeout, maximumOutputBytes);
         var errors = ReadBoundedAsync(process.StandardError.BaseStream, timeout);
         try
         {
@@ -251,7 +255,7 @@ public sealed partial class IsolatedFixtureExecutor : IFixtureExecutor
         }
     }
 
-    private static async Task<byte[]> ReadBoundedAsync(Stream stream, CancellationTokenSource stop)
+    private static async Task<byte[]> ReadBoundedAsync(Stream stream, CancellationTokenSource stop, int maximumBytes = FixtureObservation.MaximumBytes)
     {
         using var bytes = new MemoryStream();
         var buffer = new byte[8192];
@@ -259,7 +263,7 @@ public sealed partial class IsolatedFixtureExecutor : IFixtureExecutor
         {
             var count = await stream.ReadAsync(buffer, stop.Token);
             if (count == 0) return bytes.ToArray();
-            if (bytes.Length + count > FixtureObservation.MaximumBytes)
+            if (bytes.Length + count > maximumBytes)
             {
                 await stop.CancelAsync();
                 throw new InvalidDataException("WORKER_RUNTIME_OUTPUT_TOO_LARGE");

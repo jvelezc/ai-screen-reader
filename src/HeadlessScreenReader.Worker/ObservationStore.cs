@@ -45,6 +45,12 @@ public sealed class ObservationStore(string root, IObservationArchive? archive =
     public async Task<StoredObservation> PersistAsync(byte[] bytes, FixtureJob job, CancellationToken token, Guid? worker = null)
     {
         bytes = bytes.ToArray();
+        var recording = job.RecordObservation ? PassiveRecordingBundle.Decode(bytes, job) : null;
+        if (recording is not null)
+        {
+            if (producer is null) throw new BrowserOperationException("WORKER_RECORDING_ARCHIVE_REQUIRED");
+            bytes = recording.Observation;
+        }
         Validate(bytes, job);
         var directory = Path.GetFullPath(root);
         var path = Path.Combine(directory, job.Reference.Replace('/', Path.DirectorySeparatorChar));
@@ -67,7 +73,7 @@ public sealed class ObservationStore(string root, IObservationArchive? archive =
             if (archive is not null)
                 await archive.FinalizeAsync(job, readback, digest, token).ConfigureAwait(false);
             var receipt = producer is null ? null : await producer.FinalizeAsync(job,
-                worker ?? throw new BrowserOperationException("WORKER_EVIDENCE_PROVENANCE_UNCONFIRMED"), readback, digest, token).ConfigureAwait(false);
+                worker ?? throw new BrowserOperationException("WORKER_EVIDENCE_PROVENANCE_UNCONFIRMED"), readback, digest, token, recording).ConfigureAwait(false);
             return new(job.Reference, digest) { OffHostReadbackVerified = archive is not null, WorkerArchive = receipt };
         }
         finally { if (File.Exists(pending)) File.Delete(pending); }

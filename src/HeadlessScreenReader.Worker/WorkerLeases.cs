@@ -46,7 +46,7 @@ public sealed class PostgresWorkerLeases : IWorkerLeases, IAsyncDisposable
 
     public async Task<WorkerClaim> ClaimAsync(Guid worker, CancellationToken token)
     {
-        await using var command = _source.CreateCommand("select * from hsr.claim_scan_job($1,30)");
+        await using var command = _source.CreateCommand("select * from hsr.claim_scan_job_with_recording($1,30)");
         command.Parameters.AddWithValue(worker);
         await using var rows = await command.ExecuteReaderAsync(token);
         if (!await rows.ReadAsync(token)) throw new InvalidDataException("WORKER_CLAIM_UNCONFIRMED");
@@ -54,7 +54,7 @@ public sealed class PostgresWorkerLeases : IWorkerLeases, IAsyncDisposable
         WorkerLease? lease = null;
         if (status == "Claimed")
         {
-            var job = new FixtureJob(rows.GetGuid(1), rows.GetGuid(2), rows.GetGuid(3), rows.GetInt64(4));
+            var job = new FixtureJob(rows.GetGuid(1), rows.GetGuid(2), rows.GetGuid(3), rows.GetInt64(4)) { RecordObservation = rows.GetBoolean(8) };
             job.Validate();
             lease = new(job, worker, rows.GetGuid(5));
         }

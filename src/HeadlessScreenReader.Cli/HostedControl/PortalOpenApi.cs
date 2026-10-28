@@ -12,7 +12,7 @@ internal static class PortalOpenApi
 {
     private static readonly Lazy<string> Cached = new(Build);
     public static string Document => Cached.Value;
-    public const string ContractVersion = "1.6.0";
+    public const string ContractVersion = "1.7.0";
 
     private static string Build()
     {
@@ -144,14 +144,19 @@ internal static class PortalOpenApi
                 {
                     properties["origin"]!["const"] = "QueueWorkerObservation";
                     var receipt = properties["receipt"]!["properties"]!;
-                    receipt["files"]!["const"] = 2;
-                    receipt["bytes"]!["minimum"] = 1; receipt["bytes"]!["maximum"] = FixtureObservation.MaximumBytes + 4096;
+                    properties["recording"]!["enum"] = Strings("NotCollected", "PassiveObservation");
+                    receipt["files"]!["enum"] = new JsonArray(2, 4);
+                    receipt["bytes"]!["minimum"] = 1; receipt["bytes"]!["maximum"] = PassiveObservationRecording.MaximumBundleBytes + 4096;
                     receipt["objectReadbackVerified"]!["const"] = true; receipt["indexReadbackVerified"]!["const"] = true;
                     receipt["sourceManifestSha256"]!["pattern"] = "^[a-f0-9]{64}$";
-                    value["description"] = "Atomic admitted attempt receipt. Runtime validation binds organization, scan, job, generation and archive identity. Historical original/index readback does not establish current availability. No recording, dispatched input or verified goal is produced by this observation-only worker.";
+                    value["description"] = "Atomic admitted attempt receipt. Default NotCollected has two files. Explicit PassiveObservation has four files, sanitized fixed-fixture original video and one capture state with zero input edges; no timing alignment or verified objective. Runtime validation binds mode, inventory, scope and original/index readback; historical readback is separate from current availability.";
+                    value["allOf"] = JsonNode.Parse("""
+                        [{"if":{"properties":{"recording":{"const":"NotCollected"}}},"then":{"properties":{"receipt":{"properties":{"files":{"const":2},"bytes":{"maximum":1052672}}}}},"else":{"properties":{"receipt":{"properties":{"files":{"const":4}}}}}}]
+                        """);
                 }
                 if (context.TypeInfo.Type == typeof(FixtureJob))
                 {
+                    value["required"] = Strings(properties.Select(p => p.Key).Where(key => key != "recordObservation").ToArray());
                     properties["generation"]!["minimum"] = 1; properties["generation"]!["maximum"] = 3;
                     properties["reference"]!["maxLength"] = 200;
                 }
@@ -167,7 +172,11 @@ internal static class PortalOpenApi
                     properties["path"]!["maxLength"] = 240; properties["sha256"]!["pattern"] = "^[a-f0-9]{64}$";
                 }
                 if (context.TypeInfo.Type == typeof(PortalCreateScanRequest))
+                {
                     properties["requestId"]!["not"] = new JsonObject { ["const"] = Guid.Empty.ToString("D") };
+                    properties["recordObservation"]!["default"] = false;
+                    properties["recordObservation"]!["description"] = "Explicit passive video of the sanitized bundled fixture. Zero input and no objective or timing-alignment claim. Idempotent retries must retain this mode.";
+                }
                 if (context.TypeInfo.Type == typeof(PortalConfigurationResponse) || context.TypeInfo.Type == typeof(PortalScanResponse))
                 {
                     properties["fixture"]!["const"] = "synthetic-shop";

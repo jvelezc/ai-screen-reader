@@ -11,7 +11,7 @@ $created=$false; $built=$false; $removed=$false; $imageRemoved=$false; $ready=$f
 $cases=[Collections.Generic.List[string]]::new()
 $releaseCreated=$false
 $script:executed=0; $script:failed=0
-$expected=if($IsLinux){33}else{31}; $linuxSignalPerformed=$false
+$expected=if($IsLinux){39}else{37}; $linuxSignalPerformed=$false
 $recoveryResources=[Collections.Generic.List[string]]::new()
 $names=@('POSTGRES_PASSWORD','HSR_WORKER_DATABASE','HSR_WORKER_IMAGE','HSR_WORKER_EVIDENCE','HSR_WORKER_RUNTIME','HSR_WORKER_SECCOMP',
     'HSR_CONTROL_PUBLISHABLE_KEY','HSR_CONTROL_EVIDENCE','HSR_CONTROL_PORT','HSR_CONTROL_ORIGIN','HSR_RELEASE_COMMIT')
@@ -198,6 +198,29 @@ try {
     Assert-Proof ((Get-FileHash $manifestPath -Algorithm SHA256).Hash.ToLowerInvariant() -ceq $producer.manifest -and $source.Schema -ceq 'hsr-worker-observation-package-v1' -and $source.Job.OrganizationId -eq $org -and $source.Job.ScanId -eq $job.scan_id -and $source.Job.JobId -eq $job.job_id -and $source.Job.Generation -eq 1 -and $source.WorkerId -eq $producer.actual_worker -and $source.ObservationSha256 -ceq $facts.digest -and $source.Origin -ceq 'QueueWorkerObservation' -and $source.Recording -ceq 'NotCollected' -and $source.DispatchedInputs -eq 0 -and -not $source.GoalVerified) 'ProducerManifestPreservesNoRecordingNoInputAndActualAttemptScope'
     $remaining=Invoke-ReaderRuntime $Runtime @('ps','--all','--filter','name=^hsr-observation-','--format','{{.ID}}')
     Assert-Proof ([string]::IsNullOrWhiteSpace($remaining.Text)) 'OwnedObservationContainerIsRemovedBeforeCompletion'
+    $stage='passive-recording'
+    $recordRequest=[Guid]::NewGuid()
+    $admission=Invoke-ProofSql "begin; set local role authenticated; select set_config('request.jwt.claim.sub','$user',true); select row_to_json(r) from hsr.create_recorded_observation('$org','$recordRequest') r; commit;"
+    $recordJob=($admission -split "`n" | Where-Object {$_ -match '^\{'}) | ConvertFrom-Json
+    $output=@(& dotnet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --once 2>&1)
+    $recordExit=$LASTEXITCODE; $recordResult=($output -join "`n") | ConvertFrom-Json
+    $recordOutput=$output -join "`n"; $recordOutput | Set-Content (Join-Path $folder 'passive-worker.log') -Encoding utf8NoBOM
+    $recordFacts=(Invoke-ProofSql "select json_build_object('state',j.state,'mode',j.record_observation,'index',j.archive_index_sha256,'manifest',j.archive_manifest_sha256,'bytes',j.archive_bytes,'digest',j.result_digest,'worker',j.archive_worker_id,'actual_worker',a.worker_id) from hsr.scan_jobs j join hsr.job_attempts a on a.organization_id=j.organization_id and a.job_id=j.id and a.generation=j.generation where j.id='$($recordJob.job_id)'" ) | ConvertFrom-Json
+    Assert-Proof ($recordExit -eq 0 -and $recordResult.State -eq 'Observed' -and $recordResult.JobId -eq $recordJob.job_id -and $recordFacts.mode -and $recordFacts.state -eq 'completed' -and $recordFacts.worker -eq $recordFacts.actual_worker) 'RealWorkerProducesExplicitPassiveRecordingAfterAdmittedClaim'
+    $recordPath=Join-Path $env:HSR_WORKER_EVIDENCE $recordResult.Reference; $recordObservation=Get-Content $recordPath -Raw | ConvertFrom-Json
+    Assert-Proof ($recordObservation.Job.RecordObservation -and $recordObservation.Job.JobId -eq $recordJob.job_id -and $recordObservation.FixtureSha256 -ceq 'b49eef1ff4f1e225ea263fc559c2e4ab5ea75a75a3c6ee091b57980e210a0d7b' -and $recordObservation.DispatchedInputs -eq 0 -and -not $recordObservation.GoalVerified -and @($recordObservation.Snapshot.Nodes | Where-Object Role -In @('textbox','code')).Count -eq 0 -and $recordObservation.Shutdown.ProcessExitConfirmed -and $recordObservation.Shutdown.CollectorStopAcknowledged) 'PassiveRecordedObservationUsesSanitizedFixtureAndZeroInput'
+    $recordArchive=Join-Path $env:HSR_WORKER_EVIDENCE "archives/traversal-v1/$(([Guid]$org).ToString('N'))/$(([Guid]$recordJob.job_id).ToString('N'))/$($recordFacts.index)"
+    $recordIndexPath=Join-Path $recordArchive 'index.json'; $recordIndex=Get-Content $recordIndexPath -Raw | ConvertFrom-Json
+    Assert-Proof ((Get-FileHash $recordIndexPath -Algorithm SHA256).Hash.ToLowerInvariant() -ceq $recordFacts.index -and $recordIndex.Files.Count -eq 4 -and $recordIndex.SourceManifestSha256 -ceq $recordFacts.manifest -and $recordFacts.bytes -eq ($recordIndex.Files | Measure-Object Bytes -Sum).Sum -and @($recordIndex.Files | Where-Object Path -CEQ 'original.webm').Count -eq 1 -and @($recordIndex.Files | Where-Object Path -CEQ 'capture-state.json').Count -eq 1) 'PassiveArchiveRetainsFourOriginalsWithIndexLastHashes'
+    $videoEntry=$recordIndex.Files | Where-Object Path -CEQ 'original.webm'; $captureEntry=$recordIndex.Files | Where-Object Path -CEQ 'capture-state.json'
+    $capturePath=Join-Path $recordArchive "objects/$($captureEntry.Parts[0].Sha256)"; $recordCapture=Get-Content $capturePath -Raw | ConvertFrom-Json
+    $videoBuffer=[IO.MemoryStream]::new(); $partsValid=$true
+    try { foreach($part in $videoEntry.Parts){$partPath=Join-Path $recordArchive "objects/$($part.Sha256)"; $partBytes=[IO.File]::ReadAllBytes($partPath); $partsValid=$partsValid -and $partBytes.Length -eq $part.Bytes -and (Get-FileHash $partPath -Algorithm SHA256).Hash.ToLowerInvariant() -ceq $part.Sha256; $videoBuffer.Write($partBytes)}; $videoBytes=$videoBuffer.ToArray() } finally {$videoBuffer.Dispose()}
+    $videoDigest=[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($videoBytes)).ToLowerInvariant()
+    Assert-Proof ($partsValid -and $videoBytes.Length -eq $videoEntry.Bytes -and $videoDigest -ceq $videoEntry.Sha256 -and $recordCapture.VideoSha256 -ceq $videoDigest -and $recordCapture.VideoBytes -eq $videoBytes.Length -and $videoBytes[0] -eq 0x1a -and $videoBytes[1] -eq 0x45 -and $videoBytes[2] -eq 0xdf -and $videoBytes[3] -eq 0xa3 -and $recordCapture.DecodedVideoFrames -gt 0) 'PassiveOriginalVideoMatchesDecodedCollectorReceipt'
+    Assert-Proof ((Get-FileHash $capturePath -Algorithm SHA256).Hash.ToLowerInvariant() -ceq $captureEntry.Sha256 -and $recordCapture.Schema -ceq 'hsr-passive-observation-recording-v1' -and $recordCapture.Job.JobId -eq $recordJob.job_id -and $recordCapture.Job.RecordObservation -and $recordCapture.States.Count -eq 1 -and $recordCapture.Edges.Count -eq 0 -and $recordCapture.States[0].DocumentId -ceq $recordObservation.Snapshot.DocumentId -and $recordCapture.States[0].ObservationSha256 -ceq $recordFacts.digest -and $recordCapture.Capture.Phase -ceq 'Closed' -and @($recordCapture.Capture.Events | Where-Object Phase -CEQ 'Excluded').Count -gt 0 -and $recordCapture.Timing -ceq 'NotAlignedToSnapshot') 'PassiveGraphRetainsSingleActualCaptureAndZeroInputEdges'
+    $remaining=Invoke-ReaderRuntime $Runtime @('ps','--all','--filter','name=^hsr-observation-','--format','{{.ID}}')
+    Assert-Proof ([string]::IsNullOrWhiteSpace($remaining.Text)) 'PassiveCaptureHasNoRemainingOwnedContainerBeforeCompletion'
     $stage='blocked-execution'
     $failureRequest=[Guid]::NewGuid()
     $admission=Invoke-ProofSql "begin; set local role authenticated; select set_config('request.jwt.claim.sub','$user',true); select row_to_json(r) from hsr.create_scan('$org','$failureRequest') r; commit;"
@@ -258,7 +281,7 @@ try {
     $removal=Get-Content (Join-Path $env:HSR_WORKER_EVIDENCE ".runtime/removals/$($nativeOwner.ToString('N')).json") -Raw|ConvertFrom-Json
     Assert-Proof (-not (Test-Path $intentPath) -and $removal.ContainerAbsenceConfirmed -and $removal.RecoveredAfterRestart -and $removal.Intent.Job.JobId -eq $descriptor.JobId) 'RecoveryPersistsActualAbsenceBeforeRetiringIntent'
     $unchanged=(Invoke-ProofSql "select json_build_object('jobs',(select count(*) from hsr.scan_jobs),'attempts',(select count(*) from hsr.job_attempts),'completed',(select count(*) from hsr.attempt_events where kind='Completed'),'queue',(select count(*) from pgmq.q_hsr_scan_jobs))")|ConvertFrom-Json
-    Assert-Proof ($unchanged.jobs -eq 2 -and $unchanged.attempts -eq 2 -and $unchanged.completed -eq 1 -and $unchanged.queue -eq 0 -and @(Get-ChildItem $env:HSR_WORKER_EVIDENCE -Recurse -Filter observation.json).Count -eq 0) 'NativeRecoveryNeedsNoDatabaseCredentialAndCannotInventObservation'
+    Assert-Proof ($unchanged.jobs -eq 3 -and $unchanged.attempts -eq 3 -and $unchanged.completed -eq 2 -and $unchanged.queue -eq 0 -and @(Get-ChildItem $env:HSR_WORKER_EVIDENCE -Recurse -Filter observation.json).Count -eq 0) 'NativeRecoveryNeedsNoDatabaseCredentialAndCannotInventObservation'
     # A retained intent never authorizes deleting a same-name container with another owner.
     $badOwner=[Guid]::NewGuid();$badTarget="hsr-observation-$($badOwner.ToString('N'))"
     $intent.Owner="$badOwner"; $badPath=Join-Path $intentRoot "$($badOwner.ToString('N')).json"

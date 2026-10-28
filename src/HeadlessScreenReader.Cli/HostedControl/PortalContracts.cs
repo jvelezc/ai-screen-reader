@@ -66,7 +66,10 @@ internal sealed record PortalWorkspaceResponse(Guid Id, string Name);
 /// <summary>Idempotent workspace bootstrap receipt.</summary>
 internal sealed record PortalWorkspaceBootstrap(Guid Id, bool Created);
 /// <summary>Client request identity only; fixture and profile remain server controlled.</summary>
-internal sealed record PortalCreateScanRequest(Guid RequestId);
+internal sealed record PortalCreateScanRequest(Guid RequestId)
+{
+    public bool RecordObservation { get; init; }
+}
 /// <summary>Durable fixture admission receipt; it does not attest to execution.</summary>
 internal sealed record PortalScanCreatedResponse(Guid OrganizationId, Guid ScanId, Guid JobId);
 /// <summary>Tenant-visible scan state and its database creation time.</summary>
@@ -78,6 +81,7 @@ internal sealed record PortalScanListResponse(PortalScanResponse[] Items, bool H
 internal sealed record PortalJobResult(Guid OrganizationId, Guid ScanId, Guid JobId, string State, long Generation,
     string? Digest, string? Reference, string? ErrorCode)
 {
+    public bool RecordObservation { get; init; }
     public WorkerEvidenceArchive? WorkerArchive { get; init; }
 }
 /// <summary>Stored source semantics. Null required state remains unobserved.</summary>

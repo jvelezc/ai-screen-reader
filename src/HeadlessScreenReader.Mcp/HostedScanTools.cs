@@ -7,9 +7,10 @@ namespace HeadlessScreenReader.Mcp;
 [McpServerToolType]
 public sealed class HostedScanTools(HostedScanClient client)
 {
-    [McpServerTool(Name = "scan_start_fixture", Destructive = false, OpenWorld = false), Description("Admit the core's fixed input-free synthetic-shop job. Supply a fresh UUID requestId per intended run and retain it. For an explicit retry after a lost response, reuse exactly the SAME requestId: the API enforces idempotency. No automatic retries. The returned scanId/jobId acknowledge admission only, not execution, saved evidence or a goal. The worker continues after disconnect. No URLs, credentials, input or recording.")]
-    public async Task<CallToolResult> StartFixture(string requestId, CancellationToken cancellationToken = default) =>
-        ReaderTools.Result(await client.StartFixtureAsync(requestId, cancellationToken));
+    [McpServerTool(Name = "scan_start_fixture", Destructive = false, OpenWorld = false), Description("Admit the core's fixed input-free synthetic-shop job. recordObservation=true explicitly requests passive video of its sanitized no-editable-field variant: one capture state, zero input edges and no timing alignment or verified objective. Default false creates no recording. Retain a fresh UUID requestId per intended run; explicit retries after a lost response must reuse the SAME ID and recording option. No automatic retries. Returned scanId/jobId acknowledge admission only, not execution or evidence. The worker continues after disconnect. No URL or credential entry.")]
+    public async Task<CallToolResult> StartFixture(string requestId, CancellationToken cancellationToken = default,
+        [Description("Explicitly request passive video of the sanitized fixed fixture. Zero input, one capture state, no traversal or verified objective. Reuse the same value on retries.")] bool recordObservation = false) =>
+        ReaderTools.Result(await client.StartFixtureAsync(requestId, cancellationToken, recordObservation));
 
     [McpServerTool(Name = "scan_list", ReadOnly = true, OpenWorld = false), Description("List up to 50 tenant-visible recent fixture runs using current upstream authorization. hasMore means older runs are omitted; no historical paging or completeness claim. Known scanIds can be read directly with scan_report.")]
     public async Task<CallToolResult> List(CancellationToken cancellationToken = default) => ReaderTools.Result(await client.ListAsync(cancellationToken));

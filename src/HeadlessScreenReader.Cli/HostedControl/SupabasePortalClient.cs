@@ -13,6 +13,8 @@ internal interface IPortalProjectClient
     Task<PortalWorkspaceResponse?> WorkspaceAsync(PortalIdentity actor, Guid organization, CancellationToken token);
     Task<PortalScanResponse[]> ScansAsync(PortalIdentity actor, Guid organization, CancellationToken token);
     Task<PortalScanCreatedResponse> CreateScanAsync(PortalIdentity actor, Guid organization, Guid request, CancellationToken token);
+    Task<PortalScanCreatedResponse> CreateRecordedObservationAsync(PortalIdentity actor, Guid organization, Guid request, CancellationToken token) =>
+        throw new PortalFault(503, "CONTROL_RECORDING_ADMISSION_UNAVAILABLE");
     Task<PortalScanResponse?> ScanAsync(PortalIdentity actor, Guid organization, Guid scan, CancellationToken token);
     Task<PortalJobResult?> JobAsync(PortalIdentity actor, Guid organization, Guid scan, CancellationToken token);
 }
@@ -84,6 +86,16 @@ internal sealed class SupabasePortalClient(HttpClient http, string publishableKe
         return new(organization, Id(row, "scan_id"), Id(row, "job_id"));
     }
 
+    public async Task<PortalScanCreatedResponse> CreateRecordedObservationAsync(PortalIdentity actor, Guid organization, Guid requestId, CancellationToken token)
+    {
+        using var request = Request(HttpMethod.Post, "rest/v1/rpc/create_recorded_observation", actor.Token);
+        request.Content = new StringContent(JsonSerializer.Serialize(new { p_organization_id = organization, p_request_id = requestId }),
+            System.Text.Encoding.UTF8, "application/json");
+        using var json = await SendAsync(request, false, token).ConfigureAwait(false);
+        var row = Single(json.RootElement);
+        return new(organization, Id(row, "scan_id"), Id(row, "job_id"));
+    }
+
     public async Task<PortalScanResponse?> ScanAsync(PortalIdentity actor, Guid organization, Guid scan, CancellationToken token)
     {
         using var request = Request(HttpMethod.Get, ScanPath(organization) + "&id=eq." + scan.ToString("D") + "&limit=2", actor.Token);
@@ -96,7 +108,7 @@ internal sealed class SupabasePortalClient(HttpClient http, string publishableKe
 
     public async Task<PortalJobResult?> JobAsync(PortalIdentity actor, Guid organization, Guid scan, CancellationToken token)
     {
-        var path = "rest/v1/scan_jobs?select=organization_id,scan_id,id,state,generation,result_digest,result_reference,last_error_code,archive_index_sha256,archive_manifest_sha256,archive_bytes,archive_worker_id"
+        var path = "rest/v1/scan_jobs?select=organization_id,scan_id,id,state,generation,result_digest,result_reference,last_error_code,archive_index_sha256,archive_manifest_sha256,archive_bytes,archive_worker_id,record_observation"
             + "&organization_id=eq." + organization.ToString("D") + "&scan_id=eq." + scan.ToString("D")
             + "&stage=eq.observe-fixture&limit=2";
         using var request = Request(HttpMethod.Get, path, actor.Token);
@@ -109,6 +121,11 @@ internal sealed class SupabasePortalClient(HttpClient http, string publishableKe
         var result = new PortalJobResult(Id(row, "organization_id"), Id(row, "scan_id"), Id(row, "id"),
             Text(row, "state", 20), generationValue, Optional(row, "result_digest", 64),
             Optional(row, "result_reference", 200), Optional(row, "last_error_code", 100));
+        if (row.TryGetProperty("record_observation", out var mode))
+        {
+            if (mode.ValueKind is not (JsonValueKind.True or JsonValueKind.False)) throw InvalidResponse();
+            result = result with { RecordObservation = mode.GetBoolean() };
+        }
         if (result.OrganizationId != organization || result.ScanId != scan || result.Generation is < 0 or > 3
             || result.State is not ("queued" or "leased" or "completed" or "blocked")
             || result.ErrorCode is not null && !Regex.IsMatch(result.ErrorCode, "\\A[A-Z][A-Z0-9_]{2,99}\\z"))
@@ -128,9 +145,11 @@ internal sealed class SupabasePortalClient(HttpClient http, string publishableKe
         {
             if (result.State != "completed" || indexHash is null || manifestHash is null
                 || !Guid.TryParse(workerId, out var producer) || !hasBytes || !archiveBytes.TryGetInt64(out var length)) throw InvalidResponse();
-            var receipt = new WorkerEvidenceArchive(new(organization, scan, result.JobId, result.Generation), producer,
-                new(new(organization, result.JobId, indexHash), manifestHash, 2, length, true, true));
-            try { receipt.Validate(new(organization, scan, result.JobId, result.Generation)); }
+            var expected = new FixtureJob(organization, scan, result.JobId, result.Generation) { RecordObservation = result.RecordObservation };
+            var receipt = new WorkerEvidenceArchive(expected, producer,
+                new(new(organization, result.JobId, indexHash), manifestHash, result.RecordObservation ? 4 : 2, length, true, true))
+            { Recording = result.RecordObservation ? "PassiveObservation" : "NotCollected" };
+            try { receipt.Validate(expected); }
             catch (BrowserOperationException) { throw InvalidResponse(); }
             result = result with { WorkerArchive = receipt };
         }

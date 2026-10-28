@@ -19,12 +19,13 @@ public sealed class HostedScanClient : IAsyncDisposable
     public HostedScanClient(HostedReaderOptions options, HttpMessageHandler? transport = null)
     { _options = options; _transport = new(options, transport); }
 
-    public Task<ToolReply> StartFixtureAsync(string requestId, CancellationToken token = default)
+    public Task<ToolReply> StartFixtureAsync(string requestId, CancellationToken token = default, bool recordObservation = false)
     {
         if (!Guid.TryParse(requestId, out var id) || id == Guid.Empty) return Task.FromResult(ToolReply.Error("SCAN_REQUEST_ID_REQUIRED"));
         return LockedAsync(async () =>
         {
-            using var document = await _transport.SendAsync(HttpMethod.Post, Collection, new { requestId = id }, 201).ConfigureAwait(false);
+            object request = recordObservation ? new { requestId = id, recordObservation = true } : new { requestId = id };
+            using var document = await _transport.SendAsync(HttpMethod.Post, Collection, request, 201).ConfigureAwait(false);
             var receipt = Parse<HostedScanAdmission>(document);
             Require(receipt.OrganizationId == _options.Organization && receipt.ScanId != Guid.Empty && receipt.JobId != Guid.Empty);
             return new("scan-admitted", null, ScreenReaderSession.Profile, new
@@ -36,6 +37,7 @@ public sealed class HostedScanClient : IAsyncDisposable
                 Execution = "NotEstablishedByAdmission",
                 Evidence = "NotEstablishedByAdmission",
                 GoalVerification = "NotAssessed",
+                RecordingRequested = recordObservation ? "PassiveObservation" : "NotRequested",
                 WorkerContinuesAfterDisconnect = true,
                 NextAction = "Read scan_report using scanId. An admission receipt does not establish execution or available evidence."
             });

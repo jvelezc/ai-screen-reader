@@ -205,7 +205,9 @@ internal static class PortalEndpoints
         {
             var input = await HostedControlServer.BodyAsync<PortalCreateScanRequest>(context, token).ConfigureAwait(false);
             if (organization == Guid.Empty || input.RequestId == Guid.Empty) throw new PortalFault(400, "CONTROL_REQUEST_INVALID");
-            var receipt = await project.CreateScanAsync(HostedControlServer.Actor(context), organization, input.RequestId, token).ConfigureAwait(false);
+            var receipt = input.RecordObservation
+                ? await project.CreateRecordedObservationAsync(HostedControlServer.Actor(context), organization, input.RequestId, token).ConfigureAwait(false)
+                : await project.CreateScanAsync(HostedControlServer.Actor(context), organization, input.RequestId, token).ConfigureAwait(false);
             return TypedResults.Created("/api/workspaces/" + organization.ToString("D") + "/scans/" + receipt.ScanId.ToString("D"), receipt);
         }).WithName("CreatePortalScan").WithSummary("Atomically admit the fixed input-free shop fixture using an idempotent request ID")
             .Produces<PortalScanCreatedResponse>(201).ProducesProblem(400).ProducesProblem(401).ProducesProblem(403).ProducesProblem(409);

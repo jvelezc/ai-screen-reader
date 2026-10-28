@@ -11,6 +11,58 @@ namespace HeadlessScreenReader.Tests;
 public sealed class HostedScanChromiumTests
 {
     [Fact]
+    public async Task PassiveOriginalVideoSurvivesAuthorizedHttpAndStdioReconnectWithoutInventingTraversal()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "hsr-passive-mcp-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var project = new PortalProjectStub();
+            var job = new HeadlessScreenReader.Domain.FixtureJob(PortalProjectClientTests.Organization, PortalProjectClientTests.Scan, PortalProjectClientTests.Job, 1)
+            { RecordObservation = true };
+            var store = new FileTraversalObjectStore(Path.Combine(root, "archives")); var archive = new TraversalArchive(store);
+            await using var server = await HostedControlServer.StartAsync(new(PortalProjectClientTests.Key, root, new string('a', 40), 0), project,
+                new PortalObservationReader(root), traversalArchive: archive);
+            await using (var first = await Connect(server.BaseAddress))
+            {
+                var reply = (await Call(first, "scan_start_fixture", new() { ["requestId"] = Guid.NewGuid(), ["recordObservation"] = true })).GetProperty("data");
+                Assert.Equal("PassiveObservation", reply.GetProperty("recordingRequested").GetString()); Assert.Equal(1, project.RecordedCreateCalls);
+            }
+            var collected = await FixtureWorker.RecordAsync(job); var bundle = PassiveRecordingBundle.Decode(collected, job);
+            var stored = await new ObservationStore(root, producer: new(archive)).PersistAsync(collected, job, default, Guid.NewGuid());
+            project.Record = project.Record with { State = "observed" };
+            project.Job = new(job.OrganizationId, job.ScanId, job.JobId, "completed", 1, stored.Sha256, job.Reference, null)
+            { RecordObservation = true, WorkerArchive = stored.WorkerArchive };
+            await using var reconnected = await Connect(server.BaseAddress);
+            var report = (await Call(reconnected, "scan_report", new() { ["scanId"] = job.ScanId })).GetProperty("data");
+            Assert.Equal("PassiveObservation", report.GetProperty("workerArchive").GetProperty("recording").GetString());
+            Assert.Equal(0, report.GetProperty("observation").GetProperty("dispatchedInputs").GetInt32()); Assert.False(report.GetProperty("observation").GetProperty("goalVerified").GetBoolean());
+            var identity = stored.WorkerArchive!.Receipt.Identity;
+            var arguments = new Dictionary<string, object?> { ["archiveId"] = identity.ArchiveId, ["indexSha256"] = identity.IndexSha256 };
+            var inventory = (await Call(reconnected, "archive_manifest", arguments)).GetProperty("data");
+            Assert.Equal(4, inventory.GetProperty("totalFiles").GetInt32());
+            var original = inventory.GetProperty("files").EnumerateArray().Single(f => f.GetProperty("path").GetString() == "original.webm");
+            arguments["path"] = "original.webm"; arguments["fileSha256"] = original.GetProperty("sha256").GetString();
+            using var restored = new MemoryStream(); long offset = 0;
+            do
+            {
+                arguments["offset"] = offset; var reply = (await Call(reconnected, "archive_file", arguments)).GetProperty("data");
+                var page = reply.GetProperty("page"); var bytes = page.GetProperty("data").GetBytesFromBase64();
+                Assert.Equal(TraversalArchive.Hash(bytes), reply.GetProperty("pageSha256").GetString()); restored.Write(bytes);
+                if (page.GetProperty("nextOffset").ValueKind == JsonValueKind.Null) break;
+                offset = page.GetProperty("nextOffset").GetInt64();
+            } while (true);
+            Assert.Equal(bundle.Video, restored.ToArray()); Assert.Single(bundle.Validate(job).States); Assert.Empty(bundle.Validate(job).Edges);
+            project.Revoked = true;
+            Assert.Equal("CONTROL_AUTHENTICATION_REQUIRED", (await Call(reconnected, "archive_file", arguments, error: true)).GetProperty("errorCode").GetString());
+        }
+        finally
+        {
+            Assert.Equal(Path.TrimEndingDirectorySeparator(Path.GetFullPath(Path.GetTempPath())), Path.GetDirectoryName(Path.GetFullPath(root)));
+            if (Directory.Exists(root)) Directory.Delete(root, true);
+        }
+    }
+
+    [Fact]
     public async Task ScanAuthorityFailureAndClientDisposalDoNotQuarantineLiveReader()
     {
         var project = new PortalProjectStub(); await using var server = await PortalHttpTests.Start(project);
