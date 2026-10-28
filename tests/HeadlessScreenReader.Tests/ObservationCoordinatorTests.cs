@@ -44,6 +44,18 @@ public sealed class ObservationCoordinatorTests
         Assert.Equal(status, result.State); Assert.Null(result.JobId); Assert.Equal(0, executor.Calls);
         Assert.Equal(0, database.Completes); Assert.Empty(database.Blocks);
     }
+    [Fact]
+    public async Task InterruptedKeyboardNonclaimRetainsJobAndReasonWithoutAllocatingInputOrLeakingCapability()
+    {
+        var lease = new WorkerLease(FixtureWorkerTests.Job() with { RecordObservation = true, TraversalRoute = 1 }, Guid.NewGuid(), Guid.NewGuid());
+        var database = new Leases(lease) { Claim = new("Blocked", null, lease.Job.JobId, "WORKER_INPUT_OUTCOME_UNCONFIRMED") };
+        var executor = new Executor((_, _) => throw new InvalidOperationException("No input may run"));
+        var result = await new ObservationCoordinator(database, executor, new("unused")).RunOnceAsync(lease.WorkerId, default);
+        Assert.Equal("Blocked", result.State); Assert.Equal(lease.Job.JobId, result.JobId);
+        Assert.Equal("WORKER_INPUT_OUTCOME_UNCONFIRMED", result.ErrorCode); Assert.Null(result.Reference);
+        Assert.Equal(0, executor.Calls); Assert.Equal(0, database.Completes); Assert.Empty(database.Blocks);
+        Assert.DoesNotContain(lease.Token.ToString(), JsonSerializer.Serialize(result));
+    }
     [Theory]
     [InlineData(true)]
     [InlineData(false)]

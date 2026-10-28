@@ -2,14 +2,18 @@
 
 October 28, 2026. Product: Privensic Screen Reader. This is the ordered remainder
 of the original plan, not a claim that all milestones are complete. The original
-proposal under `outputs/` is unchanged. Read [current delivery evidence](validation/admitted-keyboard-recording-v1.md)
-before marking the admitted-keyboard slice accepted.
+proposal under `outputs/` is unchanged. Read [current delivery evidence](validation/recorded-evidence-claims-v1.md)
+for the accepted recorded-claim slice and its controlled-fixture limits.
 
-## Next: verify assessment claims against recorded originals
+## Accepted: verify assessment claims against recorded originals
 
-The current assessment evaluates supplied scanner records and verifies original
-hashes. The admitted collector independently retains actual route facts. Join
-those contracts in the core, without moving evaluation into Edge or the UI.
+Core1.9, existing Edge v6 and UIe8cfb2d join these contracts. The original account
+verified fresh reached/Unknown recordings and rejected an altered success claim.
+Old recordings retain missing context. Local Windows and Windows/Ubuntu CI pass
+2,397 each; UI439 each, exact private deployment151 hashes and independent S3
+checks pass. [Acceptance receipt](validation/recorded-evidence-claims-v1.md).
+The delivered requirements below apply to controlled fixtures; they do not
+complete arbitrary website collection or authorize a real website package.
 
 1. Resolve the authorized tenant, scan, job, generation and actual producer from
    durable metadata; verify complete bound recording originals. An operator
@@ -32,7 +36,15 @@ Demonstrate the reached and Unknown routes through the original account, plus
 deterministic rejection tests, actual Chromium and both CI platforms. A complete
 single route need not be a sufficient website-evidence package.
 
-## Then: finish durable recorded-attempt recovery
+## Next: recover interrupted recordings safely
+
+The first safeguard blocks an expired keyboard lease instead of allocating a
+replacement attempt. It retains the original worker/generation and a visible
+`WORKER_INPUT_OUTCOME_UNCONFIRMED` reason. Stopped-source assessment requires a
+recording instead of suggesting that waiting will finish collection. Safe
+zero-input observation/passive retries remain available. This fence alone does
+not recover partially saved recordings or establish crash-after-input acceptance.
+See the [recovery validation record](validation/interrupted-recording-recovery-v1.md).
 
 Exercise the actual Linux worker under crash after input, upload before metadata
 commit, storage outage, lease expiry, cancellation and full staging disk. Retain

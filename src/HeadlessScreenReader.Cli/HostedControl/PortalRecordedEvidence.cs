@@ -22,6 +22,9 @@ internal sealed class PortalRecordedEvidence(IPortalProjectClient project, Trave
         await authorize().ConfigureAwait(false);
         PortalRecordedEvidenceResult Missing(string state, string issue) => new(null,
             EvidenceSourceProof.Missing with { State = state, Issues = [issue] }, []);
+        if (job.State == "blocked") return Missing("Unavailable", job.ErrorCode == "WORKER_INPUT_OUTCOME_UNCONFIRMED"
+            ? "This keyboard run stopped after its lease expired. Whether its input completed is unconfirmed, so the system will not automatically replay it. Keep the original attempt; start a separate new test only when repeating its actions is appropriate. This is not an accessibility barrier."
+            : "This run stopped without a confirmed completed recording. Waiting will not finish it. Open its report for the safe error and next action; a stopped worker is not an accessibility barrier.");
         if (job.State != "completed") return Missing("Pending", "The saved run has no completed recording yet. Open its status and review it again after collection finishes.");
         if (job.TraversalRoute == 0 || job.WorkerArchive is not { Recording: "KeyboardTraversal" } producer)
             return Missing("Unsupported", "This run did not retain a keyboard journey. Use an admitted recorded keyboard route.");

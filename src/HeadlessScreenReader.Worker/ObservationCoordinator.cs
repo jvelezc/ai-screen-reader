@@ -18,7 +18,7 @@ public sealed class ObservationCoordinator(IWorkerLeases leases, IFixtureExecuto
     public async Task<WorkerResult> RunOnceAsync(Guid workerId, CancellationToken token)
     {
         var claim = await leases.ClaimAsync(workerId, token);
-        if (claim.Lease is not { } lease) return new(claim.Status);
+        if (claim.Lease is not { } lease) return new(claim.Status, claim.JobId, ErrorCode: claim.ErrorCode);
         // Reconfirm server authority before allocating any browser resources.
         try
         {

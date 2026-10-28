@@ -13,7 +13,7 @@ public sealed class WorkerLease(FixtureJob job, Guid workerId, Guid token)
     public override string ToString() => $"WorkerLease({Job.JobId:N}, generation {Job.Generation}, capability redacted)";
 }
 
-public sealed record WorkerClaim(string Status, WorkerLease? Lease);
+public sealed record WorkerClaim(string Status, WorkerLease? Lease, Guid? JobId = null, string? ErrorCode = null);
 public interface IWorkerLeases
 {
     Task<WorkerClaim> ClaimAsync(Guid worker, CancellationToken token);
@@ -51,6 +51,11 @@ public sealed class PostgresWorkerLeases : IWorkerLeases, IAsyncDisposable
         await using var rows = await command.ExecuteReaderAsync(token);
         if (!await rows.ReadAsync(token)) throw new InvalidDataException("WORKER_CLAIM_UNCONFIRMED");
         var status = rows.GetString(0);
+        var jobId = rows.IsDBNull(3) ? (Guid?)null : rows.GetGuid(3);
+        var errorCode = rows.IsDBNull(7) ? null : rows.GetString(7);
+        if (errorCode is not null && (errorCode.Length is < 1 or > 128
+            || errorCode.Any(c => !char.IsAsciiLetterUpper(c) && !char.IsAsciiDigit(c) && c != '_')))
+            throw new InvalidDataException("WORKER_CLAIM_UNCONFIRMED");
         WorkerLease? lease = null;
         if (status == "Claimed")
         {
@@ -61,7 +66,7 @@ public sealed class PostgresWorkerLeases : IWorkerLeases, IAsyncDisposable
         else if (status is not ("Empty" or "Deferred" or "Deduplicated" or "Rejected" or "Blocked"))
             throw new InvalidDataException("WORKER_CLAIM_UNCONFIRMED");
         if (await rows.ReadAsync(token)) throw new InvalidDataException("WORKER_CLAIM_UNCONFIRMED");
-        return new(status, lease);
+        return new(status, lease, jobId, errorCode);
     }
 
     public Task<bool> RenewAsync(WorkerLease lease, CancellationToken token) =>

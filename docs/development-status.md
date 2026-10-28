@@ -2,13 +2,23 @@
 
 Updated October 28, 2026. The original proposal under `outputs/` remains unchanged. This status document tracks implementation against its acceptance gates.
 
-**Recorded-claim verification:** [contract 1.9.0](decisions/0062-recorded-evidence-claims.md)
+**Recorded-claim verification accepted:** [contract 1.9.0](decisions/0062-recorded-evidence-claims.md)
 adds admitted-source assessment through HTTP/private MCP. Complete originals and
 actual collector facts replace reliance on uploaded assertions; controlled
 fixtures, Unknown, missing context, repeats and comparator limits remain explicit.
 [Validation evidence](validation/recorded-evidence-claims-v1.md) separates source,
-local checks, CI, deployment and original-account acceptance. The ordered next
-gates remain in [the completion plan](completion-plan.md).
+local checks, CI, deployment and original-account acceptance. Windows and Ubuntu CI each pass2,397, UI439; exact private promotion151 hashes,
+Edge v6 source match and original-account reached/Unknown/mismatch, reload,
+export, keyboard/320px and native playback pass. **Next: recover interrupted
+recordings safely**, then real authority loss, bounded targets and hosted
+intervention/AT. [Ordered completion plan](completion-plan.md).
+
+**Recovery increment:** expired keyboard leases are blocked without a replacement
+input capability or generation. Original attempt identity and a specific safe
+reason survive; stopped-source assessment no longer says collection is pending.
+Safe input-free retries remain available. [Decision0063](decisions/0063-interrupted-keyboard-replay-fence.md)
+and [validation](validation/interrupted-recording-recovery-v1.md) keep this first
+fence separate from full interrupted-original recovery and native crash testing.
 
 **Admitted keyboard recording delivery:** [core contract 1.8.0](decisions/0060-admitted-keyboard-recordings.md)
 adds four fixed sanitized authored routes. Five originals retain actual keys,
@@ -17,9 +27,8 @@ observation is a pre-traversal baseline; its zero-input fields do not describe
 the route. Reached, disabled and Unknown remain distinct. The real isolated DB
 passes275/275; notebook passes437/437 locally. [Named acceptance gates](validation/admitted-keyboard-recording-v1.md)
 separate local, Windows/Linux CI, native worker, exact deployment and actual-user
-playback. **Next after this delivery: bind scanner event assertions to recorded
-originals in the automated website-evidence assessment, then wider hosted
-recovery/authority acceptance.** No human-review task is introduced.
+playback. **This prerequisite now feeds the accepted recorded-claim verification above.
+Interrupted-recording recovery is the next gate.** No human-review task is introduced.
 
 The first actual recorded path retained a CDP delivery/presentation-order
 reversal and correctly reported unconfirmed timing. [Decision0061](decisions/0061-recording-presentation-order.md)

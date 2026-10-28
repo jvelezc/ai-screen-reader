@@ -40,6 +40,20 @@ public sealed class PortalEvidenceReadinessTests
     }
 
     [Theory]
+    [InlineData("WORKER_INPUT_OUTCOME_UNCONFIRMED", "will not automatically replay")]
+    [InlineData("FIXTURE_OBSERVATION_UNCONFIRMED", "Waiting will not finish it")]
+    public async Task StoppedRecordingsCannotMasqueradeAsPendingOrAnAccessibilityBarrier(string code, string explanation)
+    {
+        var project = new PortalProjectStub(); project.Job = project.Job with { State = "blocked", ErrorCode = code };
+        var actor = new PortalIdentity(PortalProjectClientTests.Actor, "reader@example.invalid", PortalProjectClientTests.Bearer);
+        var result = await new PortalEvidenceReadiness(project, null).AssessAsync(actor, PortalProjectClientTests.Organization,
+            new(AdmittedScanId: PortalProjectClientTests.Scan), default);
+        Assert.Equal("RecordingRequired", result.Status); Assert.Equal("Unavailable", result.SourceProof.State);
+        Assert.Contains(explanation, result.Message); Assert.Null(result.Assessment); Assert.Null(result.Scan); Assert.Empty(result.ArtifactProofs);
+        Assert.Contains("not an accessibility barrier", result.Message);
+    }
+
+    [Theory]
     [InlineData("complete", "Ready")]
     [InlineData("gaps", "InsufficientEvidence")]
     [InlineData("none", "NoBlockingBarrierDocumented")]

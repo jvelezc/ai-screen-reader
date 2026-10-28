@@ -11,7 +11,7 @@ $created=$false; $built=$false; $removed=$false; $imageRemoved=$false; $ready=$f
 $cases=[Collections.Generic.List[string]]::new()
 $releaseCreated=$false
 $script:executed=0; $script:failed=0
-$expected=if($IsLinux){45}else{43}; $linuxSignalPerformed=$false
+$expected=if($IsLinux){48}else{46}; $linuxSignalPerformed=$false
 $recoveryResources=[Collections.Generic.List[string]]::new()
 $names=@('POSTGRES_PASSWORD','HSR_WORKER_DATABASE','HSR_WORKER_IMAGE','HSR_WORKER_EVIDENCE','HSR_WORKER_RUNTIME','HSR_WORKER_SECCOMP',
     'HSR_CONTROL_PUBLISHABLE_KEY','HSR_CONTROL_EVIDENCE','HSR_CONTROL_PORT','HSR_CONTROL_ORIGIN','HSR_RELEASE_COMMIT')
@@ -248,6 +248,22 @@ try {
     Assert-Proof ($keyboardVideo[0] -eq 0x1a -and $keyboardFrames[0] -eq 0x50 -and $keyboardData.DecodedVideoFrames -gt 0 -and $keyboardData.SourceFiles.Count -gt 0 -and $keyboardData.VideoFrames.Count -eq $keyboardData.DecodedVideoFrames -and $keyboardData.ClockSamples.Count -eq 14 -and $keyboardData.Alignment.RunId -eq $keyboardData.Receipt.RunId -and $keyboardData.Alignment.Calibrated -and $keyboardData.Alignment.UncertaintyMilliseconds -le 250 -and $keyboardData.SourcePresentationOrder.Count -eq $keyboardData.SourceFrames.Count -and $keyboardData.Capture.Phase -ceq 'Closed' -and @($keyboardData.Capture.Events|Where-Object Phase -CEQ 'Excluded').Count -gt 0) 'KeyboardRecordingRetainsOriginalFramesMeasuredTimingAndClosedCapture'
     $remaining=Invoke-ReaderRuntime $Runtime @('ps','--all','--filter','name=^hsr-observation-','--format','{{.ID}}')
     Assert-Proof ([string]::IsNullOrWhiteSpace($remaining.Text)) 'KeyboardContainerAbsentBeforeCompletion'
+    $stage='keyboard-replay-fence'
+    # Simulate an expired capability, not a browser crash or proof that input occurred.
+    $interruptedRequest=[Guid]::NewGuid(); $interruptedWorker=[Guid]::NewGuid()
+    $admission=Invoke-ProofSql "begin; set local role authenticated; select set_config('request.jwt.claim.sub','$user',true); select row_to_json(r) from hsr.create_recorded_traversal('$org','$interruptedRequest',1) r; commit;"
+    $interruptedJob=($admission -split "`n" | Where-Object {$_ -match '^\{'}) | ConvertFrom-Json
+    $null=Invoke-ProofSql "select status from hsr.claim_scan_job_with_traversal('$interruptedWorker',5);"
+    $null=Invoke-ProofSql "update hsr.job_leases set expires_at=clock_timestamp()-interval '1 second' where job_id='$($interruptedJob.job_id)'; select pgmq.set_vt('hsr_scan_jobs',(select queue_message_id from hsr.scan_jobs where id='$($interruptedJob.job_id)'),0);"
+    $output=@(& dotnet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --once 2>&1)
+    $interruptedExit=$LASTEXITCODE
+    $output -join "`n" | Set-Content (Join-Path $folder 'interrupted-worker.log') -Encoding utf8NoBOM
+    $interruptedResult=($output -join "`n") | ConvertFrom-Json
+    Assert-Proof ($interruptedExit -eq 3 -and $interruptedResult.State -eq 'Blocked' -and $interruptedResult.JobId -eq $interruptedJob.job_id -and $interruptedResult.ErrorCode -ceq 'WORKER_INPUT_OUTCOME_UNCONFIRMED' -and $null -eq $interruptedResult.Reference) 'RealWorkerRetainsInterruptedKeyboardIdentityAndUncertainty'
+    $interruptedFacts=(Invoke-ProofSql "select json_build_object('state',j.state,'generation',j.generation,'code',j.last_error_code,'archive',j.archive_index_sha256,'attempts',(select count(*) from hsr.job_attempts a where a.job_id=j.id),'original_worker',(select worker_id from hsr.job_attempts a where a.job_id=j.id),'leases',(select count(*) from hsr.job_leases l where l.job_id=j.id)) from hsr.scan_jobs j where j.id='$($interruptedJob.job_id)'" ) | ConvertFrom-Json
+    Assert-Proof ($interruptedFacts.state -ceq 'blocked' -and $interruptedFacts.generation -eq 1 -and $interruptedFacts.code -ceq 'WORKER_INPUT_OUTCOME_UNCONFIRMED' -and $interruptedFacts.attempts -eq 1 -and $interruptedFacts.original_worker -eq $interruptedWorker -and $interruptedFacts.leases -eq 0 -and $null -eq $interruptedFacts.archive) 'InterruptedKeyboardNeverCreatesReplacementAttemptOrCompletedArchive'
+    $remaining=Invoke-ReaderRuntime $Runtime @('ps','--all','--filter','name=^hsr-observation-','--format','{{.ID}}')
+    Assert-Proof ([string]::IsNullOrWhiteSpace($remaining.Text) -and -not (Test-Path (Join-Path $env:HSR_WORKER_EVIDENCE "$(([Guid]$org).ToString('N'))/$(([Guid]$interruptedJob.scan_id).ToString('N'))/$(([Guid]$interruptedJob.job_id).ToString('N'))"))) 'InterruptedKeyboardFencePublishesNoObservationAndLeavesNoNativeContainer'
     $stage='blocked-execution'
     $failureRequest=[Guid]::NewGuid()
     $admission=Invoke-ProofSql "begin; set local role authenticated; select set_config('request.jwt.claim.sub','$user',true); select row_to_json(r) from hsr.create_scan('$org','$failureRequest') r; commit;"
@@ -256,7 +272,7 @@ try {
     $output=@(& dotnet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --once 2>&1)
     $workerExit=$LASTEXITCODE; $result=($output -join "`n") | ConvertFrom-Json
     Assert-Proof ($workerExit -eq 3 -and $result.State -eq 'Blocked' -and $result.ErrorCode -eq 'FIXTURE_OBSERVATION_UNCONFIRMED' -and $result.JobId -eq $failedJob.job_id) 'MissingImmutableImageProducesSafeBlockedEngineOutcome'
-    $failure=(Invoke-ProofSql "select json_build_object('state',j.state,'code',j.last_error_code,'digest',j.result_digest,'queue',(select count(*) from pgmq.q_hsr_scan_jobs),'leases',(select count(*) from hsr.job_leases),'archived',(select count(*) from pgmq.a_hsr_scan_jobs),'blocked',(select count(*) from hsr.attempt_events where job_id=j.id and kind='Blocked')) from hsr.scan_jobs j where j.id='$($failedJob.job_id)'" ) | ConvertFrom-Json
+    $failure=(Invoke-ProofSql "select json_build_object('state',j.state,'code',j.last_error_code,'digest',j.result_digest,'queue',(select count(*) from pgmq.q_hsr_scan_jobs),'leases',(select count(*) from hsr.job_leases),'archived',(select count(*) from pgmq.a_hsr_scan_jobs where msg_id=j.queue_message_id),'blocked',(select count(*) from hsr.attempt_events where job_id=j.id and kind='Blocked')) from hsr.scan_jobs j where j.id='$($failedJob.job_id)'" ) | ConvertFrom-Json
     Assert-Proof ($failure.state -eq 'blocked' -and $failure.code -eq 'FIXTURE_OBSERVATION_UNCONFIRMED' -and $null -eq $failure.digest -and $failure.queue -eq 0 -and $failure.leases -eq 0 -and $failure.archived -eq 1 -and $failure.blocked -eq 1) 'ActualNativeBlockArchivesMessageWithoutInventingObservation'
     if($IsLinux){
         $stage='linux-stop'
@@ -308,7 +324,7 @@ try {
     $removal=Get-Content (Join-Path $env:HSR_WORKER_EVIDENCE ".runtime/removals/$($nativeOwner.ToString('N')).json") -Raw|ConvertFrom-Json
     Assert-Proof (-not (Test-Path $intentPath) -and $removal.ContainerAbsenceConfirmed -and $removal.RecoveredAfterRestart -and $removal.Intent.Job.JobId -eq $descriptor.JobId) 'RecoveryPersistsActualAbsenceBeforeRetiringIntent'
     $unchanged=(Invoke-ProofSql "select json_build_object('jobs',(select count(*) from hsr.scan_jobs),'attempts',(select count(*) from hsr.job_attempts),'completed',(select count(*) from hsr.attempt_events where kind='Completed'),'queue',(select count(*) from pgmq.q_hsr_scan_jobs))")|ConvertFrom-Json
-    Assert-Proof ($unchanged.jobs -eq 4 -and $unchanged.attempts -eq 4 -and $unchanged.completed -eq 3 -and $unchanged.queue -eq 0 -and @(Get-ChildItem $env:HSR_WORKER_EVIDENCE -Recurse -Filter observation.json).Count -eq 0) 'NativeRecoveryNeedsNoDatabaseCredentialAndCannotInventObservation'
+    Assert-Proof ($unchanged.jobs -eq 5 -and $unchanged.attempts -eq 5 -and $unchanged.completed -eq 3 -and $unchanged.queue -eq 0 -and @(Get-ChildItem $env:HSR_WORKER_EVIDENCE -Recurse -Filter observation.json).Count -eq 0) 'NativeRecoveryNeedsNoDatabaseCredentialAndCannotInventObservation'
     # A retained intent never authorizes deleting a same-name container with another owner.
     $badOwner=[Guid]::NewGuid();$badTarget="hsr-observation-$($badOwner.ToString('N'))"
     $intent.Owner="$badOwner"; $badPath=Join-Path $intentRoot "$($badOwner.ToString('N')).json"
