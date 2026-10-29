@@ -11,6 +11,13 @@ and [validation](validation/tenant-retained-progress-v1.md) separate local,
 CI, deployment and original-account consumer gates. Interrupted media and full
 checkpoint/graph reconstruction remain open.
 
+The separate Lovable consumer implements compact progress through the existing
+Supabase Edge gateway. Its report panel exposes original attempt identity,
+saved phase/counts and unknown input without authorizing replay. Consumer CI,
+Edge source matching and original-account acceptance are tracked in its
+[validation record](https://github.com/jvelezc/ai-screen-reader-ui/blob/main/docs/validation/retained-progress-v1.md)
+and the architecture Page; this does not recover interrupted originals.
+
 **Recorded-claim verification accepted:** [contract 1.9.0](decisions/0062-recorded-evidence-claims.md)
 adds admitted-source assessment through HTTP/private MCP. Complete originals and
 actual collector facts replace reliance on uploaded assertions; controlled

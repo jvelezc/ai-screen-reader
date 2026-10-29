@@ -46,7 +46,7 @@ zero-input observation/passive retries remain available. This fence alone does
 not recover partially saved recordings or establish crash-after-input acceptance.
 See the [recovery validation record](validation/interrupted-recording-recovery-v1.md).
 
-The next recovery slice retains a scoped baseline, intent before each input and
+Retained command progress saves a scoped baseline, intent before each input and
 actual command result through a host acknowledgement protocol. Operator-local
 inspection cannot authorize replay or completion. Its actual process-crash,
 owned cleanup and capacity checks are tracked in the
@@ -54,8 +54,12 @@ owned cleanup and capacity checks are tracked in the
 The [tenant diagnostic read](validation/tenant-retained-progress-v1.md) now
 implements compact API/private MCP access with original-caller authority and
 actual producer checks before and after storage. Its CI, deployment and
-original-account consumer gates remain separately reported. Edge/UI integration,
-full checkpoint/graph retrieval and interrupted-original reconstruction remain
+original-account consumer gates remain separately reported. The existing Edge/UI
+consumer now implements compact status with an explicit read, diagnostic scope,
+fresh authorization and clearing across reconnect and source changes. Its
+[consumer validation](https://github.com/jvelezc/ai-screen-reader-ui/blob/main/docs/validation/retained-progress-v1.md)
+tracks CI and original-account acceptance separately. Full checkpoint/graph
+retrieval and interrupted-original reconstruction remain
 open; automatic worker restart is still disabled.
 
 Exercise the actual Linux worker under crash after input, upload before metadata
