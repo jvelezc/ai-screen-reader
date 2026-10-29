@@ -137,6 +137,35 @@ public sealed class HostedScanClient : IAsyncDisposable
         }, token);
     }
 
+    public Task<ToolReply> ProgressAsync(string scanId, CancellationToken token = default)
+    {
+        if (!Guid.TryParse(scanId, out var id) || id == Guid.Empty) return Task.FromResult(ToolReply.Error("SCAN_ID_REQUIRED"));
+        return LockedAsync(async () =>
+        {
+            using var document = await _transport.SendAsync(HttpMethod.Get, Collection + $"/{id:D}/progress").ConfigureAwait(false);
+            token.ThrowIfCancellationRequested();
+            var value = Parse<HostedScanProgress>(document); ValidateScan(value.Scan);
+            Require(value.Scan.Id == id && value.JobId != Guid.Empty && value.Generation is >= 0 and <= 3
+                && value.WorkerId != Guid.Empty && value.NextAction is { Length: > 0 and <= 1024 } && !value.NextAction.Any(char.IsControl));
+            Require(value.Generation != 0 || value.Scan.State is "queued" or "blocked");
+            if (value.Progress is { } progress)
+            {
+                try { progress.Validate(); }
+                catch (BrowserOperationException) { Require(false); }
+                Require(value.ProgressState == "Available" && value.Scan.State != "queued" && progress.Job.OrganizationId == _options.Organization && progress.Job.ScanId == id
+                    && progress.Job.JobId == value.JobId && progress.Job.Generation == value.Generation && progress.WorkerId == value.WorkerId);
+            }
+            else Require(value.ProgressState == "NotApplicable" && value.WorkerId is null
+                || value.ProgressState == "NotStarted" && value.Generation == 0 && value.WorkerId is null
+                || value.ProgressState == "NotRetained" && value.Scan.State != "queued" && value.Generation > 0 && value.WorkerId is not null);
+            var reply = new ToolReply("scan-progress", null, ScreenReaderSession.Profile, value);
+            return Fits(reply) ? reply : ToolReply.Error("HOSTED_SCAN_PROGRESS_TOO_LARGE");
+        }, token);
+    }
+
+    private sealed record HostedScanProgress(HostedScan Scan, Guid JobId, long Generation, Guid? WorkerId,
+        string ProgressState, RetainedCommandProgress? Progress, string NextAction);
+
     private void ValidateScan(HostedScan scan) => Require(scan.OrganizationId == _options.Organization && scan.Id != Guid.Empty
         && scan.Fixture == "synthetic-shop" && scan.ReaderProfile == ScreenReaderSession.Profile
         && scan.State is "queued" or "leased" or "observed" or "blocked");

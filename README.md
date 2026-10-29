@@ -30,7 +30,10 @@ consumes that same API through stdio, with original caller scope, read-only
 navigation and graph trace pages. It uses the API's isolated worker instead of
 a second local browser. The [durable scan tools](docs/decisions/0052-private-mcp-durable-scans.md) add idempotent fixed-fixture admission, recent runs and saved reports. Public MCP/plugin publication stays deferred.
 The [archive reads](docs/decisions/0056-authorized-archive-retrieval.md) add
-`archive_manifest` and `archive_file`; `evidence_assess` brings the private mode to thirteen tools.
+`archive_manifest` and `archive_file`; `evidence_assess` evaluates evidence and
+`scan_progress` reads a compact authorized command prefix, bringing private mode
+to fourteen tools. [Retained progress](docs/decisions/0065-tenant-retained-progress.md)
+does not authorize completion, replay or a verified goal.
 Retain the operator import identity; every page reauthorizes the original caller
 and workspace. Inventory pages contain at most 32 files and original-byte pages
 at most 64 KiB. Reconstruct every original and verify its whole-file digest.

@@ -45,7 +45,7 @@ public sealed partial class HostedReaderClient : IAsyncDisposable
             TraceRetention = "Transient",
             DurableScans = new
             {
-                Tools = new[] { "scan_start_fixture", "scan_list", "scan_report" },
+                Tools = new[] { "scan_start_fixture", "scan_list", "scan_report", "scan_progress" },
                 Fixture = "synthetic-shop",
                 AdmissionCreatesJob = true,
                 CallerRequestIdRequired = true,

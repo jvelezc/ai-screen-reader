@@ -12,7 +12,7 @@ internal static class PortalOpenApi
 {
     private static readonly Lazy<string> Cached = new(Build);
     public static string Document => Cached.Value;
-    public const string ContractVersion = "1.9.0";
+    public const string ContractVersion = "1.10.0";
 
     private static string Build()
     {
@@ -29,6 +29,7 @@ internal static class PortalOpenApi
             ["Node"] = Schema<PortalNodeResponse>(),
             ["Observation"] = Schema<PortalObservationResponse>(),
             ["Report"] = Schema<PortalReportResponse>(),
+            ["RecordedProgress"] = Schema<PortalProgressResponse>(),
             ["Readiness"] = Schema<PortalReadinessResponse>(),
             ["ReaderSession"] = Schema<PortalReaderSessionResponse>(),
             ["ReaderSnapshot"] = Schema<PortalReaderSnapshotResponse>(),
@@ -73,6 +74,7 @@ internal static class PortalOpenApi
                 ["post"] = Operation("CreatePortalScan", "Idempotently admit the fixed input-free fixture; not execution or goal success", "ScanCreated", true, "CreateScan", 201, true)
             },
             ["/api/workspaces/{organization}/scans/{scan}"] = Path("get", Operation("GetPortalReport", "Read authorized hash-verified evidence; preserve unavailable and invalid outcomes", "Report", true, organization: true, scan: true)),
+            ["/api/workspaces/{organization}/scans/{scan}/progress"] = Path("get", Operation("ReadRecordedCommandProgress", "Read a compact retained diagnostic prefix; original user RLS and actual attempt producer rechecked before and after storage. Never completion, replay authority or a verified goal", "RecordedProgress", true, organization: true, scan: true)),
             ["/api/workspaces/{organization}/reader-sessions"] = Path("post", Operation("OpenReaderSession", "Open a subject-owned read-only Foundation fixture; two-minute lease, one per user, two per host", "ReaderSession", true, "EmptyRequest", 201, organization: true)),
             ["/api/workspaces/{organization}/reader-sessions/{session}"] = new JsonObject
             {

@@ -27,7 +27,8 @@ internal sealed class HostedControlServer : IAsyncDisposable
 
     public static async Task<HostedControlServer> StartAsync(PortalOptions options, IPortalProjectClient project,
         IPortalObservationReader observations, CancellationToken token = default, PortalReaderSessions? readerSessions = null,
-        Func<Task<bool>>? readerRuntimeReady = null, HeadlessScreenReader.Worker.TraversalArchive? traversalArchive = null)
+        Func<Task<bool>>? readerRuntimeReady = null, HeadlessScreenReader.Worker.TraversalArchive? traversalArchive = null,
+        IPortalProgressReader? progressReader = null)
     {
         options.Validate();
         var builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions
@@ -50,6 +51,7 @@ internal sealed class HostedControlServer : IAsyncDisposable
         builder.Services.AddSingleton(new PortalArchiveReader(project, traversalArchive));
         builder.Services.AddSingleton<IPortalEvidenceReadiness>(new PortalEvidenceReadiness(project, traversalArchive));
         builder.Services.AddSingleton<IPortalScanService>(new PortalScanService(project, observations));
+        builder.Services.AddSingleton(new PortalProgressService(project, progressReader ?? new PortalProgressReader(options.EvidenceRoot)));
         builder.Services.AddSingleton(_ => readerSessions ?? new PortalReaderSessions(project, TimeProvider.System));
         builder.Services.AddProblemDetails();
         var app = builder.Build();
@@ -90,6 +92,7 @@ internal sealed class HostedControlServer : IAsyncDisposable
         app.MapReaderSessions();
         app.MapArchiveReads();
         app.MapEvidenceReadiness();
+        app.MapRecordedProgress();
         try
         {
             await app.StartAsync(token).ConfigureAwait(false);

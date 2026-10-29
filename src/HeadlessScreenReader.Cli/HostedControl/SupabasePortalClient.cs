@@ -19,6 +19,8 @@ internal interface IPortalProjectClient
         throw new PortalFault(503, "CONTROL_TRAVERSAL_ADMISSION_UNAVAILABLE");
     Task<PortalScanResponse?> ScanAsync(PortalIdentity actor, Guid organization, Guid scan, CancellationToken token);
     Task<PortalJobResult?> JobAsync(PortalIdentity actor, Guid organization, Guid scan, CancellationToken token);
+    Task<Guid?> AttemptWorkerAsync(PortalIdentity actor, FixtureJob job, CancellationToken token) =>
+        throw new PortalFault(503, "CONTROL_PROGRESS_IDENTITY_UNAVAILABLE");
 }
 
 /// <summary>Fixed-project Auth verification and RLS requests using the same original user bearer.</summary>
@@ -175,6 +177,15 @@ internal sealed class SupabasePortalClient(HttpClient http, string publishableKe
             result = result with { WorkerArchive = receipt };
         }
         return result;
+    }
+
+    public async Task<Guid?> AttemptWorkerAsync(PortalIdentity actor, FixtureJob job, CancellationToken token)
+    {
+        job.Validate();
+        var path = $"rest/v1/job_attempts?select=worker_id&organization_id=eq.{job.OrganizationId:D}&job_id=eq.{job.JobId:D}&generation=eq.{job.Generation}&limit=2";
+        using var request = Request(HttpMethod.Get, path, actor.Token);
+        using var json = await SendAsync(request, false, token).ConfigureAwait(false);
+        return Rows(json.RootElement).Length == 0 ? null : Id(Single(json.RootElement), "worker_id");
     }
 
     private HttpRequestMessage Request(HttpMethod method, string path, string bearer, bool database = true)

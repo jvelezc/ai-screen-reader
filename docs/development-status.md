@@ -2,6 +2,15 @@
 
 Updated October 28, 2026. The original proposal under `outputs/` remains unchanged. This status document tracks implementation against its acceptance gates.
 
+**Current core increment: retained command diagnostics.** HTTP 1.10.0 adds
+an authorized compact progress read; private MCP adds `scan_progress` as its
+fourteenth tool. Original-user RLS resolves the actual producer, current scope
+is rechecked after storage and diagnostic records cannot authorize completion
+or replay. No migration or new privilege is required. [Contract 0065](decisions/0065-tenant-retained-progress.md)
+and [validation](validation/tenant-retained-progress-v1.md) separate local,
+CI, deployment and original-account consumer gates. Interrupted media and full
+checkpoint/graph reconstruction remain open.
+
 **Recorded-claim verification accepted:** [contract 1.9.0](decisions/0062-recorded-evidence-claims.md)
 adds admitted-source assessment through HTTP/private MCP. Complete originals and
 actual collector facts replace reliance on uploaded assertions; controlled

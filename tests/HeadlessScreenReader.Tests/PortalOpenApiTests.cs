@@ -11,6 +11,31 @@ namespace HeadlessScreenReader.Tests;
 public sealed class PortalOpenApiTests
 {
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CompactProgressAndMissingPrefixMatchThePublishedSchema(bool available)
+    {
+        var organization = PortalProjectClientTests.Organization; var scan = PortalProjectClientTests.Scan;
+        var job = new HeadlessScreenReader.Domain.FixtureJob(organization, scan, PortalProjectClientTests.Job, 1)
+        { RecordObservation = true, TraversalRoute = 1 };
+        var worker = Guid.NewGuid();
+        var progress = available ? new HeadlessScreenReader.Domain.RetainedCommandProgress(
+            HeadlessScreenReader.Domain.RetainedCommandProgress.CurrentSchema, job, worker, 2, 1, 0, "Intent", 1,
+            "Tab", null, "o1", null, null, null, new string('a', 64), false, true) : null;
+        using var body = JsonDocument.Parse(JsonSerializer.Serialize(new PortalProgressResponse(
+            new(organization, scan, "synthetic-shop", "hsr-desktop-reader-v13", "blocked", DateTimeOffset.UtcNow),
+            job.JobId, 1, worker, available ? "Available" : "NotRetained", progress), PortalJson.Options));
+        using var spec = JsonDocument.Parse(PortalOpenApi.Document);
+        Assert.True(Matches(body.RootElement, Component(spec.RootElement, "RecordedProgress"), spec.RootElement));
+        if (available)
+        {
+            Assert.Equal("Intent", body.RootElement.GetProperty("progress").GetProperty("lastPhase").GetString());
+            Assert.False(body.RootElement.GetProperty("progress").GetProperty("isCompletionReceipt").GetBoolean());
+        }
+        Assert.DoesNotContain("capability", body.RootElement.GetRawText(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
     [InlineData("valid")]
     [InlineData("origin")]
     [InlineData("files")]
@@ -116,7 +141,7 @@ public sealed class PortalOpenApiTests
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         var spec = document.RootElement;
         Assert.Equal("3.1.0", spec.GetProperty("openapi").GetString());
-        Assert.Equal("1.9.0", spec.GetProperty("info").GetProperty("version").GetString());
+        Assert.Equal("1.10.0", spec.GetProperty("info").GetProperty("version").GetString());
         Assert.Equal("https://json-schema.org/draft/2020-12/schema", spec.GetProperty("jsonSchemaDialect").GetString());
         Assert.Equal("http", spec.GetProperty("components").GetProperty("securitySchemes").GetProperty("bearerAuth").GetProperty("type").GetString());
         var operations = new[]
@@ -131,6 +156,7 @@ public sealed class PortalOpenApiTests
             ("/api/workspaces/{organization}/scans", "get", "200", "ScanList", true),
             ("/api/workspaces/{organization}/scans", "post", "201", "ScanCreated", true),
             ("/api/workspaces/{organization}/scans/{scan}", "get", "200", "Report", true),
+            ("/api/workspaces/{organization}/scans/{scan}/progress", "get", "200", "RecordedProgress", true),
             ("/api/workspaces/{organization}/reader-sessions", "post", "201", "ReaderSession", true),
             ("/api/workspaces/{organization}/reader-sessions/{session}", "get", "200", "ReaderSession", true),
             ("/api/workspaces/{organization}/reader-sessions/{session}", "delete", "200", "ReaderClosed", true),

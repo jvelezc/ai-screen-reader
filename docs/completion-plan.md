@@ -51,8 +51,12 @@ actual command result through a host acknowledgement protocol. Operator-local
 inspection cannot authorize replay or completion. Its actual process-crash,
 owned cleanup and capacity checks are tracked in the
 [command-progress validation record](validation/retained-command-progress-v1.md).
-Tenant-facing partial-progress retrieval and interrupted-original reconstruction
-remain open; automatic worker restart is still disabled.
+The [tenant diagnostic read](validation/tenant-retained-progress-v1.md) now
+implements compact API/private MCP access with original-caller authority and
+actual producer checks before and after storage. Its CI, deployment and
+original-account consumer gates remain separately reported. Edge/UI integration,
+full checkpoint/graph retrieval and interrupted-original reconstruction remain
+open; automatic worker restart is still disabled.
 
 Exercise the actual Linux worker under crash after input, upload before metadata
 commit, storage outage, lease expiry, cancellation and full staging disk. Retain
