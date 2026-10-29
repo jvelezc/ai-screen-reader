@@ -58,7 +58,12 @@ The local checks and hosted schema change alone do not establish those gates.
 
 ## Remaining recovery work
 
-Retain durable per-command intent and last confirmed state. Recover interrupted
+The [retained-command progress slice](retained-command-progress-v1.md) now
+implements scoped per-command intent/result retention and actual process-crash
+checks. Operator-local progress is distinct from recovered original media and
+tenant-facing retrieval. The first-fence results above retain their original scope.
+
+Recover interrupted
 originals/publication without repeating uncertain input. Inject actual Linux
 crash after input, upload-before-commit, storage outage, lease expiry,
 cancellation and staging-disk exhaustion. Preserve completed receipts and

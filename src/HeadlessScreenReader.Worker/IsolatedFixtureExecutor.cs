@@ -32,7 +32,10 @@ public sealed partial class IsolatedFixtureExecutor : IFixtureExecutor
             .ToDictionary(name => name, Environment.GetEnvironmentVariable);
     }
 
-    public async Task<byte[]> ExecuteAsync(FixtureJob job, CancellationToken token)
+    public Task<byte[]> ExecuteAsync(FixtureJob job, CancellationToken token) => ExecuteCoreAsync(job, null, null, token);
+    public Task<byte[]> ExecuteAsync(WorkerLease lease, Func<CancellationToken, Task<bool>> authorize, CancellationToken token) =>
+        ExecuteCoreAsync(lease.Job, lease.WorkerId, authorize, token);
+    private async Task<byte[]> ExecuteCoreAsync(FixtureJob job, Guid? worker, Func<CancellationToken, Task<bool>>? authorize, CancellationToken token)
     {
         job.Validate();
         NativeOwnership intent;
@@ -43,13 +46,24 @@ public sealed partial class IsolatedFixtureExecutor : IFixtureExecutor
         var name = intent.ContainerName;
         try
         {
-            await CreateAndInspectAsync(intent, token);
+            FixtureProgressExchange? progress = null;
+            if (job.TraversalRoute > 0 && worker is { } producer && authorize is not null)
+            {
+                var journal = await CommandProgressJournal.BeginAsync(Path.Combine(Path.GetDirectoryName(_journal.IntentsDirectory)!, "command-progress"),
+                    intent, job, producer, token);
+                progress = new(new(FixtureProgressProtocol.Schema, job, intent.Owner), journal, authorize);
+            }
+            await CreateAndInspectAsync(intent, token, journaled: progress is not null);
             var result = await InvokeAsync(["start", "--attach", "--interactive", name],
                 JsonSerializer.SerializeToUtf8Bytes(job), token, TimeSpan.FromSeconds(120),
-                job.RecordObservation ? PassiveObservationRecording.MaximumBundleBytes : FixtureObservation.MaximumBytes);
+                job.RecordObservation ? PassiveObservationRecording.MaximumBundleBytes : FixtureObservation.MaximumBytes, progress);
             if (result.Code != 0) throw new InvalidDataException("WORKER_CONTAINER_EXECUTION_UNCONFIRMED");
             // A valid observation also requires successful, independently confirmed container removal below.
-            if (job.TraversalRoute > 0) KeyboardRecordingBundle.Decode(result.Bytes, job);
+            if (job.TraversalRoute > 0)
+            {
+                var bundle = KeyboardRecordingBundle.Decode(result.Bytes, job);
+                if (progress is not null) progress.Match(bundle.Validate(job).Receipt);
+            }
             else if (job.RecordObservation) PassiveRecordingBundle.Decode(result.Bytes, job);
             else ObservationStore.Validate(result.Bytes, job);
             return result.Bytes;
@@ -63,7 +77,7 @@ public sealed partial class IsolatedFixtureExecutor : IFixtureExecutor
         }
     }
 
-    private async Task CreateAndInspectAsync(NativeOwnership intent, CancellationToken token, bool reader = false)
+    private async Task CreateAndInspectAsync(NativeOwnership intent, CancellationToken token, bool reader = false, bool journaled = false)
     {
         var owner = intent.Owner.ToString("N");
         var name = intent.ContainerName;
@@ -78,9 +92,10 @@ public sealed partial class IsolatedFixtureExecutor : IFixtureExecutor
             "--label", "hsr.observation.job=" + job.JobId.ToString("N"),
             "--label", "hsr.observation.generation=" + job.Generation.ToString(System.Globalization.CultureInfo.InvariantCulture)];
         if (_runtime == "docker") create.AddRange(["--security-opt", "seccomp=" + _seccomp]);
-        if (reader) create.AddRange(["--entrypoint", "dotnet"]);
+        if (reader || journaled) create.AddRange(["--entrypoint", "dotnet"]);
         create.Add(_image);
         if (reader) create.AddRange(["/app/cli/HeadlessScreenReader.Cli.dll", "--reader-fixture"]);
+        if (journaled) create.AddRange(["/app/cli/HeadlessScreenReader.Cli.dll", "--worker-fixture-progress"]);
         if ((await InvokeAsync(create, null, token)).Code != 0) throw new InvalidDataException("WORKER_CONTAINER_CREATE_UNCONFIRMED");
         var inspect = await InvokeAsync(["inspect", name], null, token);
         if (inspect.Code != 0) throw new InvalidDataException("WORKER_CONTAINER_INSPECTION_UNCONFIRMED");
@@ -219,7 +234,7 @@ public sealed partial class IsolatedFixtureExecutor : IFixtureExecutor
     }
 
     private async Task<(int Code, byte[] Bytes)> InvokeAsync(IEnumerable<string> args, byte[]? input,
-        CancellationToken token, TimeSpan? budget = null, int maximumOutputBytes = FixtureObservation.MaximumBytes)
+        CancellationToken token, TimeSpan? budget = null, int maximumOutputBytes = FixtureObservation.MaximumBytes, FixtureProgressExchange? progress = null)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
         timeout.CancelAfter(budget ?? TimeSpan.FromSeconds(20));
@@ -238,20 +253,27 @@ public sealed partial class IsolatedFixtureExecutor : IFixtureExecutor
         if (!process.Start()) throw new IOException("WORKER_RUNTIME_START_UNCONFIRMED");
         using var kill = timeout.Token.Register(() => { try { if (!process.HasExited) process.Kill(); } catch (Exception) { } });
         var output = ReadBoundedAsync(process.StandardOutput.BaseStream, timeout, maximumOutputBytes);
-        var errors = ReadBoundedAsync(process.StandardError.BaseStream, timeout);
+        Task errors = progress is null ? ReadBoundedAsync(process.StandardError.BaseStream, timeout)
+            : progress.ReadAsync(process.StandardError.BaseStream, process.StandardInput.BaseStream, timeout);
         try
         {
-            if (input is not null) await process.StandardInput.BaseStream.WriteAsync(input, timeout.Token);
-            process.StandardInput.Close();
+            if (progress is not null) await progress.StartAsync(process.StandardInput.BaseStream, timeout.Token);
+            else
+            {
+                if (input is not null) await process.StandardInput.BaseStream.WriteAsync(input, timeout.Token);
+                process.StandardInput.Close();
+            }
             await Task.WhenAll(output, errors, process.WaitForExitAsync(timeout.Token));
             return (process.ExitCode, await output);
         }
-        catch
+        catch (Exception failure)
         {
             await timeout.CancelAsync();
             // Settle actual pipe reads and the owned runtime client, including cancellation/error paths.
             try { await process.WaitForExitAsync(); } catch (InvalidOperationException) { }
             try { await Task.WhenAll(output, errors); } catch (Exception) { }
+            if (failure is BrowserOperationException progressFailure && progressFailure.Code.StartsWith("WORKER_PROGRESS_", StringComparison.Ordinal))
+                throw new BrowserOperationException(progressFailure.Code);
             throw new IOException("WORKER_RUNTIME_UNCONFIRMED");
         }
     }

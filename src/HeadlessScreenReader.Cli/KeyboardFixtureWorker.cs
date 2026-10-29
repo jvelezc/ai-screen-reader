@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.IO.Compression;
 using System.Text.Json;
+using HeadlessScreenReader.Browser.Playwright;
 using HeadlessScreenReader.Domain;
 using HeadlessScreenReader.Exploration;
 using HeadlessScreenReader.Worker;
@@ -10,14 +11,17 @@ namespace HeadlessScreenReader.Cli;
 /// <summary>Only the four fixed sanitized plans. No caller-supplied instructions, credentials or URLs.</summary>
 public static class KeyboardFixtureWorker
 {
-    public static async Task<byte[]> RecordAsync(FixtureJob job, CancellationToken token = default)
+    public static async Task<byte[]> RecordAsync(FixtureJob job, CancellationToken token = default,
+        Func<TraversalCheckpoint, CancellationToken, Task>? checkpoint = null)
     {
         job.Validate();
         if (job.TraversalRoute is < 1 or > 4) throw new BrowserOperationException("WORKER_KEYBOARD_ROUTE_INVALID");
+        if (BundledFixtureCatalog.Describe(BundledFixture.TraversalRecording).ContentSha256 != FixtureObservation.RecordingContentSha256)
+            throw new BrowserOperationException("WORKER_FIXTURE_IDENTITY_CHANGED");
         var folder = Path.Combine(Path.GetTempPath(), "hsr-keyboard-" + Guid.NewGuid().ToString("N"));
         try
         {
-            var result = await TraversalRecordingDemo.RunRouteAsync(folder, TraversalDemo.Plans[job.TraversalRoute - 1], token);
+            var result = await TraversalRecordingDemo.RunRouteAsync(folder, TraversalDemo.Plans[job.TraversalRoute - 1], token, checkpoint);
             token.ThrowIfCancellationRequested();
             if (result.Receipt is not { Observations.IsDefaultOrEmpty: false } receipt || result.Recording.Media is not { } media
                 || result.Recording.Shutdown is not { } shutdown || result.Recording.CaptureLifecycle is not { } capture

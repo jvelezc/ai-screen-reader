@@ -46,6 +46,14 @@ zero-input observation/passive retries remain available. This fence alone does
 not recover partially saved recordings or establish crash-after-input acceptance.
 See the [recovery validation record](validation/interrupted-recording-recovery-v1.md).
 
+The next recovery slice retains a scoped baseline, intent before each input and
+actual command result through a host acknowledgement protocol. Operator-local
+inspection cannot authorize replay or completion. Its actual process-crash,
+owned cleanup and capacity checks are tracked in the
+[command-progress validation record](validation/retained-command-progress-v1.md).
+Tenant-facing partial-progress retrieval and interrupted-original reconstruction
+remain open; automatic worker restart is still disabled.
+
 Exercise the actual Linux worker under crash after input, upload before metadata
 commit, storage outage, lease expiry, cancellation and full staging disk. Retain
 durable intent and the last confirmed state. Recovery must distinguish uncertain

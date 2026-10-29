@@ -11,7 +11,8 @@ $created=$false; $built=$false; $removed=$false; $imageRemoved=$false; $ready=$f
 $cases=[Collections.Generic.List[string]]::new()
 $releaseCreated=$false
 $script:executed=0; $script:failed=0
-$expected=if($IsLinux){48}else{46}; $linuxSignalPerformed=$false
+$expected=if($IsLinux){53}else{51}; $linuxSignalPerformed=$false
+$crashStarted=$false; $crashEvidence=$null
 $recoveryResources=[Collections.Generic.List[string]]::new()
 $names=@('POSTGRES_PASSWORD','HSR_WORKER_DATABASE','HSR_WORKER_IMAGE','HSR_WORKER_EVIDENCE','HSR_WORKER_RUNTIME','HSR_WORKER_SECCOMP',
     'HSR_CONTROL_PUBLISHABLE_KEY','HSR_CONTROL_EVIDENCE','HSR_CONTROL_PORT','HSR_CONTROL_ORIGIN','HSR_RELEASE_COMMIT')
@@ -248,6 +249,18 @@ try {
     Assert-Proof ($keyboardVideo[0] -eq 0x1a -and $keyboardFrames[0] -eq 0x50 -and $keyboardData.DecodedVideoFrames -gt 0 -and $keyboardData.SourceFiles.Count -gt 0 -and $keyboardData.VideoFrames.Count -eq $keyboardData.DecodedVideoFrames -and $keyboardData.ClockSamples.Count -eq 14 -and $keyboardData.Alignment.RunId -eq $keyboardData.Receipt.RunId -and $keyboardData.Alignment.Calibrated -and $keyboardData.Alignment.UncertaintyMilliseconds -le 250 -and $keyboardData.SourcePresentationOrder.Count -eq $keyboardData.SourceFrames.Count -and $keyboardData.Capture.Phase -ceq 'Closed' -and @($keyboardData.Capture.Events|Where-Object Phase -CEQ 'Excluded').Count -gt 0) 'KeyboardRecordingRetainsOriginalFramesMeasuredTimingAndClosedCapture'
     $remaining=Invoke-ReaderRuntime $Runtime @('ps','--all','--filter','name=^hsr-observation-','--format','{{.ID}}')
     Assert-Proof ([string]::IsNullOrWhiteSpace($remaining.Text)) 'KeyboardContainerAbsentBeforeCompletion'
+    $stage='command-progress'
+    $output=@(& dotnet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --inspect-command-progress $org $keyboardJob.job_id 1 2>&1)
+    $progressExit=$LASTEXITCODE; $progressSummary=($output -join "`n") | ConvertFrom-Json
+    Assert-Proof ($progressExit -eq 0 -and $progressSummary.Records -eq 5 -and $progressSummary.Intents -eq 2 -and $progressSummary.Results -eq 2 -and $progressSummary.Header.WorkerId -eq $keyboardFacts.actual_worker -and $progressSummary.Header.Job.JobId -eq $keyboardJob.job_id -and $progressSummary.Last.Attempt.Id -ceq $keyboardData.Receipt.Attempts[-1].Id -and -not $progressSummary.IsCompletionReceipt -and -not $progressSummary.CanReplay) 'CommandProgressPrefixMatchesActualAdmittedProducerAndCompleteRoute'
+    $savedDatabase=$env:HSR_WORKER_DATABASE; $env:HSR_WORKER_DATABASE=$null
+    try {
+        $output=@(& dotnet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --inspect-command-progress $org $keyboardJob.job_id 1 2>&1)
+        $privateReadExit=$LASTEXITCODE
+        $wrongScope=@(& dotnet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --inspect-command-progress ([Guid]::NewGuid()) $keyboardJob.job_id 1 2>&1)
+        $wrongScopeExit=$LASTEXITCODE
+    } finally {$env:HSR_WORKER_DATABASE=$savedDatabase}
+    Assert-Proof ($privateReadExit -eq 0 -and ($output -join "`n"|ConvertFrom-Json).Header.WorkerId -eq $keyboardFacts.actual_worker -and $wrongScopeExit -eq 3 -and ($wrongScope -join "`n").Trim() -ceq 'WORKER_PROGRESS_INSPECTION_UNCONFIRMED') 'LocalProgressInspectionNeedsNoDatabaseAuthorityAndCannotAcceptAnotherScope'
     $stage='keyboard-replay-fence'
     # Simulate an expired capability, not a browser crash or proof that input occurred.
     $interruptedRequest=[Guid]::NewGuid(); $interruptedWorker=[Guid]::NewGuid()
@@ -264,6 +277,59 @@ try {
     Assert-Proof ($interruptedFacts.state -ceq 'blocked' -and $interruptedFacts.generation -eq 1 -and $interruptedFacts.code -ceq 'WORKER_INPUT_OUTCOME_UNCONFIRMED' -and $interruptedFacts.attempts -eq 1 -and $interruptedFacts.original_worker -eq $interruptedWorker -and $interruptedFacts.leases -eq 0 -and $null -eq $interruptedFacts.archive) 'InterruptedKeyboardNeverCreatesReplacementAttemptOrCompletedArchive'
     $remaining=Invoke-ReaderRuntime $Runtime @('ps','--all','--filter','name=^hsr-observation-','--format','{{.ID}}')
     Assert-Proof ([string]::IsNullOrWhiteSpace($remaining.Text) -and -not (Test-Path (Join-Path $env:HSR_WORKER_EVIDENCE "$(([Guid]$org).ToString('N'))/$(([Guid]$interruptedJob.scan_id).ToString('N'))/$(([Guid]$interruptedJob.job_id).ToString('N'))"))) 'InterruptedKeyboardFencePublishesNoObservationAndLeavesNoNativeContainer'
+    $stage='crash-after-input'
+    $crashRequest=[Guid]::NewGuid()
+    $admission=Invoke-ProofSql "begin; set local role authenticated; select set_config('request.jwt.claim.sub','$user',true); select row_to_json(r) from hsr.create_recorded_traversal('$org','$crashRequest',4) r; commit;"
+    $crashJob=($admission -split "`n" | Where-Object {$_ -match '^\{'}) | ConvertFrom-Json
+    $crashEvidence=$env:HSR_WORKER_EVIDENCE
+    $progressRoot=Join-Path $crashEvidence '.runtime/command-progress'
+    $crashScope=Join-Path $progressRoot "$(([Guid]$org).ToString('N'))-$(([Guid]$crashJob.job_id).ToString('N'))-1"
+    $start=[Diagnostics.ProcessStartInfo]::new('dotnet')
+    $start.ArgumentList.Add((Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll')); $start.ArgumentList.Add('--once')
+    $start.RedirectStandardOutput=$true; $start.RedirectStandardError=$true; $start.UseShellExecute=$false; $start.CreateNoWindow=$true
+    $process=[Diagnostics.Process]::new(); $process.StartInfo=$start
+    try {
+        if(-not $process.Start()){throw 'WORKER_CRASH_PROCESS_UNCONFIRMED'}; $crashStarted=$true
+        $crashOut=$process.StandardOutput.ReadToEndAsync(); $crashErr=$process.StandardError.ReadToEndAsync()
+        $recordedInput=$null; $clock=[Diagnostics.Stopwatch]::StartNew()
+        do {
+            if(Test-Path $crashScope){
+                foreach($file in Get-ChildItem -LiteralPath $crashScope -Filter '0*.json' | Sort-Object Name){
+                    $entry=Get-Content -LiteralPath $file.FullName -Raw | ConvertFrom-Json
+                    if($entry.Message.Checkpoint.Phase -ceq 'Observed' -and @($entry.Message.Checkpoint.Attempt.Events | Where-Object Kind -CEQ 'InputCompleted').Count -gt 0){$recordedInput=$entry;break}
+                }
+            }
+            if($recordedInput){break}
+            if($process.HasExited -or $clock.Elapsed.TotalSeconds -gt 30){throw 'WORKER_CRASH_INPUT_WITNESS_UNCONFIRMED'}
+            Start-Sleep -Milliseconds 10
+        }while($true)
+        if($process.HasExited){throw 'WORKER_CRASH_TARGET_ALREADY_FINISHED'}
+        $process.Kill(); if(-not $process.WaitForExit(5000)){throw 'WORKER_CRASH_EXIT_UNCONFIRMED'}
+        $crashOut.GetAwaiter().GetResult() | Set-Content (Join-Path $folder 'crashed-worker.log') -Encoding utf8NoBOM
+        $null=$crashErr.GetAwaiter().GetResult()
+        $header=Get-Content (Join-Path $crashScope 'start.json') -Raw | ConvertFrom-Json
+        $crashOwner=([Guid]$header.Native.Owner).ToString('N'); $crashName="hsr-observation-$crashOwner"
+        $crashIntent=Join-Path $crashEvidence ".runtime/intents/$crashOwner.json"
+        $crashedFacts=(Invoke-ProofSql "select json_build_object('state',j.state,'worker',(select worker_id from hsr.job_attempts where job_id=j.id),'attempts',(select count(*) from hsr.job_attempts where job_id=j.id),'archive',j.archive_index_sha256) from hsr.scan_jobs j where j.id='$($crashJob.job_id)'" ) | ConvertFrom-Json
+        Assert-Proof ($process.ExitCode -ne 0 -and $crashedFacts.state -ceq 'leased' -and $crashedFacts.attempts -eq 1 -and $null -eq $crashedFacts.archive -and $header.WorkerId -eq $crashedFacts.worker -and $recordedInput.Message.Checkpoint.Attempt.Step.BrowserKeystrokes -gt 0 -and (Test-Path $crashIntent)) 'NativeCrashAfterRecordedInputRetainsUncertainProgressAndOwnedIntent'
+    } finally {
+        if($crashStarted -and -not $process.HasExited){$process.Kill();$null=$process.WaitForExit(5000)}
+        $process.Dispose()
+    }
+    $beforeProgress=@(Get-ChildItem -LiteralPath $crashScope -File | Sort-Object Name | ForEach-Object {$_.Name+':'+(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash})
+    $null=Invoke-ProofSql "update hsr.job_leases set expires_at=clock_timestamp()-interval '1 second' where job_id='$($crashJob.job_id)'; select pgmq.set_vt('hsr_scan_jobs',(select queue_message_id from hsr.scan_jobs where id='$($crashJob.job_id)'),0);"
+    $output=@(& dotnet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --once 2>&1)
+    $restartExit=$LASTEXITCODE; $restartResult=($output -join "`n") | ConvertFrom-Json
+    $crashGone=Invoke-ReaderRuntime $Runtime @('ps','--all','--filter',"name=^$crashName`$",'--format','{{.ID}}')
+    $afterProgress=@(Get-ChildItem -LiteralPath $crashScope -File | Sort-Object Name | ForEach-Object {$_.Name+':'+(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash})
+    $recoveredFacts=(Invoke-ProofSql "select json_build_object('state',j.state,'generation',j.generation,'attempts',(select count(*) from hsr.job_attempts where job_id=j.id),'archive',j.archive_index_sha256) from hsr.scan_jobs j where j.id='$($crashJob.job_id)'" ) | ConvertFrom-Json
+    Assert-Proof ($restartExit -eq 3 -and $restartResult.State -ceq 'Blocked' -and $restartResult.JobId -eq $crashJob.job_id -and $restartResult.ErrorCode -ceq 'WORKER_INPUT_OUTCOME_UNCONFIRMED' -and $recoveredFacts.generation -eq 1 -and $recoveredFacts.attempts -eq 1 -and $null -eq $recoveredFacts.archive -and [string]::IsNullOrWhiteSpace($crashGone.Text) -and -not (Test-Path $crashIntent) -and ($beforeProgress -join "`n") -ceq ($afterProgress -join "`n")) 'NativeRestartPreservesCommandPrefixWithoutReplayingCrashedAttempt'
+    $capacityRequest=[Guid]::NewGuid()
+    $admission=Invoke-ProofSql "begin; set local role authenticated; select set_config('request.jwt.claim.sub','$user',true); select row_to_json(r) from hsr.create_scan('$org','$capacityRequest') r; commit;"
+    $capacityJob=($admission -split "`n" | Where-Object {$_ -match '^\{'}) | ConvertFrom-Json
+    $output=@(& dotnet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --once 2>&1)
+    $capacityExit=$LASTEXITCODE; $capacityResult=($output -join "`n") | ConvertFrom-Json
+    Assert-Proof ($capacityExit -eq 0 -and $capacityResult.State -ceq 'Observed' -and $capacityResult.JobId -eq $capacityJob.job_id -and (Test-Path (Join-Path $env:HSR_WORKER_EVIDENCE $capacityResult.Reference))) 'NewSeparateObservationCompletesAfterCrashedKeyboardRecovery'
     $stage='blocked-execution'
     $failureRequest=[Guid]::NewGuid()
     $admission=Invoke-ProofSql "begin; set local role authenticated; select set_config('request.jwt.claim.sub','$user',true); select row_to_json(r) from hsr.create_scan('$org','$failureRequest') r; commit;"
@@ -324,7 +390,7 @@ try {
     $removal=Get-Content (Join-Path $env:HSR_WORKER_EVIDENCE ".runtime/removals/$($nativeOwner.ToString('N')).json") -Raw|ConvertFrom-Json
     Assert-Proof (-not (Test-Path $intentPath) -and $removal.ContainerAbsenceConfirmed -and $removal.RecoveredAfterRestart -and $removal.Intent.Job.JobId -eq $descriptor.JobId) 'RecoveryPersistsActualAbsenceBeforeRetiringIntent'
     $unchanged=(Invoke-ProofSql "select json_build_object('jobs',(select count(*) from hsr.scan_jobs),'attempts',(select count(*) from hsr.job_attempts),'completed',(select count(*) from hsr.attempt_events where kind='Completed'),'queue',(select count(*) from pgmq.q_hsr_scan_jobs))")|ConvertFrom-Json
-    Assert-Proof ($unchanged.jobs -eq 5 -and $unchanged.attempts -eq 5 -and $unchanged.completed -eq 3 -and $unchanged.queue -eq 0 -and @(Get-ChildItem $env:HSR_WORKER_EVIDENCE -Recurse -Filter observation.json).Count -eq 0) 'NativeRecoveryNeedsNoDatabaseCredentialAndCannotInventObservation'
+    Assert-Proof ($unchanged.jobs -eq 7 -and $unchanged.attempts -eq 7 -and $unchanged.completed -eq 4 -and $unchanged.queue -eq 0 -and @(Get-ChildItem $env:HSR_WORKER_EVIDENCE -Recurse -Filter observation.json).Count -eq 0) 'NativeRecoveryNeedsNoDatabaseCredentialAndCannotInventObservation'
     # A retained intent never authorizes deleting a same-name container with another owner.
     $badOwner=[Guid]::NewGuid();$badTarget="hsr-observation-$($badOwner.ToString('N'))"
     $intent.Owner="$badOwner"; $badPath=Join-Path $intentRoot "$($badOwner.ToString('N')).json"
@@ -364,6 +430,13 @@ try {
     $errorCode="WORKER_$($stage.ToUpperInvariant())_UNCONFIRMED"
     $_.Exception.Message | Set-Content (Join-Path $folder 'failure.log') -Encoding utf8NoBOM
 } finally {
+    if($crashStarted -and $crashEvidence){
+        $env:HSR_WORKER_DATABASE=$null; $env:HSR_WORKER_EVIDENCE=$crashEvidence
+        $env:HSR_WORKER_IMAGE=$imageId; $env:HSR_WORKER_RUNTIME=$Runtime
+        $cleanup=@(& dotnet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --recover 2>&1)
+        if($LASTEXITCODE -ne 0){$ready=$false;$errorCode='WORKER_CRASH_CLEANUP_UNCONFIRMED'}
+        $cleanup | Set-Content (Join-Path $folder 'crash-cleanup.log') -Encoding utf8NoBOM
+    }
     foreach($key in $names){[Environment]::SetEnvironmentVariable($key,$prior[$key])}
     foreach($resource in $recoveryResources){
         $probe=Invoke-ReaderRuntime $Runtime @('inspect',$resource) -AllowFailure

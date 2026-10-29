@@ -20,6 +20,14 @@ Safe input-free retries remain available. [Decision0063](decisions/0063-interrup
 and [validation](validation/interrupted-recording-recovery-v1.md) keep this first
 fence separate from full interrupted-original recovery and native crash testing.
 
+**Retained command progress:** [decision0064](decisions/0064-retained-command-progress.md)
+adds an awaited baseline/intent/result protocol and a scoped worker-local
+journal. Each acknowledgement requires current lease authority and a completed
+write. The complete recording must agree with the prefix. Operator inspection
+cannot authorize replay or completion; HTTP/private MCP and Edge are unchanged.
+[Validation](validation/retained-command-progress-v1.md) tracks the crash and
+delivery gates separately. Full interrupted-original reconstruction remains next.
+
 **Admitted keyboard recording delivery:** [core contract 1.8.0](decisions/0060-admitted-keyboard-recordings.md)
 adds four fixed sanitized authored routes. Five originals retain actual keys,
 source/action/result edges, original video/JPEGs and measured timing. The report

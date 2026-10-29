@@ -21,7 +21,7 @@ public sealed record RecordedTraversalResult(TraversalReceipt? Receipt, Traversa
 public static class TraversalRecordingDemo
 {
     public static async Task<RecordedTraversalResult> RunRouteAsync(string mediaFolder, TraversalPlan plan,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default, Func<TraversalCheckpoint, CancellationToken, Task>? checkpoint = null)
     {
         var time = TimeProvider.System;
         var started = time.GetTimestamp();
@@ -57,7 +57,12 @@ public static class TraversalRecordingDemo
             stage = "Traverse";
             receipt = await new TraversalRunner(time).RunAsync(probe.Browser, plan,
                 waitOptions: new() { Timeout = TimeSpan.FromMilliseconds(400), MaxPolls = 10 },
-                cancellationToken: cancellationToken).ConfigureAwait(false);
+                cancellationToken: cancellationToken, checkpoint: checkpoint is null ? null : async (value, token) =>
+                {
+                    if (probe.CaptureStatus.Phase != CapturePhase.Permitted)
+                        throw new BrowserOperationException("WORKER_PROGRESS_CAPTURE_EXCLUDED");
+                    await checkpoint(value, token).ConfigureAwait(false);
+                }).ConfigureAwait(false);
             runnerOriginHostMilliseconds = time.GetElapsedTime(started, receipt.Clock!.OriginTimestamp).TotalMilliseconds;
             stage = "CalibrateAfter";
             await Calibrate().ConfigureAwait(false);

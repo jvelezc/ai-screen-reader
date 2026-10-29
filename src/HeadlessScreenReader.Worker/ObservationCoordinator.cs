@@ -6,6 +6,8 @@ public interface IFixtureExecutor
 {
     /// <summary>Return only after actual owned container removal is confirmed.</summary>
     Task<byte[]> ExecuteAsync(FixtureJob job, CancellationToken token);
+    Task<byte[]> ExecuteAsync(WorkerLease lease, Func<CancellationToken, Task<bool>> authorize, CancellationToken token) =>
+        ExecuteAsync(lease.Job, token);
 }
 public sealed record WorkerResult(string State, Guid? JobId = null, string? Reference = null, string? ErrorCode = null)
 {
@@ -34,7 +36,12 @@ public sealed class ObservationCoordinator(IWorkerLeases leases, IFixtureExecuto
         string? evidenceError = null;
         try
         {
-            var bytes = await executor.ExecuteAsync(lease.Job, execution.Token);
+            var bytes = await executor.ExecuteAsync(lease, async cancellation =>
+            {
+                using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
+                timeout.CancelAfter(TimeSpan.FromSeconds(12));
+                return await leases.RenewAsync(lease, timeout.Token).ConfigureAwait(false);
+            }, execution.Token);
             execution.Token.ThrowIfCancellationRequested();
             stored = await store.PersistAsync(bytes, lease.Job, execution.Token, lease.WorkerId);
         }
@@ -44,6 +51,7 @@ public sealed class ObservationCoordinator(IWorkerLeases leases, IFixtureExecuto
             {
                 ObservationArchiveException archiveFailure => archiveFailure.Message,
                 TraversalArchiveException archiveFailure => archiveFailure.Message,
+                BrowserOperationException progressFailure when progressFailure.Code.StartsWith("WORKER_PROGRESS_", StringComparison.Ordinal) => progressFailure.Code,
                 _ => null
             };
             error = exception is BrowserOperationException { Code: "WORKER_NATIVE_OWNERSHIP_UNCONFIRMED" }

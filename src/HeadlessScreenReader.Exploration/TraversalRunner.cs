@@ -13,7 +13,8 @@ public sealed class TraversalRunner(TimeProvider? timeProvider = null)
 
     public async Task<TraversalReceipt> RunAsync(
         IScreenReaderBrowser browser, TraversalPlan plan, TraversalLimits? limits = null,
-        ObservationWaitOptions? waitOptions = null, CancellationToken cancellationToken = default)
+        ObservationWaitOptions? waitOptions = null, CancellationToken cancellationToken = default,
+        Func<TraversalCheckpoint, CancellationToken, Task>? checkpoint = null)
     {
         ArgumentNullException.ThrowIfNull(browser);
         ArgumentNullException.ThrowIfNull(plan);
@@ -73,6 +74,8 @@ public sealed class TraversalRunner(TimeProvider? timeProvider = null)
             else
             {
                 var source = Observe(baseline);
+                if (checkpoint is not null)
+                    await checkpoint(new(TraversalCheckpointPhase.Baseline, 0, source), linked.Token).ConfigureAwait(false);
                 if (!plan.Precondition.IsSatisfiedBy(source.Snapshot))
                     stop = TraversalStopReason.PreconditionNotObserved;
                 else
@@ -89,6 +92,8 @@ public sealed class TraversalRunner(TimeProvider? timeProvider = null)
                         ReaderStep? step = null;
                         TraversalObservation? result = null;
                         var cancelled = false;
+                        if (checkpoint is not null)
+                            await checkpoint(new(TraversalCheckpointPhase.Intent, index + 1, source, instruction), linked.Token).ConfigureAwait(false);
                         try
                         {
                             step = await reader.ExecuteAsync(instruction.Command, instruction.Key, linked.Token,
@@ -102,6 +107,8 @@ public sealed class TraversalRunner(TimeProvider? timeProvider = null)
                         attempts.Add(new($"a{attempts.Count + 1}", source.Id, result?.Id, instruction, step,
                             [.. reader.Timeline.Where(e => e.Sequence > beforeEvent)], reader.TimelineTruncated,
                             attemptStarted, Elapsed()));
+                        if (checkpoint is not null && !linked.IsCancellationRequested)
+                            await checkpoint(new(TraversalCheckpointPhase.Observed, index + 1, source, instruction, attempts[^1], result), linked.Token).ConfigureAwait(false);
                         if (cancelled || linked.IsCancellationRequested || step?.Verification == VerificationStatus.Interrupted)
                         {
                             execution = cancellationToken.IsCancellationRequested ? TraversalExecution.Cancelled : TraversalExecution.Interrupted;

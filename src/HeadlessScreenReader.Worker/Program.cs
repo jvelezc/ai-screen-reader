@@ -4,6 +4,19 @@ using HeadlessScreenReader.Worker;
 using HeadlessScreenReader.Domain;
 using System.Security.Cryptography;
 
+if (args.Length > 0 && args[0] == "--inspect-command-progress")
+{
+    if (args.Length != 4 || !Guid.TryParse(args[1], out var organization) || !Guid.TryParse(args[2], out var job)
+        || !long.TryParse(args[3], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var generation)) return 2;
+    try
+    {
+        var evidenceRoot = Environment.GetEnvironmentVariable("HSR_WORKER_EVIDENCE") ?? throw new InvalidOperationException();
+        var summary = CommandProgressJournal.Read(Path.Combine(evidenceRoot, ".runtime", "command-progress"), organization, job, generation);
+        Console.WriteLine(JsonSerializer.Serialize(summary, ObservationStore.Json)); return 0;
+    }
+    catch (Exception) { Console.Error.WriteLine("WORKER_PROGRESS_INSPECTION_UNCONFIRMED"); return 3; }
+}
+
 if (args.Length != 1 || args[0] is not ("--once" or "--poll" or "--recover" or "--check-runtime" or "--check-reader-runtime" or "--recover-reader" or "--host-reader"))
 {
     Console.Error.WriteLine("Usage: HeadlessScreenReader.Worker --once | --poll | --recover | --check-runtime | --check-reader-runtime | --recover-reader | --host-reader. Operator configuration is supplied through the private service environment.");
