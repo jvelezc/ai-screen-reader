@@ -175,9 +175,26 @@ public sealed class ChromiumEvidenceViewerTests
         Assert.Contains("Destination Unknown", await page.Locator(".outcome").InnerTextAsync());
     }
 
+    [Fact]
+    public async Task InvalidNativeMediaFailsReadinessWithDiagnosticState()
+    {
+        using var playwright = await Playwright.CreateAsync();
+        await using var browser = await playwright.Chromium.LaunchAsync(new() { Headless = true, ChromiumSandbox = true });
+        var page = await browser.NewPageAsync();
+        page.SetDefaultTimeout(5000);
+        await page.SetContentAsync("<video preload=auto src='data:video/webm;base64,bm90LXdlYm0='></video><p id=media-status>Invalid test recording</p>");
+        var failure = await Assert.ThrowsAsync<Xunit.Sdk.TrueException>(() => WaitForMediaAsync(page, "ready"));
+        var code = await page.Locator("video").EvaluateAsync<int>("v => v.error?.code ?? 0");
+        Assert.InRange(code, 1, 4);
+        Assert.Contains("\"errorCode\":" + code, failure.Message);
+        Assert.Contains("\"matched\":false", failure.Message);
+        Assert.Contains("\"readyState\":0", failure.Message);
+        Assert.Contains("Invalid test recording", failure.Message);
+    }
+
     private static Task<IResponse?> OpenReportAsync(IPage page, string path) =>
         // Document startup uses the existing fixture startup allowance. Media readiness
-        // and all native interaction/seek assertions remain separate, with their original bounds.
+        // and all native interaction/seek assertions remain separate.
         page.GotoAsync(new Uri(path).AbsoluteUri, new() { WaitUntil = WaitUntilState.DOMContentLoaded, Timeout = 15_000 });
 
     private static async Task AssertRecordingAsync(TraversalRecordingEvidence recording, string folder)
@@ -201,8 +218,12 @@ public sealed class ChromiumEvidenceViewerTests
     {
         // Direct function invocation respects the report CSP. Observe actual native media
         // events; WaitForFunction's string evaluation requires forbidden unsafe-eval.
-        var reached = await page.Locator("video").EvaluateAsync<bool>("""
-            (video, {state, expected}) => new Promise(resolve => {
+        // Initial decoding uses the same bounded startup allowance as document loading.
+        // Keep interaction/seek bounds at five seconds. The outer locator deadline must
+        // exceed the inner observation budget so failures retain actual native diagnostics.
+        var budget = state == "ready" ? 15000 : 5000;
+        var result = await page.Locator("video").EvaluateAsync<JsonElement>("""
+            (video, {state, expected, budget}) => new Promise(resolve => {
                 const matches = () => {
                     switch (state) {
                         case 'ready': return video.readyState >= 2 && !video.seeking;
@@ -213,19 +234,26 @@ public sealed class ChromiumEvidenceViewerTests
                         default: throw new Error('Unknown media condition');
                     }
                 };
-                const events = ['loadeddata', 'canplay', 'seeked', 'timeupdate', 'ended', 'error'];
+                const events = ['loadedmetadata', 'loadeddata', 'canplay', 'seeked', 'timeupdate', 'ended', 'error'];
                 const finish = value => {
                     clearTimeout(timer);
                     for (const event of events) video.removeEventListener(event, check);
-                    resolve(value);
+                    resolve({ matched: value, state, readyState: video.readyState, networkState: video.networkState,
+                        errorCode: video.error?.code ?? null, hidden: video.hidden, seeking: video.seeking,
+                        paused: video.paused, ended: video.ended, currentTime: video.currentTime,
+                        duration: Number.isFinite(video.duration) ? video.duration : null,
+                        status: document.getElementById('media-status')?.textContent ?? '' });
                 };
-                const check = () => { if (matches()) finish(true); };
-                const timer = setTimeout(() => finish(matches()), 5000);
+                const check = () => {
+                    if (matches()) finish(true);
+                    else if (video.error || video.hidden) finish(false);
+                };
+                const timer = setTimeout(() => finish(matches()), budget);
                 for (const event of events) video.addEventListener(event, check);
                 check();
             })
-            """, new { state, expected });
-        Assert.True(reached, "Native media condition was not observed within 5000ms: " + state);
+            """, new { state, expected, budget }, new() { Timeout = budget + 2000 });
+        Assert.True(result.GetProperty("matched").GetBoolean(), $"Native media condition was not observed within {budget}ms: {result}");
     }
 
     private static async Task AssertSeek(IPage page, TraversalRecordingCue cue)
