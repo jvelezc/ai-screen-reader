@@ -105,6 +105,8 @@ try {
     Invoke-DatabaseFile 'tests/database/scan-cancellation.sql' 'scan-cancellation' -Expected 41 -User 'supabase_admin'
     $stage = 'confirm-cancellation'
     Invoke-DatabaseFile 'tests/database/confirm-scan-cancellation.sql' 'confirm-cancellation' -Expected 14 -User 'supabase_admin'
+    $stage = 'recording-failure-reasons'
+    Invoke-DatabaseFile 'tests/database/recording-failure-reasons.sql' 'recording-failure-reasons' -Expected 19 -User 'supabase_admin'
     $stage = 'concurrent-cancellation'
     Invoke-DatabaseFile 'tests/database/concurrent-scan-cancellation.sql' 'concurrent-cancellation' -Expected 15 -User 'supabase_admin'
     $stage = 'concurrent-publication'
@@ -142,13 +144,13 @@ try {
 }
 $receipt = [pscustomobject]@{
     Schema = 'hsr-database-admission-proof-v1'; Ready = $ready; Stage = $stage; ErrorCode = $errorCode
-    Runtime = $Runtime; Image = $image; Expected = 431; Discovered = $script:discovered
+    Runtime = $Runtime; Image = $image; Expected = 450; Discovered = $script:discovered
     Executed = $script:executed; Passed = $cases.Count; Failed = $script:failed
-    Unconfirmed = [Math]::Max(0, 431 - $script:executed); Skipped = 0; Cases = @($cases)
+    Unconfirmed = [Math]::Max(0, 450 - $script:executed); Skipped = 0; Cases = @($cases)
     ContainerRemoved = $removed; HostedProjectChanged = $false; WorkerExecutionPerformed = $false
     Folder = $folder
 }
 $receipt | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $folder 'run.json') -Encoding utf8NoBOM
 $receipt | ConvertTo-Json -Depth 4
-if (-not $ready -or -not $removed -or $cases.Count -ne 431 -or $script:discovered -ne 431 `
-    -or $script:executed -ne 431 -or $script:failed -ne 0) { exit 1 }
+if (-not $ready -or -not $removed -or $cases.Count -ne 450 -or $script:discovered -ne 450 `
+    -or $script:executed -ne 450 -or $script:failed -ne 0) { exit 1 }

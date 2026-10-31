@@ -35,6 +35,29 @@ public sealed class ObservationCoordinatorTests
     private static TaskCompletionSource Signal() => new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     [Fact]
+    public async Task KnownRecordingFailurePersistsSpecificReasonWithoutPromotingACompletedReceipt()
+    {
+        const string code = "WORKER_PROGRESS_RECORDING_CAPTURE_BUDGET_EXCEEDED";
+        var lease = new WorkerLease(FixtureWorkerTests.Job(), Guid.NewGuid(), Guid.NewGuid()); var database = new Leases(lease);
+        var executor = new Executor((_, _) => Task.FromException<byte[]>(new BrowserOperationException(code)));
+        var result = await new ObservationCoordinator(database, executor, new("unused")).RunOnceAsync(lease.WorkerId, default);
+        Assert.Equal("Blocked", result.State); Assert.Equal(code, result.ErrorCode); Assert.Equal(code, result.EvidenceErrorCode);
+        Assert.Equal([code], database.Blocks); Assert.Equal(0, database.Completes); Assert.Null(result.Reference); Assert.Null(result.OffHostReadbackVerified);
+    }
+
+    [Fact]
+    public async Task RecordingDiagnosticCannotOverruleCommittedCallerCancellation()
+    {
+        const string code = "WORKER_PROGRESS_RECORDING_CAPTURE_BUDGET_EXCEEDED";
+        var lease = new WorkerLease(FixtureWorkerTests.Job(), Guid.NewGuid(), Guid.NewGuid());
+        var database = new Leases(lease) { BlockAccepted = false, ConfirmCancellation = () => Task.FromResult(true) };
+        var executor = new Executor((_, _) => Task.FromException<byte[]>(new BrowserOperationException(code)));
+        var result = await new ObservationCoordinator(database, executor, new("unused")).RunOnceAsync(lease.WorkerId, default);
+        Assert.Equal("Cancelled", result.State); Assert.Equal("WORKER_CANCELLED_BY_CALLER", result.ErrorCode);
+        Assert.Equal(1, database.CancellationReads); Assert.Equal(0, database.Completes); Assert.Null(result.Reference);
+    }
+
+    [Fact]
     public async Task CallerCancelledBeforeAllocationDoesNotHaltThePollingWorker()
     {
         var lease = new WorkerLease(FixtureWorkerTests.Job(), Guid.NewGuid(), Guid.NewGuid());

@@ -8,13 +8,15 @@ public static class FixtureProgressWorker
 {
     public static async Task<int> RunAsync(Stream input, Stream output, Stream progress)
     {
+        FixtureProgressStart? failureScope = null;
+        var sequence = 0;
+        var sourceSequence = 0;
         try
         {
             using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(90));
             var start = await FixtureProgressProtocol.ReadAsync<FixtureProgressStart>(input, 4096, stop.Token);
             FixtureProgressProtocol.Validate(start);
-            var sequence = 0;
-            var sourceSequence = 0;
+            failureScope = start;
             async Task Sources(ImmutableArray<CompletedCaptureSource> originals, CancellationToken token)
             {
                 var frames = ImmutableArray.CreateBuilder<FixtureSourceFrame>(); var size = 0;
@@ -53,6 +55,20 @@ public static class FixtureProgressWorker
             }, start.RetainSourceFrames ? Sources : null);
             await output.WriteAsync(bytes, stop.Token); return 0;
         }
-        catch (Exception) { return 3; }
+        catch (Exception failure)
+        {
+            if (failureScope is not null)
+            {
+                var diagnostic = FixtureRecordingFailureProtocol.FromException(failureScope, sequence, sourceSequence, failure);
+                using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+                try
+                {
+                    await ReaderWorkerWire.WriteAsync(progress, FixtureProgressProtocol.Encode(diagnostic),
+                        FixtureRecordingFailureProtocol.MaximumBytes, timeout.Token);
+                }
+                catch (Exception) { /* A failed diagnostic write cannot produce a recording or disclose raw exception data. */ }
+            }
+            return 3;
+        }
     }
 }

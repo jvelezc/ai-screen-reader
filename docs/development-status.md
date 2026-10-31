@@ -27,15 +27,25 @@ worker is thawed. The [operator directory fix](validation/operator-command-direc
 is privately installed and accepted at63bf550. [First publication through the ordered
 maintenance wrapper](validation/first-publication-maintenance-v1.md) now passes with
 the same attempt/producer, five exact S3 originals, zero recovery inputs, and original-account
-graph/video playback. **Next:** finish [caller-owned scan cancellation](validation/caller-scan-cancellation-v1.md)
-by keeping the worker available after a confirmed caller stop. Coref3d675d
-passes all nine CI jobs (2,924 per OS/native71/database417/operations172) and exact
-151-file private delivery. UIc614141/Edge11 and original-account queued stop pass.
-Active after-input stop preserves205 images and exact native cleanup, but exposes
-an expected-lease-loss worker halt. Capability-bound read-only reconciliation is
-implemented;2,936 Windows tests and431 database checks pass. Its CI, exact promotion and
-fresh active-stop/subsequent-job worker-availability proof remain pending. Remaining
+graph/video playback. **Caller-owned cancellation is accepted at5b75935:**
+all nine CI jobs (2,936 per OS/native71/database431/operations172), exact151-file
+delivery and original-account queued/active stop pass. The fresh active case keeps190
+original images and exact native cleanup; the same worker then completes a distinct
+no-input job without a restart. UIc614141/Edge11, source190 exact download,
+keyboard/320px, reconnect and saved sign-in pass in their named scopes.
+[Cancellation receipt](validation/caller-scan-cancellation-v1.md).
+**Next:** diagnose and fix recording finalization. A separate disabled-control
+case retains seven checkpoints/250 images but no complete output and only a generic
+engine reason. Preserve that attempt, identify its actual cause and safe error,
+then verify a distinct bounded recording. Remaining
 fault/provider/website/intervention gates stay separate.
+
+**Scoped recording-failure diagnostics are implemented.** The framed child now
+preserves only a closed reason and exact original stream scope; the host grants no
+acknowledgement/completion. Unknown errors stay unconfirmed. Original native
+cleanup and caller-stop priority remain. The focused set passes153, full Windows2,983
+and disposable database450; hosted migration/body hash/grants match. CI, exact delivery
+and fresh hosted diagnosis remain open. [Validation](validation/recording-failure-diagnostics-v1.md).
 
 **Unfinished original-image retention accepted at65689fc.**
 Completed source JPEGs now transfer through a separately admitted, hash-bound

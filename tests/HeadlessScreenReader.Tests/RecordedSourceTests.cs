@@ -437,7 +437,11 @@ public sealed class RecordedSourceTests
         try
         {
             Assert.Equal(3, await child.WaitAsync(stop.Token)); Assert.Equal(0, output.Length);
-            await progress.Writer.CompleteAsync(); Assert.Null(await ReaderWorkerWire.ReadAsync(progress.Reader.AsStream(), FixtureProgressProtocol.MaximumFrameBytes, stop.Token));
+            await progress.Writer.CompleteAsync();
+            var failureBytes = await ReaderWorkerWire.ReadAsync(progress.Reader.AsStream(), FixtureRecordingFailureProtocol.MaximumBytes, stop.Token);
+            var failure = FixtureRecordingFailureProtocol.Read(Assert.IsType<byte[]>(failureBytes), files.Start, 0, 1);
+            Assert.Equal(FixtureRecordingFailureReason.Unconfirmed, failure.Reason);
+            Assert.Null(await ReaderWorkerWire.ReadAsync(progress.Reader.AsStream(), FixtureProgressProtocol.MaximumFrameBytes, stop.Token));
         }
         finally { await input.Writer.CompleteAsync(); await progress.Writer.CompleteAsync(); await child; }
     }

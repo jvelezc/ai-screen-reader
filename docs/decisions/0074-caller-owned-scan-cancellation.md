@@ -1,6 +1,6 @@
 # 0074: Caller-owned admitted-run cancellation
 
-October 31, 2026. Status: implemented; hosted delivery and original-account acceptance tracked separately.
+October 31, 2026. Status: accepted for the named controlled-fixture scope; wider release gates remain separate.
 
 An admitted worker run continues after its client disconnects. The original user
 needs an explicit way to end that run without deleting its records, replaying

@@ -83,7 +83,7 @@ removal before the stop marker. It is an already-ended after-input case and
 cannot substitute for active-stop acceptance. Its observer error ran its bounded
 thaw cleanup; the original attempt was not replayed.
 
-## Worker continuity repair in progress
+## Accepted worker continuity repair
 
 Twelve coordinator cases cover capability-bound cancellation, joined execution
 and heartbeat cleanup, unknown confirmation/outage, simultaneous heartbeat and
@@ -110,9 +110,14 @@ It cannot grant renewal or publication, mutate the job/history, or certify clean
 The repair's pinned strict Release build has0 warnings/errors. Its full Windows
 run discovers/executes/passes **2,936**,0 failed/skipped; independent TRX parsing
 also confirms all12 new coordinator cases pass. Format verification follows a
-whitespace-only correction. CI, exact private delivery and fresh active-stop then
-subsequent no-input admission remain pending. Existing cancelled attempts must
-not be replayed to create that proof.
+whitespace-only correction. [CI41221816388](https://github.com/jvelezc/ai-screen-reader/actions/runs/41221816388)
+passes all nine jobs at `5b75935d9037cf0d948d2748f7763529a955cb65`.
+Downloaded Windows/Ubuntu TRX independently confirms **2,936 each**,0 failed/skipped;
+Linux native71/database431/operations172 pass. [Private deployment41223395771](https://github.com/jvelezc/ai-screen-reader/actions/runs/41223395771)
+passes. Independently hashed151 actual files match manifest SHA256
+`dce5e57ba73042be05ba35a97fdfd92674802a1e842a4ead9a1002873c76470a`,
+image `sha256:d655d66afbd13891b33a4fc00ba26fa9feb7add751a1e76980a09dfddbf34678`.
+Trusted TLS/API1.14 and anonymous/private-route denials pass.
 
 The original account also reads the stopped checkout's two observation nodes,
 one actual Tab edge, three checkpoints and205-image subset. Source205 downloads
@@ -120,6 +125,52 @@ as13,513 bytes with SHA256
 `61e9858a63f4287834df3e164430bf9af68e2dd0a90f5c019f9b01b7b2b09f1c`,
 matching its independently checked private original and presentation timestamp
 1793463915807.724. Those consumer reads do not close the worker-health gate.
+
+The fresh original-account validation-dialog scan
+`7af218a5-7199-4137-90f1-8ff2611135df`, job
+`d92dea0b-ee3b-4bba-9810-b6785c316fd9`, closes that gate. The bounded observer
+temporarily freezes only its verified coordinator after a durable actual Tab;
+the original account alone sends stop. The same generation1/producer
+`18f789c4-73fd-492c-b9ec-8b676bcc4256` and single attempt remain. Cancellation
+commits at17:24:50.144356 UTC; independently verified owned removal follows
+at17:25:09.3365029 UTC. All **190 originals /2,558,224 bytes** remain unchanged.
+There is no output seal, archive, completed receipt, replacement or replay. The
+observer sends neither browser input nor a native kill.
+
+The actual worker logs `Cancelled` with no reference/off-host verification claim.
+Worker PID2963881/invocation99903d986c51439b87959c64f32de44f and control
+PID2963913/invocationd9ae676065dd44d1bd5a7a127446c5bc remain active; restart stays
+disabled. A distinct original-account **no-input** scan
+`155aafb3-a934-4bc5-8f26-0f887ff72717`, job
+`baef5ec8-1f36-43f8-b11d-58b58f200d89`, completes under that same producer and
+unchanged worker process. Its actual31,511-byte observation has0 dispatched
+inputs/goalfalse and SHA256
+`8d72d854c6daaf311c06e8dd8dfb0c84faa1c2bcf85dc68cb5d271473c4db1c3`.
+Current rootless native absence and no current native ownership intents pass afterward.
+The older205 checkout images and the fresh190 are independently rehashed unchanged.
+
+Through unchanged Edge v11/UIc614141, the original account reads the fresh stopped
+attempt, its retained progress and190-image subset. Source190 downloads as13,500
+bytes/SHA256 `03841c1867fb6a99a1798cb8b0b9764e5fc9d5e9927a27365c5c272557e1ff0b`,
+matching private bytes and original timestamp1793467464890.528. Keyboard repeat
+of the queued stop preserves its original marker and focuses the status notice.
+Persistent sign-in restores after reload without credential entry. A separate
+same-account320px check measures viewport320/client305/scroll305; all five rendered
+stop buttons fit. Reconnect/reload rereads preserve the earlier stopped attempt.
+These are agent-operated checks, not human usability or real AT acceptance.
+
+## Next: recording finalization diagnostics
+
+The first attempted after-input case used the disabled-control route, which
+deliberately performs virtual navigation and sends no keys. Its observer correctly
+refuses a nonexistent input witness and never freezes the worker. Scan
+`ba75b574-07f6-4f83-863a-21b5aa584779` retains seven checkpoints, the observed
+disabled control and250 source images, but no output seal; the worker reports
+`FIXTURE_OBSERVATION_UNCONFIRMED` without a specific evidence failure code.
+No caller stop was sent and it is not cancellation acceptance. Preserve that
+attempt, diagnose the actual finalization cause, expose only a safe structured
+reason and verify a distinct bounded recording. Partial images cannot substitute
+for the absent original video or establish overall zero input/completion.
 
 Original-account acceptance must preserve the exact admitted scan/job/generation/
 producer and saved originals after a stop request; verify current native absence

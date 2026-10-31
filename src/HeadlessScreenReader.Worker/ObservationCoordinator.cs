@@ -59,7 +59,9 @@ public sealed class ObservationCoordinator(IWorkerLeases leases, IFixtureExecuto
                 ? "WORKER_NATIVE_OWNERSHIP_UNCONFIRMED"
                 : exception is BrowserOperationException { Code: "WORKER_CONTAINER_CLEANUP_UNCONFIRMED" }
                 ? "OWNED_BROWSER_CLOSE_UNCONFIRMED"
-                : token.IsCancellationRequested ? "WORKER_STOP_REQUESTED" : "FIXTURE_OBSERVATION_UNCONFIRMED";
+                : token.IsCancellationRequested ? "WORKER_STOP_REQUESTED"
+                : exception is BrowserOperationException recordingFailure && FixtureRecordingFailureProtocol.IsPublicCode(recordingFailure.Code)
+                ? recordingFailure.Code : "FIXTURE_OBSERVATION_UNCONFIRMED";
         }
         finally { await heartbeatStop.CancelAsync(); }
         // Join the real database callback. Cancellation of a waiter does not release ownership.

@@ -17,6 +17,12 @@ public sealed class FixtureProgressExchange(FixtureProgressStart start, CommandP
         {
             while (await ReaderWorkerWire.ReadAsync(progress, FixtureProgressProtocol.MaximumFrameBytes, stop.Token).ConfigureAwait(false) is { } bytes)
             {
+                if (FixtureRecordingFailureProtocol.IsFailure(bytes))
+                {
+                    var failure = FixtureRecordingFailureProtocol.Read(bytes, start, _messages.Count, _sourceSequence);
+                    // No acknowledgement or checkpoint is granted. Actual runtime/native cleanup still has to join.
+                    throw new BrowserOperationException(FixtureRecordingFailureProtocol.ErrorCode(failure.Reason));
+                }
                 if (FixtureSourceProtocol.IsSourceBatch(bytes))
                 {
                     if (!start.RetainSourceFrames || sources is null) throw new BrowserOperationException("WORKER_PROGRESS_MEDIA_NOT_ADMITTED");

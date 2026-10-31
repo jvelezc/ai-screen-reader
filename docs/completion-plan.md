@@ -135,14 +135,19 @@ is accepted and privately installed at63bf550. [First publication through the or
 maintenance wrapper](validation/first-publication-maintenance-v1.md) is accepted:
 the same original attempt/producer publishes five independently matched S3 originals
 with zero recovery inputs, and the original account reads the graph and plays video.
-**Next:** finish [caller-owned scan cancellation](validation/caller-scan-cancellation-v1.md)
-by repairing worker continuity after a confirmed stop. HTTP1.14/private MCP21 at
-f3d675d passes all nine CI jobs (2,924 per OS/native71/database417/operations172),
-exact151-file delivery, UIc614141/Edge11 and queued original-account stop. Actual
-after-input stop preserves205 original images and exact native cleanup, but the
-worker exits on expected lease loss. Capability-bound read-only reconciliation
-is implemented, with2,936 Windows tests and431 database checks. Its CI, delivery and fresh
-active-stop/subsequent-job availability acceptance remain open. The
+[Caller-owned cancellation](validation/caller-scan-cancellation-v1.md) is accepted
+at5b75935/HTTP1.14/private MCP21: all nine CI jobs (2,936 per OS/native71/database431/
+operations172), exact151-file delivery, UIc614141/Edge11 and queued/active account
+stop pass. The fresh active case preserves190 images and exact native cleanup;
+the same healthy worker completes a distinct no-input job without restarting.
+**Next:** diagnose and fix recording finalization. A separate disabled-control case
+retains seven checkpoints and250 images but no output seal, with only a generic
+engine reason. Preserve the failed attempt, identify the actual cause and safe
+structured error, then verify a distinct bounded recording and its complete
+originals without replaying uncertain input. The
+scoped [failure diagnostics](validation/recording-failure-diagnostics-v1.md) are
+implemented with2,983 local Windows tests and450 database checks. Their CI, exact
+delivery and a distinct hosted recording remain pending. The
 remaining actual failure injections below stay open.
 Automatic worker restart stays disabled.
 

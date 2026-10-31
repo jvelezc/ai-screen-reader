@@ -49,13 +49,19 @@ accepted, including its private installation. [First publication through the ord
 maintenance wrapper](docs/validation/first-publication-maintenance-v1.md) also
 passes: the same producer/gen1 publishes five verified originals with zero recovery
 inputs, and the original account reads the graph and plays the recording.
-**Next:** finish [caller-owned scan cancellation](docs/validation/caller-scan-cancellation-v1.md)
-by keeping the worker available after a confirmed stop. Coref3d675d/HTTP1.14 and21
-private MCP tools pass all nine CI jobs and exact151-file delivery; UIc614141/Edge11
-and queued account stop pass. Actual after-input stop preserves205 originals and
-exact native cleanup, but exposes a worker halt. The repair passes2,936 Windows
-tests and431 database checks; CI, delivery and fresh worker-availability acceptance
-remain open.
+**Caller-owned cancellation is accepted at core5b75935/HTTP1.14/private MCP21.**
+All nine CI jobs pass (2,936 per OS/native71/database431/operations172), and151
+actual deployed files match. Original-account queued stop, after-input stop with190
+unchanged images/owned cleanup, and a subsequent no-input job under the same healthy
+worker pass through UIc614141/Edge11. [Cancellation receipt](docs/validation/caller-scan-cancellation-v1.md).
+**Next:** diagnose and fix recording finalization: a separate disabled-control
+route retains seven checkpoints/250 images but no complete output and only a
+generic engine reason. Preserve that attempt; identify the cause and safe error
+before verifying a distinct bounded recording. Wider completion gates stay open.
+Scoped [recording-failure diagnostics](docs/validation/recording-failure-diagnostics-v1.md)
+now implement a closed child/host reason without private exception data or any
+completion authority. Local Windows2,983/database450 pass; CI, delivery and actual
+hosted diagnosis remain separate pending gates.
 Partial originals cannot become a final video, replay or completion.
 
 For a working local MCP prototype with approved public HTTPS reading, isolated link navigation and Claude configuration, see [Use HeadlessScreenReader with Claude](docs/prototype/claude.md). Public browsing requires a running Linux Podman or Docker engine; the trusted fixture connection also runs directly on Windows.

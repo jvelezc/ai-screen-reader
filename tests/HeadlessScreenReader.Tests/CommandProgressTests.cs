@@ -45,6 +45,66 @@ public sealed class CommandProgressTests
     }
 
     [Fact]
+    public async Task HostKeepsScopedRecordingFailureWithoutAcknowledgingInputOrCompletion()
+    {
+        using var files = new Files(); var journal = await files.Begin();
+        var exchange = new FixtureProgressExchange(files.Start, journal, _ => Task.FromResult(true));
+        using var input = new MemoryStream(); using var acknowledgements = new MemoryStream(); using var stop = new CancellationTokenSource();
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(new
+        {
+            Schema = "hsr-fixture-recording-failure-v1",
+            ExecutionId = files.Native.Owner,
+            CheckpointSequence = 0,
+            SourceSequence = 0,
+            Reason = "CaptureBudgetExceeded"
+        });
+        await ReaderWorkerWire.WriteAsync(input, bytes, FixtureProgressProtocol.MaximumFrameBytes); input.Position = 0;
+        var error = await Assert.ThrowsAsync<BrowserOperationException>(() => exchange.ReadAsync(input, acknowledgements, stop));
+        Assert.Equal("WORKER_PROGRESS_RECORDING_CAPTURE_BUDGET_EXCEEDED", error.Code);
+        Assert.True(stop.IsCancellationRequested); Assert.Equal(0, acknowledgements.Length);
+        var retained = files.Read(); Assert.Equal(0, retained.Records); Assert.False(retained.CanReplay); Assert.False(retained.IsCompletionReceipt);
+    }
+
+    [Fact]
+    public async Task TerminalRecordingFailurePreservesPendingInputAndCannotAdmitAFollowingObservedResult()
+    {
+        using var files = new Files(); var journal = await files.Begin(); var calls = 0;
+        var exchange = new FixtureProgressExchange(files.Start, journal, _ => Task.FromResult(++calls > 0));
+        var messages = files.Messages(); using var stream = await Frames(messages.Take(2)); stream.Position = stream.Length;
+        await ReaderWorkerWire.WriteAsync(stream, FixtureProgressProtocol.Encode(new FixtureRecordingFailure(
+            FixtureRecordingFailureProtocol.Schema, files.Native.Owner, 2, 0, FixtureRecordingFailureReason.CaptureBudgetExceeded)), FixtureRecordingFailureProtocol.MaximumBytes);
+        var afterFailure = stream.Position;
+        await ReaderWorkerWire.WriteAsync(stream, FixtureProgressProtocol.Encode(messages[2]), FixtureProgressProtocol.MaximumFrameBytes); stream.Position = 0;
+        using var acknowledgements = new MemoryStream(); using var stop = new CancellationTokenSource();
+        var error = await Assert.ThrowsAsync<BrowserOperationException>(() => exchange.ReadAsync(stream, acknowledgements, stop));
+        Assert.Equal("WORKER_PROGRESS_RECORDING_CAPTURE_BUDGET_EXCEEDED", error.Code); Assert.Equal(afterFailure, stream.Position);
+        var retained = files.Read(); Assert.Equal(2, retained.Records); Assert.Equal(1, retained.Intents); Assert.Equal(0, retained.Results);
+        Assert.True(retained.InputMayHaveOccurred); Assert.False(retained.CanReplay); Assert.False(retained.IsCompletionReceipt); Assert.Equal(4, calls);
+        acknowledgements.Position = 0;
+        Assert.Equal(1, (await FixtureProgressProtocol.ReadAsync<FixtureProgressAck>(acknowledgements, 4096, default)).Sequence);
+        Assert.Equal(2, (await FixtureProgressProtocol.ReadAsync<FixtureProgressAck>(acknowledgements, 4096, default)).Sequence);
+        Assert.Null(await ReaderWorkerWire.ReadAsync(acknowledgements, 4096));
+    }
+
+    [Theory]
+    [InlineData("execution")]
+    [InlineData("checkpoint")]
+    [InlineData("source")]
+    public async Task UnboundTerminalFailureCannotAcknowledgeOrMutateTheOriginalPrefix(string mismatch)
+    {
+        using var files = new Files(); var journal = await files.Begin();
+        var exchange = new FixtureProgressExchange(files.Start, journal, _ => throw new InvalidOperationException("Unbound failure reached authority"));
+        var fault = new FixtureRecordingFailure(FixtureRecordingFailureProtocol.Schema,
+            mismatch == "execution" ? Guid.NewGuid() : files.Native.Owner, mismatch == "checkpoint" ? 1 : 0,
+            mismatch == "source" ? 1 : 0, FixtureRecordingFailureReason.CaptureBudgetExceeded);
+        using var stream = new MemoryStream(); await ReaderWorkerWire.WriteAsync(stream, FixtureProgressProtocol.Encode(fault), 4096); stream.Position = 0;
+        using var acknowledgements = new MemoryStream(); using var stop = new CancellationTokenSource();
+        var error = await Assert.ThrowsAsync<BrowserOperationException>(() => exchange.ReadAsync(stream, acknowledgements, stop));
+        Assert.Equal("WORKER_PROGRESS_RECORDING_FAILURE_INVALID", error.Code); Assert.Equal(0, acknowledgements.Length);
+        Assert.Equal(0, files.Read().Records); Assert.True(stop.IsCancellationRequested);
+    }
+
+    [Fact]
     public async Task RetainedPrefixSurvivesReopenWithoutBecomingCompletionOrReplayAuthority()
     {
         using var files = new Files(); var journal = await files.Begin(); var messages = files.Messages();
@@ -294,6 +354,9 @@ public sealed class CommandProgressTests
             await ReaderWorkerWire.WriteAsync(input.Writer.AsStream(), FixtureProgressProtocol.Encode(bad), 4096, timeout.Token);
             Assert.Equal(3, await child.WaitAsync(timeout.Token)); Assert.Equal(0, output.Length);
             await progress.Writer.CompleteAsync();
+            var failureBytes = await ReaderWorkerWire.ReadAsync(progress.Reader.AsStream(), FixtureRecordingFailureProtocol.MaximumBytes, timeout.Token);
+            var failure = FixtureRecordingFailureProtocol.Read(Assert.IsType<byte[]>(failureBytes), files.Start, 2, 0);
+            Assert.Equal(FixtureRecordingFailureReason.AcknowledgementRejected, failure.Reason);
             Assert.Null(await ReaderWorkerWire.ReadAsync(progress.Reader.AsStream(), FixtureProgressProtocol.MaximumFrameBytes, timeout.Token));
         }
         finally { await input.Writer.CompleteAsync(); await progress.Writer.CompleteAsync(); await child; }
