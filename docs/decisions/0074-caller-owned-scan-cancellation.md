@@ -31,4 +31,16 @@ poll automatically, cancel on disconnect or admit a replacement. The separate UI
 uses the existing Supabase Edge Function as a closed adapter; cancellation and
 evidence logic remain in the core.
 
+The actual hosted after-input acceptance exposed a second requirement: expected
+caller cancellation must not halt the polling service as unknown lease loss.
+After the actual executor, storage and heartbeat callbacks join, the worker may
+read `confirm_scan_cancellation` using its original attempt capability. This
+worker-only, read-only function matches the tenant, job, generation, producer and
+original token hash, the durable caller marker and absence of an execution lease.
+Only that confirmation yields a `Cancelled` worker result. It contains no
+completion reference or off-host verification claim and grants no new input.
+Before browser allocation the same read can recognize an already committed stop.
+Unknown lease loss, unavailable confirmation and unconfirmed native ownership or
+cleanup remain `Unconfirmed`; the worker's existing halt policy is preserved.
+
 See [validation and remaining delivery gates](../validation/caller-scan-cancellation-v1.md).

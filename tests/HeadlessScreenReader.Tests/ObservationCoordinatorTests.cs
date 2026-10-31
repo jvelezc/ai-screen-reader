@@ -12,6 +12,9 @@ public sealed class ObservationCoordinatorTests
         public Func<Task<bool>> Renew { get; set; } = () => Task.FromResult(true);
         public Func<StoredObservation, bool> Complete { get; set; } = _ => true;
         public bool BlockThrows { get; set; }
+        public bool BlockAccepted { get; set; } = true;
+        public Func<Task<bool>> ConfirmCancellation { get; set; } = () => Task.FromResult(false);
+        public int CancellationReads { get; private set; }
         public int Completes { get; private set; }
         public List<string> Blocks { get; } = [];
         public Task<WorkerClaim> ClaimAsync(Guid worker, CancellationToken token) => Task.FromResult(Claim);
@@ -19,7 +22,9 @@ public sealed class ObservationCoordinatorTests
         public Task<bool> CompleteAsync(WorkerLease current, StoredObservation stored, CancellationToken token)
         { Assert.Same(lease, current); Completes++; return Task.FromResult(Complete(stored)); }
         public Task<bool> BlockAsync(WorkerLease current, string code, CancellationToken token)
-        { Assert.Same(lease, current); Blocks.Add(code); return BlockThrows ? Task.FromException<bool>(new IOException("private-database-detail")) : Task.FromResult(true); }
+        { Assert.Same(lease, current); Blocks.Add(code); return BlockThrows ? Task.FromException<bool>(new IOException("private-database-detail")) : Task.FromResult(BlockAccepted); }
+        public Task<bool> ConfirmCancellationAsync(WorkerLease current, CancellationToken token)
+        { Assert.Same(lease, current); CancellationReads++; return ConfirmCancellation(); }
     }
     private sealed class Executor(Func<FixtureJob, CancellationToken, Task<byte[]>> execute) : IFixtureExecutor
     {
@@ -28,6 +33,125 @@ public sealed class ObservationCoordinatorTests
     }
     private static byte[] Bytes(FixtureJob job) => JsonSerializer.SerializeToUtf8Bytes(FixtureWorkerTests.Receipt(job), ObservationStore.Json);
     private static TaskCompletionSource Signal() => new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    [Fact]
+    public async Task CallerCancelledBeforeAllocationDoesNotHaltThePollingWorker()
+    {
+        var lease = new WorkerLease(FixtureWorkerTests.Job(), Guid.NewGuid(), Guid.NewGuid());
+        var database = new Leases(lease) { Renew = () => Task.FromResult(false), ConfirmCancellation = () => Task.FromResult(true) };
+        var executor = new Executor((_, _) => throw new InvalidOperationException("No browser allocation"));
+        var result = await new ObservationCoordinator(database, executor, new("unused")).RunOnceAsync(lease.WorkerId, default);
+        Assert.Equal("Cancelled", result.State); Assert.Equal("WORKER_CANCELLED_BY_CALLER", result.ErrorCode);
+        Assert.Equal(0, executor.Calls); Assert.Equal(1, database.CancellationReads); Assert.Equal(0, database.Completes); Assert.Empty(database.Blocks);
+        Assert.Null(result.Reference); Assert.Null(result.OffHostReadbackVerified);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CallerCancelledExecutionJoinsCleanupBeforeReconcilingRejectedOrLostBlock(bool lostBlock)
+    {
+        var lease = new WorkerLease(FixtureWorkerTests.Job(), Guid.NewGuid(), Guid.NewGuid());
+        var database = new Leases(lease) { BlockAccepted = false, BlockThrows = lostBlock, ConfirmCancellation = () => Task.FromResult(true) };
+        var entered = Signal(); var cleanup = Signal();
+        var executor = new Executor(async (_, _) =>
+        { entered.SetResult(); await cleanup.Task; throw new BrowserOperationException("WORKER_PROGRESS_AUTHORITY_UNCONFIRMED"); });
+        var running = new ObservationCoordinator(database, executor, new("unused")).RunOnceAsync(lease.WorkerId, default);
+        await entered.Task; Assert.False(running.IsCompleted); Assert.Equal(0, database.CancellationReads);
+        cleanup.SetResult(); var result = await running;
+        Assert.Equal("Cancelled", result.State); Assert.Equal("WORKER_CANCELLED_BY_CALLER", result.ErrorCode);
+        Assert.Equal(1, database.CancellationReads); Assert.Equal(0, database.Completes); Assert.Null(result.Reference);
+    }
+
+    [Fact]
+    public async Task CallerCancelledHeartbeatJoinsActualCleanupBeforeHealthyCancellationResult()
+    {
+        var lease = new WorkerLease(FixtureWorkerTests.Job(), Guid.NewGuid(), Guid.NewGuid()); var renews = 0;
+        var database = new Leases(lease) { Renew = () => Task.FromResult(++renews == 1), ConfirmCancellation = () => Task.FromResult(true) };
+        var cancelled = Signal(); var cleanup = Signal();
+        var executor = new Executor(async (_, token) =>
+        {
+            try { await Task.Delay(Timeout.Infinite, token); }
+            catch (OperationCanceledException) { cancelled.SetResult(); }
+            await cleanup.Task; token.ThrowIfCancellationRequested(); return [];
+        });
+        var running = new ObservationCoordinator(database, executor, new("unused")).RunOnceAsync(lease.WorkerId, default);
+        await cancelled.Task.WaitAsync(TimeSpan.FromSeconds(15)); Assert.False(running.IsCompleted); Assert.Equal(0, database.CancellationReads);
+        cleanup.SetResult(); var result = await running;
+        Assert.Equal("Cancelled", result.State); Assert.Equal(1, database.CancellationReads);
+        Assert.Equal(0, database.Completes); Assert.Empty(database.Blocks); Assert.Null(result.Reference);
+    }
+
+    [Theory]
+    [InlineData("WORKER_NATIVE_OWNERSHIP_UNCONFIRMED")]
+    [InlineData("WORKER_CONTAINER_CLEANUP_UNCONFIRMED")]
+    public async Task CallerCancellationCannotOverruleUnconfirmedNativeOwnershipOrCleanup(string code)
+    {
+        var lease = new WorkerLease(FixtureWorkerTests.Job(), Guid.NewGuid(), Guid.NewGuid());
+        var database = new Leases(lease) { ConfirmCancellation = () => Task.FromResult(true) };
+        var executor = new Executor((_, _) => Task.FromException<byte[]>(new BrowserOperationException(code)));
+        var result = await new ObservationCoordinator(database, executor, new("unused")).RunOnceAsync(lease.WorkerId, default);
+        Assert.Equal("Unconfirmed", result.State); Assert.Equal(0, database.CancellationReads);
+        Assert.Equal(0, database.Completes); Assert.Empty(database.Blocks);
+    }
+
+    [Theory]
+    [InlineData("WORKER_NATIVE_OWNERSHIP_UNCONFIRMED")]
+    [InlineData("WORKER_CONTAINER_CLEANUP_UNCONFIRMED")]
+    public async Task CallerCancellationCannotHideCleanupUncertaintyAfterHeartbeatAuthorityLoss(string code)
+    {
+        var lease = new WorkerLease(FixtureWorkerTests.Job(), Guid.NewGuid(), Guid.NewGuid()); var renews = 0;
+        var database = new Leases(lease) { Renew = () => Task.FromResult(++renews == 1), ConfirmCancellation = () => Task.FromResult(true) };
+        var executor = new Executor(async (_, token) =>
+        {
+            try { await Task.Delay(Timeout.Infinite, token); }
+            catch (OperationCanceledException) { throw new BrowserOperationException(code); }
+            return [];
+        });
+        var result = await new ObservationCoordinator(database, executor, new("unused")).RunOnceAsync(lease.WorkerId, default);
+        Assert.Equal("Unconfirmed", result.State); Assert.Equal(0, database.CancellationReads);
+        Assert.Equal(0, database.Completes); Assert.Empty(database.Blocks);
+        Assert.Equal(code == "WORKER_CONTAINER_CLEANUP_UNCONFIRMED" ? "OWNED_BROWSER_CLOSE_UNCONFIRMED" : code, result.ErrorCode);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CallerCancelledCompletionCannotExposeARetainedFileAsAPublishedReceipt(bool lostCompletion)
+    {
+        var lease = new WorkerLease(FixtureWorkerTests.Job(), Guid.NewGuid(), Guid.NewGuid());
+        var database = new Leases(lease) { Complete = _ => lostCompletion ? throw new IOException("private-completion-detail") : false, ConfirmCancellation = () => Task.FromResult(true) };
+        var executor = new Executor((_, _) => Task.FromResult(Bytes(lease.Job)));
+        var root = Path.Combine(Path.GetTempPath(), "hsr-cancel-complete-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var result = await new ObservationCoordinator(database, executor, new(root)).RunOnceAsync(lease.WorkerId, default);
+            Assert.Equal("Cancelled", result.State); Assert.Equal("WORKER_CANCELLED_BY_CALLER", result.ErrorCode);
+            Assert.Null(result.Reference); Assert.Null(result.OffHostReadbackVerified);
+            Assert.Equal(1, database.Completes); Assert.Equal(1, database.CancellationReads); Assert.Empty(database.Blocks);
+            Assert.Single(Directory.GetFiles(root, "observation.json", SearchOption.AllDirectories));
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task UnknownLeaseLossOrCancellationConfirmationOutageStillHaltsSafely(bool outage)
+    {
+        var lease = new WorkerLease(FixtureWorkerTests.Job(), Guid.NewGuid(), Guid.NewGuid());
+        var database = new Leases(lease)
+        {
+            Renew = () => Task.FromResult(false),
+            ConfirmCancellation = () => outage
+            ? Task.FromException<bool>(new IOException("private-confirmation-detail")) : Task.FromResult(false)
+        };
+        var executor = new Executor((_, _) => throw new InvalidOperationException("No browser allocation"));
+        var result = await new ObservationCoordinator(database, executor, new("unused")).RunOnceAsync(lease.WorkerId, default);
+        Assert.Equal("Unconfirmed", result.State); Assert.Equal("WORKER_LEASE_UNCONFIRMED", result.ErrorCode);
+        Assert.Equal(1, database.CancellationReads); Assert.Equal(0, executor.Calls);
+        Assert.DoesNotContain("private-confirmation-detail", JsonSerializer.Serialize(result), StringComparison.Ordinal);
+    }
 
     [Theory]
     [InlineData("Empty")]

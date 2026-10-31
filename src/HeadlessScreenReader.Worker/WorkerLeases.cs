@@ -20,9 +20,11 @@ public interface IWorkerLeases
     Task<bool> RenewAsync(WorkerLease lease, CancellationToken token);
     Task<bool> CompleteAsync(WorkerLease lease, StoredObservation stored, CancellationToken token);
     Task<bool> BlockAsync(WorkerLease lease, string code, CancellationToken token);
+    /// <summary>Read-only confirmation for the exact original attempt capability; grants no execution or cleanup authority.</summary>
+    Task<bool> ConfirmCancellationAsync(WorkerLease lease, CancellationToken token) => Task.FromResult(false);
 }
 
-/// <summary>Only four fenced functions; no queue or tenant table access.</summary>
+/// <summary>Fenced worker functions and exact-attempt cancellation confirmation; no queue or tenant table access.</summary>
 public sealed class PostgresWorkerLeases : IWorkerLeases, IAsyncDisposable
 {
     private readonly NpgsqlDataSource _source;
@@ -81,6 +83,8 @@ public sealed class PostgresWorkerLeases : IWorkerLeases, IAsyncDisposable
     }
     public Task<bool> BlockAsync(WorkerLease lease, string code, CancellationToken token) =>
         ExecuteAsync("select hsr.block_scan_job($1,$2,$3,$4,$5,$6)", lease, [code], token);
+    public Task<bool> ConfirmCancellationAsync(WorkerLease lease, CancellationToken token) =>
+        ExecuteAsync("select hsr.confirm_scan_cancellation($1,$2,$3,$4,$5)", lease, [], token);
 
     private async Task<bool> ExecuteAsync(string sql, WorkerLease lease, object[] values, CancellationToken token)
     {

@@ -142,4 +142,3 @@ begin
         and exists(select 1 from hsr.scans s join hsr.memberships m on m.organization_id=s.organization_id and m.user_id=s.created_by
             where s.organization_id=p_org and s.id=v_record.scan_id) then return next v_record;end if;
 end $$;
-

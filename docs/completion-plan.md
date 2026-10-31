@@ -135,10 +135,14 @@ is accepted and privately installed at63bf550. [First publication through the or
 maintenance wrapper](validation/first-publication-maintenance-v1.md) is accepted:
 the same original attempt/producer publishes five independently matched S3 originals
 with zero recovery inputs, and the original account reads the graph and plays video.
-**Next:** deliver and accept [caller-owned scan cancellation](validation/caller-scan-cancellation-v1.md).
-Its source implements HTTP 1.14 and 21 private MCP tools with 2,924 local Windows tests
-and 417 database checks. CI, exact delivery and original-account acceptance are
-separate pending gates. The
+**Next:** finish [caller-owned scan cancellation](validation/caller-scan-cancellation-v1.md)
+by repairing worker continuity after a confirmed stop. HTTP1.14/private MCP21 at
+f3d675d passes all nine CI jobs (2,924 per OS/native71/database417/operations172),
+exact151-file delivery, UIc614141/Edge11 and queued original-account stop. Actual
+after-input stop preserves205 original images and exact native cleanup, but the
+worker exits on expected lease loss. Capability-bound read-only reconciliation
+is implemented, with2,936 Windows tests and431 database checks. Its CI, delivery and fresh
+active-stop/subsequent-job availability acceptance remain open. The
 remaining actual failure injections below stay open.
 Automatic worker restart stays disabled.
 

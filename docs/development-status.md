@@ -27,9 +27,14 @@ worker is thawed. The [operator directory fix](validation/operator-command-direc
 is privately installed and accepted at63bf550. [First publication through the ordered
 maintenance wrapper](validation/first-publication-maintenance-v1.md) now passes with
 the same attempt/producer, five exact S3 originals, zero recovery inputs, and original-account
-graph/video playback. **Next:** deliver and accept [caller-owned scan cancellation](validation/caller-scan-cancellation-v1.md).
-HTTP 1.14 and 21 private MCP tools are implemented; 2,924 local Windows tests and 417 local
-database checks pass. CI, hosted delivery and account acceptance are pending. Remaining
+graph/video playback. **Next:** finish [caller-owned scan cancellation](validation/caller-scan-cancellation-v1.md)
+by keeping the worker available after a confirmed caller stop. Coref3d675d
+passes all nine CI jobs (2,924 per OS/native71/database417/operations172) and exact
+151-file private delivery. UIc614141/Edge11 and original-account queued stop pass.
+Active after-input stop preserves205 images and exact native cleanup, but exposes
+an expected-lease-loss worker halt. Capability-bound read-only reconciliation is
+implemented;2,936 Windows tests and431 database checks pass. Its CI, exact promotion and
+fresh active-stop/subsequent-job worker-availability proof remain pending. Remaining
 fault/provider/website/intervention gates stay separate.
 
 **Unfinished original-image retention accepted at65689fc.**

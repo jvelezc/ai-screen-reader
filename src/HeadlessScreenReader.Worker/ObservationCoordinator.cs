@@ -25,9 +25,9 @@ public sealed class ObservationCoordinator(IWorkerLeases leases, IFixtureExecuto
         try
         {
             if (!await leases.RenewAsync(lease, token))
-                return new("Unconfirmed", lease.Job.JobId, ErrorCode: "WORKER_LEASE_UNCONFIRMED");
+                return await ReconcileCancellationAsync(lease, new("Unconfirmed", lease.Job.JobId, ErrorCode: "WORKER_LEASE_UNCONFIRMED"));
         }
-        catch (Exception) { return new("Unconfirmed", lease.Job.JobId, ErrorCode: "WORKER_LEASE_UNCONFIRMED"); }
+        catch (Exception) { return await ReconcileCancellationAsync(lease, new("Unconfirmed", lease.Job.JobId, ErrorCode: "WORKER_LEASE_UNCONFIRMED")); }
         using var execution = CancellationTokenSource.CreateLinkedTokenSource(token);
         using var heartbeatStop = new CancellationTokenSource();
         var heartbeat = HeartbeatAsync(lease, heartbeatStop.Token, execution);
@@ -63,33 +63,50 @@ public sealed class ObservationCoordinator(IWorkerLeases leases, IFixtureExecuto
         }
         finally { await heartbeatStop.CancelAsync(); }
         // Join the real database callback. Cancellation of a waiter does not release ownership.
+        var heartbeatLost = false;
         try { await heartbeat; }
-        catch (Exception)
-        {
-            return new("Unconfirmed", lease.Job.JobId, stored?.Reference, "WORKER_LEASE_UNCONFIRMED")
-            { OffHostReadbackVerified = stored?.OffHostReadbackVerified };
-        }
+        catch (Exception) { heartbeatLost = true; }
+        // Cancellation cannot excuse unresolved native ownership, even when renewal also failed.
+        if (error is "OWNED_BROWSER_CLOSE_UNCONFIRMED" or "WORKER_NATIVE_OWNERSHIP_UNCONFIRMED")
+            return new("Unconfirmed", lease.Job.JobId, ErrorCode: error);
+        if (heartbeatLost)
+            return await ReconcileCancellationAsync(lease, new("Unconfirmed", lease.Job.JobId, stored?.Reference, "WORKER_LEASE_UNCONFIRMED")
+            { OffHostReadbackVerified = stored?.OffHostReadbackVerified });
         using var finish = new CancellationTokenSource(TimeSpan.FromSeconds(12));
         if (error is not null)
         {
-            // Never release a job as safely stopped while owned cleanup is uncertain.
-            if (error is "OWNED_BROWSER_CLOSE_UNCONFIRMED" or "WORKER_NATIVE_OWNERSHIP_UNCONFIRMED") return new("Unconfirmed", lease.Job.JobId, ErrorCode: error);
             bool blocked;
             try { blocked = await leases.BlockAsync(lease, error, finish.Token); }
-            catch (Exception) { return new("Unconfirmed", lease.Job.JobId, ErrorCode: "WORKER_BLOCK_UNCONFIRMED"); }
-            return new(blocked ? "Blocked" : "Unconfirmed", lease.Job.JobId, ErrorCode: error) { EvidenceErrorCode = evidenceError };
+            catch (Exception) { return await ReconcileCancellationAsync(lease, new("Unconfirmed", lease.Job.JobId, ErrorCode: "WORKER_BLOCK_UNCONFIRMED")); }
+            var result = new WorkerResult(blocked ? "Blocked" : "Unconfirmed", lease.Job.JobId, ErrorCode: error) { EvidenceErrorCode = evidenceError };
+            return blocked ? result : await ReconcileCancellationAsync(lease, result);
         }
         // Persisted bytes can remain orphaned after lease loss; they do not imply database completion.
         bool completed;
         try { completed = await leases.CompleteAsync(lease, stored!, finish.Token); }
         catch (Exception)
         {
-            return new("Unconfirmed", lease.Job.JobId, stored!.Reference, "WORKER_COMPLETION_UNCONFIRMED")
-            { OffHostReadbackVerified = stored.OffHostReadbackVerified };
+            return await ReconcileCancellationAsync(lease, new("Unconfirmed", lease.Job.JobId, stored!.Reference, "WORKER_COMPLETION_UNCONFIRMED")
+            { OffHostReadbackVerified = stored.OffHostReadbackVerified });
         }
-        return new(completed ? "Observed" : "Unconfirmed", lease.Job.JobId, stored!.Reference,
+        var completion = new WorkerResult(completed ? "Observed" : "Unconfirmed", lease.Job.JobId, stored!.Reference,
             completed ? null : "WORKER_COMPLETION_UNCONFIRMED")
         { OffHostReadbackVerified = stored.OffHostReadbackVerified };
+        return completed ? completion : await ReconcileCancellationAsync(lease, completion);
+    }
+
+    /// <summary>Called only before allocation or after execution/storage and actual cleanup callbacks have joined.</summary>
+    private async Task<WorkerResult> ReconcileCancellationAsync(WorkerLease lease, WorkerResult unconfirmed)
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(12));
+        try
+        {
+            if (await leases.ConfirmCancellationAsync(lease, timeout.Token))
+                return new("Cancelled", lease.Job.JobId, ErrorCode: "WORKER_CANCELLED_BY_CALLER")
+                { EvidenceErrorCode = unconfirmed.EvidenceErrorCode };
+        }
+        catch (Exception) { /* Unavailable confirmation preserves the original unconfirmed result. */ }
+        return unconfirmed;
     }
 
     private async Task HeartbeatAsync(WorkerLease lease, CancellationToken stop, CancellationTokenSource execution)

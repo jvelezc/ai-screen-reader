@@ -49,9 +49,13 @@ accepted, including its private installation. [First publication through the ord
 maintenance wrapper](docs/validation/first-publication-maintenance-v1.md) also
 passes: the same producer/gen1 publishes five verified originals with zero recovery
 inputs, and the original account reads the graph and plays the recording.
-**Next:** deliver and accept [caller-owned scan cancellation](docs/validation/caller-scan-cancellation-v1.md).
-HTTP 1.14 and 21 private MCP tools are implemented; 2,924 local Windows tests and 417 local
-database checks pass. CI, hosted delivery and account acceptance remain separate.
+**Next:** finish [caller-owned scan cancellation](docs/validation/caller-scan-cancellation-v1.md)
+by keeping the worker available after a confirmed stop. Coref3d675d/HTTP1.14 and21
+private MCP tools pass all nine CI jobs and exact151-file delivery; UIc614141/Edge11
+and queued account stop pass. Actual after-input stop preserves205 originals and
+exact native cleanup, but exposes a worker halt. The repair passes2,936 Windows
+tests and431 database checks; CI, delivery and fresh worker-availability acceptance
+remain open.
 Partial originals cannot become a final video, replay or completion.
 
 For a working local MCP prototype with approved public HTTPS reading, isolated link navigation and Claude configuration, see [Use HeadlessScreenReader with Claude](docs/prototype/claude.md). Public browsing requires a running Linux Podman or Docker engine; the trusted fixture connection also runs directly on Windows.
