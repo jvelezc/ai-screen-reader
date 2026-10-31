@@ -12,7 +12,7 @@ internal static class PortalOpenApi
 {
     private static readonly Lazy<string> Cached = new(Build);
     public static string Document => Cached.Value;
-    public const string ContractVersion = "1.11.0";
+    public const string ContractVersion = "1.12.0";
 
     private static string Build()
     {
@@ -33,6 +33,9 @@ internal static class PortalOpenApi
             ["RetainedProgressGraph"] = Schema<PortalProgressGraphResponse>("RetainedProgressGraph"),
             ["RetainedCheckpointRequest"] = Schema<PortalCheckpointRequest>(),
             ["RetainedCheckpoint"] = Schema<RetainedCheckpointPage>("RetainedCheckpoint"),
+            ["RetainedRecordingOutput"] = Schema<PortalRecordedOutputResponse>("RetainedRecordingOutput"),
+            ["RetainedRecordingOutputRequest"] = Schema<PortalRecordedOutputRequest>(),
+            ["RetainedRecordingOutputPage"] = Schema<RetainedRecordingOutputPage>("RetainedRecordingOutputPage"),
             ["Readiness"] = Schema<PortalReadinessResponse>(),
             ["ReaderSession"] = Schema<PortalReaderSessionResponse>(),
             ["ReaderSnapshot"] = Schema<PortalReaderSnapshotResponse>(),
@@ -94,6 +97,12 @@ internal static class PortalOpenApi
         paths["/api/workspaces/{organization}/evidence-readiness"] = Path("post", Operation("AssessWebsiteEvidence",
             "Assess supplied scanner records or explicitly fictional examples against eight operational conditions. URL alone returns ScanResultsRequired. No live scan, human-review task or legal eligibility decision. Originals require an exact authorized archive identity.",
             "EvidenceReadinessResponse", true, "EvidenceReadinessRequest", organization: true));
+        paths["/api/workspaces/{organization}/scans/{scan}/recorded-output"] = Path("get", Operation("ReadRetainedRecordingOutput",
+            "Read the actual producer's complete retained child-output manifest. Unrecorded, unstarted, missing, incomplete and cleanup-unconfirmed remain explicit. Retention and a historical cleanup acknowledgement are separate from completion, publication, current custody, goal verification and barrier findings. No native wrapper or replay authority.",
+            "RetainedRecordingOutput", true, organization: true, scan: true));
+        paths["/api/workspaces/{organization}/scans/{scan}/recorded-output/bytes"] = Path("post", Operation("ReadRetainedRecordingOutputBytes",
+            "Read at most64KiB of the exact retained child-output ZIP using its bundle SHA-256 and aligned offset or exact EOF. Original actor and producer reauthorized before and after each storage read, including failures. Compare attempt metadata and page/whole hashes, then reauthorize at EOF before delivery. Changed identity requires rereading the SAME scan, never uncertain-input replay.",
+            "RetainedRecordingOutputPage", true, "RetainedRecordingOutputRequest", organization: true, scan: true));
         return new JsonObject
         {
             ["openapi"] = "3.1.0",
@@ -141,6 +150,7 @@ internal static class PortalOpenApi
                 if (context.TypeInfo.Type != typeof(PortalEmptyRequest) && context.TypeInfo.Type != typeof(PortalCreateScanRequest)
                     && context.TypeInfo.Type != typeof(PortalArchiveManifestRequest) && context.TypeInfo.Type != typeof(PortalArchiveFileRequest)
                     && context.TypeInfo.Type != typeof(PortalCheckpointRequest)
+                    && context.TypeInfo.Type != typeof(PortalRecordedOutputRequest)
                     && context.TypeInfo.Type != typeof(EvidenceReadinessRequest))
                     value["required"] = Strings(properties.Select(property => property.Key).ToArray());
                 if (context.TypeInfo.Type == typeof(PortalCheckpointRequest))
@@ -149,6 +159,38 @@ internal static class PortalOpenApi
                     properties["sequence"]!["minimum"] = 1; properties["sequence"]!["maximum"] = 9;
                     properties["offset"]!["minimum"] = 0; properties["offset"]!["maximum"] = 1048576;
                     value["description"] = "Offset defaults to0. Runtime requires16KiB alignment or exact EOF; hashes identify content and never grant access.";
+                }
+                if (context.TypeInfo.Type == typeof(PortalRecordedOutputRequest))
+                {
+                    properties["bundleSha256"]!["pattern"] = "^[a-f0-9]{64}$";
+                    properties["offset"]!["minimum"] = 0; properties["offset"]!["maximum"] = RetainedRecordingOutput.MaximumBytes;
+                    value["description"] = "Offset defaults to0. Runtime requires64KiB alignment or exact EOF. Only the current authorized producer is resolved; no caller-selected native path, worker or generation.";
+                }
+                if (context.TypeInfo.Type == typeof(PortalRecordedOutputResponse))
+                {
+                    properties["outputState"]!["enum"] = Strings("NotApplicable", "NotStarted", "NotRetained", "Incomplete", "CleanupUnconfirmed", "Available");
+                    value["allOf"] = JsonNode.Parse("""
+                        [{"if":{"properties":{"outputState":{"const":"Available"}}},
+                          "then":{"properties":{"output":{"type":"object"},"workerId":{"type":"string","format":"uuid"},"generation":{"minimum":1}}},
+                          "else":{"properties":{"output":{"const":null}}}}]
+                        """);
+                }
+                if (context.TypeInfo.Type == typeof(RetainedRecordingOutput))
+                {
+                    properties["schema"]!["const"] = RetainedRecordingOutput.CurrentSchema;
+                    properties["bundleSha256"]!["pattern"] = "^[a-f0-9]{64}$";
+                    properties["bytes"]!["minimum"] = 1; properties["bytes"]!["maximum"] = RetainedRecordingOutput.MaximumBytes;
+                    properties["recording"]!["enum"] = Strings("KeyboardTraversal", "PassiveObservation");
+                    properties["nativeRemovalAcknowledged"]!["const"] = true;
+                    properties["isCompletionReceipt"]!["const"] = false; properties["canReplay"]!["const"] = false;
+                    properties["goalVerification"]!["const"] = "NotAssessed";
+                    value["description"] = "Complete original child-output ZIP under the original attempt/producer, with historical native cleanup acknowledgement. No host/native ownership wrapper, completed execution, publication, current custody, overall goal or barrier conclusion.";
+                }
+                if (context.TypeInfo.Type == typeof(RetainedRecordingOutputPage))
+                {
+                    properties["offset"]!["minimum"] = 0; properties["offset"]!["maximum"] = RetainedRecordingOutput.MaximumBytes;
+                    properties["data"]!["maxLength"] = 4 * ((RetainedRecordingOutputPage.PageBytes + 2) / 3);
+                    properties["pageSha256"]!["pattern"] = "^[a-f0-9]{64}$";
                 }
                 if (context.TypeInfo.Type == typeof(RetainedProgressGraph))
                 {

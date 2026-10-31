@@ -74,9 +74,15 @@ cleanup. A matching native-removal acknowledgement, an output seal, archive
 publication and database completion stay separate. This is complete-output
 retention, not recovery of media from an unfinished child. Its
 [validation gates](validation/recorded-output-staging-v1.md) remain separately
-reported. **Next:** protected staged-media reconstruction and publication
-reconciliation under the original attempt, then partial media recovery and the
-failure injections below. Automatic worker restart stays disabled.
+reported: all nine CI jobs,2,606 tests per OS,57 native requirements and exact
+151-file private deployment pass. [Protected retained-output reads](decisions/0068-retained-recording-output-reads.md)
+now implement manifest and bounded whole-ZIP export through HTTP1.12/private MCP;
+their [validation gates](validation/retained-recording-output-v1.md) remain
+separate. Missing, incomplete and cleanup-unconfirmed media cannot be exported.
+**Next:** exact private delivery and original-account consumer acceptance, then
+publication reconciliation under the original attempt, restart-time cleanup
+acknowledgement repair, partial media recovery and the failure injections below.
+Automatic worker restart stays disabled.
 
 Exercise the actual Linux worker under crash after input, upload before metadata
 commit, storage outage, lease expiry, cancellation and full staging disk. Retain

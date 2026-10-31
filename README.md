@@ -12,8 +12,12 @@ Privensic Screen Reader now [checks assessment claims against admitted originals
 now preserves validated original bundles under their admitted producer before
 native cleanup. Output sealing, actual cleanup acknowledgement and database
 publication remain separate. [Validation](docs/validation/recorded-output-staging-v1.md)
-tracks local, CI and deployment gates; protected reconstruction and interrupted
-live-media recovery are the next implementation steps.
+records all nine CI jobs,2,606 tests per OS,57 native requirements and an exact
+151-file private deployment. [Protected retained-output reads](docs/decisions/0068-retained-recording-output-reads.md)
+now implement HTTP1.12/private MCP manifest and64KiB ZIP byte pages, with current
+caller/producer checks and explicit missing/incomplete/cleanup states. Their
+[delivery gates](docs/validation/retained-recording-output-v1.md) are separate;
+publication reconciliation and interrupted live-media recovery remain next.
 
 For a working local MCP prototype with approved public HTTPS reading, isolated link navigation and Claude configuration, see [Use HeadlessScreenReader with Claude](docs/prototype/claude.md). Public browsing requires a running Linux Podman or Docker engine; the trusted fixture connection also runs directly on Windows.
 

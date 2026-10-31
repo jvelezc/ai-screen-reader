@@ -58,3 +58,21 @@ salvage or automatic retention deletion is supplied by this slice. Native cleanu
 must still be verified; a sealed private bundle is never a completed queue job,
 an overall verified goal or a sufficient website-evidence package. Actual S3
 outage, upload-before-commit, cancellation and full-disk recovery remain open.
+
+## Delivered staging receipt
+
+[CI41173536711](https://github.com/jvelezc/ai-screen-reader/actions/runs/41173536711)
+passes all nine jobs for commit`e8a015cd5717c308b49c8e1cc664b3f0e4da7d98`.
+Windows and Ubuntu each discover, execute and pass2,606/2,606, zero failed or
+skipped. The actual Linux worker proof executes57/57, zero failed or unconfirmed,
+including all four new staging requirements; database and image cleanup are
+confirmed. This does not establish actual full-disk or upload-outage recovery.
+
+[Private deployment41174654423](https://github.com/jvelezc/ai-screen-reader/actions/runs/41174654423)
+is Ready for that exact commit. Independent VPS verification matches all151
+release files, default TLS and API1.11 schemas; anonymous session/progress/graph/
+checkpoint reads are denied and root/MCP/host metadata are not exposed. Both
+services run as`hsr-worker`, active, with`Restart=no`, `KillMode=process` and
+`SendSIGKILL=no`. Release verification is separate from a new application-account
+media read. The following [protected reads](retained-recording-output-v1.md) have
+their own delivery gates.

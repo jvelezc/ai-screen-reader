@@ -2,17 +2,30 @@
 
 Updated October 30, 2026. The original proposal under `outputs/` remains unchanged. This status document tracks implementation against its acceptance gates.
 
-**Current core increment: complete recording-output staging.** Actual leased
+**Current core increment: protected retained-recording output reads.** HTTP1.12
+and eighteen private MCP tools expose complete original child-output manifests
+and64KiB byte pages. Current original-user scope and actual producer are checked
+before and after storage, including failures. Missing, incomplete and cleanup-
+unconfirmed output stay explicit; native wrappers are excluded and retention
+never becomes completion, publication, replay or an overall verified goal.
+[Decision0068](decisions/0068-retained-recording-output-reads.md) and
+[separate delivery evidence](validation/retained-recording-output-v1.md) track
+focused104 and full Windows2,657 passing tests, strict build/format, CI,
+deployment and later consumer
+acceptance. **Next:** complete those gates, then original-attempt publication
+reconciliation and partial live-media/storage/disk-failure recovery.
+
+**Complete recording-output staging accepted.** Actual leased
 recordings retain their exact validated bundle in a private host journal before
 native cleanup. Immutable header/seal/readback binds the original job, worker
 and native owner; a separate acknowledgement copies the matching actual native
 removal journal. Source, archive publication, native cleanup and database completion
 remain separate. [Decision0067](decisions/0067-recorded-output-staging.md) and
 [validation](validation/recorded-output-staging-v1.md) track local2,606 tests,
-CI/native execution and exact deployment separately. Public API1.11 and sixteen
-private MCP tools remain unchanged. **Next:** protected staged-media reconstruction
-and publication reconciliation under the original attempt, then partial live-media
-recovery and actual storage/disk failure acceptance. Automatic restart stays disabled.
+CI/native execution and exact deployment separately. All nine CI jobs pass2,606
+per OS and57 native requirements; exact private deployment independently verifies
+151 release files and default TLS. API1.11/sixteen private tools describes this
+earlier worker-local increment. Automatic restart stays disabled.
 
 **Full retained-path consumer accepted:** UI5972663 → existing Edge v8 → core1.11.
 [UI CI41170494893](https://github.com/jvelezc/ai-screen-reader-ui/actions/runs/41170494893)

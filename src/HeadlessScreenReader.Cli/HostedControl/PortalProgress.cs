@@ -70,10 +70,10 @@ internal sealed class PortalProgressReader(string evidence) : IPortalProgressRea
 }
 
 internal sealed partial class PortalProgressService(IPortalProjectClient project, IPortalProgressReader reader,
-    IPortalProgressSnapshotReader? snapshotReader = null)
+    IPortalProgressSnapshotReader? snapshotReader = null, IPortalRecordedOutputReader? recordedOutputReader = null)
 {
     private async Task<(PortalScanResponse Scan, PortalJobResult Job, Guid? Worker)> ScopeAsync(PortalIdentity actor,
-        Guid organization, Guid scan, CancellationToken token)
+        Guid organization, Guid scan, CancellationToken token, bool includePassiveRecording = false)
     {
         var workspace = await project.WorkspaceAsync(actor, organization, token).ConfigureAwait(false)
             ?? throw new PortalFault(404, "CONTROL_WORKSPACE_NOT_FOUND");
@@ -97,7 +97,7 @@ internal sealed partial class PortalProgressService(IPortalProjectClient project
                 throw new PortalFault(503, "CONTROL_STATE_UNCONFIRMED");
         }
         Guid? worker = null;
-        if (job.TraversalRoute > 0 && job.Generation > 0)
+        if ((job.TraversalRoute > 0 || includePassiveRecording && job.RecordObservation) && job.Generation > 0)
         {
             worker = await project.AttemptWorkerAsync(actor, Descriptor(job), token).ConfigureAwait(false);
             if (worker is null || worker == Guid.Empty) throw new PortalFault(503, "CONTROL_PROGRESS_IDENTITY_UNCONFIRMED");
