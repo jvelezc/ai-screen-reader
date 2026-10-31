@@ -107,13 +107,21 @@ publication through the wrapper.
 [Unfinished original-image retention](decisions/0072-unfinished-recording-source-retention.md)
 now keeps bounded JPEG subsets before native child loss, with a separate durable
 acknowledgement and fresh authority after writes. Local actual crash/removal
-passes69 native requirements; full delivery remains in its
+passes69 native requirements. Delivery at65689fc passes all nine CI jobs,
+Windows/Ubuntu2,754 each, native Linux71/database361 and exact151-file deployment.
+A fresh original-account recording separately matches71 retained images and
+their original timestamps; five authorized originals, graph and loaded/seekable
+video pass. Scope-specific evidence is in the
 [validation record](validation/unfinished-recording-sources-v1.md).
-**Next:** finish that delivery, then expose partial originals through independently
-usable protected API/private MCP contracts. Resolve original caller and actual
-producer, page exact bytes, preserve uncommitted/missing states and never describe
-partial images as a complete video or successful job. Existing Edge/UI consumption
-follows core acceptance. The remaining failure injections below stay open.
+The [protected subset reader](decisions/0073-protected-original-image-reads.md)
+now implements API1.13/twenty private MCP tools: exact prefix/sequence/hash and
+bounded byte pages, current original-caller/actual-producer checks before and
+after storage, and explicit uncommitted/missing/empty states. Its
+[validation record](validation/retained-source-images-v1.md) separates gates.
+**Next:** finish core CI and exact private deployment, then consume those
+published contracts through existing Edge/UI. Partial images remain unassessed
+and cannot become a final video, replay or successful job. The remaining actual
+failure injections below stay open.
 Automatic worker restart stays disabled.
 
 Exercise the actual Linux worker under crash after input, upload before metadata

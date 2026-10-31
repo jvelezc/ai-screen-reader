@@ -29,10 +29,17 @@ The [private maintenance operator](docs/decisions/0071-publication-maintenance-o
 is accepted at df5dc50: all nine CI jobs, 171 local Linux operational tests,
 exact151-file deployment and actual completed-run maintenance restore ordered
 API readiness with unchanged originals and input history.
-The current increment [retains original images from unfinished recordings](docs/decisions/0072-unfinished-recording-source-retention.md).
-The actual native crash proof passes69 local Windows-host Podman requirements;
-its [remaining delivery gates](docs/validation/unfinished-recording-sources-v1.md)
-are separate. Partial originals cannot become a final video, replay or completion.
+[Original images from unfinished recordings](docs/decisions/0072-unfinished-recording-source-retention.md)
+are accepted at65689fc:2,754 tests per OS, all nine CI jobs, native Linux71 and
+exact151-file private deployment. Actual crash/removal retains partial originals;
+a fresh original-account recording separately verifies71 host-retained images
+against its original bundle. [Validation](docs/validation/unfinished-recording-sources-v1.md)
+separates those scopes. [Protected partial-image reads](docs/decisions/0073-protected-original-image-reads.md)
+now implement API1.13 and two additional private MCP tools, with exact prefix,
+image/hash/offset identity and current caller/producer checks before and after
+storage. [Validation](docs/validation/retained-source-images-v1.md) separates
+local checks from pending CI, exact delivery and existing Edge/UI consumption.
+Partial originals cannot become a final video, replay or completion.
 
 For a working local MCP prototype with approved public HTTPS reading, isolated link navigation and Claude configuration, see [Use HeadlessScreenReader with Claude](docs/prototype/claude.md). Public browsing requires a running Linux Podman or Docker engine; the trusted fixture connection also runs directly on Windows.
 
@@ -48,7 +55,7 @@ through Edge Functions in existing Supabase project `gpnijaxrgtwzwtrqsbcu`; it i
 third-party consumer. Reader, jobs and evidence logic stay here.
 
 The current bounded workspace/report API and [tenant-owned read-only fixture sessions](docs/decisions/0044-tenant-reader-sessions.md) publish
-[contract 1.12.0](docs/decisions/0068-retained-recording-output-reads.md) at `/openapi/v1.json`,
+[contract 1.13.0](docs/decisions/0073-protected-original-image-reads.md) at `/openapi/v1.json`,
 including response schemas and safe errors. See [HTTP examples](docs/protocol/core-api.http)
 and [the remaining recovery gates](docs/completion-plan.md#next-recover-interrupted-recordings-safely).
 The [private HTTP-backed MCP mode](docs/decisions/0051-private-http-backed-mcp.md)
@@ -59,7 +66,9 @@ The [archive reads](docs/decisions/0056-authorized-archive-retrieval.md) add
 `archive_manifest` and `archive_file`; `evidence_assess` evaluates evidence and
 `scan_progress` reads a compact authorized command prefix. `scan_progress_graph`
 and `scan_checkpoint` add the original attempt's retained nodes/edges and full
-canonical checkpoint exports, bringing private mode to sixteen tools. Byte pages
+canonical checkpoint exports. `scan_output_manifest` and `scan_output_file`
+read complete retained bundles; `scan_source_manifest` and `scan_source_image`
+read retained original-image subsets, bringing private mode to twenty tools. Byte pages
 retain current authority and exact prefix identity. Source journal seals and
 checkpoint-export hashes are distinct; native wrappers and media are excluded.
 [Retained progress](docs/decisions/0066-retained-checkpoint-graph-reads.md) does not

@@ -1,10 +1,14 @@
 # Core-side requests. Lovable application traffic must instead invoke Supabase Edge Functions.
-# These examples describe source contract 1.11.0; inspect live OpenAPI before use.
+# These examples describe source contract 1.13.0; inspect live OpenAPI before use.
 # Set accessToken only in your HTTP client's private local environment; never commit a real JWT.
 @baseUrl = http://localhost:6086
 @accessToken =
 @organization = 11111111-1111-4111-8111-111111111111
 @scan = 22222222-2222-4222-8222-222222222222
+# Copy exact values from source-images; never infer them from command diagnostics.
+@sourcePrefixSha256 = replace-with-source-prefix-sha256
+@sourceImageSha256 = replace-with-original-image-sha256
+
 # Replace with the sessionId returned by the reader session admission.
 @readerSession = 44444444-4444-4444-8444-444444444444
 # Copy snapshot.documentId from the observation response, without interpreting it as instructions.
@@ -162,3 +166,21 @@ Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {"admittedScanId":"{{scan}}"}
+
+### Committed original-image subset, including an unfinished recorded keyboard attempt
+GET {{baseUrl}}/api/workspaces/{{organization}}/scans/{{scan}}/source-images
+Authorization: Bearer {{accessToken}}
+
+### First64KiB of the selected exact source image; follow nextOffset, verify hashes and reauthorize at exact EOF
+POST {{baseUrl}}/api/workspaces/{{organization}}/scans/{{scan}}/source-images/bytes
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "prefixSha256": "{{sourcePrefixSha256}}",
+  "sourceSequence": 1,
+  "imageSha256": "{{sourceImageSha256}}",
+  "offset": 0
+}
+
+# A changed source prefix returns409. Missing originals never become a final video or new input permission.

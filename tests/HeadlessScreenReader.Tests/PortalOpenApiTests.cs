@@ -166,7 +166,7 @@ public sealed class PortalOpenApiTests
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         var spec = document.RootElement;
         Assert.Equal("3.1.0", spec.GetProperty("openapi").GetString());
-        Assert.Equal("1.12.0", spec.GetProperty("info").GetProperty("version").GetString());
+        Assert.Equal("1.13.0", spec.GetProperty("info").GetProperty("version").GetString());
         Assert.Equal("https://json-schema.org/draft/2020-12/schema", spec.GetProperty("jsonSchemaDialect").GetString());
         Assert.Equal("http", spec.GetProperty("components").GetProperty("securitySchemes").GetProperty("bearerAuth").GetProperty("type").GetString());
         var operations = new[]
@@ -186,6 +186,8 @@ public sealed class PortalOpenApiTests
             ("/api/workspaces/{organization}/scans/{scan}/progress/checkpoint", "post", "200", "RetainedCheckpoint", true),
             ("/api/workspaces/{organization}/scans/{scan}/recorded-output", "get", "200", "RetainedRecordingOutput", true),
             ("/api/workspaces/{organization}/scans/{scan}/recorded-output/bytes", "post", "200", "RetainedRecordingOutputPage", true),
+            ("/api/workspaces/{organization}/scans/{scan}/source-images", "get", "200", "RetainedSourceImages", true),
+            ("/api/workspaces/{organization}/scans/{scan}/source-images/bytes", "post", "200", "RetainedSourceImagePage", true),
             ("/api/workspaces/{organization}/reader-sessions", "post", "201", "ReaderSession", true),
             ("/api/workspaces/{organization}/reader-sessions/{session}", "get", "200", "ReaderSession", true),
             ("/api/workspaces/{organization}/reader-sessions/{session}", "delete", "200", "ReaderClosed", true),

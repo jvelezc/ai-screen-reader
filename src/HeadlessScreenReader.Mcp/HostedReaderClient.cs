@@ -32,7 +32,7 @@ public sealed partial class HostedReaderClient : IAsyncDisposable
         {
             Transport = "stdio",
             Backend = "private core HTTP API",
-            ExpectedApiContract = "1.12.0",
+            ExpectedApiContract = "1.13.0",
             OrganizationId = _options.Organization,
             Fixture = "Foundation",
             ReadOnly = true,
@@ -45,7 +45,7 @@ public sealed partial class HostedReaderClient : IAsyncDisposable
             TraceRetention = "Transient",
             DurableScans = new
             {
-                Tools = new[] { "scan_start_fixture", "scan_list", "scan_report", "scan_progress", "scan_progress_graph", "scan_checkpoint", "scan_output_manifest", "scan_output_file" },
+                Tools = new[] { "scan_start_fixture", "scan_list", "scan_report", "scan_progress", "scan_progress_graph", "scan_checkpoint", "scan_output_manifest", "scan_output_file", "scan_source_manifest", "scan_source_image" },
                 Fixture = "synthetic-shop",
                 AdmissionCreatesJob = true,
                 CallerRequestIdRequired = true,

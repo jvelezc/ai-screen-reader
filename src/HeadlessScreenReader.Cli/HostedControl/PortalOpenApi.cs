@@ -12,7 +12,7 @@ internal static class PortalOpenApi
 {
     private static readonly Lazy<string> Cached = new(Build);
     public static string Document => Cached.Value;
-    public const string ContractVersion = "1.12.0";
+    public const string ContractVersion = "1.13.0";
 
     private static string Build()
     {
@@ -36,6 +36,9 @@ internal static class PortalOpenApi
             ["RetainedRecordingOutput"] = Schema<PortalRecordedOutputResponse>("RetainedRecordingOutput"),
             ["RetainedRecordingOutputRequest"] = Schema<PortalRecordedOutputRequest>(),
             ["RetainedRecordingOutputPage"] = Schema<RetainedRecordingOutputPage>("RetainedRecordingOutputPage"),
+            ["RetainedSourceImages"] = Schema<PortalSourceImagesResponse>("RetainedSourceImages"),
+            ["RetainedSourceImageRequest"] = Schema<PortalSourceImageRequest>(),
+            ["RetainedSourceImagePage"] = Schema<RetainedSourceImagePage>("RetainedSourceImagePage"),
             ["Readiness"] = Schema<PortalReadinessResponse>(),
             ["ReaderSession"] = Schema<PortalReaderSessionResponse>(),
             ["ReaderSnapshot"] = Schema<PortalReaderSnapshotResponse>(),
@@ -103,6 +106,12 @@ internal static class PortalOpenApi
         paths["/api/workspaces/{organization}/scans/{scan}/recorded-output/bytes"] = Path("post", Operation("ReadRetainedRecordingOutputBytes",
             "Read at most64KiB of the exact retained child-output ZIP using its bundle SHA-256 and aligned offset or exact EOF. Original actor and producer reauthorized before and after each storage read, including failures. Compare attempt metadata and page/whole hashes, then reauthorize at EOF before delivery. Changed identity requires rereading the SAME scan, never uncertain-input replay.",
             "RetainedRecordingOutputPage", true, "RetainedRecordingOutputRequest", organization: true, scan: true));
+        paths["/api/workspaces/{organization}/scans/{scan}/source-images"] = Path("get", Operation("ReadRetainedSourceImages",
+            "Read the actual admitted producer's committed original JPEG subset manifest. Unrecorded, unstarted, missing, empty and uncommitted data stay explicit. Completeness/overall goal remain NotAssessed. No final video, decoding, speech, completion, custody or replay authority. Current caller/producer rechecked after storage including failures.",
+            "RetainedSourceImages", true, organization: true, scan: true));
+        paths["/api/workspaces/{organization}/scans/{scan}/source-images/bytes"] = Path("post", Operation("ReadRetainedSourceImageBytes",
+            "Read at most64KiB of one exact original JPEG using its source prefix, source sequence and whole-image digest. Aligned offsets or exact EOF; compare each page and whole-image hashes, then reauthorize at EOF before delivery. Source changes require rereading the SAME scan. No caller-selected producer/native path, input, final recording or completion authority.",
+            "RetainedSourceImagePage", true, "RetainedSourceImageRequest", organization: true, scan: true));
         return new JsonObject
         {
             ["openapi"] = "3.1.0",
@@ -151,6 +160,7 @@ internal static class PortalOpenApi
                     && context.TypeInfo.Type != typeof(PortalArchiveManifestRequest) && context.TypeInfo.Type != typeof(PortalArchiveFileRequest)
                     && context.TypeInfo.Type != typeof(PortalCheckpointRequest)
                     && context.TypeInfo.Type != typeof(PortalRecordedOutputRequest)
+                    && context.TypeInfo.Type != typeof(PortalSourceImageRequest)
                     && context.TypeInfo.Type != typeof(EvidenceReadinessRequest))
                     value["required"] = Strings(properties.Select(property => property.Key).ToArray());
                 if (context.TypeInfo.Type == typeof(PortalCheckpointRequest))
@@ -165,6 +175,53 @@ internal static class PortalOpenApi
                     properties["bundleSha256"]!["pattern"] = "^[a-f0-9]{64}$";
                     properties["offset"]!["minimum"] = 0; properties["offset"]!["maximum"] = RetainedRecordingOutput.MaximumBytes;
                     value["description"] = "Offset defaults to0. Runtime requires64KiB alignment or exact EOF. Only the current authorized producer is resolved; no caller-selected native path, worker or generation.";
+                }
+                if (context.TypeInfo.Type == typeof(PortalSourceImageRequest))
+                {
+                    properties["prefixSha256"]!["pattern"] = "^[a-f0-9]{64}$";
+                    properties["imageSha256"]!["pattern"] = "^[a-f0-9]{64}$";
+                    properties["sourceSequence"]!["minimum"] = 1; properties["sourceSequence"]!["maximum"] = RetainedSourceImages.MaximumFrames;
+                    properties["offset"]!["minimum"] = 0; properties["offset"]!["maximum"] = RetainedSourceImageFile.MaximumBytes;
+                    value["description"] = "Offset defaults to0. Runtime requires64KiB alignment or exact image EOF. Prefix/digest identify content and never grant access. No caller-selected producer, generation or native path.";
+                }
+                if (context.TypeInfo.Type == typeof(PortalSourceImagesResponse))
+                {
+                    properties["sourceState"]!["enum"] = Strings("NotApplicable", "NotStarted", "NotRetained", "Empty", "Available");
+                    value["allOf"] = JsonNode.Parse("""
+                        [{"if":{"properties":{"sourceState":{"enum":["Empty","Available"]}}},
+                          "then":{"properties":{"sources":{"type":"object"},"workerId":{"type":"string","format":"uuid"},"generation":{"minimum":1}}},
+                          "else":{"properties":{"sources":{"const":null}}}}]
+                        """);
+                }
+                if (context.TypeInfo.Type == typeof(RetainedSourceImages) || context.TypeInfo.Type == typeof(RetainedSourceImageReference))
+                {
+                    properties["schema"]!["const"] = context.TypeInfo.Type == typeof(RetainedSourceImages)
+                        ? RetainedSourceImages.CurrentSchema : RetainedSourceImageReference.CurrentSchema;
+                    properties["prefixSha256"]!["pattern"] = "^[a-f0-9]{64}$";
+                    properties["scope"]!["const"] = "RetainedOriginalSourceSubset";
+                    properties["completeness"]!["const"] = "NotAssessed";
+                    properties["isCompletedRecording"]!["const"] = false; properties["canReplay"]!["const"] = false;
+                    properties["goalVerification"]!["const"] = "NotAssessed";
+                    value["description"] = "Committed original JPEG subset, separate from command progress, decoded final video, actual AT speech and completed execution. Raw Chromium presentation timestamps; no host/native wrapper, replay, custody, goal or evidence sufficiency authority.";
+                    if (context.TypeInfo.Type == typeof(RetainedSourceImages))
+                    {
+                        properties["files"]!["maxItems"] = RetainedSourceImages.MaximumFrames;
+                        properties["bytes"]!["minimum"] = 0; properties["bytes"]!["maximum"] = RetainedSourceImages.MaximumBytes;
+                    }
+                }
+                if (context.TypeInfo.Type == typeof(RetainedSourceImageFile))
+                {
+                    properties["sourceSequence"]!["minimum"] = 1; properties["sourceSequence"]!["maximum"] = RetainedSourceImages.MaximumFrames;
+                    properties["file"]!["pattern"] = "^source-[0-9]{4}\\.jpg$";
+                    properties["presentationUnixMilliseconds"]!["exclusiveMinimum"] = 0;
+                    properties["bytes"]!["minimum"] = 4; properties["bytes"]!["maximum"] = RetainedSourceImageFile.MaximumBytes;
+                    properties["sha256"]!["pattern"] = "^[a-f0-9]{64}$"; properties["contentType"]!["const"] = "image/jpeg";
+                }
+                if (context.TypeInfo.Type == typeof(RetainedSourceImagePage))
+                {
+                    properties["offset"]!["minimum"] = 0; properties["offset"]!["maximum"] = RetainedSourceImageFile.MaximumBytes;
+                    properties["data"]!["maxLength"] = 4 * ((RetainedSourceImagePage.PageBytes + 2) / 3);
+                    properties["pageSha256"]!["pattern"] = "^[a-f0-9]{64}$";
                 }
                 if (context.TypeInfo.Type == typeof(PortalRecordedOutputResponse))
                 {

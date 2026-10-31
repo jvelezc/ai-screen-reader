@@ -2,16 +2,30 @@
 
 Updated October 31, 2026. The original proposal under `outputs/` remains unchanged. This status document tracks implementation against its acceptance gates.
 
-**Current increment: unfinished original-image retention.**
+**Protected original-image reads implemented; delivery validation in progress.**
+API1.13 and twenty private MCP tools expose a bounded subset manifest and64KiB
+image pages. Current original-user and actual-producer scope is rechecked after
+storage, including failures and EOF. Exact prefix/sequence/hash checks preserve
+immutable source identity; missing, empty and uncommitted originals remain
+explicit. Subsets cannot establish replay, completion, a final video, AT speech
+or evidence sufficiency. [Decision0073](decisions/0073-protected-original-image-reads.md)
+and [validation](validation/retained-source-images-v1.md) separate local tests,
+CI, private deployment and original-account consumption. **Next:** finish those
+core delivery gates, then consume this API through existing Edge/UI.
+
+**Unfinished original-image retention accepted at65689fc.**
 Completed source JPEGs now transfer through a separately admitted, hash-bound
 worker protocol before command acknowledgement. A private journal preserves
 original source sequence/timestamps under the actual producer and native owner.
 Partial snapshots remain unassessed and cannot authorize replay, publication or
 completion. [Decision0072](decisions/0072-unfinished-recording-source-retention.md)
 and [validation](validation/unfinished-recording-sources-v1.md) separate focused
-checks, actual local native crash/removal (69/69), full Windows, Linux CI and
-private delivery. **Next:** finish delivery, then protected API/MCP reads of
-partial originals with original-caller/actual-producer checks.
+checks, actual local native crash/removal (69/69), Windows/Ubuntu2,754 each,
+all nine green CI jobs, native Linux71/database361 and exact151-file private
+delivery. A fresh original-account recording separately verifies71 host-retained
+images against its complete bundle and actual presentation times; the account
+reads its five originals, graph and loaded/seekable video. **Next:** protected
+API/MCP reads of partial originals with original-caller/actual-producer checks.
 
 **Ordered publication maintenance accepted at df5dc50.**
 The root-only helper stops control before observation, reconciles native ownership,

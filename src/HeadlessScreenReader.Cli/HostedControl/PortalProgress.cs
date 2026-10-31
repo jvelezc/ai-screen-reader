@@ -70,7 +70,8 @@ internal sealed class PortalProgressReader(string evidence) : IPortalProgressRea
 }
 
 internal sealed partial class PortalProgressService(IPortalProjectClient project, IPortalProgressReader reader,
-    IPortalProgressSnapshotReader? snapshotReader = null, IPortalRecordedOutputReader? recordedOutputReader = null)
+    IPortalProgressSnapshotReader? snapshotReader = null, IPortalRecordedOutputReader? recordedOutputReader = null,
+    IPortalSourceImagesReader? sourceImagesReader = null)
 {
     private async Task<(PortalScanResponse Scan, PortalJobResult Job, Guid? Worker)> ScopeAsync(PortalIdentity actor,
         Guid organization, Guid scan, CancellationToken token, bool includePassiveRecording = false)

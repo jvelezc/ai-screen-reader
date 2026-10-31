@@ -16,7 +16,7 @@ public sealed class HostedMcpChromiumTests
         var project = new ReaderProjectStub(); await using var server = await PortalReaderHttpTests.Start(project);
         await using var client = await Connect(server.BaseAddress);
         var tools = await client.ListToolsAsync();
-        Assert.Equal(new[] { "archive_file", "archive_manifest", "evidence_assess", "reader_close", "reader_execute", "reader_open_fixture", "reader_snapshot", "reader_status", "reader_timeline", "reader_trace", "scan_checkpoint", "scan_list", "scan_output_file", "scan_output_manifest", "scan_progress", "scan_progress_graph", "scan_report", "scan_start_fixture" }, tools.Select(t => t.Name).Order(StringComparer.Ordinal));
+        Assert.Equal(new[] { "archive_file", "archive_manifest", "evidence_assess", "reader_close", "reader_execute", "reader_open_fixture", "reader_snapshot", "reader_status", "reader_timeline", "reader_trace", "scan_checkpoint", "scan_list", "scan_output_file", "scan_output_manifest", "scan_progress", "scan_progress_graph", "scan_report", "scan_source_image", "scan_source_manifest", "scan_start_fixture" }, tools.Select(t => t.Name).Order(StringComparer.Ordinal));
         var assessment = (await Call(client, "evidence_assess", new() { ["example"] = "gaps" })).GetProperty("data");
         Assert.Equal("InsufficientEvidence", assessment.GetProperty("assessment").GetProperty("decision").GetString());
         Assert.False(assessment.GetProperty("assessment").GetProperty("websitePackageReady").GetBoolean());
