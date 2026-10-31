@@ -75,9 +75,9 @@ public static class TraversalRecordingDemo
             // Retain a trailing frame even for routes that perform only virtual reader commands.
             // This measurement hold is outside the route and never counts as user effort.
             await Task.Delay(120, cancellationToken).ConfigureAwait(false);
-            if (sources is not null) await probe.CopyCompletedSourcesAsync(sources, cancellationToken).ConfigureAwait(false);
             stage = "FinalizeAndDecodeOriginalMedia";
-            media = await probe.FinishAndInspectAsync().ConfigureAwait(false);
+            media = sources is null ? await probe.FinishAndInspectAsync().ConfigureAwait(false)
+                : await probe.FinishAndInspectAsync(sources, cancellationToken).ConfigureAwait(false);
             receipt = receipt with { HasRecording = true };
             stage = "AlignEvidence";
             alignment = TraversalRecording.Align(receipt, RecordingSynchronization.Calibrate(samples.ToImmutable()),

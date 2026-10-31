@@ -34,11 +34,14 @@ original images and exact native cleanup; the same worker then completes a disti
 no-input job without a restart. UIc614141/Edge11, source190 exact download,
 keyboard/320px, reconnect and saved sign-in pass in their named scopes.
 [Cancellation receipt](validation/caller-scan-cancellation-v1.md).
-**Next:** diagnose and fix recording finalization. A separate disabled-control
-case retains seven checkpoints/250 images but no complete output and only a generic
-engine reason. Preserve that attempt, identify its actual cause and safe error,
-then verify a distinct bounded recording. Remaining
-fault/provider/website/intervention gates stay separate.
+**Next:** [finish finite recording finalization](validation/finite-recording-finalization-v1.md#next-acceptance-gate).
+Actual Chromium checks show the final transfer can prolong image acquisition and
+begin before video finalizes. The repair joins both collectors inside the existing
+input-denied capture drain before the finite transfer;162 focused checks pass.
+Full pinned Windows verification passes3,012/3,012, zero failed/skipped; strict
+build and format pass. Both CI platforms, exact private delivery and distinct
+hosted recordings remain gates. Broader fault/provider/website/intervention
+acceptance stays separate.
 
 **Scoped recording-failure diagnostics are accepted at1200190.** The framed child
 preserves only a closed reason and exact original stream scope; the host grants no
@@ -48,9 +51,13 @@ database450/operations172; exact151-file delivery, TLS/private guards and hosted
 migration/body hash/grants match. A distinct normal original-account recording,
 without an observer, retains seven checkpoints/184 images but safely fails
 Unconfirmed with no result. The same worker remains healthy/native0. Collector-
-cause preservation through sanitized teardown passes81 focused and3,007 full
-Windows tests; CI/promotion and a new hosted diagnosis remain gates. No resource limit
-is increased and the failed attempts are preserved. [Validation](validation/recording-failure-diagnostics-v1.md).
+cause preservation is accepted atac228d7 with all nine CI jobs,3,007 per OS and
+exact151-file private delivery. A fresh normal original-account route completes;
+all five S3 originals match and graph/video playback passes. A separate repeat
+still fails Unconfirmed. That intermittent failure's cause remains unproven. No
+resource limit is increased and the failed attempts are preserved.
+[Diagnostics](validation/recording-failure-diagnostics-v1.md) and
+[fresh account evidence](validation/finite-recording-finalization-v1.md).
 
 **Unfinished original-image retention accepted at65689fc.**
 Completed source JPEGs now transfer through a separately admitted, hash-bound
@@ -572,7 +579,7 @@ flowchart LR
     Keyboard --> Claims[Accepted source-bound recorded claims]
     Claims --> Compact[Accepted compact original-account progress consumer]
     Compact --> Retained[Core retained checkpoint graph and byte reads]
-    Retained --> Next[NEXT: consume full retained path then recover original media]
+    Retained --> Next[NEXT: finish finite recording finalization]
     Next --> Durable[Broader hosted recovery and workflow acceptance]
     Client --> ViewerControl[Human takeover acceptance]
     classDef done fill:#dcfce7,stroke:#166534,color:#14532d
@@ -594,7 +601,7 @@ flowchart LR
     click SignedIn "validation/private-tenant-reader-v1.md"
     click Keyboard "validation/admitted-keyboard-recording-v1.md"
     click Retained "validation/retained-checkpoint-graph-v1.md"
-    click Next "completion-plan.md#next-recover-interrupted-recordings-safely"
+    click Next "validation/finite-recording-finalization-v1.md#next-acceptance-gate"
 ```
 
 Green means a named bounded capability is validated; amber means partial acceptance;

@@ -133,6 +133,46 @@ public sealed class ChromiumTraversalRecordingTests
     }
 
     [Fact]
+    public async Task FinalOriginalTransferCannotExtendActualSourceAcquisitionAfterTheRouteEnds()
+    {
+        var folder = Path.Combine(NewFolder(), "media");
+        var plan = TraversalDemo.Plans[1];
+        var ended = false; var finalCopies = 0; var before = -1; var after = -1;
+        var transferred = new Dictionary<int, CompletedCaptureSource>();
+        var result = await TraversalRecordingDemo.RunRouteAsync(folder, plan, checkpoint: (checkpoint, _) =>
+        {
+            if (checkpoint.Phase == TraversalCheckpointPhase.Observed && checkpoint.CommandIndex == plan.Instructions.Length) ended = true;
+            return Task.CompletedTask;
+        }, sources: async (originals, token) =>
+        {
+            foreach (var source in originals) transferred.Add(source.Frame.Sequence, source);
+            if (!ended) return;
+            finalCopies++;
+            before = Directory.GetFiles(folder, "source-*.jpg").Length;
+            // Actual renderer time models a pending storage acknowledgement after all route commands.
+            await Task.Delay(500, token);
+            after = Directory.GetFiles(folder, "source-*.jpg").Length;
+        });
+        Assert.Equal(1, finalCopies); Assert.InRange(before, 3, 250); Assert.Equal(before, after);
+        Assert.Null(result.Recording.ErrorCode); Assert.Equal("Complete", result.Recording.Stage);
+        var media = Assert.IsType<RecordingProbeMedia>(result.Recording.Media);
+        Assert.Equal(media.PreciseFrames.Length, transferred.Count);
+        foreach (var frame in media.PreciseFrames)
+        {
+            var source = transferred[frame.Sequence];
+            Assert.Equal(frame, source.Frame);
+            Assert.Equal(frame.Sha256, Convert.ToHexStringLower(SHA256.HashData(source.Content)));
+            Assert.Equal(source.Content, await File.ReadAllBytesAsync(Path.Combine(folder, frame.File)));
+        }
+        Assert.Equal(TraversalReachability.NotReached, result.Receipt!.Reachability);
+        Assert.Equal(TraversalBarrier.Observed, result.Receipt.Barrier);
+        Assert.Equal(0, result.Receipt.AttemptedKeystrokes); Assert.Equal(0, result.Receipt.CompletedKeystrokes);
+        Assert.Equal(CapturePhase.Closed, result.Recording.CaptureLifecycle!.Phase);
+        Assert.Equal(BrowserShutdownPhase.Closed, result.Recording.Shutdown!.Phase);
+        Assert.Equal(0, result.Recording.Shutdown.ActiveCalls);
+    }
+
+    [Fact]
     public async Task CancellationBeforeLaunch_RetainsFailureAndCreatesNoInputOrRecordingClaim()
     {
         using var cancellation = new CancellationTokenSource();

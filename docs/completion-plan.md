@@ -140,19 +140,25 @@ at5b75935/HTTP1.14/private MCP21: all nine CI jobs (2,936 per OS/native71/databa
 operations172), exact151-file delivery, UIc614141/Edge11 and queued/active account
 stop pass. The fresh active case preserves190 images and exact native cleanup;
 the same healthy worker completes a distinct no-input job without restarting.
-**Next:** diagnose and fix recording finalization. A separate disabled-control case
-retains seven checkpoints and250 images but no output seal, with only a generic
-engine reason. Preserve the failed attempt, identify the actual cause and safe
-structured error, then verify a distinct bounded recording and its complete
-originals without replaying uncertain input. The
+**Next:** [finish finite recording finalization](validation/finite-recording-finalization-v1.md#next-acceptance-gate).
+Actual Chromium reproduces image acquisition continuing during final transfer
+and a video that has not yet finalized. Join both acquisition collectors before
+the owned final transfer inside the existing input-denied capture drain. The
+source repair passes162 focused and3,012 full Windows checks, with clean strict
+build and format. Both CI platforms, exact private delivery and distinct account
+recordings remain gates. Preserve
+every acquired original, all declared resource limits and every failed attempt;
+do not replay uncertain input. The
 scoped [failure diagnostics](validation/recording-failure-diagnostics-v1.md) are
 accepted at1200190 with all nine CI jobs,2,983 per OS/native71/database450/operations172
 and exact151-file delivery. A distinct normal original-account run, without an
 observer, retains seven checkpoints/184 images but still safely fails Unconfirmed;
-its worker remains healthy/native0. Preserving a closed collector cause through
-sanitized teardown passes81 focused and3,007 full Windows tests; CI, promotion and
-a new hosted diagnosis remain pending. No resource increase or failed-attempt replay
-is authorized by partial evidence. The
+its worker remains healthy/native0. Closed collector-cause preservation is now
+accepted atac228d7: all nine CI jobs,3,007 per OS and exact151-file delivery.
+A distinct normal original-account recording completes with five independently
+matched S3 originals and actual graph/video playback; a separate repeat still
+fails Unconfirmed. The intermittent hosted cause remains unproven. No resource
+increase or failed-attempt replay is authorized by partial evidence. The
 remaining actual failure injections below stay open.
 Automatic worker restart stays disabled.
 

@@ -85,9 +85,13 @@ executed/passed,0 failed/skipped. Strict build and full format verification pass
 The first full run exposed an unrelated pixel-denial assertion matching PNG
 inside a random trace ID. It now pins the problem JSON media type,401/title/detail
 and permitted field set while retaining the actual revocation/drain assertions;
-all25 focused pixel-transport tests and the final full suite pass. CI, exact
-promotion and a new hosted diagnosis remain pending for this follow-up; the
-failed hosted run's underlying cause is still unproven.
+all25 focused pixel-transport tests and the final full suite pass. Atac228d7,
+all nine CI41233416651 jobs pass, both platforms independently confirm3,007 and
+private deploy41234972492 matches all151 installed files. A distinct normal
+original-account recording completes with five independently matched S3 originals
+and actual graph/video playback. A separate repeat still fails Unconfirmed.
+[Exact new account evidence and finite-finalization repair](finite-recording-finalization-v1.md).
+The intermittent hosted failure's underlying cause remains unproven.
 
 | Requirement | Evidence |
 | --- | --- |
@@ -120,11 +124,11 @@ Empty search path, security definer and worker-only execute remain intact.
 This additive function change does not replace original lease fencing or grant
 application users worker authority.
 
-Terminal diagnostics at1200190 are delivered and the distinct account recording
-is preserved as failed. Collector-cause preservation passes3,007 locally and still
-requires CI/native/exact delivery and a new original-account recording. Then establish the
-actual cause from retained safe diagnostics, fix it within declared
-limits and verify complete originals with the actual goal outcome. A count at a
-resource boundary alone is not that diagnosis; never replay the old failed attempt
-or promote partial files into successful collection. Wider fault/authority/
-website/operations/human/AT gates remain open.
+Terminal diagnostics at1200190 and collector-cause preservation atac228d7 are
+delivered. Their original failed recordings remain preserved. The current
+[finite-finalization acceptance gate](finite-recording-finalization-v1.md#next-acceptance-gate)
+passes3,012 full Windows tests and requires CI, exact delivery and distinct normal account runs
+for the new repair. Keep the intermittent hosted failure open until actual
+evidence supports closure. A resource-boundary count alone is not a diagnosis;
+never replay the old failed attempt or promote partial files into successful
+collection. Wider fault/authority/website/operations/human/AT gates remain open.

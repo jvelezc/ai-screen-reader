@@ -33,6 +33,10 @@ public sealed class ChromiumRecordingProbe : IAsyncDisposable
     private bool _videoStarted;
     private Task? _stop;
     private string? _collectorFailure;
+    private readonly object _stopSync = new();
+    private bool _finalizing;
+    private Func<ImmutableArray<CompletedCaptureSource>, CancellationToken, Task>? _finalSources;
+    private CancellationToken _finalSourcesToken;
 
     internal ChromiumRecordingProbe(ChromiumFixtureBrowser browser, PreciseScreencastSource source, string folder)
     { _browser = browser; _source = source; _folder = folder; }
@@ -44,14 +48,18 @@ public sealed class ChromiumRecordingProbe : IAsyncDisposable
     /// <summary>Closed collector cause retained during stop; neither a stop acknowledgement nor recording completion.</summary>
     public string? CollectorFailureCode => Volatile.Read(ref _collectorFailure);
 
-    public async Task CopyCompletedSourcesAsync(Func<ImmutableArray<CompletedCaptureSource>, CancellationToken, Task> sink,
-        CancellationToken token = default)
+    public Task CopyCompletedSourcesAsync(Func<ImmutableArray<CompletedCaptureSource>, CancellationToken, Task> sink,
+        CancellationToken token = default) => CopyCompletedSourcesCoreAsync(sink, CapturePhase.Permitted, token);
+
+    private async Task CopyCompletedSourcesCoreAsync(Func<ImmutableArray<CompletedCaptureSource>, CancellationToken, Task> sink,
+        CapturePhase expectedPhase, CancellationToken token)
     {
         ArgumentNullException.ThrowIfNull(sink);
+        if (CaptureStatus.Phase != expectedPhase) throw new BrowserOperationException("WORKER_PROGRESS_MEDIA_CAPTURE_EXCLUDED");
         await _copy.WaitAsync(token).ConfigureAwait(false);
         try
         {
-            if (CaptureStatus.Phase != CapturePhase.Permitted) throw new BrowserOperationException("WORKER_PROGRESS_MEDIA_CAPTURE_EXCLUDED");
+            if (CaptureStatus.Phase != expectedPhase) throw new BrowserOperationException("WORKER_PROGRESS_MEDIA_CAPTURE_EXCLUDED");
             var frames = _source.Frames.Where(frame => !_copied.Contains(frame.Sequence)).ToArray();
             if (frames.Length == 0) return;
             long total = 0;
@@ -91,7 +99,7 @@ public sealed class ChromiumRecordingProbe : IAsyncDisposable
                 catch (Exception exception) { failure = exception; throw; }
             }).ConfigureAwait(false);
             if (failure is not null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
-            if (!admitted || _exports.Status.ErrorCode is not null || CaptureStatus.Phase != CapturePhase.Permitted)
+            if (!admitted || _exports.Status.ErrorCode is not null || CaptureStatus.Phase != expectedPhase)
                 throw new BrowserOperationException("WORKER_PROGRESS_MEDIA_EXPORT_UNCONFIRMED");
         }
         finally { _copy.Release(); }
@@ -125,24 +133,33 @@ public sealed class ChromiumRecordingProbe : IAsyncDisposable
         await firstVideoFrame.Task.WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
     }
 
-    internal Task StopCollectorsAsync() => _stop ??= StopCoreAsync();
+    internal Task StopCollectorsAsync()
+    {
+        lock (_stopSync) return _stop ??= StopCoreAsync();
+    }
 
     private async Task StopCoreAsync()
     {
-        var exports = _exports.CloseAdmission();
         if (_exports.Status.ErrorCode is not null)
             Interlocked.CompareExchange(ref _collectorFailure, "WORKER_PROGRESS_MEDIA_EXPORT_UNCONFIRMED", null);
-        try { await _source.StopAsync().ConfigureAwait(false); }
-        catch (BrowserOperationException failure) when (failure.Code is "CAPTURE_FRAME_LIMIT" or "CAPTURE_FRAME_INVALID" or "CAPTURE_FRAME_WRITE_FAILED")
+        try
         {
-            Interlocked.CompareExchange(ref _collectorFailure, failure.Code, null);
+            try { await _source.StopAsync().ConfigureAwait(false); }
+            catch (BrowserOperationException failure) when (failure.Code is "CAPTURE_FRAME_LIMIT" or "CAPTURE_FRAME_INVALID" or "CAPTURE_FRAME_WRITE_FAILED")
+            { Interlocked.CompareExchange(ref _collectorFailure, failure.Code, null); throw; }
+            finally { if (_videoStarted) await _browser.DiagnosticPage.Screencast.StopAsync().ConfigureAwait(false); }
+            // This owned final flush runs inside capture exclusion's Draining phase:
+            // input is already denied, acquisition is joined, and no private gap is acknowledged yet.
+            if (_finalSources is { } sink)
+                await CopyCompletedSourcesCoreAsync(sink, CapturePhase.Draining, _finalSourcesToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            if (_exports.Status.ErrorCode is not null)
+                Interlocked.CompareExchange(ref _collectorFailure, "WORKER_PROGRESS_MEDIA_EXPORT_UNCONFIRMED", null);
             throw;
         }
-        finally
-        {
-            await exports.ConfigureAwait(false);
-            if (_videoStarted) await _browser.DiagnosticPage.Screencast.StopAsync().ConfigureAwait(false);
-        }
+        finally { await _exports.CloseAdmission().ConfigureAwait(false); }
         if (_exports.Status.ErrorCode is not null)
         {
             Interlocked.CompareExchange(ref _collectorFailure, "WORKER_PROGRESS_MEDIA_EXPORT_UNCONFIRMED", null);
@@ -150,8 +167,24 @@ public sealed class ChromiumRecordingProbe : IAsyncDisposable
         }
     }
 
-    public async Task<RecordingProbeMedia> FinishAndInspectAsync()
+    public Task<RecordingProbeMedia> FinishAndInspectAsync() => FinishAndInspectCoreAsync(null, default);
+
+    public Task<RecordingProbeMedia> FinishAndInspectAsync(
+        Func<ImmutableArray<CompletedCaptureSource>, CancellationToken, Task> finalSources, CancellationToken token = default)
     {
+        ArgumentNullException.ThrowIfNull(finalSources);
+        return FinishAndInspectCoreAsync(finalSources, token);
+    }
+
+    private async Task<RecordingProbeMedia> FinishAndInspectCoreAsync(
+        Func<ImmutableArray<CompletedCaptureSource>, CancellationToken, Task>? finalSources, CancellationToken token)
+    {
+        lock (_stopSync)
+        {
+            if (_stop is not null || _finalizing || CaptureStatus.Phase != CapturePhase.Permitted)
+                throw new BrowserOperationException("RECORDING_FINALIZATION_DENIED");
+            _finalizing = true; _finalSources = finalSources; _finalSourcesToken = token;
+        }
         await _browser.ExcludeCaptureAsync().ConfigureAwait(false);
         await _browser.DisposeAsync().ConfigureAwait(false);
         var precise = _source.Frames;

@@ -424,6 +424,121 @@ public sealed class RecordedSourceTests
     }
 
     [Fact]
+    public async Task ActualFinalSourceDrainDeniesInputAndWaitsForTheOwnedTransfer()
+    {
+        using var files = new Files();
+        var folder = Path.Combine(files.Root, "probe");
+        var probe = await ChromiumFixtureBrowser.LaunchTraversalRecordingAsync(folder);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        ImmutableArray<CompletedCaptureSource> copied = [];
+        var finishing = probe.FinishAndInspectAsync(async (originals, _) =>
+        { copied = originals; entered.SetResult(); await release.Task; });
+        try
+        {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            Assert.Equal(CapturePhase.Draining, probe.CaptureStatus.Phase); Assert.False(finishing.IsCompleted);
+            await Assert.ThrowsAsync<BrowserInputDeniedException>(() => probe.Browser.PressKeyAsync("Tab"));
+            var publicCopyCalled = false;
+            Assert.Equal("WORKER_PROGRESS_MEDIA_CAPTURE_EXCLUDED", (await Assert.ThrowsAsync<BrowserOperationException>(() =>
+                probe.CopyCompletedSourcesAsync((_, _) => { publicCopyCalled = true; return Task.CompletedTask; })
+                    .WaitAsync(TimeSpan.FromSeconds(2)))).Code);
+            Assert.False(publicCopyCalled);
+            Assert.Equal("RECORDING_FINALIZATION_DENIED", (await Assert.ThrowsAsync<BrowserOperationException>(() =>
+                probe.FinishAndInspectAsync((_, _) => throw new InvalidOperationException("Replacement sink ran.")))).Code);
+            var count = Directory.GetFiles(folder, "source-*.jpg").Length;
+            var closedVideo = await File.ReadAllBytesAsync(Path.Combine(folder, "original.webm"));
+            await Task.Delay(250);
+            Assert.Equal(count, Directory.GetFiles(folder, "source-*.jpg").Length);
+            Assert.Equal(closedVideo, await File.ReadAllBytesAsync(Path.Combine(folder, "original.webm")));
+            Assert.Equal(count, copied.Length); Assert.False(finishing.IsCompleted);
+            release.SetResult();
+            var media = await finishing.WaitAsync(TimeSpan.FromSeconds(15));
+            Assert.Equal(Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(closedVideo)),
+                Assert.Single(media.Artifacts, a => a.File == "original.webm").Sha256);
+            Assert.Equal(copied.Select(s => s.Frame), media.PreciseFrames);
+            foreach (var source in copied)
+                Assert.Equal(source.Content, await File.ReadAllBytesAsync(Path.Combine(folder, source.Frame.File)));
+            Assert.Equal(CapturePhase.Closed, probe.CaptureStatus.Phase);
+            Assert.Equal(BrowserShutdownPhase.Closed, probe.ShutdownStatus.Phase); Assert.Equal(0, probe.ShutdownStatus.ActiveCalls);
+            Assert.Equal("RECORDING_FINALIZATION_DENIED", (await Assert.ThrowsAsync<BrowserOperationException>(() =>
+                probe.FinishAndInspectAsync((_, _) => throw new InvalidOperationException("Late sink ran.")))).Code);
+        }
+        finally { release.TrySetResult(); try { await finishing; } finally { await probe.DisposeAsync(); } }
+    }
+
+    [Theory]
+    [InlineData("cancelled")]
+    [InlineData("failed")]
+    public async Task CancelledOrFailedFinalSourceTransferCannotAcknowledgeCaptureExclusion(string kind)
+    {
+        using var files = new Files();
+        var probe = await ChromiumFixtureBrowser.LaunchTraversalRecordingAsync(Path.Combine(files.Root, "probe"));
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var caller = new CancellationTokenSource();
+        CancellationToken transferToken = default;
+        var finishing = probe.FinishAndInspectAsync(async (_, token) =>
+        {
+            transferToken = token; entered.SetResult(); await release.Task;
+            if (kind == "cancelled") token.ThrowIfCancellationRequested();
+            throw new IOException("private-path-and-payload");
+        }, caller.Token);
+        try
+        {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            Assert.Equal(caller.Token, transferToken);
+            if (kind == "cancelled") caller.Cancel();
+            Assert.Equal(kind == "cancelled", transferToken.IsCancellationRequested);
+            Assert.False(finishing.IsCompleted); Assert.Equal(CapturePhase.Draining, probe.CaptureStatus.Phase);
+            await Assert.ThrowsAsync<BrowserInputDeniedException>(() => probe.Browser.PressKeyAsync("Tab"));
+            release.SetResult();
+            var error = await Assert.ThrowsAsync<BrowserOperationException>(() => finishing);
+            Assert.Equal("CAPTURE_STOP_UNCONFIRMED", error.Code); Assert.Null(error.InnerException);
+            Assert.Equal(CapturePhase.Faulted, probe.CaptureStatus.Phase);
+            Assert.Equal("WORKER_PROGRESS_MEDIA_EXPORT_UNCONFIRMED", probe.CollectorFailureCode);
+            Assert.DoesNotContain("private-path-and-payload", JsonSerializer.Serialize(probe.CaptureStatus), StringComparison.Ordinal);
+            await Assert.ThrowsAsync<BrowserInputDeniedException>(() => probe.Browser.PressKeyAsync("Tab"));
+            var shutdown = await Assert.ThrowsAsync<BrowserOperationException>(async () => await probe.DisposeAsync());
+            Assert.Equal("CHROMIUM_COLLECTOR_STOP_UNCONFIRMED", shutdown.Code);
+            Assert.Equal(BrowserShutdownPhase.Faulted, probe.ShutdownStatus.Phase); Assert.Equal(0, probe.ShutdownStatus.ActiveCalls);
+        }
+        finally
+        {
+            release.TrySetResult();
+            try { await finishing; } catch (BrowserOperationException error) when (error.Code == "CAPTURE_STOP_UNCONFIRMED") { }
+            try { await probe.DisposeAsync(); } catch (BrowserOperationException error) when (error.Code == "CHROMIUM_COLLECTOR_STOP_UNCONFIRMED") { }
+        }
+    }
+
+    [Fact]
+    public async Task PreCancelledFinalTransferJoinsAcquisitionWithoutInvokingTheSink()
+    {
+        using var files = new Files();
+        var folder = Path.Combine(files.Root, "probe");
+        var probe = await ChromiumFixtureBrowser.LaunchTraversalRecordingAsync(folder);
+        using var caller = new CancellationTokenSource(); caller.Cancel();
+        var called = false;
+        try
+        {
+            var error = await Assert.ThrowsAsync<BrowserOperationException>(() =>
+                probe.FinishAndInspectAsync((_, _) => { called = true; return Task.CompletedTask; }, caller.Token));
+            Assert.Equal("CAPTURE_STOP_UNCONFIRMED", error.Code); Assert.Null(error.InnerException);
+            Assert.False(called); Assert.Null(probe.CollectorFailureCode);
+            Assert.Equal(CapturePhase.Faulted, probe.CaptureStatus.Phase);
+            Assert.True(new FileInfo(Path.Combine(folder, "original.webm")).Length >= 4);
+            await Assert.ThrowsAsync<BrowserInputDeniedException>(() => probe.Browser.PressKeyAsync("Tab"));
+            var shutdown = await Assert.ThrowsAsync<BrowserOperationException>(async () => await probe.DisposeAsync());
+            Assert.Equal("CHROMIUM_COLLECTOR_STOP_UNCONFIRMED", shutdown.Code);
+            Assert.Equal(BrowserShutdownPhase.Faulted, probe.ShutdownStatus.Phase); Assert.Equal(0, probe.ShutdownStatus.ActiveCalls);
+        }
+        finally
+        {
+            try { await probe.DisposeAsync(); } catch (BrowserOperationException error) when (error.Code == "CHROMIUM_COLLECTOR_STOP_UNCONFIRMED") { }
+        }
+    }
+
+    [Fact]
     public async Task ActualRecordingCollectorKeepsSafeExportCauseAfterSanitizedShutdownFailure()
     {
         using var files = new Files();
