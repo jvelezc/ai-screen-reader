@@ -23,7 +23,13 @@ images/1,576,655 bytes, blocked original producer/gen1 with one attempt and no
 archive. Source117 matches exact private bytes/time; reconnect preserves identity.
 The second saved intent has no result and stays Unknown; recording is unavailable
 and assessment requires the original recording. Both services are ready and the
-worker is thawed. **Next:** validate and privately install the [operator directory fix](validation/operator-command-directory-v1.md), then prove first publication through the ordered maintenance wrapper. Remaining
+worker is thawed. The [operator directory fix](validation/operator-command-directory-v1.md)
+is privately installed and accepted at63bf550. [First publication through the ordered
+maintenance wrapper](validation/first-publication-maintenance-v1.md) now passes with
+the same attempt/producer, five exact S3 originals, zero recovery inputs, and original-account
+graph/video playback. **Next:** deliver and accept [caller-owned scan cancellation](validation/caller-scan-cancellation-v1.md).
+HTTP 1.14 and 21 private MCP tools are implemented; 2,924 local Windows tests and 417 local
+database checks pass. CI, hosted delivery and account acceptance are pending. Remaining
 fault/provider/website/intervention gates stay separate.
 
 **Unfinished original-image retention accepted at65689fc.**
@@ -110,7 +116,7 @@ per OS and57 native requirements; exact private deployment independently verifie
 151 release files and default TLS. API1.11/sixteen private tools describes this
 earlier worker-local increment. Automatic restart stays disabled.
 
-**Full retained-path consumer accepted:** UI5972663 → existing Edge v8 → core1.11.
+**Full retained-path consumer accepted:** UI5972663 â†’ existing Edge v8 â†’ core1.11.
 [UI CI41170494893](https://github.com/jvelezc/ai-screen-reader-ui/actions/runs/41170494893)
 passes570 tests on both Windows and Linux. All three deployed Edge files match
 committed source. The original application account retrieves actual nodes/edges
@@ -188,7 +194,7 @@ Core CI and exact promotion remain separate gates until their receipts pass.
 That earlier observation-only mode collects no video. The explicit passive mode
 above extends its admission/attempt boundary without changing the default.
 
-**Privensic Screen Reader — automated evidence assessment:** [contract1.5.0](decisions/0057-automated-website-evidence-readiness.md)
+**Privensic Screen Reader â€” automated evidence assessment:** [contract1.5.0](decisions/0057-automated-website-evidence-readiness.md)
 adds eight operational conditions and the private `evidence_assess` MCP tool.
 It distinguishes documented/suspected findings, retained completed input,
 repeat/comparator attempts, missing artifacts and server-verified original hashes.

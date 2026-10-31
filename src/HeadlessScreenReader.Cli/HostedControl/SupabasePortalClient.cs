@@ -21,11 +21,38 @@ internal interface IPortalProjectClient
     Task<PortalJobResult?> JobAsync(PortalIdentity actor, Guid organization, Guid scan, CancellationToken token);
     Task<Guid?> AttemptWorkerAsync(PortalIdentity actor, FixtureJob job, CancellationToken token) =>
         throw new PortalFault(503, "CONTROL_PROGRESS_IDENTITY_UNAVAILABLE");
+    Task<PortalScanCancellationResponse> RequestScanCancellationAsync(PortalIdentity actor, Guid organization, Guid scan, CancellationToken token) =>
+        throw new PortalFault(503, "CONTROL_CANCELLATION_UNAVAILABLE");
 }
 
 /// <summary>Fixed-project Auth verification and RLS requests using the same original user bearer.</summary>
 internal sealed class SupabasePortalClient(HttpClient http, string publishableKey) : IPortalProjectClient
 {
+    public async Task<PortalScanCancellationResponse> RequestScanCancellationAsync(PortalIdentity actor, Guid organization, Guid scan, CancellationToken token)
+    {
+        using var request = Request(HttpMethod.Post, "rest/v1/rpc/request_scan_cancellation", actor.Token);
+        request.Content = new StringContent(JsonSerializer.Serialize(new { p_organization_id = organization, p_scan_id = scan }),
+            System.Text.Encoding.UTF8, "application/json");
+        using var json = await SendAsync(request, false, token).ConfigureAwait(false);
+        var row = Single(json.RootElement);
+        string[] fields = ["organization_id", "scan_id", "job_id", "generation", "producer_id", "status", "input_assessment", "requested_at"];
+        if (!row.EnumerateObject().Select(property => property.Name).Order().SequenceEqual(fields.Order())
+            || row.GetProperty("generation").ValueKind != JsonValueKind.Number
+            || !row.GetProperty("generation").TryGetInt64(out var generation)) throw InvalidResponse();
+        Guid? producer = row.GetProperty("producer_id").ValueKind == JsonValueKind.Null ? null : Id(row, "producer_id");
+        DateTimeOffset? requested = null;
+        if (row.GetProperty("requested_at").ValueKind != JsonValueKind.Null)
+        {
+            if (!DateTimeOffset.TryParse(Text(row, "requested_at", 64), System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None, out var value)) throw InvalidResponse();
+            requested = value;
+        }
+        var result = new PortalScanCancellationResponse(Id(row, "organization_id"), Id(row, "scan_id"), Id(row, "job_id"),
+            generation, producer, Text(row, "status", 32), Text(row, "input_assessment", 32), requested);
+        result.Validate(organization, scan);
+        return result;
+    }
+
     public async Task<PortalIdentity> AuthenticateAsync(string bearer, CancellationToken token)
     {
         if (bearer.Length is < 10 or > 8192 || !Regex.IsMatch(bearer, "\\A[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\z"))

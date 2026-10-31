@@ -12,7 +12,7 @@ internal static class PortalOpenApi
 {
     private static readonly Lazy<string> Cached = new(Build);
     public static string Document => Cached.Value;
-    public const string ContractVersion = "1.13.0";
+    public const string ContractVersion = "1.14.0";
 
     private static string Build()
     {
@@ -24,6 +24,7 @@ internal static class PortalOpenApi
             ["Session"] = Schema<PortalSessionResponse>(),
             ["Workspace"] = Schema<PortalWorkspaceResponse>(),
             ["ScanCreated"] = Schema<PortalScanCreatedResponse>(),
+            ["ScanCancellation"] = Schema<PortalScanCancellationResponse>(),
             ["Scan"] = Schema<PortalScanResponse>(),
             ["ScanList"] = Schema<PortalScanListResponse>(),
             ["Node"] = Schema<PortalNodeResponse>(),
@@ -112,6 +113,9 @@ internal static class PortalOpenApi
         paths["/api/workspaces/{organization}/scans/{scan}/source-images/bytes"] = Path("post", Operation("ReadRetainedSourceImageBytes",
             "Read at most64KiB of one exact original JPEG using its source prefix, source sequence and whole-image digest. Aligned offsets or exact EOF; compare each page and whole-image hashes, then reauthorize at EOF before delivery. Source changes require rereading the SAME scan. No caller-selected producer/native path, input, final recording or completion authority.",
             "RetainedSourceImagePage", true, "RetainedSourceImageRequest", organization: true, scan: true));
+        paths["/api/workspaces/{organization}/scans/{scan}/cancellation"] = Path("post", Operation("RequestScanCancellation",
+            "Idempotently request cancellation of the original caller's admitted run. Revokes job and publication authority; physical stop, native cleanup and input outcome remain unassessed. AlreadyCompleted preserves the existing receipt. No replay or new admission.",
+            "ScanCancellation", true, "EmptyRequest", 202, organization: true, scan: true));
         return new JsonObject
         {
             ["openapi"] = "3.1.0",
@@ -163,6 +167,24 @@ internal static class PortalOpenApi
                     && context.TypeInfo.Type != typeof(PortalSourceImageRequest)
                     && context.TypeInfo.Type != typeof(EvidenceReadinessRequest))
                     value["required"] = Strings(properties.Select(property => property.Key).ToArray());
+                if (context.TypeInfo.Type == typeof(PortalScanCancellationResponse))
+                {
+                    properties["scope"]!["const"] = "AdmittedRunCancellation";
+                    properties["nativeCleanup"]!["const"] = "NotAssessed";
+                    properties["goalVerification"]!["const"] = "NotAssessed";
+                    properties["isCompletionReceipt"]!["const"] = false; properties["canReplay"]!["const"] = false;
+                    properties["generation"]!["minimum"] = 0; properties["generation"]!["maximum"] = 3;
+                    properties["status"]!["enum"] = Strings("Requested", "AlreadyCompleted");
+                    properties["inputAssessment"]!["enum"] = Strings("NoAttemptStarted", "NotAssessed");
+                    value["allOf"] = JsonNode.Parse("""
+                        [{"if":{"properties":{"generation":{"const":0}}},
+                          "then":{"properties":{"producer":{"const":null},"inputAssessment":{"const":"NoAttemptStarted"}}},
+                          "else":{"properties":{"producer":{"type":"string","format":"uuid"},"inputAssessment":{"const":"NotAssessed"}}}},
+                         {"if":{"properties":{"status":{"const":"Requested"}}},
+                          "then":{"properties":{"requestedAt":{"type":"string","format":"date-time"}}},
+                          "else":{"properties":{"requestedAt":{"const":null},"generation":{"minimum":1}}}}]
+                        """);
+                }
                 if (context.TypeInfo.Type == typeof(PortalCheckpointRequest))
                 {
                     properties["prefixSha256"]!["pattern"] = "^[a-f0-9]{64}$";
@@ -502,6 +524,7 @@ internal static class PortalOpenApi
         };
         var responses = new JsonObject { [success.ToString(System.Globalization.CultureInfo.InvariantCulture)] = response };
         if (id == "EnsurePersonalWorkspace") responses["200"] = Response("Existing personal workspace resumed", output);
+        if (id == "RequestScanCancellation") responses["200"] = Response("Already completed; original receipt unchanged", output);
         foreach (var status in new[] { "400", "401", "403", "404", "409", "413", "415", "503" })
         {
             var fault = Response("Safe CONTROL_* problem; unconfirmed work is not a verified failure or goal outcome", "Problem", "application/problem+json");

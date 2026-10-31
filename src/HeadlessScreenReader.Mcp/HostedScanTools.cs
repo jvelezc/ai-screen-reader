@@ -7,6 +7,10 @@ namespace HeadlessScreenReader.Mcp;
 [McpServerToolType]
 public sealed class HostedScanTools(HostedScanClient client)
 {
+    [McpServerTool(Name = "scan_cancel", ReadOnly = false, Destructive = true, OpenWorld = false), Description("Explicitly request cancellation of the original caller's already admitted run. Only scanId is accepted; no client actor, producer or lease. The core revokes future execution and publication authority, preserves actual attempt identity and retained originals, and leaves completed receipts unchanged. Requested is not confirmed physical stop or native cleanup. A claimed attempt retains unassessed input; never treat it as zero input, a verified goal, a barrier or replay authority. Idempotent for the SAME scanId; no automatic retries or polling. After a lost response, inspect the SAME scan; never create a replacement request to retry uncertain input. Disconnect does not cancel a durable run.")]
+    public async Task<CallToolResult> Cancel(string scanId, CancellationToken cancellationToken = default) =>
+        ReaderTools.Result(await client.CancelAsync(scanId, cancellationToken));
+
     [McpServerTool(Name = "scan_source_manifest", ReadOnly = true, OpenWorld = false), Description("Read the current admitted producer's checked original-image subset manifest. NotApplicable, NotStarted, NotRetained and Empty remain explicit; uncommitted files are not source images. Source sequence and raw presentation timestamps remain distinct from delivery order, decoded final video and actual AT speech. RetainedOriginalSourceSubset has completeness/overall goal NotAssessed and no replay/completion authority. The core resolves producer and rechecks original caller/tenant before and after storage. Follow scan_source_image with exact source prefix, source sequence and image digest. No new run, automatic retry, input, barrier finding or custody claim.")]
     public async Task<CallToolResult> SourceManifest(string scanId, CancellationToken cancellationToken = default) =>
         ReaderTools.Result(await client.SourceManifestAsync(scanId, cancellationToken));

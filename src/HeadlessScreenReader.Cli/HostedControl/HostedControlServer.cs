@@ -49,6 +49,7 @@ internal sealed class HostedControlServer : IAsyncDisposable
         });
         builder.Services.AddSingleton(options);
         builder.Services.AddSingleton(project);
+        builder.Services.AddSingleton<IPortalScanCancellation>(new PortalScanCancellation(project));
         builder.Services.AddSingleton(new PortalArchiveReader(project, traversalArchive));
         builder.Services.AddSingleton<IPortalEvidenceReadiness>(new PortalEvidenceReadiness(project, traversalArchive));
         builder.Services.AddSingleton<IPortalScanService>(new PortalScanService(project, observations));
@@ -99,6 +100,7 @@ internal sealed class HostedControlServer : IAsyncDisposable
         app.MapProgressArchive();
         app.MapRecordedOutput();
         app.MapSourceImages();
+        app.MapScanCancellation();
         try
         {
             await app.StartAsync(token).ConfigureAwait(false);

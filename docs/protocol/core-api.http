@@ -184,3 +184,13 @@ Content-Type: application/json
 }
 
 # A changed source prefix returns409. Missing originals never become a final video or new input permission.
+
+### Explicit caller-owned cancellation (contract 1.14); repeating the SAME scan is idempotent
+# 202 Requested revokes execution/publication authority, not proof of physical stop or native cleanup.
+# Generation0 with no real attempt is NoAttemptStarted. Claimed input stays NotAssessed.
+# 200 AlreadyCompleted preserves the completed receipt. Retained originals are never deleted or replayed.
+POST {{baseUrl}}/api/workspaces/{{organization}}/scans/{{scan}}/cancellation
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{}

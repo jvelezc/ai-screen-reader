@@ -244,6 +244,34 @@ public sealed class CommandProgressTests
         }
     }
 
+    [Fact]
+    public async Task RealChromiumLeaseRevocationAfterFirstInputRetainsUnresolvedIntentWithoutDispatchingItsNextCommand()
+    {
+        using var files = new Files(); var journal = await files.Begin();
+        var input = new Pipe(); var progress = new Pipe(); using var output = new MemoryStream();
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(40));
+        // Revoke at the durable second intent, before its acknowledgement can release input.
+        var exchange = new FixtureProgressExchange(files.Start, journal, _ => Task.FromResult(files.Read().Records < 4));
+        var reading = exchange.ReadAsync(progress.Reader.AsStream(), input.Writer.AsStream(), stop);
+        var child = FixtureProgressWorker.RunAsync(input.Reader.AsStream(), output, progress.Writer.AsStream());
+        await exchange.StartAsync(input.Writer.AsStream(), stop.Token);
+        try
+        {
+            var failure = await Assert.ThrowsAsync<BrowserOperationException>(() => reading);
+            Assert.Equal("WORKER_PROGRESS_AUTHORITY_UNCONFIRMED", failure.Code); Assert.True(stop.IsCancellationRequested);
+            await input.Writer.CompleteAsync();
+            Assert.NotEqual(0, await child.WaitAsync(TimeSpan.FromSeconds(40)));
+            var prefix = files.Read(); Assert.Equal(4, prefix.Records); Assert.Equal(1, prefix.Results);
+            Assert.True(prefix.InputMayHaveOccurred); Assert.False(prefix.IsCompletionReceipt); Assert.False(prefix.CanReplay);
+            Assert.Equal(0, output.Length);
+        }
+        finally
+        {
+            await input.Writer.CompleteAsync(); await progress.Writer.CompleteAsync(); await child;
+            try { await reading; } catch (BrowserOperationException) { }
+        }
+    }
+
     [Theory]
     [InlineData("sequence")]
     [InlineData("execution")]

@@ -22,7 +22,13 @@ independently parsed, including the exact new test. Source/tests are copied onto
 native Ubuntu filesystems for these checks; Windows filesystem behavior is not
 substituted. No additional dependencies or test framework are introduced.
 
-**Remaining acceptance:** green main CI, exact private release delivery, guarded
-installation of the tested root-owned operator module, and the same read-only
-probe succeeding from `/root`. First publication through the ordered wrapper is
-a separate subsequent test; a working-directory repair alone does not prove it.
+**Accepted private delivery:** source63bf550 passes all nine
+[CI jobs](https://github.com/jvelezc/ai-screen-reader/actions/runs/41208728788),
+Windows/Ubuntu2,858 each, operational172 and exact151-file private deployment.
+The guarded root-owned module installation preserves the original backup and
+checks its old digest against the accepted source before atomic replacement.
+Installed SHA-256 is `0f7cc84e637895720b0d1dad60f71b9dbf642d6be61506f64571a98a1d96651d`.
+The same actual rootless Podman read now succeeds from both `/root` and `/`.
+No service configuration or credential changes are made. Actual
+[first publication through the wrapper](first-publication-maintenance-v1.md) is
+separately accepted; the directory repair alone was not used as proof of it.

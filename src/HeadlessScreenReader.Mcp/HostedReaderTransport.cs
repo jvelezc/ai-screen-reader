@@ -28,7 +28,11 @@ internal sealed class HostedReaderTransport : IDisposable
         _http = new(handler) { Timeout = Timeout.InfiniteTimeSpan };
     }
 
-    internal async Task<JsonDocument> SendAsync(HttpMethod method, string path, object? body = null, int expectedStatus = 200)
+    internal async Task<JsonDocument> SendAsync(HttpMethod method, string path, object? body = null, int expectedStatus = 200) =>
+        (await SendResponseAsync(method, path, body, expectedStatus).ConfigureAwait(false)).Document;
+
+    internal async Task<(JsonDocument Document, int StatusCode)> SendResponseAsync(HttpMethod method, string path, object? body, int expectedStatus,
+        int? alternativeStatus = null)
     {
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(20));
         using var request = new HttpRequestMessage(method, new Uri(_options.Origin, path));
@@ -56,9 +60,10 @@ internal sealed class HostedReaderTransport : IDisposable
             catch (Exception error) when (error is JsonException or InvalidOperationException) { }
             throw new HostedReaderFault(code ?? "HOSTED_REQUEST_UNCONFIRMED", new { StatusCode = (int)response.StatusCode, SupportReference = support }, (int)response.StatusCode);
         }
-        if ((int)response.StatusCode != expectedStatus || response.Headers.CacheControl?.NoStore != true || response.Content.Headers.ContentType?.MediaType != "application/json")
+        if ((int)response.StatusCode != expectedStatus && (int)response.StatusCode != alternativeStatus
+            || response.Headers.CacheControl?.NoStore != true || response.Content.Headers.ContentType?.MediaType != "application/json")
             throw new HostedReaderFault("HOSTED_RESPONSE_INVALID");
-        return JsonDocument.Parse(bytes, new() { AllowDuplicateProperties = false });
+        return (JsonDocument.Parse(bytes, new() { AllowDuplicateProperties = false }), (int)response.StatusCode);
     }
 
     internal static async Task<byte[]> ReadBoundedAsync(HttpResponseMessage response, int limit, CancellationToken token)

@@ -130,7 +130,15 @@ only its identified child is killed after durable actual input, all90 prior
 originals survive within117 saved images, owned cleanup is confirmed and the
 same blocked attempt is read after reconnect. The second intent lacks a result;
 input stays Unknown and cannot be replayed. No seal, archive or successful goal
-is invented. **Next:** validate and privately install the [operator directory fix](validation/operator-command-directory-v1.md), then prove first publication through the ordered maintenance wrapper. The
+is invented. The [operator directory fix](validation/operator-command-directory-v1.md)
+is accepted and privately installed at63bf550. [First publication through the ordered
+maintenance wrapper](validation/first-publication-maintenance-v1.md) is accepted:
+the same original attempt/producer publishes five independently matched S3 originals
+with zero recovery inputs, and the original account reads the graph and plays video.
+**Next:** deliver and accept [caller-owned scan cancellation](validation/caller-scan-cancellation-v1.md).
+Its source implements HTTP 1.14 and 21 private MCP tools with 2,924 local Windows tests
+and 417 database checks. CI, exact delivery and original-account acceptance are
+separate pending gates. The
 remaining actual failure injections below stay open.
 Automatic worker restart stays disabled.
 

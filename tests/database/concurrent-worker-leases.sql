@@ -102,7 +102,7 @@ end $$;
 select dblink_exec('worker_first','commit');
 select is((select completed from dblink_get_result('worker_second') as t(completed boolean)),false,
     'CompletionRechecksExpiryAfterActualLockWait');
-select is((select count(*) from hsr.attempt_events where kind='Completed'),0::bigint,
+select is((select count(*) from hsr.attempt_events where kind='Completed' and job_id=(select job_id from concurrent_job)),0::bigint,
     'ExpiredBlockedCompletionLeavesNoCompletionFact');
 select dblink_disconnect('worker_first');
 select dblink_disconnect('worker_second');
