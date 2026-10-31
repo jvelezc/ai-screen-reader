@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Text.Json;
 using HeadlessScreenReader.Domain;
 
@@ -5,6 +6,8 @@ namespace HeadlessScreenReader.Worker;
 
 public sealed record CommandProgressHeader(string Schema, NativeOwnership Native, FixtureJob Job, Guid WorkerId);
 public sealed record CommandProgressEntry(string Schema, string PreviousSha256, FixtureProgressMessage Message);
+public sealed record CommandProgressOriginal(int Sequence, string SourceSha256, TraversalCheckpoint Checkpoint);
+public sealed record CommandProgressSnapshot(CommandProgressSummary Summary, ImmutableArray<CommandProgressOriginal> Originals);
 public sealed record CommandProgressSummary(string Schema, CommandProgressHeader Header, int Records, int Intents,
     int Results, TraversalCheckpoint? Last, string LastSha256, bool HasUncommittedWrite = false)
 {
@@ -48,13 +51,17 @@ public sealed class CommandProgressJournal
         _prior = message; _hash = hash; _bytes += bytes.Length;
     }
     public static CommandProgressSummary Read(string root, Guid organization, Guid job, long generation)
+        => ReadSnapshot(root, organization, job, generation).Summary;
+
+    public static CommandProgressSnapshot ReadSnapshot(string root, Guid organization, Guid job, long generation, CancellationToken token = default)
     {
-        try { return ReadCore(root, organization, job, generation); }
+        try { return ReadCore(root, organization, job, generation, token); }
         catch (Exception exception) when (exception is IOException or JsonException or UnauthorizedAccessException)
         { throw new BrowserOperationException("WORKER_PROGRESS_INVALID"); }
     }
-    private static CommandProgressSummary ReadCore(string root, Guid organization, Guid job, long generation)
+    private static CommandProgressSnapshot ReadCore(string root, Guid organization, Guid job, long generation, CancellationToken token)
     {
+        token.ThrowIfCancellationRequested();
         FixtureProgressProtocol.Require(organization != Guid.Empty && job != Guid.Empty && generation >= 1);
         root = Path.GetFullPath(root); CheckRegular(root, directory: true);
         root = Path.Combine(root, Prefix(organization, job, generation)); CheckRegular(root, directory: true);
@@ -68,8 +75,10 @@ public sealed class CommandProgressJournal
         var start = new FixtureProgressStart(FixtureProgressProtocol.Schema, header.Job, header.Native.Owner);
         var hash = TraversalArchive.Hash(headerBytes); var total = headerBytes.Length; var intents = 0; var results = 0;
         FixtureProgressMessage? prior = null;
+        var originals = ImmutableArray.CreateBuilder<CommandProgressOriginal>();
         foreach (var file in files.Where(p => Path.GetFileName(p) != "start.json" && !p.EndsWith(".pending", StringComparison.Ordinal)).Order(StringComparer.Ordinal))
         {
+            token.ThrowIfCancellationRequested();
             var bytes = ReadBytes(file, FixtureProgressProtocol.MaximumFrameBytes + 4096); total += bytes.Length;
             FixtureProgressProtocol.Require(total <= MaximumTotalBytes);
             var entry = JsonSerializer.Deserialize<CommandProgressEntry>(bytes, ReaderWorkerWire.Json)
@@ -79,6 +88,7 @@ public sealed class CommandProgressJournal
             FixtureProgressProtocol.Require(entry.Schema == Schema && entry.PreviousSha256 == hash
                 && Path.GetFileName(file) == $"{entry.Message.Sequence:D4}-{actualHash}.json");
             prior = entry.Message; hash = actualHash;
+            originals.Add(new(prior.Sequence, actualHash, prior.Checkpoint));
             if (prior.Checkpoint.Phase == TraversalCheckpointPhase.Intent) intents++;
             if (prior.Checkpoint.Phase == TraversalCheckpointPhase.Observed) results++;
         }
@@ -93,7 +103,8 @@ public sealed class CommandProgressJournal
                 && name.AsSpan(expected.Length, 64).ToString().All(char.IsAsciiHexDigitLower)
                 && new FileInfo(pending[0]).Length <= FixtureProgressProtocol.MaximumFrameBytes + 4096);
         }
-        return new(Schema, header, prior?.Sequence ?? 0, intents, results, prior?.Checkpoint, hash, pending.Length != 0);
+        token.ThrowIfCancellationRequested();
+        return new(new(Schema, header, prior?.Sequence ?? 0, intents, results, prior?.Checkpoint, hash, pending.Length != 0), originals.ToImmutable());
     }
     private static void Validate(CommandProgressHeader header)
     {

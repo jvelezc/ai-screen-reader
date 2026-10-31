@@ -8,7 +8,7 @@ using HeadlessScreenReader.ScreenReader;
 namespace HeadlessScreenReader.Mcp;
 
 /// <summary>Consumes durable core jobs; disconnect never cancels or claims ownership of their execution.</summary>
-public sealed class HostedScanClient : IAsyncDisposable
+public sealed partial class HostedScanClient : IAsyncDisposable
 {
     private readonly HostedReaderOptions _options;
     private readonly HostedReaderTransport _transport;

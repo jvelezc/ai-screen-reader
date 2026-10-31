@@ -22,18 +22,22 @@ through Edge Functions in existing Supabase project `gpnijaxrgtwzwtrqsbcu`; it i
 third-party consumer. Reader, jobs and evidence logic stay here.
 
 The current bounded workspace/report API and [tenant-owned read-only fixture sessions](docs/decisions/0044-tenant-reader-sessions.md) publish
-[contract 1.9.0](docs/decisions/0062-recorded-evidence-claims.md) at `/openapi/v1.json`,
+[contract 1.11.0](docs/decisions/0066-retained-checkpoint-graph-reads.md) at `/openapi/v1.json`,
 including response schemas and safe errors. See [HTTP examples](docs/protocol/core-api.http)
-and [the next core acceptance step](docs/development-status.md#next-isolated-hosted-reader-sessions).
+and [the remaining recovery gates](docs/completion-plan.md#next-recover-interrupted-recordings-safely).
 The [private HTTP-backed MCP mode](docs/decisions/0051-private-http-backed-mcp.md)
 consumes that same API through stdio, with original caller scope, read-only
 navigation and graph trace pages. It uses the API's isolated worker instead of
 a second local browser. The [durable scan tools](docs/decisions/0052-private-mcp-durable-scans.md) add idempotent fixed-fixture admission, recent runs and saved reports. Public MCP/plugin publication stays deferred.
 The [archive reads](docs/decisions/0056-authorized-archive-retrieval.md) add
 `archive_manifest` and `archive_file`; `evidence_assess` evaluates evidence and
-`scan_progress` reads a compact authorized command prefix, bringing private mode
-to fourteen tools. [Retained progress](docs/decisions/0065-tenant-retained-progress.md)
-does not authorize completion, replay or a verified goal.
+`scan_progress` reads a compact authorized command prefix. `scan_progress_graph`
+and `scan_checkpoint` add the original attempt's retained nodes/edges and full
+canonical checkpoint exports, bringing private mode to sixteen tools. Byte pages
+retain current authority and exact prefix identity. Source journal seals and
+checkpoint-export hashes are distinct; native wrappers and media are excluded.
+[Retained progress](docs/decisions/0066-retained-checkpoint-graph-reads.md) does not
+authorize completion, replay or an overall verified goal.
 Retain the operator import identity; every page reauthorizes the original caller
 and workspace. Inventory pages contain at most 32 files and original-byte pages
 at most 64 KiB. Reconstruct every original and verify its whole-file digest.

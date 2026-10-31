@@ -1,15 +1,18 @@
 # Original development goals and next step
 
-Updated October 28, 2026. The original proposal under `outputs/` remains unchanged. This status document tracks implementation against its acceptance gates.
+Updated October 30, 2026. The original proposal under `outputs/` remains unchanged. This status document tracks implementation against its acceptance gates.
 
-**Current core increment: retained command diagnostics.** HTTP 1.10.0 adds
-an authorized compact progress read; private MCP adds `scan_progress` as its
-fourteenth tool. Original-user RLS resolves the actual producer, current scope
-is rechecked after storage and diagnostic records cannot authorize completion
-or replay. No migration or new privilege is required. [Contract 0065](decisions/0065-tenant-retained-progress.md)
-and [validation](validation/tenant-retained-progress-v1.md) separate local,
-CI, deployment and original-account consumer gates. Interrupted media and full
-checkpoint/graph reconstruction remain open.
+**Current core increment: retained checkpoint graphs and full exports.** HTTP
+1.11.0 and private `scan_progress_graph` / `scan_checkpoint` reconstruct the
+original attempt's observation nodes and intended/observed command edges. Full
+checkpoint semantics and events are retrieved in bounded byte pages with
+distinct source/export hashes. Every read rechecks original-user scope and the
+actual producer; uncertain input stays unknown. No replay, completion, media or
+overall goal authority is introduced. [Contract0066](decisions/0066-retained-checkpoint-graph-reads.md)
+and [validation](validation/retained-checkpoint-graph-v1.md) separate local, CI,
+deployment and original-account gates. No migration or privilege change is needed.
+**Next:** consume full graph/checkpoint reads through the existing Edge/notebook,
+then recover interrupted original media and complete failure acceptance.
 
 The separate Lovable consumer implements compact progress through the existing
 Supabase Edge gateway. Its report panel exposes original attempt identity,
@@ -439,7 +442,10 @@ flowchart LR
     Live --> Archive[Authorized original archive and graph playback]
     Archive --> Passive[Admitted passive recording]
     Passive --> Keyboard[Admitted keyboard recording delivery]
-    Keyboard --> Next[NEXT: verify assessment claims against originals]
+    Keyboard --> Claims[Accepted source-bound recorded claims]
+    Claims --> Compact[Accepted compact original-account progress consumer]
+    Compact --> Retained[Core retained checkpoint graph and byte reads]
+    Retained --> Next[NEXT: consume full retained path then recover original media]
     Next --> Durable[Broader hosted recovery and workflow acceptance]
     Client --> ViewerControl[Human takeover acceptance]
     classDef done fill:#dcfce7,stroke:#166534,color:#14532d
@@ -448,7 +454,8 @@ flowchart LR
     classDef planned fill:#f3f4f6,stroke:#6b7280,color:#374151
     class Reader,Trace,Privacy,Timing,Recording,Viewer,ReaderGate,Features,Replay,Owned,Controller,Headed,Handoff,PrivateViewer,Pixels,Client,Admission,Leases,Worker,Portal,Sessions,Accepted,Isolated,CoreParity,Ownership,MCP,MCPScans,SignedIn,ApiHttps,Notebook done
     class Edge,Live,Archive,Passive done
-    class Keyboard partial
+    class Claims,Compact done
+    class Keyboard,Retained partial
     class Next next
     class ViewerControl,Durable planned
     click Client "validation/private-fixture-client-v1.md"
@@ -459,7 +466,8 @@ flowchart LR
     click MCPScans "decisions/0052-private-mcp-durable-scans.md"
     click SignedIn "validation/private-tenant-reader-v1.md"
     click Keyboard "validation/admitted-keyboard-recording-v1.md"
-    click Next "completion-plan.md#next-verify-assessment-claims-against-recorded-originals"
+    click Retained "validation/retained-checkpoint-graph-v1.md"
+    click Next "completion-plan.md#next-recover-interrupted-recordings-safely"
 ```
 
 Green means a named bounded capability is validated; amber means partial acceptance;

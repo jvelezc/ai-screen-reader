@@ -12,7 +12,7 @@ internal static class PortalOpenApi
 {
     private static readonly Lazy<string> Cached = new(Build);
     public static string Document => Cached.Value;
-    public const string ContractVersion = "1.10.0";
+    public const string ContractVersion = "1.11.0";
 
     private static string Build()
     {
@@ -30,6 +30,9 @@ internal static class PortalOpenApi
             ["Observation"] = Schema<PortalObservationResponse>(),
             ["Report"] = Schema<PortalReportResponse>(),
             ["RecordedProgress"] = Schema<PortalProgressResponse>(),
+            ["RetainedProgressGraph"] = Schema<PortalProgressGraphResponse>("RetainedProgressGraph"),
+            ["RetainedCheckpointRequest"] = Schema<PortalCheckpointRequest>(),
+            ["RetainedCheckpoint"] = Schema<RetainedCheckpointPage>("RetainedCheckpoint"),
             ["Readiness"] = Schema<PortalReadinessResponse>(),
             ["ReaderSession"] = Schema<PortalReaderSessionResponse>(),
             ["ReaderSnapshot"] = Schema<PortalReaderSnapshotResponse>(),
@@ -75,6 +78,8 @@ internal static class PortalOpenApi
             },
             ["/api/workspaces/{organization}/scans/{scan}"] = Path("get", Operation("GetPortalReport", "Read authorized hash-verified evidence; preserve unavailable and invalid outcomes", "Report", true, organization: true, scan: true)),
             ["/api/workspaces/{organization}/scans/{scan}/progress"] = Path("get", Operation("ReadRecordedCommandProgress", "Read a compact retained diagnostic prefix; original user RLS and actual attempt producer rechecked before and after storage. Never completion, replay authority or a verified goal", "RecordedProgress", true, organization: true, scan: true)),
+            ["/api/workspaces/{organization}/scans/{scan}/progress/graph"] = Path("get", Operation("ReadRetainedProgressGraph", "Read retained observation nodes, intended/observed edges and a full-checkpoint export manifest. Missing prefixes explicit. Original caller and producer checked before and after storage. Never replay, media recovery or goal authority", "RetainedProgressGraph", true, organization: true, scan: true)),
+            ["/api/workspaces/{organization}/scans/{scan}/progress/checkpoint"] = Path("post", Operation("ReadRetainedCheckpoint", "Read at most16KiB of one canonical checkpoint export at an aligned offset or exact EOF. Exact prefix digest required; changed prefix requires a new graph read of the SAME scan, never replay. Verify page and whole checkpoint hashes. Source journal seal and export hash differ; native wrapper/header and media excluded. Fresh original-user RLS and producer checks every page", "RetainedCheckpoint", true, "RetainedCheckpointRequest", organization: true, scan: true)),
             ["/api/workspaces/{organization}/reader-sessions"] = Path("post", Operation("OpenReaderSession", "Open a subject-owned read-only Foundation fixture; two-minute lease, one per user, two per host", "ReaderSession", true, "EmptyRequest", 201, organization: true)),
             ["/api/workspaces/{organization}/reader-sessions/{session}"] = new JsonObject
             {
@@ -118,13 +123,14 @@ internal static class PortalOpenApi
         }.ToJsonString();
     }
 
-    private static JsonNode Schema<T>()
+    private static JsonNode Schema<T>(string? componentName = null)
     {
         // Export the actual camelCase/nullability/required-member contract. Strict number
         // schemas describe serialized output; Web's read-from-string tolerance is not output.
-        var options = new JsonSerializerOptions(PortalJson.Options)
+        var options = new JsonSerializerOptions(typeof(T) == typeof(PortalProgressGraphResponse) || typeof(T) == typeof(RetainedCheckpointPage)
+            ? PortalProgressArchiveJson.Options : PortalJson.Options)
         { TypeInfoResolver = new DefaultJsonTypeInfoResolver(), NumberHandling = JsonNumberHandling.Strict };
-        return options.GetJsonSchemaAsNode(typeof(T), new()
+        var result = options.GetJsonSchemaAsNode(typeof(T), new()
         {
             TreatNullObliviousAsNonNullable = true,
             TransformSchemaNode = (context, schema) =>
@@ -134,8 +140,35 @@ internal static class PortalOpenApi
                 // optional-constructor defaults such as evidenceStorage.
                 if (context.TypeInfo.Type != typeof(PortalEmptyRequest) && context.TypeInfo.Type != typeof(PortalCreateScanRequest)
                     && context.TypeInfo.Type != typeof(PortalArchiveManifestRequest) && context.TypeInfo.Type != typeof(PortalArchiveFileRequest)
+                    && context.TypeInfo.Type != typeof(PortalCheckpointRequest)
                     && context.TypeInfo.Type != typeof(EvidenceReadinessRequest))
                     value["required"] = Strings(properties.Select(property => property.Key).ToArray());
+                if (context.TypeInfo.Type == typeof(PortalCheckpointRequest))
+                {
+                    properties["prefixSha256"]!["pattern"] = "^[a-f0-9]{64}$";
+                    properties["sequence"]!["minimum"] = 1; properties["sequence"]!["maximum"] = 9;
+                    properties["offset"]!["minimum"] = 0; properties["offset"]!["maximum"] = 1048576;
+                    value["description"] = "Offset defaults to0. Runtime requires16KiB alignment or exact EOF; hashes identify content and never grant access.";
+                }
+                if (context.TypeInfo.Type == typeof(RetainedProgressGraph))
+                {
+                    properties["schema"]!["const"] = RetainedProgressGraph.CurrentSchema;
+                    properties["checkpoints"]!["maxItems"] = 9; properties["nodes"]!["maxItems"] = 5; properties["edges"]!["maxItems"] = 4;
+                    value["description"] = "Diagnostic retained prefix. Unresolved intent has no observed destination or input count. Full AX/events are in canonical checkpoint exports, not actual AT speech or complete media.";
+                }
+                if (context.TypeInfo.Type == typeof(RetainedCheckpointDescriptor))
+                {
+                    properties["sourceSha256"]!["pattern"] = "^[a-f0-9]{64}$";
+                    properties["checkpointSha256"]!["pattern"] = "^[a-f0-9]{64}$";
+                    properties["bytes"]!["minimum"] = 1; properties["bytes"]!["maximum"] = 1048576;
+                }
+                if (context.TypeInfo.Type == typeof(RetainedCheckpointPage))
+                {
+                    properties["data"]!["maxLength"] = 21848;
+                    properties["fileBytes"]!["minimum"] = 1; properties["fileBytes"]!["maximum"] = 1048576;
+                    foreach (var name in new[] { "sourceSha256", "checkpointSha256", "pageSha256" }) properties[name]!["pattern"] = "^[a-f0-9]{64}$";
+                    value["description"] = "Base64 canonical full-checkpoint export page. Source journal wrapper/header deliberately excluded. Reconstruct every byte and compare checkpointSha256 before claiming whole-export integrity; no custody, completion, video or replay claim.";
+                }
                 if (context.TypeInfo.Type == typeof(PortalArchiveManifestRequest) || context.TypeInfo.Type == typeof(PortalArchiveFileRequest))
                 {
                     properties["indexSha256"]!["pattern"] = "^[a-f0-9]{64}$";
@@ -332,6 +365,22 @@ internal static class PortalOpenApi
                 return schema;
             }
         });
+        if (componentName is not null) Rebase(result);
+        return result;
+
+        void Rebase(JsonNode? node)
+        {
+            if (node is JsonObject item)
+            {
+                // The exporter points repeated DTOs at its own schema root. Once embedded
+                // as an OpenAPI component, those pointers must include that component.
+                if (item["$ref"] is JsonValue reference && reference.TryGetValue<string>(out var path)
+                    && (path == "#" || path.StartsWith("#/", StringComparison.Ordinal)))
+                    item["$ref"] = "#/components/schemas/" + componentName + path[1..];
+                foreach (var property in item) Rebase(property.Value);
+            }
+            else if (node is JsonArray array) foreach (var child in array) Rebase(child);
+        }
     }
 
     private static JsonArray Strings(params string[] values) => new(values.Select(value => (JsonNode?)JsonValue.Create(value)).ToArray());

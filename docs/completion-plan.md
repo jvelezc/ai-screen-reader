@@ -1,6 +1,6 @@
 # Remaining product completion gates
 
-October 28, 2026. Product: Privensic Screen Reader. This is the ordered remainder
+October 30, 2026. Product: Privensic Screen Reader. This is the ordered remainder
 of the original plan, not a claim that all milestones are complete. The original
 proposal under `outputs/` is unchanged. Read [current delivery evidence](validation/recorded-evidence-claims-v1.md)
 for the accepted recorded-claim slice and its controlled-fixture limits.
@@ -58,9 +58,14 @@ original-account consumer gates remain separately reported. The existing Edge/UI
 consumer now implements compact status with an explicit read, diagnostic scope,
 fresh authorization and clearing across reconnect and source changes. Its
 [consumer validation](https://github.com/jvelezc/ai-screen-reader-ui/blob/main/docs/validation/retained-progress-v1.md)
-tracks CI and original-account acceptance separately. Full checkpoint/graph
-retrieval and interrupted-original reconstruction remain
-open; automatic worker restart is still disabled.
+tracks CI and original-account acceptance separately. The core now implements
+[retained graph and full-checkpoint export retrieval](decisions/0066-retained-checkpoint-graph-reads.md)
+through HTTP1.11 and two private MCP tools. It preserves unresolved intent,
+unknown input, distinct source/export hashes and fresh authority on every byte
+page. [Validation](validation/retained-checkpoint-graph-v1.md) separates source,
+CI, deployment and original-account gates. **Next:** consume these core reads
+through the existing Edge/notebook, then recover interrupted original media and
+complete the failure injections below. Automatic worker restart stays disabled.
 
 Exercise the actual Linux worker under crash after input, upload before metadata
 commit, storage outage, lease expiry, cancellation and full staging disk. Retain

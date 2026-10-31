@@ -24,20 +24,33 @@ internal interface IPortalProgressReader
     Task<RetainedCommandProgress?> ReadAsync(FixtureJob job, Guid worker, CancellationToken token);
 }
 
-internal sealed class PortalProgressReader(string evidence) : IPortalProgressReader
+internal interface IPortalProgressSnapshotReader
 {
-    public Task<RetainedCommandProgress?> ReadAsync(FixtureJob job, Guid worker, CancellationToken token)
+    Task<CommandProgressSnapshot?> ReadSnapshotAsync(FixtureJob job, Guid worker, CancellationToken token);
+}
+
+internal sealed class PortalProgressReader(string evidence) : IPortalProgressReader, IPortalProgressSnapshotReader
+{
+    public async Task<RetainedCommandProgress?> ReadAsync(FixtureJob job, Guid worker, CancellationToken token)
+    {
+        var snapshot = await ReadSnapshotAsync(job, worker, token).ConfigureAwait(false);
+        try { return snapshot is null ? null : CommandProgressProjection.Project(snapshot.Summary, job, worker); }
+        catch (BrowserOperationException) { throw new PortalFault(409, "CONTROL_PROGRESS_INVALID"); }
+    }
+
+    public Task<CommandProgressSnapshot?> ReadSnapshotAsync(FixtureJob job, Guid worker, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
         if (!DirectoryPresent(evidence)) throw new PortalFault(503, "CONTROL_PROGRESS_UNAVAILABLE");
         var runtime = Path.Combine(evidence, ".runtime");
         var root = Path.Combine(runtime, "command-progress");
         var scope = Path.Combine(root, $"{job.OrganizationId:N}-{job.JobId:N}-{job.Generation}");
-        if (!DirectoryPresent(runtime) || !DirectoryPresent(root) || !DirectoryPresent(scope)) return Task.FromResult<RetainedCommandProgress?>(null);
+        if (!DirectoryPresent(runtime) || !DirectoryPresent(root) || !DirectoryPresent(scope)) return Task.FromResult<CommandProgressSnapshot?>(null);
         try
         {
-            var result = CommandProgressProjection.Project(CommandProgressJournal.Read(root, job.OrganizationId, job.JobId, job.Generation), job, worker);
-            token.ThrowIfCancellationRequested(); return Task.FromResult<RetainedCommandProgress?>(result);
+            var result = CommandProgressJournal.ReadSnapshot(root, job.OrganizationId, job.JobId, job.Generation, token);
+            _ = CommandProgressProjection.Project(result.Summary, job, worker);
+            token.ThrowIfCancellationRequested(); return Task.FromResult<CommandProgressSnapshot?>(result);
         }
         catch (BrowserOperationException) { throw new PortalFault(409, "CONTROL_PROGRESS_INVALID"); }
     }
@@ -56,7 +69,8 @@ internal sealed class PortalProgressReader(string evidence) : IPortalProgressRea
     }
 }
 
-internal sealed class PortalProgressService(IPortalProjectClient project, IPortalProgressReader reader)
+internal sealed partial class PortalProgressService(IPortalProjectClient project, IPortalProgressReader reader,
+    IPortalProgressSnapshotReader? snapshotReader = null)
 {
     private async Task<(PortalScanResponse Scan, PortalJobResult Job, Guid? Worker)> ScopeAsync(PortalIdentity actor,
         Guid organization, Guid scan, CancellationToken token)

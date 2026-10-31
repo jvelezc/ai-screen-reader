@@ -1,5 +1,5 @@
 # Core-side requests. Lovable application traffic must instead invoke Supabase Edge Functions.
-# These examples describe source contract 1.8.0; inspect live OpenAPI before use.
+# These examples describe source contract 1.11.0; inspect live OpenAPI before use.
 # Set accessToken only in your HTTP client's private local environment; never commit a real JWT.
 @baseUrl = http://localhost:6086
 @accessToken =
@@ -15,6 +15,27 @@
 # An import is not a scan admission or permission grant.
 @archive = 55555555-5555-4555-8555-555555555555
 @indexSha256 = replace-with-retained-index-sha256
+
+### Retained diagnostic graph and full-checkpoint manifest; no input or media
+GET {{baseUrl}}/api/workspaces/{{organization}}/scans/{{scan}}/progress/graph
+Authorization: Bearer {{accessToken}}
+
+### Canonical checkpoint bytes, not raw native journal files
+# Copy the exact graph.progress.prefixSha256. Follow nextOffset explicitly.
+# Decode every base64 page and verify pageSha256 and complete checkpointSha256.
+# A changed prefix means reread the SAME scan's graph; never replay the run.
+POST {{baseUrl}}/api/workspaces/{{organization}}/scans/{{scan}}/progress/checkpoint
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"prefixSha256":"replace-with-graph-prefix-sha256","sequence":1,"offset":0}
+
+### Invalid checkpoint sequence; expected400 without evidence access
+POST {{baseUrl}}/api/workspaces/{{organization}}/scans/{{scan}}/progress/checkpoint
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"prefixSha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","sequence":0,"offset":0}
 
 ### Fixed authored keyboard route. NEW requestId, same route on uncertain retry.
 # 1=checkout, 2=disabled, 3=validation dialog, 4=unchanged. No passive option.

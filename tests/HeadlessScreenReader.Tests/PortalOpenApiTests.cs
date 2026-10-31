@@ -10,6 +10,31 @@ namespace HeadlessScreenReader.Tests;
 
 public sealed class PortalOpenApiTests
 {
+    [Fact]
+    public void RetainedGraphAndCheckpointShapesUseStringEnumsAndSeparateExportAndSourceHashes()
+    {
+        var job = new HeadlessScreenReader.Domain.FixtureJob(PortalProjectClientTests.Organization, PortalProjectClientTests.Scan, PortalProjectClientTests.Job, 1)
+        { RecordObservation = true, TraversalRoute = 1 };
+        var progress = new HeadlessScreenReader.Domain.RetainedCommandProgress(HeadlessScreenReader.Domain.RetainedCommandProgress.CurrentSchema,
+            job, Guid.NewGuid(), 1, 0, 0, "Baseline", 0, null, null, "o1", null, null, null, new string('a', 64), false, false);
+        var graph = new HeadlessScreenReader.Domain.RetainedProgressGraph(HeadlessScreenReader.Domain.RetainedProgressGraph.CurrentSchema,
+            progress, [new(1, new string('a', 64), new string('b', 64), 25, HeadlessScreenReader.Domain.TraversalCheckpointPhase.Baseline, 0)],
+            [new("o1", "document", new string('c', 64), 1)], []);
+        var status = new PortalProgressResponse(new(job.OrganizationId, job.ScanId, "synthetic-shop", "hsr-desktop-reader-v13", "blocked", DateTimeOffset.UtcNow),
+            job.JobId, 1, progress.WorkerId, "Available", progress);
+        using var spec = JsonDocument.Parse(PortalOpenApi.Document);
+        using var body = JsonDocument.Parse(JsonSerializer.Serialize(new PortalProgressGraphResponse(status, graph), PortalProgressArchiveJson.Options));
+        Assert.True(Matches(body.RootElement, Component(spec.RootElement, "RetainedProgressGraph"), spec.RootElement));
+        Assert.Equal("Baseline", body.RootElement.GetProperty("graph").GetProperty("checkpoints")[0].GetProperty("phase").GetString());
+        using var page = JsonDocument.Parse(JsonSerializer.Serialize(new HeadlessScreenReader.Domain.RetainedCheckpointPage(progress, 1,
+            new string('a', 64), new string('b', 64), 25, 25, [], new string('c', 64), null), PortalProgressArchiveJson.Options));
+        Assert.True(Matches(page.RootElement, Component(spec.RootElement, "RetainedCheckpoint"), spec.RootElement));
+        using var request = JsonDocument.Parse("{\"prefixSha256\":\"" + new string('a', 64) + "\",\"sequence\":1}");
+        Assert.True(Matches(request.RootElement, Component(spec.RootElement, "RetainedCheckpointRequest"), spec.RootElement));
+        using var missing = JsonDocument.Parse("{\"prefixSha256\":\"" + new string('a', 64) + "\"}");
+        Assert.False(Matches(missing.RootElement, Component(spec.RootElement, "RetainedCheckpointRequest"), spec.RootElement));
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -141,7 +166,7 @@ public sealed class PortalOpenApiTests
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         var spec = document.RootElement;
         Assert.Equal("3.1.0", spec.GetProperty("openapi").GetString());
-        Assert.Equal("1.10.0", spec.GetProperty("info").GetProperty("version").GetString());
+        Assert.Equal("1.11.0", spec.GetProperty("info").GetProperty("version").GetString());
         Assert.Equal("https://json-schema.org/draft/2020-12/schema", spec.GetProperty("jsonSchemaDialect").GetString());
         Assert.Equal("http", spec.GetProperty("components").GetProperty("securitySchemes").GetProperty("bearerAuth").GetProperty("type").GetString());
         var operations = new[]
@@ -157,6 +182,8 @@ public sealed class PortalOpenApiTests
             ("/api/workspaces/{organization}/scans", "post", "201", "ScanCreated", true),
             ("/api/workspaces/{organization}/scans/{scan}", "get", "200", "Report", true),
             ("/api/workspaces/{organization}/scans/{scan}/progress", "get", "200", "RecordedProgress", true),
+            ("/api/workspaces/{organization}/scans/{scan}/progress/graph", "get", "200", "RetainedProgressGraph", true),
+            ("/api/workspaces/{organization}/scans/{scan}/progress/checkpoint", "post", "200", "RetainedCheckpoint", true),
             ("/api/workspaces/{organization}/reader-sessions", "post", "201", "ReaderSession", true),
             ("/api/workspaces/{organization}/reader-sessions/{session}", "get", "200", "ReaderSession", true),
             ("/api/workspaces/{organization}/reader-sessions/{session}", "delete", "200", "ReaderClosed", true),
