@@ -24,9 +24,15 @@ is accepted at e637779 with all nine CI jobs and exact private delivery.
 [Storage-only publication recovery](docs/decisions/0070-recorded-publication-recovery.md)
 is accepted at d144993:2,713 tests per OS,67 native and361 database checks,
 exact private deployment, and a real955,559-byte recording recovered under its
-original account/producer without a new execution attempt. The current increment
-adds the [private maintenance operator](docs/decisions/0071-publication-maintenance-operator.md)
-to restore services through existing readiness gates. Unfinished-media recovery follows.
+original account/producer without a new execution attempt.
+The [private maintenance operator](docs/decisions/0071-publication-maintenance-operator.md)
+is accepted at df5dc50: all nine CI jobs, 171 local Linux operational tests,
+exact151-file deployment and actual completed-run maintenance restore ordered
+API readiness with unchanged originals and input history.
+The current increment [retains original images from unfinished recordings](docs/decisions/0072-unfinished-recording-source-retention.md).
+The actual native crash proof passes69 local Windows-host Podman requirements;
+its [remaining delivery gates](docs/validation/unfinished-recording-sources-v1.md)
+are separate. Partial originals cannot become a final video, replay or completion.
 
 For a working local MCP prototype with approved public HTTPS reading, isolated link navigation and Claude configuration, see [Use HeadlessScreenReader with Claude](docs/prototype/claude.md). Public browsing requires a running Linux Podman or Docker engine; the trusted fixture connection also runs directly on Windows.
 
@@ -42,7 +48,7 @@ through Edge Functions in existing Supabase project `gpnijaxrgtwzwtrqsbcu`; it i
 third-party consumer. Reader, jobs and evidence logic stay here.
 
 The current bounded workspace/report API and [tenant-owned read-only fixture sessions](docs/decisions/0044-tenant-reader-sessions.md) publish
-[contract 1.11.0](docs/decisions/0066-retained-checkpoint-graph-reads.md) at `/openapi/v1.json`,
+[contract 1.12.0](docs/decisions/0068-retained-recording-output-reads.md) at `/openapi/v1.json`,
 including response schemas and safe errors. See [HTTP examples](docs/protocol/core-api.http)
 and [the remaining recovery gates](docs/completion-plan.md#next-recover-interrupted-recordings-safely).
 The [private HTTP-backed MCP mode](docs/decisions/0051-private-http-backed-mcp.md)

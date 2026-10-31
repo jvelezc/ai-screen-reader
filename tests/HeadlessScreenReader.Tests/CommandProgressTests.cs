@@ -158,10 +158,10 @@ public sealed class CommandProgressTests
             File.WriteAllBytes(Path.Combine(files.Scope, $"0002-{TraversalArchive.Hash(blockedBytes)}.json"), []);
         }
         using var input = await Frames(messages.Take(2)); using var ack = new MemoryStream(); using var stop = new CancellationTokenSource();
-        var calls = 0; var exchange = new FixtureProgressExchange(files.Start, journal, _ => Task.FromResult(++calls == 1 || failure != "authority"));
+        var calls = 0; var exchange = new FixtureProgressExchange(files.Start, journal, _ => Task.FromResult(++calls <= 2 || failure != "authority"));
         var error = await Assert.ThrowsAsync<BrowserOperationException>(() => exchange.ReadAsync(input, ack, stop));
         Assert.Equal(failure == "authority" ? "WORKER_PROGRESS_AUTHORITY_UNCONFIRMED" : "WORKER_PROGRESS_WRITE_UNCONFIRMED", error.Code);
-        Assert.True(stop.IsCancellationRequested); Assert.Equal(2, calls);
+        Assert.True(stop.IsCancellationRequested); Assert.Equal(3, calls);
         ack.Position = 0;
         var first = await FixtureProgressProtocol.ReadAsync<FixtureProgressAck>(ack, 4096, default);
         FixtureProgressProtocol.Validate(first, files.Native.Owner, 1);
@@ -231,7 +231,7 @@ public sealed class CommandProgressTests
             var changedAttempt = recording.Receipt.Attempts[0] with { StartedMilliseconds = recording.Receipt.Attempts[0].StartedMilliseconds + 0.01 };
             var changedReceipt = recording.Receipt with { Attempts = recording.Receipt.Attempts.SetItem(0, changedAttempt) };
             Assert.Equal("WORKER_PROGRESS_INVALID", Assert.Throws<BrowserOperationException>(() => exchange.Match(changedReceipt)).Code);
-            Assert.Equal(5, files.Read().Records); Assert.Equal(2, files.Read().Results); Assert.Equal(5, authorizations);
+            Assert.Equal(5, files.Read().Records); Assert.Equal(2, files.Read().Results); Assert.Equal(10, authorizations);
             Assert.Equal(2, recording.Receipt.CompletedKeystrokes); Assert.Equal(TraversalReachability.Reached, recording.Receipt.Reachability);
             Assert.False(files.Read().IsCompletionReceipt); Assert.False(files.Read().CanReplay);
             Assert.DoesNotContain("\"Token\"", JsonSerializer.Serialize(files.Read()));

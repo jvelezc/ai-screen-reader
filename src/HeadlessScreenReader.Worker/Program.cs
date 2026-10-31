@@ -4,6 +4,21 @@ using HeadlessScreenReader.Worker;
 using HeadlessScreenReader.Domain;
 using System.Security.Cryptography;
 
+if (args.Length > 0 && args[0] == "--inspect-recorded-sources")
+{
+    if (args.Length != 5 || !Guid.TryParseExact(args[1], "D", out var organization) || organization == Guid.Empty
+        || !Guid.TryParseExact(args[2], "D", out var job) || job == Guid.Empty
+        || !long.TryParse(args[3], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var generation)
+        || generation is < 1 or > 3 || !Guid.TryParseExact(args[4], "D", out var producer) || producer == Guid.Empty) return 2;
+    try
+    {
+        var evidenceRoot = Environment.GetEnvironmentVariable("HSR_WORKER_EVIDENCE") ?? throw new InvalidOperationException();
+        var sources = RecordedSourceJournal.Read(Path.Combine(evidenceRoot, ".runtime", "recorded-sources"), organization, job, generation, producer);
+        Console.WriteLine(JsonSerializer.Serialize(sources, ObservationStore.Json)); return 0;
+    }
+    catch (Exception) { Console.Error.WriteLine("WORKER_SOURCE_INSPECTION_UNCONFIRMED"); return 3; }
+}
+
 if (args.Length > 0 && args[0] == "--inspect-command-progress")
 {
     if (args.Length != 4 || !Guid.TryParse(args[1], out var organization) || !Guid.TryParse(args[2], out var job)

@@ -100,7 +100,12 @@ observed Blocked/NotCollected with `FIXTURE_OBSERVATION_UNCONFIRMED`; there was
 one execution attempt and no archive/database completion. The complete retained
 bundle was955,559 bytes, SHA-256
 `239d960c03f199044fac2d0e2383210f0d7159fcd1fc2c5e361d9aa3f47856fc`.
-An independent Podman check confirmed the owned native container was absent.
+The matching durable native-cleanup acknowledgement is retained. An early
+independent check used root's Podman namespace, which cannot establish absence
+in the worker's rootless namespace; that receipt is insufficient for this claim.
+A subsequent fresh check runs Podman as the actual hsr-worker account(uid1001),
+using its runtime environment, and confirms the original owned container is absent.
+It does not retroactively establish fresh rootless absence at the earlier instant.
 
 After removing only the empty test directory, the explicit command ran under
 the existing worker identity/private environment and returned Published. An

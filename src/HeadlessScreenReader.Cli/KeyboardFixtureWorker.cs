@@ -12,7 +12,8 @@ namespace HeadlessScreenReader.Cli;
 public static class KeyboardFixtureWorker
 {
     public static async Task<byte[]> RecordAsync(FixtureJob job, CancellationToken token = default,
-        Func<TraversalCheckpoint, CancellationToken, Task>? checkpoint = null)
+        Func<TraversalCheckpoint, CancellationToken, Task>? checkpoint = null,
+        Func<ImmutableArray<CompletedCaptureSource>, CancellationToken, Task>? sourceSink = null)
     {
         job.Validate();
         if (job.TraversalRoute is < 1 or > 4) throw new BrowserOperationException("WORKER_KEYBOARD_ROUTE_INVALID");
@@ -21,7 +22,7 @@ public static class KeyboardFixtureWorker
         var folder = Path.Combine(Path.GetTempPath(), "hsr-keyboard-" + Guid.NewGuid().ToString("N"));
         try
         {
-            var result = await TraversalRecordingDemo.RunRouteAsync(folder, TraversalDemo.Plans[job.TraversalRoute - 1], token, checkpoint);
+            var result = await TraversalRecordingDemo.RunRouteAsync(folder, TraversalDemo.Plans[job.TraversalRoute - 1], token, checkpoint, sourceSink);
             token.ThrowIfCancellationRequested();
             if (result.Receipt is not { Observations.IsDefaultOrEmpty: false } receipt || result.Recording.Media is not { } media
                 || result.Recording.Shutdown is not { } shutdown || result.Recording.CaptureLifecycle is not { } capture

@@ -2,16 +2,31 @@
 
 Updated October 31, 2026. The original proposal under `outputs/` remains unchanged. This status document tracks implementation against its acceptance gates.
 
-**Current operator increment: ordered publication maintenance.**
+**Current increment: unfinished original-image retention.**
+Completed source JPEGs now transfer through a separately admitted, hash-bound
+worker protocol before command acknowledgement. A private journal preserves
+original source sequence/timestamps under the actual producer and native owner.
+Partial snapshots remain unassessed and cannot authorize replay, publication or
+completion. [Decision0072](decisions/0072-unfinished-recording-source-retention.md)
+and [validation](validation/unfinished-recording-sources-v1.md) separate focused
+checks, actual local native crash/removal (69/69), full Windows, Linux CI and
+private delivery. **Next:** finish delivery, then protected API/MCP reads of
+partial originals with original-caller/actual-producer checks.
+
+**Ordered publication maintenance accepted at df5dc50.**
 The root-only helper stops control before observation, reconciles native ownership,
 runs storage-only recovery under the existing private worker environment, and
 confirms actual transient-process settlement before restoring service. It reuses
 deployment's worker/database, control invocation/PID and HTTP readiness gates.
 Unknown settlement leaves services stopped; service readiness does not claim
 publication or an overall goal. [Decision0071](decisions/0071-publication-maintenance-operator.md)
-and [validation](validation/publication-maintenance-operator-v1.md) separate171
-passing local Linux operational tests from pending CI/private installation and
-hosted maintenance acceptance. **Next:** finish those gates, then unfinished media.
+and [validation](validation/publication-maintenance-operator-v1.md) record171
+passing local Linux operational tests, all nine green CI jobs (2,713 tests per OS,
+native67/database361), exact151-file private deployment and two independently
+checked root operator modules. Actual AlreadyCompleted maintenance restores both
+services and API readiness without changing attempts, source files or seven S3
+objects. Rootless worker-account native absence and original-account report
+refresh pass. First publication through this wrapper remains a separate gate.
 
 **Original-attempt storage publication recovery accepted at d144993.**
 Separate private claim/renew/fail/complete functions bind the original producer,

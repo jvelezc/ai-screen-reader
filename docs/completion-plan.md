@@ -97,8 +97,23 @@ all five originals and baseline independently match private S3. The current
 [maintenance operator](decisions/0071-publication-maintenance-operator.md) adds
 the missing ordered service restart composition; its
 [validation record](validation/publication-maintenance-operator-v1.md) separates
-171 local Linux operational tests from CI and hosted acceptance. **Next:** finish
-that operator delivery, then unfinished media and the failure injections below.
+171 local Linux operational tests from all nine green CI jobs, exact151-file
+deployment, exact two-module private installation and actual completed-run
+maintenance. The rootless worker account confirms native absence; the original
+account rereads the report, and the same attempt plus all seven S3 object versions
+remain unchanged. This is AlreadyCompleted maintenance, separate from first
+publication through the wrapper.
+
+[Unfinished original-image retention](decisions/0072-unfinished-recording-source-retention.md)
+now keeps bounded JPEG subsets before native child loss, with a separate durable
+acknowledgement and fresh authority after writes. Local actual crash/removal
+passes69 native requirements; full delivery remains in its
+[validation record](validation/unfinished-recording-sources-v1.md).
+**Next:** finish that delivery, then expose partial originals through independently
+usable protected API/private MCP contracts. Resolve original caller and actual
+producer, page exact bytes, preserve uncommitted/missing states and never describe
+partial images as a complete video or successful job. Existing Edge/UI consumption
+follows core acceptance. The remaining failure injections below stay open.
 Automatic worker restart stays disabled.
 
 Exercise the actual Linux worker under crash after input, upload before metadata

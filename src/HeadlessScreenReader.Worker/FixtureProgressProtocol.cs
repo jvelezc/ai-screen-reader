@@ -4,7 +4,10 @@ using HeadlessScreenReader.Domain;
 
 namespace HeadlessScreenReader.Worker;
 
-public sealed record FixtureProgressStart(string Schema, FixtureJob Job, Guid ExecutionId);
+public sealed record FixtureProgressStart(string Schema, FixtureJob Job, Guid ExecutionId)
+{
+    public bool RetainSourceFrames { get; init; }
+}
 public sealed record FixtureProgressMessage(string Schema, Guid ExecutionId, int Sequence, TraversalCheckpoint Checkpoint);
 public sealed record FixtureProgressAck(string Schema, Guid ExecutionId, int Sequence);
 

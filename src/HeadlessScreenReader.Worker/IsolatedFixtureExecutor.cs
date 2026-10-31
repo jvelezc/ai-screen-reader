@@ -63,7 +63,9 @@ public sealed partial class IsolatedFixtureExecutor : IFixtureExecutor
             {
                 var journal = await CommandProgressJournal.BeginAsync(Path.Combine(Path.GetDirectoryName(_journal.IntentsDirectory)!, "command-progress"),
                     intent, job, producer, token);
-                progress = new(new(FixtureProgressProtocol.Schema, job, intent.Owner), journal, authorize);
+                var sources = await RecordedSourceJournal.BeginAsync(Path.Combine(Path.GetDirectoryName(_journal.IntentsDirectory)!, "recorded-sources"),
+                    intent, job, producer, token);
+                progress = new(new(FixtureProgressProtocol.Schema, job, intent.Owner) { RetainSourceFrames = true }, journal, authorize, sources);
             }
             await CreateAndInspectAsync(intent, token, journaled: progress is not null);
             var result = await InvokeAsync(["start", "--attach", "--interactive", name],
@@ -74,7 +76,11 @@ public sealed partial class IsolatedFixtureExecutor : IFixtureExecutor
             if (job.TraversalRoute > 0)
             {
                 var bundle = KeyboardRecordingBundle.Decode(result.Bytes, job);
-                if (progress is not null) progress.Match(bundle.Validate(job).Receipt);
+                if (progress is not null)
+                {
+                    progress.Match(bundle.Validate(job).Receipt);
+                    progress.MatchSources(bundle);
+                }
             }
             else if (job.RecordObservation) PassiveRecordingBundle.Decode(result.Bytes, job);
             else ObservationStore.Validate(result.Bytes, job);

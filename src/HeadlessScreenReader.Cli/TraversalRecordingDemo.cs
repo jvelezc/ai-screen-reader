@@ -21,7 +21,8 @@ public sealed record RecordedTraversalResult(TraversalReceipt? Receipt, Traversa
 public static class TraversalRecordingDemo
 {
     public static async Task<RecordedTraversalResult> RunRouteAsync(string mediaFolder, TraversalPlan plan,
-        CancellationToken cancellationToken = default, Func<TraversalCheckpoint, CancellationToken, Task>? checkpoint = null)
+        CancellationToken cancellationToken = default, Func<TraversalCheckpoint, CancellationToken, Task>? checkpoint = null,
+        Func<ImmutableArray<CompletedCaptureSource>, CancellationToken, Task>? sources = null)
     {
         var time = TimeProvider.System;
         var started = time.GetTimestamp();
@@ -57,11 +58,12 @@ public static class TraversalRecordingDemo
             stage = "Traverse";
             receipt = await new TraversalRunner(time).RunAsync(probe.Browser, plan,
                 waitOptions: new() { Timeout = TimeSpan.FromMilliseconds(400), MaxPolls = 10 },
-                cancellationToken: cancellationToken, checkpoint: checkpoint is null ? null : async (value, token) =>
+                cancellationToken: cancellationToken, checkpoint: checkpoint is null && sources is null ? null : async (value, token) =>
                 {
                     if (probe.CaptureStatus.Phase != CapturePhase.Permitted)
                         throw new BrowserOperationException("WORKER_PROGRESS_CAPTURE_EXCLUDED");
-                    await checkpoint(value, token).ConfigureAwait(false);
+                    if (sources is not null) await probe.CopyCompletedSourcesAsync(sources, token).ConfigureAwait(false);
+                    if (checkpoint is not null) await checkpoint(value, token).ConfigureAwait(false);
                 }).ConfigureAwait(false);
             runnerOriginHostMilliseconds = time.GetElapsedTime(started, receipt.Clock!.OriginTimestamp).TotalMilliseconds;
             stage = "CalibrateAfter";
@@ -69,6 +71,7 @@ public static class TraversalRecordingDemo
             // Retain a trailing frame even for routes that perform only virtual reader commands.
             // This measurement hold is outside the route and never counts as user effort.
             await Task.Delay(120, cancellationToken).ConfigureAwait(false);
+            if (sources is not null) await probe.CopyCompletedSourcesAsync(sources, cancellationToken).ConfigureAwait(false);
             stage = "FinalizeAndDecodeOriginalMedia";
             media = await probe.FinishAndInspectAsync().ConfigureAwait(false);
             receipt = receipt with { HasRecording = true };

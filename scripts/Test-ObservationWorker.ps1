@@ -11,7 +11,7 @@ $created=$false; $built=$false; $removed=$false; $imageRemoved=$false; $ready=$f
 $cases=[Collections.Generic.List[string]]::new()
 $releaseCreated=$false
 $script:executed=0; $script:failed=0
-$expected=if($IsLinux){67}else{65}; $linuxSignalPerformed=$false
+$expected=if($IsLinux){71}else{69}; $linuxSignalPerformed=$false
 $crashStarted=$false; $crashEvidence=$null
 $recoveryResources=[Collections.Generic.List[string]]::new()
 $names=@('POSTGRES_PASSWORD','HSR_WORKER_DATABASE','HSR_WORKER_IMAGE','HSR_WORKER_EVIDENCE','HSR_WORKER_RUNTIME','HSR_WORKER_SECCOMP',
@@ -421,6 +421,21 @@ create trigger proof_stop_publication before update on hsr.scan_jobs for each ro
         if($crashStarted -and -not $process.HasExited){$process.Kill();$null=$process.WaitForExit(5000)}
         $process.Dispose()
     }
+    $sourceScope=Join-Path $crashEvidence ".runtime/recorded-sources/$(([Guid]$org).ToString('N'))-$(([Guid]$crashJob.job_id).ToString('N'))-1"
+    $sourceOutput=@(& dotnet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --inspect-recorded-sources $org $crashJob.job_id 1 $crashedFacts.worker 2>&1)
+    $sourceExit=$LASTEXITCODE; $sources=($sourceOutput -join "`n")|ConvertFrom-Json
+    $sourceOutput -join "`n" | Set-Content (Join-Path $folder 'interrupted-sources.json') -Encoding utf8NoBOM
+    Assert-Proof ($sourceExit -eq 0 -and $sources.Header.Native.Owner -eq $header.Native.Owner -and $sources.Header.WorkerId -eq $crashedFacts.worker -and $sources.Header.Job.JobId -eq $crashJob.job_id -and $sources.Header.Job.Generation -eq 1 -and @($sources.Frames).Count -gt 0 -and $sources.Scope -ceq 'RetainedOriginalSourceSubset' -and $sources.Completeness -ceq 'NotAssessed' -and -not $sources.IsCompletedRecording -and -not $sources.CanReplay -and $sources.GoalVerification -ceq 'NotAssessed') 'ActualNativeCrashRetainsOriginalImageSubsetForTheSameUnfinishedAttempt'
+    $sourceBytes=0; $originalsMatch=$true
+    foreach($frame in $sources.Frames){
+        $original=Join-Path $sourceScope $frame.File
+        $originalsMatch=$originalsMatch -and $frame.File -ceq ('source-{0:D4}.jpg' -f [int]$frame.SourceSequence) -and (Get-Item -LiteralPath $original).Length -eq $frame.Bytes -and (Get-FileHash -LiteralPath $original -Algorithm SHA256).Hash.ToLowerInvariant() -ceq $frame.Sha256
+        $sourceBytes+=$frame.Bytes
+    }
+    Assert-Proof ($originalsMatch -and $sourceBytes -eq $sources.Bytes -and $sourceBytes -gt 0) 'RetainedNativeCrashImageBytesMatchAnIndependentFileInventory'
+    $foreignSources=@(& dotnet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --inspect-recorded-sources $org $crashJob.job_id 1 ([Guid]::NewGuid()) 2>&1)
+    Assert-Proof ($LASTEXITCODE -eq 3 -and ($foreignSources -join "`n") -ceq 'WORKER_SOURCE_INSPECTION_UNCONFIRMED') 'PrivateOriginalImagesRejectAReplacementProducerIdentity'
+    $beforeSources=@(Get-ChildItem -LiteralPath $sourceScope -File | Sort-Object Name | ForEach-Object {$_.Name+':'+(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash})
     $beforeProgress=@(Get-ChildItem -LiteralPath $crashScope -File | Sort-Object Name | ForEach-Object {$_.Name+':'+(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash})
     $null=Invoke-ProofSql "update hsr.job_leases set expires_at=clock_timestamp()-interval '1 second' where job_id='$($crashJob.job_id)'; select pgmq.set_vt('hsr_scan_jobs',(select queue_message_id from hsr.scan_jobs where id='$($crashJob.job_id)'),0);"
     $output=@(& dotnet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --once 2>&1)
@@ -429,6 +444,10 @@ create trigger proof_stop_publication before update on hsr.scan_jobs for each ro
     $afterProgress=@(Get-ChildItem -LiteralPath $crashScope -File | Sort-Object Name | ForEach-Object {$_.Name+':'+(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash})
     $recoveredFacts=(Invoke-ProofSql "select json_build_object('state',j.state,'generation',j.generation,'attempts',(select count(*) from hsr.job_attempts where job_id=j.id),'archive',j.archive_index_sha256) from hsr.scan_jobs j where j.id='$($crashJob.job_id)'" ) | ConvertFrom-Json
     Assert-Proof ($restartExit -eq 3 -and $restartResult.State -ceq 'Blocked' -and $restartResult.JobId -eq $crashJob.job_id -and $restartResult.ErrorCode -ceq 'WORKER_INPUT_OUTCOME_UNCONFIRMED' -and $recoveredFacts.generation -eq 1 -and $recoveredFacts.attempts -eq 1 -and $null -eq $recoveredFacts.archive -and [string]::IsNullOrWhiteSpace($crashGone.Text) -and -not (Test-Path $crashIntent) -and ($beforeProgress -join "`n") -ceq ($afterProgress -join "`n")) 'NativeRestartPreservesCommandPrefixWithoutReplayingCrashedAttempt'
+    $sourceOutput=@(& dotnet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --inspect-recorded-sources $org $crashJob.job_id 1 $crashedFacts.worker 2>&1)
+    $sourceExit=$LASTEXITCODE; $sourcesAfter=($sourceOutput -join "`n")|ConvertFrom-Json
+    $afterSources=@(Get-ChildItem -LiteralPath $sourceScope -File | Sort-Object Name | ForEach-Object {$_.Name+':'+(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash})
+    Assert-Proof ($sourceExit -eq 0 -and $sourcesAfter.Header.Native.Owner -eq $sources.Header.Native.Owner -and $sourcesAfter.Header.WorkerId -eq $sources.Header.WorkerId -and $sourcesAfter.Bytes -eq $sources.Bytes -and @($sourcesAfter.Frames).Count -eq @($sources.Frames).Count -and -not $sourcesAfter.IsCompletedRecording -and -not $sourcesAfter.CanReplay -and ($beforeSources -join "`n") -ceq ($afterSources -join "`n")) 'ActualNativeRemovalPreservesPartialOriginalImagesWithoutCompletingOrReplaying'
     $recoveredOutputRemoval=Get-Content (Join-Path $crashOutputScope 'native-removal.json') -Raw|ConvertFrom-Json
     $recoveredNativeRemoval=Get-Content (Join-Path $crashEvidence ".runtime/removals/$crashOwner.json") -Raw|ConvertFrom-Json
     Assert-Proof ($recoveredOutputRemoval.HeaderSha256 -ceq (Get-FileHash -LiteralPath (Join-Path $crashOutputScope 'start.json') -Algorithm SHA256).Hash.ToLowerInvariant() -and $recoveredOutputRemoval.Removal.Intent.Owner -eq $crashOutputHeader.Native.Owner -and $recoveredOutputRemoval.Removal.ContainerAbsenceConfirmed -and $recoveredOutputRemoval.Removal.RecoveredAfterRestart -and $recoveredNativeRemoval.Intent.Owner -eq $crashOutputHeader.Native.Owner -and $recoveredNativeRemoval.ContainerAbsenceConfirmed -and -not (Test-Path (Join-Path $crashOutputScope 'seal.json')) -and -not (Test-Path (Join-Path $crashOutputScope 'bundle.bin'))) 'ActualCrashedChildCleanupCanBeAcknowledgedWithoutInventingCompleteMedia'
