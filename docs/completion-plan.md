@@ -85,10 +85,14 @@ a765,454-byte ZIP matching the independent private original, and sign-in plus
 the same descriptor survive reload. Missing, incomplete and cleanup-unconfirmed
 media cannot be exported.
 [Restart-time cleanup acknowledgement repair](decisions/0069-recording-removal-recovery.md)
-is the current implementation increment; its [validation record](validation/recording-removal-recovery-v1.md)
-separates local, CI and deployment checks.
-**Next:** finish that delivery, then publication reconciliation under the original
-attempt, partial media recovery and the failure injections below.
+is accepted at e637779, with2,682 tests per OS,61 native and289 database checks,
+exact151-file delivery and a fresh same-account recording-manifest regression.
+Its [validation record](validation/recording-removal-recovery-v1.md) separates scopes.
+[Storage-only original-attempt publication](decisions/0070-recorded-publication-recovery.md)
+is the current increment; its [validation record](validation/recorded-publication-recovery-v1.md)
+separates local unit/database/native checks from CI, hosted schema, exact
+deployment and original-account recovery. **Next:** finish that delivery, then
+partial media recovery and the failure injections below.
 Automatic worker restart stays disabled.
 
 Exercise the actual Linux worker under crash after input, upload before metadata

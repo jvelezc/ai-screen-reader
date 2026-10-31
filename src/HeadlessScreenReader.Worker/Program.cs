@@ -17,9 +17,15 @@ if (args.Length > 0 && args[0] == "--inspect-command-progress")
     catch (Exception) { Console.Error.WriteLine("WORKER_PROGRESS_INSPECTION_UNCONFIRMED"); return 3; }
 }
 
-if (args.Length != 1 || args[0] is not ("--once" or "--poll" or "--recover" or "--check-runtime" or "--check-reader-runtime" or "--recover-reader" or "--host-reader"))
+var recordingRecovery = args.Length == 4 && args[0] == "--recover-recording";
+Guid publicationOrganization = default, publicationJob = default; long publicationGeneration = default;
+if (recordingRecovery && (!Guid.TryParseExact(args[1], "D", out publicationOrganization) || publicationOrganization == Guid.Empty
+    || !Guid.TryParseExact(args[2], "D", out publicationJob) || publicationJob == Guid.Empty
+    || !long.TryParse(args[3], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out publicationGeneration)
+    || publicationGeneration is < 1 or > 3)) return 2;
+if (!recordingRecovery && (args.Length != 1 || args[0] is not ("--once" or "--poll" or "--recover" or "--check-runtime" or "--check-reader-runtime" or "--recover-reader" or "--host-reader")))
 {
-    Console.Error.WriteLine("Usage: HeadlessScreenReader.Worker --once | --poll | --recover | --check-runtime | --check-reader-runtime | --recover-reader | --host-reader. Operator configuration is supplied through the private service environment.");
+    Console.Error.WriteLine("Usage: HeadlessScreenReader.Worker --once | --poll | --recover | --check-runtime | --check-reader-runtime | --recover-reader | --host-reader | --recover-recording <organization> <job> <generation>. Operator configuration is supplied through the private service environment.");
     return 2;
 }
 using var stop = new CancellationTokenSource();
@@ -28,6 +34,12 @@ using var termination = OperatingSystem.IsWindows() ? null : PosixSignalRegistra
     context => { context.Cancel = true; stop.Cancel(); });
 try
 {
+    if (recordingRecovery)
+    {
+        var result = await RecordedPublicationCommand.RunAsync(publicationOrganization, publicationJob, publicationGeneration, stop.Token);
+        Console.WriteLine(JsonSerializer.Serialize(result, ObservationStore.Json));
+        return result.State is "Published" or "AlreadyCompleted" ? 0 : 3;
+    }
     var image = Environment.GetEnvironmentVariable("HSR_WORKER_IMAGE") ?? throw new InvalidOperationException();
     var evidence = Environment.GetEnvironmentVariable("HSR_WORKER_EVIDENCE") ?? throw new InvalidOperationException();
     var runtime = Environment.GetEnvironmentVariable("HSR_WORKER_RUNTIME") ?? "podman";

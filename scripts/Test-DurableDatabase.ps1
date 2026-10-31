@@ -99,6 +99,10 @@ try {
     Invoke-DatabaseFile 'tests/database/keyboard-recording.sql' 'keyboard-recording' -Expected 27 -User 'supabase_admin'
     $stage = 'keyboard-replay-fence'
     Invoke-DatabaseFile 'tests/database/keyboard-replay-fence.sql' 'keyboard-replay-fence' -Expected 14 -User 'supabase_admin'
+    $stage = 'recorded-publication'
+    Invoke-DatabaseFile 'tests/database/recorded-publication.sql' 'recorded-publication' -Expected 64 -User 'supabase_admin'
+    $stage = 'concurrent-publication'
+    Invoke-DatabaseFile 'tests/database/concurrent-recorded-publication.sql' 'concurrent-publication' -Expected 8 -User 'supabase_admin'
     $stage = 'concurrent-leases'
     Invoke-DatabaseFile 'tests/database/concurrent-worker-leases.sql' 'concurrent-leases' -Expected 10 -User 'supabase_admin'
     $stage = 'persist'
@@ -132,13 +136,13 @@ try {
 }
 $receipt = [pscustomobject]@{
     Schema = 'hsr-database-admission-proof-v1'; Ready = $ready; Stage = $stage; ErrorCode = $errorCode
-    Runtime = $Runtime; Image = $image; Expected = 289; Discovered = $script:discovered
+    Runtime = $Runtime; Image = $image; Expected = 361; Discovered = $script:discovered
     Executed = $script:executed; Passed = $cases.Count; Failed = $script:failed
-    Unconfirmed = [Math]::Max(0, 289 - $script:executed); Skipped = 0; Cases = @($cases)
+    Unconfirmed = [Math]::Max(0, 361 - $script:executed); Skipped = 0; Cases = @($cases)
     ContainerRemoved = $removed; HostedProjectChanged = $false; WorkerExecutionPerformed = $false
     Folder = $folder
 }
 $receipt | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $folder 'run.json') -Encoding utf8NoBOM
 $receipt | ConvertTo-Json -Depth 4
-if (-not $ready -or -not $removed -or $cases.Count -ne 289 -or $script:discovered -ne 289 `
-    -or $script:executed -ne 289 -or $script:failed -ne 0) { exit 1 }
+if (-not $ready -or -not $removed -or $cases.Count -ne 361 -or $script:discovered -ne 361 `
+    -or $script:executed -ne 361 -or $script:failed -ne 0) { exit 1 }

@@ -115,6 +115,18 @@ public sealed class RecordedOutputJournal
     }
 
     /// <summary>Operator-private exact-attempt read. Consumers additionally need current caller/producer checks before and after storage.</summary>
+    public static RecordedOutputSnapshot ReadCandidate(string root, Guid organization, Guid job, long generation, CancellationToken token)
+    {
+        Require(organization != Guid.Empty && job != Guid.Empty && generation is >= 1 and <= 3);
+        token.ThrowIfCancellationRequested(); root = Path.GetFullPath(root); Regular(root, true);
+        var directory = Path.Combine(root, $"{organization:N}-{job:N}-{generation}"); Regular(directory, true);
+        var header = ReadHeader(directory);
+        Require(header.Job.OrganizationId == organization && header.Job.JobId == job && header.Job.Generation == generation);
+        // A private candidate is not admission authority. The storage-only database claim must bind its actual producer.
+        return Read(root, header.Job, header.WorkerId, token);
+    }
+
+    /// <summary>Operator-private exact-attempt read. Consumers additionally need current caller/producer checks before and after storage.</summary>
     public static RecordedOutputSnapshot Read(string root, FixtureJob expected, Guid worker, CancellationToken token)
     {
         expected.Validate(); Require(expected.RecordObservation && worker != Guid.Empty);

@@ -2,15 +2,28 @@
 
 Updated October 31, 2026. The original proposal under `outputs/` remains unchanged. This status document tracks implementation against its acceptance gates.
 
-**Current core increment: restart-time recording cleanup acknowledgement repair.**
+**Current core increment: original-attempt storage publication recovery.**
+Separate private claim/renew/fail/complete functions bind the original producer,
+generation and whole bundle without issuing execution authority. Recovery can
+reuse only exact local bytes and deterministic archive indexes; current creator
+membership and fresh server-clock fencing remain required. The operator path has
+no reader/executor dependency and cannot overwrite a completed receipt.
+[Decision0070](decisions/0070-recorded-publication-recovery.md) and
+[validation](validation/recorded-publication-recovery-v1.md) separate local unit,
+database, native, CI, hosted schema and original-account gates. **Next:** finish
+those gates, then partial live-media and actual storage/disk/cancellation recovery.
+
+**Restart-time recording cleanup acknowledgement repair accepted.**
 The worker reconciles saved output against matching durable native-removal
 records, including owners whose intent was already retired. An exact completed
 pending copy can finish its rename; corrupt or foreign records remain unresolved.
 Recovery does not execute input, seal partial media or publish/complete a job.
 [Decision0069](decisions/0069-recording-removal-recovery.md) and
 [validation](validation/recording-removal-recovery-v1.md) separate its local,
-CI and deployment gates. **Next:** finish delivery, then original-attempt
-publication reconciliation and partial live-media/storage/disk-failure recovery.
+CI and deployment gates. All nine jobs at e637779 pass2,682 tests per OS,
+61 native and289 database requirements. Exact private delivery verifies151 files;
+the original account refreshes the unchanged saved-recording descriptor after
+deployment without a new login or recording. Publication remains a separate gate.
 
 **Protected retained-recording reads accepted.** HTTP1.12
 and eighteen private MCP tools expose complete original child-output manifests

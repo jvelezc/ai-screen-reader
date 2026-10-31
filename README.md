@@ -18,9 +18,11 @@ now implement HTTP1.12/private MCP manifest and64KiB ZIP byte pages, with curren
 caller/producer checks and explicit missing/incomplete/cleanup states. Their
 [delivery gates](docs/validation/retained-recording-output-v1.md) now pass at
 core25fdf07, UI f7c1127 and existing Edge v9, including a real original-account
-ZIP matching the independent private original. The current increment is
-[restart-time cleanup acknowledgement repair](docs/decisions/0069-recording-removal-recovery.md).
-Publication reconciliation and interrupted live-media recovery remain next.
+ZIP matching the independent private original.
+[Restart-time cleanup acknowledgement repair](docs/decisions/0069-recording-removal-recovery.md)
+is accepted at e637779 with all nine CI jobs and exact private delivery. The current
+increment is [storage-only publication recovery](docs/decisions/0070-recorded-publication-recovery.md)
+under the original producer/attempt; interrupted live-media recovery remains next.
 
 For a working local MCP prototype with approved public HTTPS reading, isolated link navigation and Claude configuration, see [Use HeadlessScreenReader with Claude](docs/prototype/claude.md). Public browsing requires a running Linux Podman or Docker engine; the trusted fixture connection also runs directly on Windows.
 

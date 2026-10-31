@@ -11,7 +11,7 @@ $created=$false; $built=$false; $removed=$false; $imageRemoved=$false; $ready=$f
 $cases=[Collections.Generic.List[string]]::new()
 $releaseCreated=$false
 $script:executed=0; $script:failed=0
-$expected=if($IsLinux){61}else{59}; $linuxSignalPerformed=$false
+$expected=if($IsLinux){67}else{65}; $linuxSignalPerformed=$false
 $crashStarted=$false; $crashEvidence=$null
 $recoveryResources=[Collections.Generic.List[string]]::new()
 $names=@('POSTGRES_PASSWORD','HSR_WORKER_DATABASE','HSR_WORKER_IMAGE','HSR_WORKER_EVIDENCE','HSR_WORKER_RUNTIME','HSR_WORKER_SECCOMP',
@@ -309,6 +309,60 @@ try {
         $wrongScopeExit=$LASTEXITCODE
     } finally {$env:HSR_WORKER_DATABASE=$savedDatabase}
     Assert-Proof ($privateReadExit -eq 0 -and ($output -join "`n"|ConvertFrom-Json).Header.WorkerId -eq $keyboardFacts.actual_worker -and $wrongScopeExit -eq 3 -and ($wrongScope -join "`n").Trim() -ceq 'WORKER_PROGRESS_INSPECTION_UNCONFIRMED') 'LocalProgressInspectionNeedsNoDatabaseAuthorityAndCannotAcceptAnotherScope'
+    $stage='recorded-publication'
+    $publicationRequest=[Guid]::NewGuid()
+    $admission=Invoke-ProofSql "begin; set local role authenticated; select set_config('request.jwt.claim.sub','$user',true); select row_to_json(r) from hsr.create_recorded_traversal('$org','$publicationRequest',1) r; commit;"
+    $publicationJob=($admission -split "`n"|Where-Object {$_ -match '^\{'})|ConvertFrom-Json
+    # Actual database failure after local archive finalization, inside this disposable proof database only.
+    $publicationFault=@'
+create function hsr.proof_stop_publication() returns trigger language plpgsql as $$
+begin
+    if new.id='HSR_PROOF_PUBLICATION_JOB'::uuid and new.state='completed' then raise exception 'PROOF_PUBLICATION_COMMIT_STOP';end if;
+    return new;
+end $$;
+create trigger proof_stop_publication before update on hsr.scan_jobs for each row execute function hsr.proof_stop_publication();
+'@
+    $null=Invoke-ProofSql ($publicationFault.Replace('HSR_PROOF_PUBLICATION_JOB',"$($publicationJob.job_id)"))
+    try {
+        $publicationRun=@(& dotnet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --once 2>&1)
+        $publicationRunExit=$LASTEXITCODE; $publicationStopped=($publicationRun -join "`n")|ConvertFrom-Json
+    } finally {$null=Invoke-ProofSql 'drop trigger proof_stop_publication on hsr.scan_jobs; drop function hsr.proof_stop_publication();'}
+    $publicationScope=Join-Path $env:HSR_WORKER_EVIDENCE ".runtime/recorded-output/$(([Guid]$org).ToString('N'))-$(([Guid]$publicationJob.job_id).ToString('N'))-1"
+    $publicationHeader=Get-Content (Join-Path $publicationScope 'start.json') -Raw|ConvertFrom-Json
+    $publicationSeal=Get-Content (Join-Path $publicationScope 'seal.json') -Raw|ConvertFrom-Json
+    $publicationOriginal=Join-Path $env:HSR_WORKER_EVIDENCE $publicationStopped.Reference
+    $publicationOriginalHash=(Get-FileHash -LiteralPath $publicationOriginal -Algorithm SHA256).Hash.ToLowerInvariant()
+    $publicationArchiveRoot=Join-Path $env:HSR_WORKER_EVIDENCE "archives/traversal-v1/$(([Guid]$org).ToString('N'))/$(([Guid]$publicationJob.job_id).ToString('N'))"
+    $publicationIndexes=@(Get-ChildItem -LiteralPath $publicationArchiveRoot -Filter index.json -File -Recurse)
+    $publicationOriginalAttempt=Invoke-ProofSql "select to_jsonb(a) from hsr.job_attempts a where a.job_id='$($publicationJob.job_id)'"
+    $publicationBefore=(Invoke-ProofSql "select json_build_object('state',j.state,'index',j.archive_index_sha256,'worker',a.worker_id,'generation',j.generation) from hsr.scan_jobs j join hsr.job_attempts a on a.organization_id=j.organization_id and a.job_id=j.id and a.generation=j.generation where j.id='$($publicationJob.job_id)'")|ConvertFrom-Json
+    Assert-Proof ($publicationRunExit -eq 3 -and $publicationStopped.State -ceq 'Unconfirmed' -and $publicationStopped.ErrorCode -ceq 'WORKER_COMPLETION_UNCONFIRMED' -and $publicationBefore.state -ceq 'leased' -and $null -eq $publicationBefore.index -and $publicationBefore.worker -eq $publicationHeader.WorkerId -and $publicationIndexes.Count -eq 1 -and (Test-Path (Join-Path $publicationScope 'native-removal.json'))) 'CompleteOriginalSurvivesActualArchiveBeforeDatabaseCommitFailure'
+    $publicationIndexBefore=(Get-FileHash -LiteralPath $publicationIndexes[0].FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+    $publicationFilesBefore=@(Get-ChildItem -LiteralPath $publicationScope -File|Sort-Object Name|ForEach-Object {$_.Name+':'+(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash})
+    $publicationProgress=Join-Path $env:HSR_WORKER_EVIDENCE ".runtime/command-progress/$(([Guid]$org).ToString('N'))-$(([Guid]$publicationJob.job_id).ToString('N'))-1"
+    $publicationProgressBefore=@(Get-ChildItem -LiteralPath $publicationProgress -File|Sort-Object Name|ForEach-Object {$_.Name+':'+(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash})
+    $savedPublicationImage=$env:HSR_WORKER_IMAGE; $savedPublicationRuntime=$env:HSR_WORKER_RUNTIME
+    $env:HSR_WORKER_IMAGE=$null; $env:HSR_WORKER_RUNTIME=$null
+    try {
+        $publicationRun=@(& dotnet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --recover-recording $org $publicationJob.job_id 1 2>&1)
+        $publicationRecoveryExit=$LASTEXITCODE; $publicationBusy=($publicationRun -join "`n")|ConvertFrom-Json
+        Assert-Proof ($publicationRecoveryExit -eq 3 -and $publicationBusy.State -ceq 'Busy' -and -not $publicationBusy.IsCompletionReceipt -and -not $publicationBusy.CanReplay -and (Invoke-ProofSql "select count(*) from hsr.recorded_publications where job_id='$($publicationJob.job_id)'") -eq '0') 'StorageRecoveryCannotOverlapTheOriginalExecutionLease'
+        $null=Invoke-ProofSql "update hsr.job_leases set expires_at=clock_timestamp()-interval '1 second' where job_id='$($publicationJob.job_id)'"
+        $publicationRun=@(& dotnet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --recover-recording $org $publicationJob.job_id 1 2>&1)
+        $publicationRecoveryExit=$LASTEXITCODE; $publicationRecovered=($publicationRun -join "`n")|ConvertFrom-Json
+        Assert-Proof ($publicationRecoveryExit -eq 0 -and $publicationRecovered.State -ceq 'Published' -and $publicationRecovered.IsCompletionReceipt -and -not $publicationRecovered.CanReplay -and $publicationRecovered.InputsDispatchedByRecovery -eq 0 -and $publicationRecovered.GoalVerification -ceq 'NotAssessed' -and $publicationRecovered.Job.JobId -eq $publicationJob.job_id -and $publicationRecovered.Job.Generation -eq 1 -and $publicationRecovered.Producer -eq $publicationHeader.WorkerId -and $publicationRecovered.BundleSha256 -ceq $publicationSeal.BundleSha256) 'StorageOnlyRecoveryPublishesTheSameOriginalProducerAndBundleWithoutBrowserConfiguration'
+        $publicationAfter=(Invoke-ProofSql "select json_build_object('state',j.state,'generation',j.generation,'worker',j.archive_worker_id,'digest',j.result_digest,'index',j.archive_index_sha256,'attempts',(select count(*) from hsr.job_attempts a where a.job_id=j.id),'leases',(select count(*) from hsr.job_leases l where l.job_id=j.id)) from hsr.scan_jobs j where j.id='$($publicationJob.job_id)'")|ConvertFrom-Json
+        Assert-Proof ($publicationAfter.state -ceq 'completed' -and $publicationAfter.generation -eq 1 -and $publicationAfter.worker -eq $publicationHeader.WorkerId -and $publicationAfter.digest -ceq $publicationOriginalHash -and $publicationAfter.index -ceq $publicationIndexBefore -and (Get-FileHash -LiteralPath $publicationOriginal -Algorithm SHA256).Hash.ToLowerInvariant() -ceq $publicationOriginalHash) 'RecoveredDatabaseReceiptMatchesTheIndependentlyFinalizedOriginalArchive'
+        $publicationRun=@(& dotnet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --recover-recording $org $publicationJob.job_id 1 2>&1)
+        $publicationRecoveryExit=$LASTEXITCODE; $publicationRetry=($publicationRun -join "`n")|ConvertFrom-Json
+        $publicationEvents=(Invoke-ProofSql "select count(*) from hsr.recorded_publication_events where job_id='$($publicationJob.job_id)' and kind='Completed'")
+        Assert-Proof ($publicationRecoveryExit -eq 0 -and $publicationRetry.State -ceq 'AlreadyCompleted' -and -not $publicationRetry.IsCompletionReceipt -and $publicationEvents -eq '1' -and (Get-FileHash -LiteralPath $publicationIndexes[0].FullName -Algorithm SHA256).Hash.ToLowerInvariant() -ceq $publicationIndexBefore) 'LostPublicationResponseReconcilesWithoutReplacingCompletedReceipt'
+    } finally {$env:HSR_WORKER_IMAGE=$savedPublicationImage;$env:HSR_WORKER_RUNTIME=$savedPublicationRuntime}
+    $publicationFilesAfter=@(Get-ChildItem -LiteralPath $publicationScope -File|Sort-Object Name|ForEach-Object {$_.Name+':'+(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash})
+    $publicationProgressAfter=@(Get-ChildItem -LiteralPath $publicationProgress -File|Sort-Object Name|ForEach-Object {$_.Name+':'+(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash})
+    $publicationAttemptAfter=Invoke-ProofSql "select to_jsonb(a) from hsr.job_attempts a where a.job_id='$($publicationJob.job_id)'"
+    $publicationRemaining=Invoke-ReaderRuntime $Runtime @('ps','--all','--filter','name=^hsr-observation-','--format','{{.ID}}')
+    Assert-Proof ($publicationAfter.attempts -eq 1 -and $publicationAfter.leases -eq 0 -and $publicationOriginalAttempt -ceq $publicationAttemptAfter -and ($publicationFilesBefore -join "`n") -ceq ($publicationFilesAfter -join "`n") -and ($publicationProgressBefore -join "`n") -ceq ($publicationProgressAfter -join "`n") -and [string]::IsNullOrWhiteSpace($publicationRemaining.Text)) 'ActualRecoveryPreservesInputHistoryAndAttemptWithoutNativeReplay'
     $stage='keyboard-replay-fence'
     # Simulate an expired capability, not a browser crash or proof that input occurred.
     $interruptedRequest=[Guid]::NewGuid(); $interruptedWorker=[Guid]::NewGuid()
@@ -433,6 +487,7 @@ try {
         $null=Invoke-ReaderRuntime $Runtime (@('create','--name',$resource,'--network','none','--user','1001:1001','--read-only','--cap-drop','ALL','--security-opt','no-new-privileges','--label',"hsr.worker.proof=$owner",'--entrypoint','/bin/sh')+$labels+@($imageId,'-c','sleep 120'))
         $recoveryResources.Add($resource);$null=Invoke-ReaderRuntime $Runtime @('start',$resource)
     }
+    $databaseCountsBeforeRecovery=Invoke-ProofSql "select json_build_object('jobs',(select count(*) from hsr.scan_jobs),'attempts',(select count(*) from hsr.job_attempts),'completed',(select count(*) from hsr.attempt_events where kind='Completed'),'queue',(select count(*) from pgmq.q_hsr_scan_jobs))"
     $database=$env:HSR_WORKER_DATABASE;$env:HSR_WORKER_DATABASE=$null
     try {
         $output=@(& dotnet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --recover 2>&1)
@@ -443,8 +498,8 @@ try {
     Assert-Proof ($recoveryExit -eq 0 -and $result.State -eq 'Recovered' -and $result.Recovered -eq 1 -and [string]::IsNullOrWhiteSpace($targetGone.Text) -and $unrelated.State.Running) 'RetainedNativeIntentRecoveryRemovesOnlyItsBoundContainer'
     $removal=Get-Content (Join-Path $env:HSR_WORKER_EVIDENCE ".runtime/removals/$($nativeOwner.ToString('N')).json") -Raw|ConvertFrom-Json
     Assert-Proof (-not (Test-Path $intentPath) -and $removal.ContainerAbsenceConfirmed -and $removal.RecoveredAfterRestart -and $removal.Intent.Job.JobId -eq $descriptor.JobId) 'RecoveryPersistsActualAbsenceBeforeRetiringIntent'
-    $unchanged=(Invoke-ProofSql "select json_build_object('jobs',(select count(*) from hsr.scan_jobs),'attempts',(select count(*) from hsr.job_attempts),'completed',(select count(*) from hsr.attempt_events where kind='Completed'),'queue',(select count(*) from pgmq.q_hsr_scan_jobs))")|ConvertFrom-Json
-    Assert-Proof ($unchanged.jobs -eq 7 -and $unchanged.attempts -eq 7 -and $unchanged.completed -eq 4 -and $unchanged.queue -eq 0 -and @(Get-ChildItem $env:HSR_WORKER_EVIDENCE -Recurse -Filter observation.json).Count -eq 0) 'NativeRecoveryNeedsNoDatabaseCredentialAndCannotInventObservation'
+    $unchanged=Invoke-ProofSql "select json_build_object('jobs',(select count(*) from hsr.scan_jobs),'attempts',(select count(*) from hsr.job_attempts),'completed',(select count(*) from hsr.attempt_events where kind='Completed'),'queue',(select count(*) from pgmq.q_hsr_scan_jobs))"
+    Assert-Proof ($unchanged -ceq $databaseCountsBeforeRecovery -and @(Get-ChildItem $env:HSR_WORKER_EVIDENCE -Recurse -Filter observation.json).Count -eq 0) 'NativeRecoveryNeedsNoDatabaseCredentialAndCannotInventObservation'
     # A retained intent never authorizes deleting a same-name container with another owner.
     $badOwner=[Guid]::NewGuid();$badTarget="hsr-observation-$($badOwner.ToString('N'))"
     $intent.Owner="$badOwner"; $badPath=Join-Path $intentRoot "$($badOwner.ToString('N')).json"
