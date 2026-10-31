@@ -20,9 +20,13 @@ caller/producer checks and explicit missing/incomplete/cleanup states. Their
 core25fdf07, UI f7c1127 and existing Edge v9, including a real original-account
 ZIP matching the independent private original.
 [Restart-time cleanup acknowledgement repair](docs/decisions/0069-recording-removal-recovery.md)
-is accepted at e637779 with all nine CI jobs and exact private delivery. The current
-increment is [storage-only publication recovery](docs/decisions/0070-recorded-publication-recovery.md)
-under the original producer/attempt; interrupted live-media recovery remains next.
+is accepted at e637779 with all nine CI jobs and exact private delivery.
+[Storage-only publication recovery](docs/decisions/0070-recorded-publication-recovery.md)
+is accepted at d144993:2,713 tests per OS,67 native and361 database checks,
+exact private deployment, and a real955,559-byte recording recovered under its
+original account/producer without a new execution attempt. The current increment
+adds the [private maintenance operator](docs/decisions/0071-publication-maintenance-operator.md)
+to restore services through existing readiness gates. Unfinished-media recovery follows.
 
 For a working local MCP prototype with approved public HTTPS reading, isolated link navigation and Claude configuration, see [Use HeadlessScreenReader with Claude](docs/prototype/claude.md). Public browsing requires a running Linux Podman or Docker engine; the trusted fixture connection also runs directly on Windows.
 

@@ -17,7 +17,7 @@ LIB = Path("/usr/local/libexec/headless-screen-reader")
 MARKER = "headless-screen-reader:gpnijaxrgtwzwtrqsbcu:v1"
 CA_SHA = "700723581420dd1ac98fd7e9ac529f0ef210eadcaf87fc868a3ad7d114c2f3b7"
 MODULES = {"activation.py", "deploy.py", "host_runtime.py", "image_archive.py",
-           "release_bundle.py", "worker_start.py", "control_runtime.py", "control_start.py"}
+           "release_bundle.py", "worker_start.py", "control_runtime.py", "control_start.py", "recover_publication.py"}
 
 
 class ProvisionError(Exception):

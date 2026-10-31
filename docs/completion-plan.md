@@ -89,10 +89,16 @@ is accepted at e637779, with2,682 tests per OS,61 native and289 database checks,
 exact151-file delivery and a fresh same-account recording-manifest regression.
 Its [validation record](validation/recording-removal-recovery-v1.md) separates scopes.
 [Storage-only original-attempt publication](decisions/0070-recorded-publication-recovery.md)
-is the current increment; its [validation record](validation/recorded-publication-recovery-v1.md)
-separates local unit/database/native checks from CI, hosted schema, exact
-deployment and original-account recovery. **Next:** finish that delivery, then
-partial media recovery and the failure injections below.
+is accepted at d144993; its [validation record](validation/recorded-publication-recovery-v1.md)
+separates Windows/Linux2,713 each, native67, database361, hosted schema, exact
+151-file deployment and real original-account recovery after a scoped local
+storage failure. Original attempt, producer, bundle and input history are unchanged;
+all five originals and baseline independently match private S3. The current
+[maintenance operator](decisions/0071-publication-maintenance-operator.md) adds
+the missing ordered service restart composition; its
+[validation record](validation/publication-maintenance-operator-v1.md) separates
+171 local Linux operational tests from CI and hosted acceptance. **Next:** finish
+that operator delivery, then unfinished media and the failure injections below.
 Automatic worker restart stays disabled.
 
 Exercise the actual Linux worker under crash after input, upload before metadata

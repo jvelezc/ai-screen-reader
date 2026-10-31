@@ -2,7 +2,18 @@
 
 Updated October 31, 2026. The original proposal under `outputs/` remains unchanged. This status document tracks implementation against its acceptance gates.
 
-**Current core increment: original-attempt storage publication recovery.**
+**Current operator increment: ordered publication maintenance.**
+The root-only helper stops control before observation, reconciles native ownership,
+runs storage-only recovery under the existing private worker environment, and
+confirms actual transient-process settlement before restoring service. It reuses
+deployment's worker/database, control invocation/PID and HTTP readiness gates.
+Unknown settlement leaves services stopped; service readiness does not claim
+publication or an overall goal. [Decision0071](decisions/0071-publication-maintenance-operator.md)
+and [validation](validation/publication-maintenance-operator-v1.md) separate171
+passing local Linux operational tests from pending CI/private installation and
+hosted maintenance acceptance. **Next:** finish those gates, then unfinished media.
+
+**Original-attempt storage publication recovery accepted at d144993.**
 Separate private claim/renew/fail/complete functions bind the original producer,
 generation and whole bundle without issuing execution authority. Recovery can
 reuse only exact local bytes and deterministic archive indexes; current creator
@@ -10,8 +21,13 @@ membership and fresh server-clock fencing remain required. The operator path has
 no reader/executor dependency and cannot overwrite a completed receipt.
 [Decision0070](decisions/0070-recorded-publication-recovery.md) and
 [validation](validation/recorded-publication-recovery-v1.md) separate local unit,
-database, native, CI, hosted schema and original-account gates. **Next:** finish
-those gates, then partial live-media and actual storage/disk/cancellation recovery.
+database, native, CI, hosted schema and original-account gates. All nine CI jobs
+pass: Windows/Linux2,713 each, native67, database361, and exact151-file deployment.
+The actual original account observes a scoped storage failure, then reads the
+recovered955,559-byte original, five S3 originals, graph and video. Original
+attempt/producer and all source/progress hashes are unchanged. Overall recovery
+goal remains NotAssessed. Unfinished media and actual network/disk/cancellation
+faults remain open; a scoped local failure is not universal fault acceptance.
 
 **Restart-time recording cleanup acknowledgement repair accepted.**
 The worker reconciles saved output against matching durable native-removal

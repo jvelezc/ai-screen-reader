@@ -17,6 +17,21 @@ class HostCommandTests(unittest.TestCase):
     def test_actual_child_returns_bounded_utf8_output(self):
         self.assertEqual("confirmed", host_runtime.run_checked(self.command("print('confirmed')")))
 
+    def test_known_nonzero_exit_requires_explicit_opt_in_and_still_bounds_output(self):
+        command = self.command("import sys;print('settled');sys.exit(3)")
+        with self.assertRaisesRegex(ReleaseError, '^DEPLOY_COMMAND_FAILED$'):
+            host_runtime.run_checked(command)
+        self.assertEqual('settled', host_runtime.run_checked(command, accepted_codes=(0, 3)))
+        with self.assertRaisesRegex(ReleaseError, '^DEPLOY_COMMAND_OUTPUT_INVALID$'):
+            host_runtime.run_checked(self.command("import sys;print('x'*(1024**2+1));sys.exit(3)"), accepted_codes=(0, 3))
+
+    def test_invalid_accepted_codes_cannot_launch_a_process(self):
+        with patch('host_runtime.subprocess.Popen') as start:
+            for codes in ((), (False,), [0, 3]):
+                with self.subTest(codes=codes), self.assertRaisesRegex(ReleaseError, '^DEPLOY_COMMAND_CODES_INVALID$'):
+                    host_runtime.run_checked(self.command("print('unexpected')"), accepted_codes=codes)
+            start.assert_not_called()
+
     def test_actual_child_failure_does_not_disclose_its_private_stderr(self):
         with self.assertRaises(ReleaseError) as caught:
             host_runtime.run_checked(self.command("import sys;print('private-database-error-canary',file=sys.stderr);sys.exit(7)"))

@@ -74,7 +74,67 @@ are zero publication rows and zero queued/leased jobs at this pre-acceptance
 snapshot. Advisors report no new warning for these objects; the new private
 capability table has the intentional deny-all/no-policy informational finding.
 Existing unrelated advisor findings are unchanged. CI, exact deployment and
-original-account recovery acceptance remain separately pending.
+original-account recovery acceptance were completed as follows.
+
+## CI, deployment and original-account acceptance
+
+Core `d14499332e648176245f34bd295d2c957a2fa660` passes all nine jobs in
+[CI41186968109](https://github.com/jvelezc/ai-screen-reader/actions/runs/41186968109).
+Downloaded TRX reports independently confirm Windows and Ubuntu each discover,
+execute and pass2,713/2,713, failed/skipped0. The actual native Linux receipt
+passes67/67 and PostgreSQL361/361, failed/unconfirmed/skipped0; native database/
+image and database-proof container are removed. Exact
+[private deployment41188274025](https://github.com/jvelezc/ai-screen-reader/actions/runs/41188274025)
+is Ready. Independent checks match151 release files, default trusted TLS,
+HTTP1.12 schema references and anonymous protected-read denials.
+
+The existing signed-in account admitted one new Checkout preview recording
+through UI f7c1127 → existing Edge9 → core. No replacement account, privileged
+admission or fresh sign-in was used. Scan `b2b291c2-52bd-48c8-a3db-cd30edf5f5c9`,
+job `2421ec9a-198e-42f1-8826-70e81ce40426`, generation1, actual producer
+`f27d4e39-764e-4f0e-8ffa-f4ec75e95acf` remained bound throughout.
+
+A scoped empty directory at only that new job's baseline destination caused an
+actual local persistence failure after recording and native cleanup. The account
+observed Blocked/NotCollected with `FIXTURE_OBSERVATION_UNCONFIRMED`; there was
+one execution attempt and no archive/database completion. The complete retained
+bundle was955,559 bytes, SHA-256
+`239d960c03f199044fac2d0e2383210f0d7159fcd1fc2c5e361d9aa3f47856fc`.
+An independent Podman check confirmed the owned native container was absent.
+
+After removing only the empty test directory, the explicit command ran under
+the existing worker identity/private environment and returned Published. An
+exact retry returned AlreadyCompleted. The execution-attempt fingerprint,
+generation, producer, complete stage inventory and every progress-file hash
+were unchanged; no replacement input attempt was created. The publication audit
+contains exactly Claim/Completed. Independent signed private S3 reads verified
+all five original files and each stored part, the index, producer manifest and
+the separate baseline. The archive totals956,155 bytes. These checks used the
+existing private S3 pair without exposing credentials.
+
+The original account then refreshed Observed/Available, verified the same five
+originals, and selected the recovered graph's Enter edge. The actual retained
+journey has three states/two edges and two attempted/completed calls. Its2.68s
+original video loads with readyState4 and seeks to the selected interval; this
+does not claim actual playback or NVDA speech. Baseline inputs remain separately
+zero, baseline objective false, and recovery overall goal NotAssessed. Both
+services are restored and protected HTTP/TLS/release checks pass again.
+
+The test also exposed an operator ordering gap: stopping observation stops its
+dependent control service; starting both together can launch control before the
+worker reader host is ready. ActiveState alone did not establish readiness. The
+API was restored by starting control after actual worker readiness. Deployment's
+existing `DeploymentRuntime.start_ready` already enforces the ordered checks;
+the next operator increment must reuse it for maintenance recovery. An initial
+transient command also omitted the non-secret `HSR_WORKER_EVIDENCE` setting;
+it failed closed before creating a publication claim, then succeeded with the
+complete existing worker environment. The failed setup/read receipts are retained.
+
+This hosted proof is recovery after a scoped local storage failure with real
+S3 publication. It is not a Supabase network outage, full-disk test, unfinished
+child-media recovery or provider-authority-loss acceptance. The original files
+were preserved. Automatic worker restart and public MCP/plugin exposure remain
+disabled/deferred.
 
 Do not infer publication from retained progress, a saved bundle, copied cleanup
 history or a matching hash alone. This increment requires validated complete

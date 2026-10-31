@@ -4,7 +4,25 @@ The first host is private through SSH. The worker opens no public port; its read
 
 CI runs the real PostgreSQL/Chromium composition and the published CLI's `--check-control` before producing `private-worker-release/release.tar.gz`. The v2 bundle contains the complete executed worker and published control closures; its fixture image is exported by immutable ID. Every staged control byte and the complete file inventory must match that executed publication. Promotion downloads that exact artifact only after every main CI job succeeds. It never rebuilds the application after the acceptance gate. Existing worker-only v1 releases remain valid rollback targets.
 
-The operator bootstrap is `provision.py`, run over the already trusted root SSH connection. It accepts an in-memory `CONFIG` containing only the selected project ID, accepted commit, restricted deploy public key, existing runtime password, pinned public CA and optional `PortalKey`; `SOURCES` contains exactly the eight runtime helper modules named in that file. `PortalKey` accepts a publishable key or the selected project's legacy anon key. It refuses unknown accounts, paths, certificate or project. Supply these through SSH stdin, with no credential values in arguments, chat, source or logs. The operator's existing root private key stays on their computer. An upgrade must first settle the owned worker and recover retained native ownership; preserve the existing CI key and database password.
+The operator bootstrap is `provision.py`, run over the already trusted root SSH connection. It accepts an in-memory `CONFIG` containing only the selected project ID, accepted commit, restricted deploy public key, existing runtime password, pinned public CA and optional `PortalKey`; `SOURCES` contains exactly the nine runtime helper modules named in that file. `PortalKey` accepts a publishable key or the selected project's legacy anon key. It refuses unknown accounts, paths, certificate or project. Supply these through SSH stdin, with no credential values in arguments, chat, source or logs. The operator's existing root private key stays on their computer. An upgrade must first settle the owned worker and recover retained native ownership; preserve the existing CI key and database password.
+
+For explicit original-recording publication maintenance, use the root-only helper
+after its nine-module operator upgrade has been verified:
+
+```sh
+python3 -I -B /usr/local/libexec/headless-screen-reader/recover_publication.py <organization-guid> <job-guid> <generation>
+```
+
+It holds the deployment lock, stops control before observation, recovers native
+ownership, runs storage-only publication under hsr-worker with the existing
+private environment, and waits for actual unit settlement. It then repeats native
+recovery and uses the existing ordered readiness checks. It does not accept scan
+URLs, credentials or browser instructions. Do not substitute parallel systemctl
+starts: an active worker process alone does not establish reader-host readiness.
+Unknown publisher settlement leaves services stopped. Its output separates
+PublicationState, ServicesReady and overall NotAssessed; a safe publication failure
+does not become a completed recording. This helper is not a command allowed by
+the restricted deploy key. [Validation](../../docs/validation/publication-maintenance-operator-v1.md).
 
 The bootstrap installs:
 

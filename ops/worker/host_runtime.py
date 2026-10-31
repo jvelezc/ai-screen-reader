@@ -47,7 +47,9 @@ def validate_evidence_configuration(base):
     evidence_environment({"HSR_EVIDENCE_S3_ACCESS_KEY": match[1], "HSR_EVIDENCE_S3_SECRET": match[2]})
 
 
-def run_checked(arguments, *, env=None, timeout=30):
+def run_checked(arguments, *, env=None, timeout=30, accepted_codes=(0,)):
+    require(isinstance(accepted_codes, tuple) and accepted_codes
+            and all(type(code) is int for code in accepted_codes), 'DEPLOY_COMMAND_CODES_INVALID')
     # File-backed output bounds memory even if a broken child is noisy. Never log raw output.
     with tempfile.TemporaryFile() as output, tempfile.TemporaryFile() as errors:
         process = subprocess.Popen(arguments, stdin=subprocess.DEVNULL, stdout=output,
@@ -62,7 +64,7 @@ def run_checked(arguments, *, env=None, timeout=30):
                 pass
             process.wait(timeout=5)
             raise ReleaseError("DEPLOY_COMMAND_TIMEOUT") from None
-        require(process.returncode == 0, "DEPLOY_COMMAND_FAILED")
+        require(process.returncode in accepted_codes, "DEPLOY_COMMAND_FAILED")
         require(output.tell() <= 1024**2 and errors.tell() <= 1024**2,
                 "DEPLOY_COMMAND_OUTPUT_INVALID")
         output.seek(0)
