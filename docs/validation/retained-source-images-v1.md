@@ -1,13 +1,13 @@
 # Retained original-image reads v1
 
 October 31, 2026. [Decision 0073](../decisions/0073-protected-original-image-reads.md)
-adds independently usable API 1.13 and20 private MCP tools. Source/local tests,
+adds independently usable API 1.13 and twenty private MCP tools. Source/local tests,
 Linux CI, exact deployment and original-account Edge/UI delivery remain distinct.
 Local Windows validation passes 156 focused cases and all 2,857 discovered tests,
 with zero failed/skipped. The strict nonincremental Release build has zero
-warnings/errors, and full-solution format verification passes. No CI/private
-delivery or application-account partial-image acceptance is claimed yet.
-The deployed accepted baseline is `65689fc` / 1.12, with the source-retention and
+warnings/errors, and full-solution format verification passes. The repaired full
+Windows run passes 2,858/2,858, with zero failed/skipped. Accepted delivery is
+`4381d44` / 1.13. The earlier source-retention and
 complete-recording consumer evidence recorded [separately](unfinished-recording-sources-v1.md).
 
 ## CI playback issue and repair
@@ -32,7 +32,51 @@ and no playback assertion or production deadline is relaxed.
 All eight focused viewer cases pass locally, including
 `InvalidNativeMediaFailsReadinessWithDiagnosticState`, which uses an actual
 invalid WebM and verifies a native error and failed-readiness diagnostics.
-A fresh full Release run and new all-job CI run remain required.
+A fresh full Windows run passes 2,858/2,858. The repaired
+[CI run 41200510505](https://github.com/jvelezc/ai-screen-reader/actions/runs/41200510505)
+passes all nine jobs. Downloaded Windows and Ubuntu TRX files independently confirm
+2,858/2,858 each, including all 103 new source-image cases and eight viewer cases,
+with zero failed/skipped. Native Linux passes 71, database 361 and operational 171;
+the required native/image/database/container cleanup flags are confirmed.
+
+## Exact private delivery and original-account consumer
+
+[Deployment 41201965100](https://github.com/jvelezc/ai-screen-reader/actions/runs/41201965100)
+promotes exact `4381d44601d2ce2a953c904366b461d436aa49c2`. Independent host readback
+verifies all 151 release files, default TLS, API 1.13.0, source schema references
+and anonymous 401 guards on both new routes. Public `/mcp` remains 404.
+
+Consumer `166746ebef274af2ec8a6fec3fa7916a925c32c1` passes
+[705 tests per OS](https://github.com/jvelezc/ai-screen-reader-ui/actions/runs/41203286902).
+Existing-project Edge `hsr-core` v10 is Active; all three deployed files exactly
+match that commit, retaining its original-user authentication. The original
+application account reads 71 source images/1,016,310 bytes for scan
+`ef97721d-0d9e-42e3-b2cb-5495d378a6a7`, job
+`fd0b4edb-f264-4f84-86b1-3d4fc786b636`, generation 1, actual producer
+`975a64d7-d58a-440a-825a-40137f7e9102`.
+
+Keyboard-selected source 71 downloads as 18,078 bytes. An independent direct
+byte comparison matches the private original; SHA-256 is
+`a5a9bea80fdc496c23e8cbc3c18f8e29dbaf9b687a2f48ed7646433116688941`.
+Its raw presentation timestamp is `1793445377994.28` ms and source prefix is
+`3b1e907f3c785f5bd7393167d75f0deccb549788478755b19ca4b2a1577d60fa`.
+All 71 originals/timestamps separately match the complete original bundle. The
+actual rootless `hsr-worker` account confirms current native absence. Scope stays
+RetainedOriginalSourceSubset, completeness/goal NotAssessed, no replay/completion.
+
+Browser keyboard/focus and 320px reflow pass; source region width/scrollWidth are
+both 273px, picker 249px. A full reload restores the original account without
+credential entry. Five published originals, the three-state/two-edge graph,
+complete-copy availability and the original 3.76s paused video at 1.747361s
+(readyState 4) also pass fresh reads. Playback, human usability and NVDA are not
+claimed. The download-event observer lost its browser attachment after the file
+was saved; actual file comparison and a fresh same-profile tab establish the
+result, rather than treating that tool timeout as product failure.
+
+This hosted source run completed normally. Actual interrupted-source retention
+remains separately proven by local/CI native cases. **Next:** a scoped hosted
+crash after actual input, exact owned cleanup and original-account partial-image
+readback, with no replacement attempt or inferred successful goal.
 
 | Requirement | Evidence |
 | --- | --- |

@@ -79,14 +79,14 @@ reported: all nine CI jobs,2,606 tests per OS,57 native requirements and exact
 now implement manifest and bounded whole-ZIP export through HTTP1.12/private MCP;
 their [validation gates](validation/retained-recording-output-v1.md) remain
 separate. Core25fdf07 passes2,657 tests per OS,57 actual native requirements,
-289 database requirements and exact151-file private delivery. UI f7c1127 through
+289 database requirements and exact 151-file private delivery. UI f7c1127 through
 existing Edge v9 passes621 tests per OS; the original application account saves
 a765,454-byte ZIP matching the independent private original, and sign-in plus
 the same descriptor survive reload. Missing, incomplete and cleanup-unconfirmed
 media cannot be exported.
 [Restart-time cleanup acknowledgement repair](decisions/0069-recording-removal-recovery.md)
 is accepted at e637779, with2,682 tests per OS,61 native and289 database checks,
-exact151-file delivery and a fresh same-account recording-manifest regression.
+exact 151-file delivery and a fresh same-account recording-manifest regression.
 Its [validation record](validation/recording-removal-recovery-v1.md) separates scopes.
 [Storage-only original-attempt publication](decisions/0070-recorded-publication-recovery.md)
 is accepted at d144993; its [validation record](validation/recorded-publication-recovery-v1.md)
@@ -97,7 +97,7 @@ all five originals and baseline independently match private S3. The current
 [maintenance operator](decisions/0071-publication-maintenance-operator.md) adds
 the missing ordered service restart composition; its
 [validation record](validation/publication-maintenance-operator-v1.md) separates
-171 local Linux operational tests from all nine green CI jobs, exact151-file
+171 local Linux operational tests from all nine green CI jobs, exact 151-file
 deployment, exact two-module private installation and actual completed-run
 maintenance. The rootless worker account confirms native absence; the original
 account rereads the report, and the same attempt plus all seven S3 object versions
@@ -108,20 +108,28 @@ publication through the wrapper.
 now keeps bounded JPEG subsets before native child loss, with a separate durable
 acknowledgement and fresh authority after writes. Local actual crash/removal
 passes69 native requirements. Delivery at65689fc passes all nine CI jobs,
-Windows/Ubuntu2,754 each, native Linux71/database361 and exact151-file deployment.
+Windows/Ubuntu2,754 each, native Linux71/database361 and exact 151-file deployment.
 A fresh original-account recording separately matches71 retained images and
 their original timestamps; five authorized originals, graph and loaded/seekable
 video pass. Scope-specific evidence is in the
 [validation record](validation/unfinished-recording-sources-v1.md).
 The [protected subset reader](decisions/0073-protected-original-image-reads.md)
-now implements API1.13/twenty private MCP tools: exact prefix/sequence/hash and
+now implements API 1.13/twenty private MCP tools: exact prefix/sequence/hash and
 bounded byte pages, current original-caller/actual-producer checks before and
 after storage, and explicit uncommitted/missing/empty states. Its
 [validation record](validation/retained-source-images-v1.md) separates gates.
-**Next:** finish core CI and exact private deployment, then consume those
-published contracts through existing Edge/UI. Partial images remain unassessed
-and cannot become a final video, replay or successful job. The remaining actual
-failure injections below stay open.
+Accepted core `4381d44` passes all nine CI jobs,2,858 tests per OS and exact 151-file
+private delivery. UI `166746e`/existing Edge v10 passes 705 tests per OS and exact
+three-file function readback. The original account reads 71 images and downloads
+source image 71 matching its independent private bytes/hash/time/producer; keyboard,
+320px reflow, reload persistence and prior complete-recording/graph reads pass.
+Partial images remain unassessed and cannot become a final video, replay or
+successful job. **Next:** admit one scoped hosted keyboard run, interrupt only
+its independently identified native child after durable actual input, and prove
+original-image readback plus exact owned cleanup. The attempt must remain
+blocked/uncertain with no replacement, replay, fabricated archive or successful
+goal. Local/CI crash proof and this completed hosted run do not replace that
+hosted interruption gate. The remaining actual failure injections below stay open.
 Automatic worker restart stays disabled.
 
 Exercise the actual Linux worker under crash after input, upload before metadata

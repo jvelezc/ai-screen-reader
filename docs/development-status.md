@@ -2,16 +2,24 @@
 
 Updated October 31, 2026. The original proposal under `outputs/` remains unchanged. This status document tracks implementation against its acceptance gates.
 
-**Protected original-image reads implemented; delivery validation in progress.**
-API1.13 and twenty private MCP tools expose a bounded subset manifest and64KiB
+**Protected original-image reads and consumer accepted at core `4381d44`/UI `166746e`.**
+API 1.13 and twenty private MCP tools expose a bounded subset manifest and 64 KiB
 image pages. Current original-user and actual-producer scope is rechecked after
 storage, including failures and EOF. Exact prefix/sequence/hash checks preserve
 immutable source identity; missing, empty and uncommitted originals remain
 explicit. Subsets cannot establish replay, completion, a final video, AT speech
 or evidence sufficiency. [Decision0073](decisions/0073-protected-original-image-reads.md)
 and [validation](validation/retained-source-images-v1.md) separate local tests,
-CI, private deployment and original-account consumption. **Next:** finish those
-core delivery gates, then consume this API through existing Edge/UI.
+CI, private deployment and original-account consumption. All nine core CI jobs
+pass 2,858 tests per OS, native 71/database 361/operations 171, followed by exact
+151-file delivery. UI passes 705 per OS; existing Edge v10 matches all three
+committed files. The original account reads 71 images, keyboard-selects/downloads
+source image 71 and matches its exact private bytes/time/producer. Narrow layout and
+reload persistence pass; five originals, graph and loaded/seekable video remain
+available. **Next:** scoped hosted crash-after-input acceptance with partial
+original-image readback and independently confirmed owned cleanup. No uncertain
+input is replayed. First publication through the maintenance wrapper and the
+remaining fault/provider/website/intervention gates remain separate.
 
 **Unfinished original-image retention accepted at65689fc.**
 Completed source JPEGs now transfer through a separately admitted, hash-bound
@@ -21,7 +29,7 @@ Partial snapshots remain unassessed and cannot authorize replay, publication or
 completion. [Decision0072](decisions/0072-unfinished-recording-source-retention.md)
 and [validation](validation/unfinished-recording-sources-v1.md) separate focused
 checks, actual local native crash/removal (69/69), Windows/Ubuntu2,754 each,
-all nine green CI jobs, native Linux71/database361 and exact151-file private
+all nine green CI jobs, native Linux71/database361 and exact 151-file private
 delivery. A fresh original-account recording separately verifies71 host-retained
 images against its complete bundle and actual presentation times; the account
 reads its five originals, graph and loaded/seekable video. **Next:** protected
@@ -36,7 +44,7 @@ Unknown settlement leaves services stopped; service readiness does not claim
 publication or an overall goal. [Decision0071](decisions/0071-publication-maintenance-operator.md)
 and [validation](validation/publication-maintenance-operator-v1.md) record171
 passing local Linux operational tests, all nine green CI jobs (2,713 tests per OS,
-native67/database361), exact151-file private deployment and two independently
+native67/database361), exact 151-file private deployment and two independently
 checked root operator modules. Actual AlreadyCompleted maintenance restores both
 services and API readiness without changing attempts, source files or seven S3
 objects. Rootless worker-account native absence and original-account report
@@ -51,7 +59,7 @@ no reader/executor dependency and cannot overwrite a completed receipt.
 [Decision0070](decisions/0070-recorded-publication-recovery.md) and
 [validation](validation/recorded-publication-recovery-v1.md) separate local unit,
 database, native, CI, hosted schema and original-account gates. All nine CI jobs
-pass: Windows/Linux2,713 each, native67, database361, and exact151-file deployment.
+pass: Windows/Linux2,713 each, native67, database361, and exact 151-file deployment.
 The actual original account observes a scoped storage failure, then reads the
 recovered955,559-byte original, five S3 originals, graph and video. Original
 attempt/producer and all source/progress hashes are unchanged. Overall recovery
@@ -72,7 +80,7 @@ deployment without a new login or recording. Publication remains a separate gate
 
 **Protected retained-recording reads accepted.** HTTP1.12
 and eighteen private MCP tools expose complete original child-output manifests
-and64KiB byte pages. Current original-user scope and actual producer are checked
+and 64 KiB byte pages. Current original-user scope and actual producer are checked
 before and after storage, including failures. Missing, incomplete and cleanup-
 unconfirmed output stay explicit; native wrappers are excluded and retention
 never becomes completion, publication, replay or an overall verified goal.
@@ -80,7 +88,7 @@ never becomes completion, publication, replay or an overall verified goal.
 [separate delivery evidence](validation/retained-recording-output-v1.md) track
 focused104 and full Windows2,657 passing tests, strict build/format, all nine
 green CI jobs,2,657 tests per OS,57 native and289 database requirements, and
-exact151-file private delivery at25fdf07. UI f7c1127 / existing Edge v9 passes621
+exact 151-file private delivery at25fdf07. UI f7c1127 / existing Edge v9 passes621
 tests per OS. The original application account saves a765,454-byte controlled-
 fixture ZIP matching the independent VPS stage and retains the account/descriptor
 after actual reload. This does not publish retained output or complete a job.

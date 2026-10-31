@@ -14,7 +14,7 @@ native cleanup. Output sealing, actual cleanup acknowledgement and database
 publication remain separate. [Validation](docs/validation/recorded-output-staging-v1.md)
 records all nine CI jobs,2,606 tests per OS,57 native requirements and an exact
 151-file private deployment. [Protected retained-output reads](docs/decisions/0068-retained-recording-output-reads.md)
-now implement HTTP1.12/private MCP manifest and64KiB ZIP byte pages, with current
+now implement HTTP1.12/private MCP manifest and 64 KiB ZIP byte pages, with current
 caller/producer checks and explicit missing/incomplete/cleanup states. Their
 [delivery gates](docs/validation/retained-recording-output-v1.md) now pass at
 core25fdf07, UI f7c1127 and existing Edge v9, including a real original-account
@@ -27,18 +27,22 @@ exact private deployment, and a real955,559-byte recording recovered under its
 original account/producer without a new execution attempt.
 The [private maintenance operator](docs/decisions/0071-publication-maintenance-operator.md)
 is accepted at df5dc50: all nine CI jobs, 171 local Linux operational tests,
-exact151-file deployment and actual completed-run maintenance restore ordered
+exact 151-file deployment and actual completed-run maintenance restore ordered
 API readiness with unchanged originals and input history.
 [Original images from unfinished recordings](docs/decisions/0072-unfinished-recording-source-retention.md)
 are accepted at65689fc:2,754 tests per OS, all nine CI jobs, native Linux71 and
-exact151-file private deployment. Actual crash/removal retains partial originals;
+exact 151-file private deployment. Actual crash/removal retains partial originals;
 a fresh original-account recording separately verifies71 host-retained images
 against its original bundle. [Validation](docs/validation/unfinished-recording-sources-v1.md)
 separates those scopes. [Protected partial-image reads](docs/decisions/0073-protected-original-image-reads.md)
-now implement API1.13 and two additional private MCP tools, with exact prefix,
+now implement API 1.13 and two additional private MCP tools, with exact prefix,
 image/hash/offset identity and current caller/producer checks before and after
-storage. [Validation](docs/validation/retained-source-images-v1.md) separates
-local checks from pending CI, exact delivery and existing Edge/UI consumption.
+storage. [Validation](docs/validation/retained-source-images-v1.md) records accepted
+core `4381d44` (2,858 tests per OS, all nine CI jobs, exact 151-file delivery) and
+UI `166746e`/existing Edge v10 (705 per OS, exact three files). The original account
+reads 71 images and downloads source image 71 matching its private original bytes and
+timestamp; keyboard/reflow and restored sign-in pass. **Next:** scoped hosted
+interruption after actual input, owned cleanup and partial-original readback.
 Partial originals cannot become a final video, replay or completion.
 
 For a working local MCP prototype with approved public HTTPS reading, isolated link navigation and Claude configuration, see [Use HeadlessScreenReader with Claude](docs/prototype/claude.md). Public browsing requires a running Linux Podman or Docker engine; the trusted fixture connection also runs directly on Windows.
