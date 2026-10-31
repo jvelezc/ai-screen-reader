@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using HeadlessScreenReader.Domain;
 using HeadlessScreenReader.Worker;
+using HeadlessScreenReader.Cli;
 
 namespace HeadlessScreenReader.Tests;
 
@@ -132,6 +133,218 @@ public sealed class FixtureRecordingFailureTests
         Assert.DoesNotContain("PRIVATE_BROWSER_DETAIL", Encoding.UTF8.GetString(bytes), StringComparison.Ordinal);
         Assert.Equal(diagnostic, FixtureRecordingFailureProtocol.Read(bytes, start, 0, 0));
         Assert.False(FixtureRecordingFailureProtocol.IsPublicCode("WORKER_PROGRESS_RECORDING_PRIVATE_BROWSER_DETAIL"));
+    }
+
+    [Theory]
+    [InlineData(FixtureRecordingBoundary.Collection, FixtureRecordingFailureReason.CollectionUnconfirmed)]
+    [InlineData(FixtureRecordingBoundary.Calibration, FixtureRecordingFailureReason.CalibrationUnconfirmed)]
+    [InlineData(FixtureRecordingBoundary.Traversal, FixtureRecordingFailureReason.TraversalUnconfirmed)]
+    [InlineData(FixtureRecordingBoundary.Finalization, FixtureRecordingFailureReason.FinalizationUnconfirmed)]
+    [InlineData(FixtureRecordingBoundary.Alignment, FixtureRecordingFailureReason.AlignmentUnconfirmed)]
+    [InlineData(FixtureRecordingBoundary.Preparation, FixtureRecordingFailureReason.PreparationUnconfirmed)]
+    [InlineData(FixtureRecordingBoundary.Validation, FixtureRecordingFailureReason.ValidationUnconfirmed)]
+    [InlineData(FixtureRecordingBoundary.Cleanup, FixtureRecordingFailureReason.CleanupUnconfirmed)]
+    [InlineData(FixtureRecordingBoundary.OutputTransfer, FixtureRecordingFailureReason.OutputTransferUnconfirmed)]
+    public void TrustedRecordingBoundaryRetainsOnlyUncertaintyAndTheOriginalFrameScope(
+        FixtureRecordingBoundary boundary, FixtureRecordingFailureReason reason)
+    {
+        var start = Start(); var error = new IOException("private-path-and-payload", new Exception("private-inner"));
+        error.Data["Boundary"] = "private-page-boundary";
+        var failure = FixtureRecordingFailureProtocol.FromException(start, 3, 2, error, boundary);
+        Assert.Equal(reason, failure.Reason); Assert.Equal(start.ExecutionId, failure.ExecutionId);
+        Assert.Equal(3, failure.CheckpointSequence); Assert.Equal(2, failure.SourceSequence);
+        var bytes = FixtureProgressProtocol.Encode(failure);
+        Assert.InRange(bytes.Length, 1, FixtureRecordingFailureProtocol.MaximumBytes);
+        Assert.Equal(failure, FixtureRecordingFailureProtocol.Read(bytes, start, 3, 2));
+        Assert.DoesNotContain("private", Encoding.UTF8.GetString(bytes), StringComparison.OrdinalIgnoreCase);
+        using var json = JsonDocument.Parse(bytes);
+        Assert.Equal(["Schema", "ExecutionId", "CheckpointSequence", "SourceSequence", "Reason"], json.RootElement.EnumerateObject().Select(p => p.Name));
+        Assert.EndsWith("_UNCONFIRMED", FixtureRecordingFailureProtocol.ErrorCode(reason), StringComparison.Ordinal);
+        Assert.True(FixtureRecordingFailureProtocol.IsPublicCode(FixtureRecordingFailureProtocol.ErrorCode(reason)));
+    }
+
+    [Theory]
+    [InlineData("CAPTURE_STOP_UNCONFIRMED", FixtureRecordingFailureReason.CaptureStopUnconfirmed)]
+    [InlineData("CHROMIUM_COLLECTOR_STOP_UNCONFIRMED", FixtureRecordingFailureReason.BrowserShutdownUnconfirmed)]
+    [InlineData("CHROMIUM_BROWSER_CLOSE_UNCONFIRMED", FixtureRecordingFailureReason.BrowserShutdownUnconfirmed)]
+    [InlineData("CHROMIUM_PROCESS_EXIT_UNCONFIRMED", FixtureRecordingFailureReason.BrowserShutdownUnconfirmed)]
+    [InlineData("CHROMIUM_SHUTDOWN_UNCONFIRMED", FixtureRecordingFailureReason.BrowserShutdownUnconfirmed)]
+    [InlineData("CHROMIUM_OWNED_ROOT_STOP_UNCONFIRMED", FixtureRecordingFailureReason.BrowserShutdownUnconfirmed)]
+    [InlineData("CHROMIUM_TRANSPORT_CLOSE_UNCONFIRMED", FixtureRecordingFailureReason.BrowserShutdownUnconfirmed)]
+    [InlineData("CHROMIUM_PROCESS_WATCH_RELEASE_UNCONFIRMED", FixtureRecordingFailureReason.BrowserShutdownUnconfirmed)]
+    [InlineData("CHROMIUM_BROWSER_CLOSE_UNCONFIRMED_PRIVATE", FixtureRecordingFailureReason.FinalizationUnconfirmed)]
+    [InlineData("CAPTURE_STOP_UNCONFIRMED_PRIVATE", FixtureRecordingFailureReason.FinalizationUnconfirmed)]
+    public void OnlyExactKnownStopCodesRefineTheTrustedBoundary(string code, FixtureRecordingFailureReason reason)
+    {
+        var start = Start(); var error = new BrowserOperationException(code, new IOException("private-path-and-payload"));
+        var failure = FixtureRecordingFailureProtocol.FromException(start, 3, 2, error, FixtureRecordingBoundary.Finalization);
+        Assert.Equal(reason, failure.Reason);
+        Assert.Equal(FixtureRecordingFailureReason.Unconfirmed, FixtureRecordingFailureProtocol.FromException(start, 3, 2, error).Reason);
+        var bytes = FixtureProgressProtocol.Encode(failure);
+        Assert.Equal(failure, FixtureRecordingFailureProtocol.Read(bytes, start, 3, 2));
+        Assert.DoesNotContain("PRIVATE", Encoding.UTF8.GetString(bytes), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    [InlineData(FixtureRecordingBoundary.Unknown)]
+    [InlineData((FixtureRecordingBoundary)(-1))]
+    [InlineData((FixtureRecordingBoundary)999)]
+    public void ExceptionTextAndDataCannotSupplyAnUnknownOrInvalidRecordingBoundary(FixtureRecordingBoundary boundary)
+    {
+        var error = new BrowserOperationException("CAPTURE_STOP_UNCONFIRMED"); error.Data["Boundary"] = FixtureRecordingBoundary.Cleanup;
+        var failure = FixtureRecordingFailureProtocol.FromException(Start(), 0, 0, error, boundary);
+        Assert.Equal(FixtureRecordingFailureReason.Unconfirmed, failure.Reason);
+    }
+
+    [Theory]
+    [InlineData(FixtureRecordingBoundary.Collection)]
+    [InlineData(FixtureRecordingBoundary.Finalization)]
+    [InlineData(FixtureRecordingBoundary.Validation)]
+    [InlineData(FixtureRecordingBoundary.Cleanup)]
+    public void SpecificCollectorFailureWinsOverATrustedBoundaryWithoutClaimingStop(FixtureRecordingBoundary boundary)
+    {
+        var error = new BrowserOperationException("CAPTURE_STOP_UNCONFIRMED", new BrowserOperationException("CAPTURE_FRAME_LIMIT"));
+        var failure = FixtureRecordingFailureProtocol.FromException(Start(), 3, 2, error, boundary);
+        Assert.Equal(FixtureRecordingFailureReason.CaptureBudgetExceeded, failure.Reason);
+    }
+
+    [Theory]
+    [InlineData(FixtureRecordingBoundary.Collection, FixtureRecordingFailureReason.CollectionUnconfirmed)]
+    [InlineData(FixtureRecordingBoundary.Finalization, FixtureRecordingFailureReason.FinalizationUnconfirmed)]
+    [InlineData(FixtureRecordingBoundary.Preparation, FixtureRecordingFailureReason.PreparationUnconfirmed)]
+    public void GenericRecordingUncertaintyCannotOverrideTheActualTrustedBoundary(
+        FixtureRecordingBoundary boundary, FixtureRecordingFailureReason reason)
+    {
+        var error = new BrowserOperationException("WORKER_KEYBOARD_RECORDING_UNCONFIRMED");
+        var failure = FixtureRecordingFailureProtocol.FromException(Start(), 3, 2, error, boundary);
+        Assert.Equal(reason, failure.Reason);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(64)]
+    [InlineData(-1)]
+    public async Task ActualOutputTransferFailureCannotMasqueradeAsValidationOrAcknowledgeCompletion(int acceptedPrefix)
+    {
+        var start = Start(false); using var input = new MemoryStream(); using var progress = new MemoryStream(); using var output = new FailingRecordingOutput(acceptedPrefix);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(45));
+        await ReaderWorkerWire.WriteAsync(input, FixtureProgressProtocol.Encode(start), 4096, timeout.Token);
+        for (var sequence = 1; sequence <= 5; sequence++)
+            await ReaderWorkerWire.WriteAsync(input, FixtureProgressProtocol.Encode(new FixtureProgressAck(FixtureProgressProtocol.Schema,
+                start.ExecutionId, sequence)), 4096, timeout.Token);
+        input.Position = 0;
+        Assert.Equal(3, await FixtureProgressWorker.RunAsync(input, output, progress).WaitAsync(timeout.Token));
+        Assert.Equal(1, output.WriteCalls);
+        if (acceptedPrefix >= 0) Assert.Equal(acceptedPrefix, output.Length);
+        else
+        {
+            Assert.True(output.Length > 64);
+            using var zip = new System.IO.Compression.ZipArchive(new MemoryStream(output.AcceptedBytes));
+            Assert.Equal(4, zip.Entries.Count);
+        }
+        progress.Position = 0;
+        FixtureProgressMessage? previous = null;
+        for (var sequence = 1; sequence <= 5; sequence++)
+        {
+            var checkpoint = await FixtureProgressProtocol.ReadAsync<FixtureProgressMessage>(progress, FixtureProgressProtocol.MaximumFrameBytes, timeout.Token);
+            FixtureProgressProtocol.Validate(checkpoint, start, previous); Assert.Equal(sequence, checkpoint.Sequence); previous = checkpoint;
+        }
+        var bytes = Assert.IsType<byte[]>(await ReaderWorkerWire.ReadAsync(progress, FixtureRecordingFailureProtocol.MaximumBytes, timeout.Token));
+        var failure = FixtureRecordingFailureProtocol.Read(bytes, start, 5, 0);
+        Assert.Equal(FixtureRecordingFailureReason.OutputTransferUnconfirmed, failure.Reason);
+        Assert.DoesNotContain("private-output-payload", Encoding.UTF8.GetString(bytes), StringComparison.Ordinal);
+        Assert.Null(await ReaderWorkerWire.ReadAsync(progress, FixtureProgressProtocol.MaximumFrameBytes, timeout.Token));
+    }
+
+    private sealed class FailingRecordingOutput(int acceptedPrefix) : Stream
+    {
+        private readonly MemoryStream _accepted = new();
+        public int WriteCalls { get; private set; }
+        public byte[] AcceptedBytes => _accepted.ToArray();
+        public override bool CanRead => false;
+        public override bool CanSeek => false;
+        public override bool CanWrite => true;
+        public override long Length => _accepted.Length;
+        public override long Position { get => 0; set => throw new NotSupportedException(); }
+        public override void Flush() { }
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        private void Accept(ReadOnlySpan<byte> buffer)
+        { WriteCalls++; _accepted.Write(buffer[..(acceptedPrefix < 0 ? buffer.Length : Math.Min(acceptedPrefix, buffer.Length))]); }
+        public override void Write(byte[] buffer, int offset, int count)
+        { Accept(buffer.AsSpan(offset, count)); throw new IOException("private-output-payload"); }
+        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken token = default)
+        { Accept(buffer.Span); return ValueTask.FromException(new IOException("private-output-payload")); }
+        protected override void Dispose(bool disposing) { if (disposing) _accepted.Dispose(); base.Dispose(disposing); }
+    }
+
+    [Fact]
+    public async Task ActualUnknownCheckpointFailureRetainsTheTrustedTraversalBoundaryAfterCleanup()
+    {
+        var start = Start(); var boundary = FixtureRecordingBoundary.Unknown;
+        var error = await Assert.ThrowsAsync<BrowserOperationException>(() => KeyboardFixtureWorker.RecordAsync(start.Job, default,
+            (_, _) => Task.FromException(new BrowserOperationException("PRIVATE_RECORDING_DETAIL")), null, value => boundary = value));
+        Assert.Equal("PRIVATE_RECORDING_DETAIL", error.Code); Assert.Equal(FixtureRecordingBoundary.Traversal, boundary);
+        var failure = FixtureRecordingFailureProtocol.FromException(start, 0, 0, error, boundary);
+        Assert.Equal(FixtureRecordingFailureReason.TraversalUnconfirmed, failure.Reason);
+        Assert.DoesNotContain("PRIVATE_RECORDING_DETAIL", Encoding.UTF8.GetString(FixtureProgressProtocol.Encode(failure)), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ActualSuccessfulKeyboardRecordingKeepsItsBoundaryTraceOutOfTheEvidence()
+    {
+        var job = Start().Job with { TraversalRoute = 2 }; var boundaries = new List<FixtureRecordingBoundary>();
+        var bytes = await KeyboardFixtureWorker.RecordAsync(job, default, null, null, boundaries.Add);
+        Assert.Equal([FixtureRecordingBoundary.Collection, FixtureRecordingBoundary.Preparation, FixtureRecordingBoundary.Validation], boundaries);
+        var recording = KeyboardRecordingBundle.Decode(bytes, job).Validate(job);
+        Assert.Equal("Complete", recording.Stage); Assert.Null(recording.ErrorCode); Assert.Equal(CapturePhase.Closed, recording.Capture.Phase);
+        Assert.Equal(TraversalReachability.NotReached, recording.Receipt.Reachability); Assert.Equal(TraversalBarrier.Observed, recording.Receipt.Barrier);
+        Assert.Equal(0, recording.Receipt.AttemptedKeystrokes); Assert.Equal(0, recording.Receipt.CompletedKeystrokes);
+        Assert.NotEmpty(recording.SourceFiles); Assert.Equal(recording.SourceFiles.Length, recording.SourceFrames.Length);
+        using var json = JsonDocument.Parse(JsonSerializer.SerializeToUtf8Bytes(recording, ObservationStore.Json));
+        Assert.False(json.RootElement.TryGetProperty("Boundary", out _)); Assert.False(json.RootElement.TryGetProperty("observeBoundary", out _));
+    }
+
+    [Fact]
+    public async Task ActualSuccessfulCleanupCannotReplaceThePriorFailedRecordingBoundary()
+    {
+        var job = Start().Job with { TraversalRoute = 2 }; var boundary = FixtureRecordingBoundary.Unknown;
+        var error = await Assert.ThrowsAsync<IOException>(() => KeyboardFixtureWorker.RecordAsync(job, default, null, null, value =>
+        {
+            boundary = value;
+            if (value == FixtureRecordingBoundary.Preparation) throw new IOException("private-path-and-payload");
+        }));
+        Assert.Equal(FixtureRecordingBoundary.Preparation, boundary);
+        var failure = FixtureRecordingFailureProtocol.FromException(Start(), 0, 0, error, boundary);
+        Assert.Equal(FixtureRecordingFailureReason.PreparationUnconfirmed, failure.Reason);
+        Assert.DoesNotContain("private-path-and-payload", Encoding.UTF8.GetString(FixtureProgressProtocol.Encode(failure)), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CleanupScopeFailurePreservesForeignFilesAndReportsOnlyCleanupUncertainty()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), "hsr-boundary-foreign-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder); var file = Path.Combine(folder, "sentinel.txt"); File.WriteAllText(file, "owned-test-data");
+        var boundary = FixtureRecordingBoundary.Preparation;
+        try
+        {
+            var error = Assert.Throws<IOException>(() => KeyboardFixtureWorker.CleanupRecordingFolder(folder, value => boundary = value));
+            Assert.Equal("WORKER_KEYBOARD_CLEANUP_SCOPE_INVALID", error.Message);
+            Assert.Equal("owned-test-data", File.ReadAllText(file)); Assert.Equal(FixtureRecordingBoundary.Cleanup, boundary);
+            var failure = FixtureRecordingFailureProtocol.FromException(Start(), 0, 0, error, boundary);
+            Assert.Equal(FixtureRecordingFailureReason.CleanupUnconfirmed, failure.Reason);
+        }
+        finally { File.Delete(file); Directory.Delete(folder); }
+    }
+
+    [Fact]
+    public void SuccessfulOwnedFolderCleanupCannotInventAFailureBoundary()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), "hsr-keyboard-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(folder);
+        File.WriteAllText(Path.Combine(folder, "sentinel.txt"), "owned-test-data"); var boundary = FixtureRecordingBoundary.Validation;
+        KeyboardFixtureWorker.CleanupRecordingFolder(folder, value => boundary = value);
+        Assert.False(Directory.Exists(folder)); Assert.Equal(FixtureRecordingBoundary.Validation, boundary);
     }
 
     [Theory]

@@ -11,6 +11,7 @@ public static class FixtureProgressWorker
         FixtureProgressStart? failureScope = null;
         var sequence = 0;
         var sourceSequence = 0;
+        var boundary = FixtureRecordingBoundary.Unknown;
         try
         {
             using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(90));
@@ -52,14 +53,15 @@ public static class FixtureProgressWorker
                 var ack = await FixtureProgressProtocol.ReadAsync<FixtureProgressAck>(input, 4096, timeout.Token);
                 FixtureProgressProtocol.Validate(ack, start.ExecutionId, sequence);
                 token.ThrowIfCancellationRequested();
-            }, start.RetainSourceFrames ? Sources : null);
+            }, start.RetainSourceFrames ? Sources : null, value => boundary = value);
+            boundary = FixtureRecordingBoundary.OutputTransfer;
             await output.WriteAsync(bytes, stop.Token); return 0;
         }
         catch (Exception failure)
         {
             if (failureScope is not null)
             {
-                var diagnostic = FixtureRecordingFailureProtocol.FromException(failureScope, sequence, sourceSequence, failure);
+                var diagnostic = FixtureRecordingFailureProtocol.FromException(failureScope, sequence, sourceSequence, failure, boundary);
                 using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(1));
                 try
                 {

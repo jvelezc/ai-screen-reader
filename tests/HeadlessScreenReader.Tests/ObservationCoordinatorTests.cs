@@ -34,10 +34,21 @@ public sealed class ObservationCoordinatorTests
     private static byte[] Bytes(FixtureJob job) => JsonSerializer.SerializeToUtf8Bytes(FixtureWorkerTests.Receipt(job), ObservationStore.Json);
     private static TaskCompletionSource Signal() => new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-    [Fact]
-    public async Task KnownRecordingFailurePersistsSpecificReasonWithoutPromotingACompletedReceipt()
+    [Theory]
+    [InlineData("WORKER_PROGRESS_RECORDING_CAPTURE_BUDGET_EXCEEDED")]
+    [InlineData("WORKER_PROGRESS_RECORDING_COLLECTION_UNCONFIRMED")]
+    [InlineData("WORKER_PROGRESS_RECORDING_CALIBRATION_UNCONFIRMED")]
+    [InlineData("WORKER_PROGRESS_RECORDING_TRAVERSAL_UNCONFIRMED")]
+    [InlineData("WORKER_PROGRESS_RECORDING_FINALIZATION_UNCONFIRMED")]
+    [InlineData("WORKER_PROGRESS_RECORDING_ALIGNMENT_UNCONFIRMED")]
+    [InlineData("WORKER_PROGRESS_RECORDING_PREPARATION_UNCONFIRMED")]
+    [InlineData("WORKER_PROGRESS_RECORDING_VALIDATION_UNCONFIRMED")]
+    [InlineData("WORKER_PROGRESS_RECORDING_CLEANUP_UNCONFIRMED")]
+    [InlineData("WORKER_PROGRESS_RECORDING_CAPTURE_STOP_UNCONFIRMED")]
+    [InlineData("WORKER_PROGRESS_RECORDING_BROWSER_SHUTDOWN_UNCONFIRMED")]
+    [InlineData("WORKER_PROGRESS_RECORDING_OUTPUT_TRANSFER_UNCONFIRMED")]
+    public async Task KnownRecordingFailurePersistsSpecificReasonWithoutPromotingACompletedReceipt(string code)
     {
-        const string code = "WORKER_PROGRESS_RECORDING_CAPTURE_BUDGET_EXCEEDED";
         var lease = new WorkerLease(FixtureWorkerTests.Job(), Guid.NewGuid(), Guid.NewGuid()); var database = new Leases(lease);
         var executor = new Executor((_, _) => Task.FromException<byte[]>(new BrowserOperationException(code)));
         var result = await new ObservationCoordinator(database, executor, new("unused")).RunOnceAsync(lease.WorkerId, default);

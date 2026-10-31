@@ -34,14 +34,17 @@ original images and exact native cleanup; the same worker then completes a disti
 no-input job without a restart. UIc614141/Edge11, source190 exact download,
 keyboard/320px, reconnect and saved sign-in pass in their named scopes.
 [Cancellation receipt](validation/caller-scan-cancellation-v1.md).
-**Next:** [finish finite recording finalization](validation/finite-recording-finalization-v1.md#next-acceptance-gate).
+**Next:** [locate and repair the intermittent recording fault](validation/recording-failure-boundaries-v1.md#next-acceptance-gate).
 Actual Chromium checks show the final transfer can prolong image acquisition and
 begin before video finalizes. The repair joins both collectors inside the existing
 input-denied capture drain before the finite transfer;162 focused checks pass.
-Full pinned Windows verification passes3,012/3,012, zero failed/skipped; strict
-build and format pass. Both CI platforms, exact private delivery and distinct
-hosted recordings remain gates. Broader fault/provider/website/intervention
-acceptance stays separate.
+The repair is delivered at7fbf57a: all nine CI jobs,3,012 tests per OS,
+native71/database450/operations172 and151 exact installed files. A fresh normal
+original-account run completes with five independently matched originals and
+actual graph/video playback; a separate normal repeat still fails Unconfirmed.
+Closed failure boundaries pass242 focused and3,060 full Windows checks, plus461
+actual isolated PostgreSQL cases. CI and exact delivery remain separate gates.
+Broader fault/provider/website/intervention acceptance stays separate.
 
 **Scoped recording-failure diagnostics are accepted at1200190.** The framed child
 preserves only a closed reason and exact original stream scope; the host grants no
@@ -579,7 +582,7 @@ flowchart LR
     Keyboard --> Claims[Accepted source-bound recorded claims]
     Claims --> Compact[Accepted compact original-account progress consumer]
     Compact --> Retained[Core retained checkpoint graph and byte reads]
-    Retained --> Next[NEXT: finish finite recording finalization]
+    Retained --> Next[NEXT: locate and repair the recording fault]
     Next --> Durable[Broader hosted recovery and workflow acceptance]
     Client --> ViewerControl[Human takeover acceptance]
     classDef done fill:#dcfce7,stroke:#166534,color:#14532d

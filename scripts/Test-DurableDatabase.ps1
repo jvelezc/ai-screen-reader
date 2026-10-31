@@ -11,6 +11,7 @@ New-Item -ItemType Directory -Path $folder | Out-Null
 $created = $false; $removed = $false; $ready = $false; $stage = 'create'; $errorCode = $null
 $cases = [Collections.Generic.List[string]]::new()
 $script:discovered = 0; $script:executed = 0; $script:failed = 0
+$expectedCases = 461
 $oldPassword = $env:POSTGRES_PASSWORD
 
 function Wait-DatabaseReady {
@@ -106,7 +107,7 @@ try {
     $stage = 'confirm-cancellation'
     Invoke-DatabaseFile 'tests/database/confirm-scan-cancellation.sql' 'confirm-cancellation' -Expected 14 -User 'supabase_admin'
     $stage = 'recording-failure-reasons'
-    Invoke-DatabaseFile 'tests/database/recording-failure-reasons.sql' 'recording-failure-reasons' -Expected 19 -User 'supabase_admin'
+    Invoke-DatabaseFile 'tests/database/recording-failure-reasons.sql' 'recording-failure-reasons' -Expected 30 -User 'supabase_admin'
     $stage = 'concurrent-cancellation'
     Invoke-DatabaseFile 'tests/database/concurrent-scan-cancellation.sql' 'concurrent-cancellation' -Expected 15 -User 'supabase_admin'
     $stage = 'concurrent-publication'
@@ -142,15 +143,17 @@ try {
         } else { $errorCode = 'DATABASE_RESOURCE_UNCONFIRMED'; $ready = $false }
     }
 }
+$countsConfirmed = $cases.Count -eq $expectedCases -and $script:discovered -eq $expectedCases `
+    -and $script:executed -eq $expectedCases -and $script:failed -eq 0
+if ($ready -and -not $countsConfirmed) { $ready = $false; $stage = 'case-count'; $errorCode = 'DATABASE_CASE_COUNT_UNCONFIRMED' }
 $receipt = [pscustomobject]@{
     Schema = 'hsr-database-admission-proof-v1'; Ready = $ready; Stage = $stage; ErrorCode = $errorCode
-    Runtime = $Runtime; Image = $image; Expected = 450; Discovered = $script:discovered
+    Runtime = $Runtime; Image = $image; Expected = $expectedCases; Discovered = $script:discovered
     Executed = $script:executed; Passed = $cases.Count; Failed = $script:failed
-    Unconfirmed = [Math]::Max(0, 450 - $script:executed); Skipped = 0; Cases = @($cases)
+    Unconfirmed = [Math]::Max(0, $expectedCases - $script:executed); Skipped = 0; Cases = @($cases)
     ContainerRemoved = $removed; HostedProjectChanged = $false; WorkerExecutionPerformed = $false
     Folder = $folder
 }
 $receipt | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $folder 'run.json') -Encoding utf8NoBOM
 $receipt | ConvertTo-Json -Depth 4
-if (-not $ready -or -not $removed -or $cases.Count -ne 450 -or $script:discovered -ne 450 `
-    -or $script:executed -ne 450 -or $script:failed -ne 0) { exit 1 }
+if (-not $ready -or -not $removed -or -not $countsConfirmed) { exit 1 }

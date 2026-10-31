@@ -1,7 +1,7 @@
 begin;
 set search_path=extensions,public;
 grant usage on schema extensions to authenticated,hsr_worker;
-select plan(19);
+select plan(30);
 insert into auth.users(id) values('7f000000-0000-0000-0000-000000000001');
 insert into hsr.organizations(id,name) values('7f000000-0000-0000-0000-000000000010','Recording failure reason fixture');
 insert into hsr.memberships values('7f000000-0000-0000-0000-000000000010','7f000000-0000-0000-0000-000000000001');
@@ -22,7 +22,13 @@ do $$declare code text;created record;begin
         'WORKER_PROGRESS_RECORDING_SOURCE_HASH_CHANGED','WORKER_PROGRESS_RECORDING_SOURCE_ARTIFACT_MISSING',
         'WORKER_PROGRESS_RECORDING_ARTIFACT_UNRECOGNIZED','WORKER_PROGRESS_RECORDING_ORIGINAL_CHANGED',
         'WORKER_PROGRESS_RECORDING_UNCONFIRMED','WORKER_PROGRESS_RECORDING_ACK_REJECTED',
-        'WORKER_PROGRESS_RECORDING_SOURCE_EXPORT_UNCONFIRMED'] loop
+        'WORKER_PROGRESS_RECORDING_SOURCE_EXPORT_UNCONFIRMED',
+        'WORKER_PROGRESS_RECORDING_COLLECTION_UNCONFIRMED','WORKER_PROGRESS_RECORDING_CALIBRATION_UNCONFIRMED',
+        'WORKER_PROGRESS_RECORDING_TRAVERSAL_UNCONFIRMED','WORKER_PROGRESS_RECORDING_FINALIZATION_UNCONFIRMED',
+        'WORKER_PROGRESS_RECORDING_ALIGNMENT_UNCONFIRMED','WORKER_PROGRESS_RECORDING_PREPARATION_UNCONFIRMED',
+        'WORKER_PROGRESS_RECORDING_VALIDATION_UNCONFIRMED','WORKER_PROGRESS_RECORDING_CLEANUP_UNCONFIRMED',
+        'WORKER_PROGRESS_RECORDING_CAPTURE_STOP_UNCONFIRMED','WORKER_PROGRESS_RECORDING_BROWSER_SHUTDOWN_UNCONFIRMED',
+        'WORKER_PROGRESS_RECORDING_OUTPUT_TRANSFER_UNCONFIRMED'] loop
         select * into created from hsr.create_scan('7f000000-0000-0000-0000-000000000010',gen_random_uuid());
         insert into recording_reasons values(code,created.scan_id,created.job_id);
     end loop;
@@ -37,7 +43,7 @@ select throws_ok($$select hsr.block_scan_job(null,null,null,null,null,null)$$,
     '22023','INVALID_WORKER_FAILURE_CODE','NullRecordingReasonCannotBecomeAWorkerBlock');
 create temporary table recording_reason_leases as select * from hsr.claim_scan_job('7f000000-0000-0000-0000-000000000020',60);
 do $$begin
-    for i in 1..12 loop
+    for i in 1..23 loop
         insert into recording_reason_leases select * from hsr.claim_scan_job('7f000000-0000-0000-0000-000000000020',60);
     end loop;
 end $$;

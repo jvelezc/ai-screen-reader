@@ -140,13 +140,16 @@ at5b75935/HTTP1.14/private MCP21: all nine CI jobs (2,936 per OS/native71/databa
 operations172), exact151-file delivery, UIc614141/Edge11 and queued/active account
 stop pass. The fresh active case preserves190 images and exact native cleanup;
 the same healthy worker completes a distinct no-input job without restarting.
-**Next:** [finish finite recording finalization](validation/finite-recording-finalization-v1.md#next-acceptance-gate).
+**Next:** [locate and repair the intermittent recording fault](validation/recording-failure-boundaries-v1.md#next-acceptance-gate).
 Actual Chromium reproduces image acquisition continuing during final transfer
 and a video that has not yet finalized. Join both acquisition collectors before
 the owned final transfer inside the existing input-denied capture drain. The
-source repair passes162 focused and3,012 full Windows checks, with clean strict
-build and format. Both CI platforms, exact private delivery and distinct account
-recordings remain gates. Preserve
+repair is delivered at7fbf57a: all nine CI jobs,3,012 per OS, native71/database450/
+operations172 and151 exact installed files. A fresh normal original-account run
+completes with five independently matched originals and actual graph/video
+playback; a separate normal repeat still fails Unconfirmed. Closed failure
+boundaries pass242 focused and3,060 full Windows checks, plus461 actual isolated
+PostgreSQL cases; CI and exact delivery remain separate gates. Preserve
 every acquired original, all declared resource limits and every failed attempt;
 do not replay uncertain input. The
 scoped [failure diagnostics](validation/recording-failure-diagnostics-v1.md) are

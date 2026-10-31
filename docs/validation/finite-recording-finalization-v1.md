@@ -55,8 +55,7 @@ including all four real Chromium routes, held transfers, cancellation, failure,
 the original privacy-drain checks and actual framed-child rejection. The final
 pinned Windows Release suite independently discovers, executes and passes3,012,
 zero failed/skipped, in7m58s. Strict Release build has zero warnings/errors; full
-format verification passes. Source CI, exact deployment and fresh hosted runs
-are separate gates for this increment. No local result is a hosted repair.
+format verification passes. No local result alone is a hosted repair.
 
 | Requirement | Evidence |
 | --- | --- |
@@ -69,12 +68,33 @@ are separate gates for this increment. No local result is a hosted repair.
 | Safe export cause survives sanitized disposal without a stop-success claim | `ActualRecordingCollectorKeepsSafeExportCauseAfterSanitizedShutdownFailure`, `WrongSourceAcknowledgementStopsActualChildBeforeAnyCommandCheckpoint` |
 | Independent outcomes and timing survive on all four actual routes | `FourOriginalRecordings_LinkRealCaptureAndInputIntervalsWithoutChangingRouteClassification` |
 
+## Source CI, exact delivery and fresh recordings
+
+Source7fbf57a passes all nine jobs in
+[CI41239208999](https://github.com/jvelezc/ai-screen-reader/actions/runs/41239208999).
+Windows and Ubuntu each independently discover, execute and pass3,012,0 failed
+or skipped; native71/database450/operations172 pass separately.
+[Private delivery41240613414](https://github.com/jvelezc/ai-screen-reader/actions/runs/41240613414)
+matches the complete inventory and every hash of151 installed files. Manifest
+SHA256 is `ff06739b69d2592f1fff77230bfa394c5a9417ee6feba1853387f4e92b471d3f`.
+Both actual services, trusted TLS/private API guards and the dedicated rootless
+native inventory pass independent verification; restart remains disabled.
+
+A distinct original-account route completes with171 source originals,201 decoded
+video frames, five independently matched S3 originals and actual four-state/
+three-edge graph and8.04-second native-video playback. A separate normal repeat
+still blocks Unconfirmed with one attempt, zero leases and no result. The same
+healthy service invocations/native0 are checked afterwards. No observer, replay
+or deliberate interruption was introduced. These outcomes deliver the finite
+ordering change without establishing the intermittent fault's cause. Exact
+[run identities and next diagnostic gate](recording-failure-boundaries-v1.md)
+remain recorded separately.
+
 ## Next acceptance gate
 
-The full pinned Windows Release suite, strict build and format verification pass.
-Push main, require all CI platforms, promote the exact source privately, and
-verify distinct normal recordings and their originals through the original
-account. Keep the intermittent failure open until the new hosted evidence
-supports closure. A resource-boundary count alone is not a cause. Broader fault,
+Finite acquisition is delivered. Locate the separate hosted failure through
+trusted closed operation boundaries, then fix its demonstrated cause and verify
+distinct normal recordings through the original account. Preserve every failed
+attempt and original. A resource-boundary count alone is not a cause. Broader fault,
 authority, target collection, intervention, operations and human/AT gates remain
 open in the [ordered completion plan](../completion-plan.md).

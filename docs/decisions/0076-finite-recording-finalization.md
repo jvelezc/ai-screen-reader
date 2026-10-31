@@ -1,6 +1,6 @@
 # Finite recording finalization inside capture exclusion
 
-Status: implemented; delivery and hosted acceptance are separate gates.
+Status: delivered at7fbf57a; the separate intermittent hosted fault remains open.
 
 The final source upload previously took a snapshot while Chromium continued
 acquiring images. An actual Chromium regression observed the source set grow

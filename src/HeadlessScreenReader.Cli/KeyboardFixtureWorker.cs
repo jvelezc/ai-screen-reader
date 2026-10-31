@@ -11,10 +11,17 @@ namespace HeadlessScreenReader.Cli;
 /// <summary>Only the four fixed sanitized plans. No caller-supplied instructions, credentials or URLs.</summary>
 public static class KeyboardFixtureWorker
 {
-    public static async Task<byte[]> RecordAsync(FixtureJob job, CancellationToken token = default,
+    public static Task<byte[]> RecordAsync(FixtureJob job, CancellationToken token = default,
         Func<TraversalCheckpoint, CancellationToken, Task>? checkpoint = null,
-        Func<ImmutableArray<CompletedCaptureSource>, CancellationToken, Task>? sourceSink = null)
+        Func<ImmutableArray<CompletedCaptureSource>, CancellationToken, Task>? sourceSink = null) =>
+        RecordAsync(job, token, checkpoint, sourceSink, null);
+
+    public static async Task<byte[]> RecordAsync(FixtureJob job, CancellationToken token,
+        Func<TraversalCheckpoint, CancellationToken, Task>? checkpoint,
+        Func<ImmutableArray<CompletedCaptureSource>, CancellationToken, Task>? sourceSink,
+        Action<FixtureRecordingBoundary>? observeBoundary)
     {
+        observeBoundary?.Invoke(FixtureRecordingBoundary.Collection);
         job.Validate();
         if (job.TraversalRoute is < 1 or > 4) throw new BrowserOperationException("WORKER_KEYBOARD_ROUTE_INVALID");
         if (BundledFixtureCatalog.Describe(BundledFixture.TraversalRecording).ContentSha256 != FixtureObservation.RecordingContentSha256)
@@ -28,8 +35,21 @@ public static class KeyboardFixtureWorker
                 || result.Recording.Shutdown is not { } shutdown || result.Recording.CaptureLifecycle is not { } capture
                 || result.Recording.Alignment is not { } alignment || result.Recording.RunnerOriginHostMilliseconds is not { } origin
                 || result.Recording.ErrorCode is not null)
+            {
+                observeBoundary?.Invoke(result.Recording.Stage switch
+                {
+                    "Launch" => FixtureRecordingBoundary.Collection,
+                    "CalibrateBefore" or "CalibrateAfter" => FixtureRecordingBoundary.Calibration,
+                    "Traverse" => FixtureRecordingBoundary.Traversal,
+                    "FinalizeAndDecodeOriginalMedia" => FixtureRecordingBoundary.Finalization,
+                    "AlignEvidence" => FixtureRecordingBoundary.Alignment,
+                    "Complete" => FixtureRecordingBoundary.Validation,
+                    _ => FixtureRecordingBoundary.Unknown
+                });
                 throw new BrowserOperationException(result.Recording.ErrorCode ?? "WORKER_KEYBOARD_RECORDING_UNCONFIRMED",
                     result.CollectorFailureCode is { } code ? new BrowserOperationException(code) : null);
+            }
+            observeBoundary?.Invoke(FixtureRecordingBoundary.Preparation);
             // These zero-input facts describe only the retained pre-traversal capture.
             // The actual route's attempted/completed inputs and verification remain in traversal.json.
             var baseline = new FixtureObservation(FixtureObservation.CurrentSchema, job, "synthetic-shop", FixtureObservation.Profile,
@@ -63,13 +83,23 @@ public static class KeyboardFixtureWorker
                 Environment = new(result.Environment!.BrowserVersion, result.Environment.PlaywrightVersion,
                     System.Runtime.InteropServices.RuntimeInformation.OSDescription, "320x240")
             };
-            return new KeyboardRecordingBundle(observation, video, JsonSerializer.SerializeToUtf8Bytes(recording, ObservationStore.Json), frames).Encode(job);
+            var bundle = new KeyboardRecordingBundle(observation, video, JsonSerializer.SerializeToUtf8Bytes(recording, ObservationStore.Json), frames);
+            observeBoundary?.Invoke(FixtureRecordingBoundary.Validation);
+            return bundle.Encode(job);
         }
-        finally
+        finally { CleanupRecordingFolder(folder, observeBoundary); }
+    }
+
+    internal static void CleanupRecordingFolder(string folder, Action<FixtureRecordingBoundary>? observeBoundary)
+    {
+        try
         {
-            if (Path.GetDirectoryName(Path.GetFullPath(folder)) != Path.TrimEndingDirectorySeparator(Path.GetFullPath(Path.GetTempPath())))
+            var path = Path.GetFullPath(folder); var name = Path.GetFileName(path);
+            if (Path.GetDirectoryName(path) != Path.TrimEndingDirectorySeparator(Path.GetFullPath(Path.GetTempPath()))
+                || !name.StartsWith("hsr-keyboard-", StringComparison.Ordinal) || !Guid.TryParseExact(name[13..], "N", out _))
                 throw new IOException("WORKER_KEYBOARD_CLEANUP_SCOPE_INVALID");
-            if (Directory.Exists(folder)) Directory.Delete(folder, true);
+            if (Directory.Exists(path)) Directory.Delete(path, true);
         }
+        catch { observeBoundary?.Invoke(FixtureRecordingBoundary.Cleanup); throw; }
     }
 }
