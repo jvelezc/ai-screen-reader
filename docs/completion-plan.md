@@ -63,9 +63,20 @@ tracks CI and original-account acceptance separately. The core now implements
 through HTTP1.11 and two private MCP tools. It preserves unresolved intent,
 unknown input, distinct source/export hashes and fresh authority on every byte
 page. [Validation](validation/retained-checkpoint-graph-v1.md) separates source,
-CI, deployment and original-account gates. **Next:** consume these core reads
-through the existing Edge/notebook, then recover interrupted original media and
-complete the failure injections below. Automatic worker restart stays disabled.
+CI, deployment and original-account gates. Full path consumption is now accepted
+at UI5972663 through existing Edge v8:570 tests per OS, actual original-account
+nodes/edges and a complete independently hashed checkpoint export, plus saved
+sign-in after reload. [Consumer receipt](https://github.com/jvelezc/ai-screen-reader-ui/blob/5972663c3757412ec98b659e9b7102352778d04e/docs/validation/retained-path-v1.md).
+
+[Complete-output staging](decisions/0067-recorded-output-staging.md) now preserves
+the validated child bundle in a separate private host journal before native
+cleanup. A matching native-removal acknowledgement, an output seal, archive
+publication and database completion stay separate. This is complete-output
+retention, not recovery of media from an unfinished child. Its
+[validation gates](validation/recorded-output-staging-v1.md) remain separately
+reported. **Next:** protected staged-media reconstruction and publication
+reconciliation under the original attempt, then partial media recovery and the
+failure injections below. Automatic worker restart stays disabled.
 
 Exercise the actual Linux worker under crash after input, upload before metadata
 commit, storage outage, lease expiry, cancellation and full staging disk. Retain

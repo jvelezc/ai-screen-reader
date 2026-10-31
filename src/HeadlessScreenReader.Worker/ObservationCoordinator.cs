@@ -51,7 +51,8 @@ public sealed class ObservationCoordinator(IWorkerLeases leases, IFixtureExecuto
             {
                 ObservationArchiveException archiveFailure => archiveFailure.Message,
                 TraversalArchiveException archiveFailure => archiveFailure.Message,
-                BrowserOperationException progressFailure when progressFailure.Code.StartsWith("WORKER_PROGRESS_", StringComparison.Ordinal) => progressFailure.Code,
+                BrowserOperationException progressFailure when progressFailure.Code.StartsWith("WORKER_PROGRESS_", StringComparison.Ordinal)
+                    || progressFailure.Code.StartsWith("WORKER_OUTPUT_", StringComparison.Ordinal) => progressFailure.Code,
                 _ => null
             };
             error = exception is BrowserOperationException { Code: "WORKER_NATIVE_OWNERSHIP_UNCONFIRMED" }

@@ -44,8 +44,20 @@ public sealed partial class IsolatedFixtureExecutor : IFixtureExecutor
         try { intent = await _journal.BeginAsync(job with { RecordObservation = false, TraversalRoute = 0 }, _runtime, _image, token); }
         catch (Exception) { throw new BrowserOperationException("WORKER_NATIVE_OWNERSHIP_UNCONFIRMED"); }
         var name = intent.ContainerName;
+        RecordedOutputJournal? output = null;
         try
         {
+            if (job.RecordObservation && worker is { } recordingProducer && authorize is not null)
+            {
+                if (!await authorize(token).ConfigureAwait(false)) throw new BrowserOperationException("WORKER_OUTPUT_AUTHORITY_UNCONFIRMED");
+                try
+                {
+                    output = await RecordedOutputJournal.BeginAsync(Path.Combine(Path.GetDirectoryName(_journal.IntentsDirectory)!, "recorded-output"),
+                        intent, job, recordingProducer, token).ConfigureAwait(false);
+                }
+                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+                { throw new BrowserOperationException("WORKER_OUTPUT_WRITE_UNCONFIRMED"); }
+            }
             FixtureProgressExchange? progress = null;
             if (job.TraversalRoute > 0 && worker is { } producer && authorize is not null)
             {
@@ -66,6 +78,12 @@ public sealed partial class IsolatedFixtureExecutor : IFixtureExecutor
             }
             else if (job.RecordObservation) PassiveRecordingBundle.Decode(result.Bytes, job);
             else ObservationStore.Validate(result.Bytes, job);
+            if (output is not null)
+            {
+                try { await output.SealAsync(result.Bytes, authorize!, token).ConfigureAwait(false); }
+                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+                { throw new BrowserOperationException("WORKER_OUTPUT_WRITE_UNCONFIRMED"); }
+            }
             return result.Bytes;
         }
         finally
@@ -74,6 +92,12 @@ public sealed partial class IsolatedFixtureExecutor : IFixtureExecutor
             if (!await RemoveOwnedAsync(intent)) throw new BrowserOperationException("WORKER_CONTAINER_CLEANUP_UNCONFIRMED");
             try { await _journal.RecordRemovalAsync(intent, false, CancellationToken.None); }
             catch (Exception) { throw new BrowserOperationException("WORKER_NATIVE_OWNERSHIP_UNCONFIRMED"); }
+            if (output is not null)
+            {
+                try { await output.AcknowledgeRemovalAsync(_journal, CancellationToken.None).ConfigureAwait(false); }
+                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+                { throw new BrowserOperationException("WORKER_OUTPUT_REMOVAL_WRITE_UNCONFIRMED"); }
+            }
         }
     }
 

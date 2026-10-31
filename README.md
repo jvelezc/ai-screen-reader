@@ -8,6 +8,13 @@ Privensic Screen Reader now [checks assessment claims against admitted originals
 
 **Active work: the original evidence-backed workflow.** Bounded authored traversal, immutable attempt receipts, an observation graph and linked local reports are implemented. Run `--traversal` below. See [original milestone status and the next acceptance gate](docs/development-status.md). Public MCP hosting and plugin publication are deferred.
 
+[Complete recording-output staging](docs/decisions/0067-recorded-output-staging.md)
+now preserves validated original bundles under their admitted producer before
+native cleanup. Output sealing, actual cleanup acknowledgement and database
+publication remain separate. [Validation](docs/validation/recorded-output-staging-v1.md)
+tracks local, CI and deployment gates; protected reconstruction and interrupted
+live-media recovery are the next implementation steps.
+
 For a working local MCP prototype with approved public HTTPS reading, isolated link navigation and Claude configuration, see [Use HeadlessScreenReader with Claude](docs/prototype/claude.md). Public browsing requires a running Linux Podman or Docker engine; the trusted fixture connection also runs directly on Windows.
 
 The optional [Claude instructions](docs/prototype/copy-to-claude.md) describe the existing local integration; client setup is deferred while the original workflow milestones progress.

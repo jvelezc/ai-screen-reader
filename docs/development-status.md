@@ -2,24 +2,29 @@
 
 Updated October 30, 2026. The original proposal under `outputs/` remains unchanged. This status document tracks implementation against its acceptance gates.
 
-**Current core increment: retained checkpoint graphs and full exports.** HTTP
-1.11.0 and private `scan_progress_graph` / `scan_checkpoint` reconstruct the
-original attempt's observation nodes and intended/observed command edges. Full
-checkpoint semantics and events are retrieved in bounded byte pages with
-distinct source/export hashes. Every read rechecks original-user scope and the
-actual producer; uncertain input stays unknown. No replay, completion, media or
-overall goal authority is introduced. [Contract0066](decisions/0066-retained-checkpoint-graph-reads.md)
-and [validation](validation/retained-checkpoint-graph-v1.md) separate local, CI,
-deployment and original-account gates. No migration or privilege change is needed.
-**Next:** consume full graph/checkpoint reads through the existing Edge/notebook,
-then recover interrupted original media and complete failure acceptance.
+**Current core increment: complete recording-output staging.** Actual leased
+recordings retain their exact validated bundle in a private host journal before
+native cleanup. Immutable header/seal/readback binds the original job, worker
+and native owner; a separate acknowledgement copies the matching actual native
+removal journal. Source, archive publication, native cleanup and database completion
+remain separate. [Decision0067](decisions/0067-recorded-output-staging.md) and
+[validation](validation/recorded-output-staging-v1.md) track local2,606 tests,
+CI/native execution and exact deployment separately. Public API1.11 and sixteen
+private MCP tools remain unchanged. **Next:** protected staged-media reconstruction
+and publication reconciliation under the original attempt, then partial live-media
+recovery and actual storage/disk failure acceptance. Automatic restart stays disabled.
 
-The separate Lovable consumer implements compact progress through the existing
-Supabase Edge gateway. Its report panel exposes original attempt identity,
-saved phase/counts and unknown input without authorizing replay. Consumer CI,
-Edge source matching and original-account acceptance are tracked in its
-[validation record](https://github.com/jvelezc/ai-screen-reader-ui/blob/main/docs/validation/retained-progress-v1.md)
-and the architecture Page; this does not recover interrupted originals.
+**Full retained-path consumer accepted:** UI5972663 → existing Edge v8 → core1.11.
+[UI CI41170494893](https://github.com/jvelezc/ai-screen-reader-ui/actions/runs/41170494893)
+passes570 tests on both Windows and Linux. All three deployed Edge files match
+committed source. The original application account retrieves actual nodes/edges
+and a complete59,331-byte checkpoint with an independently matching export hash;
+saved sign-in restores after actual reload. Canonical checkpoint exports, raw
+journal entries, original video and actual AT speech stay distinct. Missing
+results remain unknown and no replay is authorized. The
+[consumer receipt](https://github.com/jvelezc/ai-screen-reader-ui/blob/5972663c3757412ec98b659e9b7102352778d04e/docs/validation/retained-path-v1.md)
+separates original-account delivery, synthetic responsive captures and scoped
+design review. This earlier acceptance does not validate new recording staging.
 
 **Recorded-claim verification accepted:** [contract 1.9.0](decisions/0062-recorded-evidence-claims.md)
 adds admitted-source assessment through HTTP/private MCP. Complete originals and

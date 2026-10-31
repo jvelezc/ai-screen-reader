@@ -11,7 +11,7 @@ $created=$false; $built=$false; $removed=$false; $imageRemoved=$false; $ready=$f
 $cases=[Collections.Generic.List[string]]::new()
 $releaseCreated=$false
 $script:executed=0; $script:failed=0
-$expected=if($IsLinux){53}else{51}; $linuxSignalPerformed=$false
+$expected=if($IsLinux){57}else{55}; $linuxSignalPerformed=$false
 $crashStarted=$false; $crashEvidence=$null
 $recoveryResources=[Collections.Generic.List[string]]::new()
 $names=@('POSTGRES_PASSWORD','HSR_WORKER_DATABASE','HSR_WORKER_IMAGE','HSR_WORKER_EVIDENCE','HSR_WORKER_RUNTIME','HSR_WORKER_SECCOMP',
@@ -249,6 +249,31 @@ try {
     Assert-Proof ($keyboardVideo[0] -eq 0x1a -and $keyboardFrames[0] -eq 0x50 -and $keyboardData.DecodedVideoFrames -gt 0 -and $keyboardData.SourceFiles.Count -gt 0 -and $keyboardData.VideoFrames.Count -eq $keyboardData.DecodedVideoFrames -and $keyboardData.ClockSamples.Count -eq 14 -and $keyboardData.Alignment.RunId -eq $keyboardData.Receipt.RunId -and $keyboardData.Alignment.Calibrated -and $keyboardData.Alignment.UncertaintyMilliseconds -le 250 -and $keyboardData.SourcePresentationOrder.Count -eq $keyboardData.SourceFrames.Count -and $keyboardData.Capture.Phase -ceq 'Closed' -and @($keyboardData.Capture.Events|Where-Object Phase -CEQ 'Excluded').Count -gt 0) 'KeyboardRecordingRetainsOriginalFramesMeasuredTimingAndClosedCapture'
     $remaining=Invoke-ReaderRuntime $Runtime @('ps','--all','--filter','name=^hsr-observation-','--format','{{.ID}}')
     Assert-Proof ([string]::IsNullOrWhiteSpace($remaining.Text)) 'KeyboardContainerAbsentBeforeCompletion'
+    $stage='recorded-output'
+    $outputScope=Join-Path $env:HSR_WORKER_EVIDENCE ".runtime/recorded-output/$(([Guid]$org).ToString('N'))-$(([Guid]$keyboardJob.job_id).ToString('N'))-1"
+    $outputHeaderPath=Join-Path $outputScope 'start.json'; $outputHeader=Get-Content $outputHeaderPath -Raw|ConvertFrom-Json
+    $outputSeal=Get-Content (Join-Path $outputScope 'seal.json') -Raw|ConvertFrom-Json
+    $outputBundlePath=Join-Path $outputScope 'bundle.bin'
+    Assert-Proof ($outputHeader.Schema -ceq 'hsr-worker-recorded-output-v1' -and $outputHeader.Job.OrganizationId -eq $org -and $outputHeader.Job.ScanId -eq $keyboardJob.scan_id -and $outputHeader.Job.JobId -eq $keyboardJob.job_id -and $outputHeader.Job.Generation -eq 1 -and $outputHeader.Job.RecordObservation -and $outputHeader.Job.TraversalRoute -eq 1 -and $outputHeader.WorkerId -eq $keyboardFacts.actual_worker -and $outputSeal.HeaderSha256 -ceq (Get-FileHash $outputHeaderPath -Algorithm SHA256).Hash.ToLowerInvariant() -and $outputSeal.BundleSha256 -ceq (Get-FileHash $outputBundlePath -Algorithm SHA256).Hash.ToLowerInvariant() -and $outputSeal.Bytes -eq (Get-Item $outputBundlePath).Length -and $outputSeal.Bytes -le 25*1024*1024) 'SealedRecordedOutputBindsActualProducerAndOriginalBytes'
+    $outputZip=[IO.Compression.ZipFile]::OpenRead($outputBundlePath)
+    try {
+        $outputNames=@('observation.json','original.webm','traversal.json','source-frames.zip')
+        $sameOutput=$outputZip.Entries.Count -eq 4 -and @($outputZip.Entries.FullName|Where-Object {$_ -notin $outputNames}).Count -eq 0
+        foreach($outputName in $outputNames){
+            $outputEntry=$outputZip.GetEntry($outputName)
+            if($null -eq $outputEntry){$sameOutput=$false;break}
+            $inputFile=$outputEntry.Open(); $outputBuffer=[IO.MemoryStream]::new()
+            try {$inputFile.CopyTo($outputBuffer);$retainedBytes=$outputBuffer.ToArray()} finally {$inputFile.Dispose();$outputBuffer.Dispose()}
+            $publishedBytes=Read-KeyboardOriginal ($keyboardIndex.Files|Where-Object Path -CEQ $outputName)
+            $sameOutput=$sameOutput -and [Linq.Enumerable]::SequenceEqual[byte]($retainedBytes,$publishedBytes)
+        }
+        Assert-Proof $sameOutput 'StagedRecordingAllFourFilesMatchPublishedOriginals'
+    } finally {$outputZip.Dispose()}
+    $outputRemoval=Get-Content (Join-Path $outputScope 'native-removal.json') -Raw|ConvertFrom-Json
+    $outputOwner=([Guid]$outputHeader.Native.Owner).ToString('N')
+    $nativeRemoval=Get-Content (Join-Path $env:HSR_WORKER_EVIDENCE ".runtime/removals/$outputOwner.json") -Raw|ConvertFrom-Json
+    $outputAbsent=Invoke-ReaderRuntime $Runtime @('ps','--all','--filter',"name=^hsr-observation-$outputOwner`$",'--format','{{.ID}}')
+    Assert-Proof ($outputRemoval.Schema -ceq 'hsr-worker-recorded-output-v1' -and $outputRemoval.HeaderSha256 -ceq $outputSeal.HeaderSha256 -and $outputRemoval.Removal.ContainerAbsenceConfirmed -and $nativeRemoval.ContainerAbsenceConfirmed -and $outputRemoval.Removal.Intent.Owner -eq $outputHeader.Native.Owner -and $nativeRemoval.Intent.Owner -eq $outputHeader.Native.Owner -and $nativeRemoval.Intent.Job.JobId -eq $keyboardJob.job_id -and [string]::IsNullOrWhiteSpace($outputAbsent.Text)) 'RecordedOutputRemovalAcknowledgementMatchesIndependentOwnedAbsence'
     $stage='command-progress'
     $output=@(& dotnet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --inspect-command-progress $org $keyboardJob.job_id 1 2>&1)
     $progressExit=$LASTEXITCODE; $progressSummary=($output -join "`n") | ConvertFrom-Json
@@ -311,6 +336,9 @@ try {
         $crashOwner=([Guid]$header.Native.Owner).ToString('N'); $crashName="hsr-observation-$crashOwner"
         $crashIntent=Join-Path $crashEvidence ".runtime/intents/$crashOwner.json"
         $crashedFacts=(Invoke-ProofSql "select json_build_object('state',j.state,'worker',(select worker_id from hsr.job_attempts where job_id=j.id),'attempts',(select count(*) from hsr.job_attempts where job_id=j.id),'archive',j.archive_index_sha256) from hsr.scan_jobs j where j.id='$($crashJob.job_id)'" ) | ConvertFrom-Json
+        $crashOutputScope=Join-Path $crashEvidence ".runtime/recorded-output/$(([Guid]$org).ToString('N'))-$(([Guid]$crashJob.job_id).ToString('N'))-1"
+        $crashOutputHeader=Get-Content (Join-Path $crashOutputScope 'start.json') -Raw|ConvertFrom-Json
+        Assert-Proof ($crashOutputHeader.Native.Owner -eq $header.Native.Owner -and $crashOutputHeader.WorkerId -eq $crashedFacts.worker -and -not (Test-Path (Join-Path $crashOutputScope 'seal.json')) -and -not (Test-Path (Join-Path $crashOutputScope 'native-removal.json'))) 'InterruptedChildCannotInventASealedCompleteRecordingOrNativeRemoval'
         Assert-Proof ($process.ExitCode -ne 0 -and $crashedFacts.state -ceq 'leased' -and $crashedFacts.attempts -eq 1 -and $null -eq $crashedFacts.archive -and $header.WorkerId -eq $crashedFacts.worker -and $recordedInput.Message.Checkpoint.Attempt.Step.BrowserKeystrokes -gt 0 -and (Test-Path $crashIntent)) 'NativeCrashAfterRecordedInputRetainsUncertainProgressAndOwnedIntent'
     } finally {
         if($crashStarted -and -not $process.HasExited){$process.Kill();$null=$process.WaitForExit(5000)}
