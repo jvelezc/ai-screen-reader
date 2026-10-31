@@ -1,8 +1,18 @@
 # Original development goals and next step
 
-Updated October 30, 2026. The original proposal under `outputs/` remains unchanged. This status document tracks implementation against its acceptance gates.
+Updated October 31, 2026. The original proposal under `outputs/` remains unchanged. This status document tracks implementation against its acceptance gates.
 
-**Current core increment: protected retained-recording output reads.** HTTP1.12
+**Current core increment: restart-time recording cleanup acknowledgement repair.**
+The worker reconciles saved output against matching durable native-removal
+records, including owners whose intent was already retired. An exact completed
+pending copy can finish its rename; corrupt or foreign records remain unresolved.
+Recovery does not execute input, seal partial media or publish/complete a job.
+[Decision0069](decisions/0069-recording-removal-recovery.md) and
+[validation](validation/recording-removal-recovery-v1.md) separate its local,
+CI and deployment gates. **Next:** finish delivery, then original-attempt
+publication reconciliation and partial live-media/storage/disk-failure recovery.
+
+**Protected retained-recording reads accepted.** HTTP1.12
 and eighteen private MCP tools expose complete original child-output manifests
 and64KiB byte pages. Current original-user scope and actual producer are checked
 before and after storage, including failures. Missing, incomplete and cleanup-
@@ -10,10 +20,12 @@ unconfirmed output stay explicit; native wrappers are excluded and retention
 never becomes completion, publication, replay or an overall verified goal.
 [Decision0068](decisions/0068-retained-recording-output-reads.md) and
 [separate delivery evidence](validation/retained-recording-output-v1.md) track
-focused104 and full Windows2,657 passing tests, strict build/format, CI,
-deployment and later consumer
-acceptance. **Next:** complete those gates, then original-attempt publication
-reconciliation and partial live-media/storage/disk-failure recovery.
+focused104 and full Windows2,657 passing tests, strict build/format, all nine
+green CI jobs,2,657 tests per OS,57 native and289 database requirements, and
+exact151-file private delivery at25fdf07. UI f7c1127 / existing Edge v9 passes621
+tests per OS. The original application account saves a765,454-byte controlled-
+fixture ZIP matching the independent VPS stage and retains the account/descriptor
+after actual reload. This does not publish retained output or complete a job.
 
 **Complete recording-output staging accepted.** Actual leased
 recordings retain their exact validated bundle in a private host journal before

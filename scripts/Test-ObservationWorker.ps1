@@ -11,7 +11,7 @@ $created=$false; $built=$false; $removed=$false; $imageRemoved=$false; $ready=$f
 $cases=[Collections.Generic.List[string]]::new()
 $releaseCreated=$false
 $script:executed=0; $script:failed=0
-$expected=if($IsLinux){57}else{55}; $linuxSignalPerformed=$false
+$expected=if($IsLinux){61}else{59}; $linuxSignalPerformed=$false
 $crashStarted=$false; $crashEvidence=$null
 $recoveryResources=[Collections.Generic.List[string]]::new()
 $names=@('POSTGRES_PASSWORD','HSR_WORKER_DATABASE','HSR_WORKER_IMAGE','HSR_WORKER_EVIDENCE','HSR_WORKER_RUNTIME','HSR_WORKER_SECCOMP',
@@ -274,6 +274,29 @@ try {
     $nativeRemoval=Get-Content (Join-Path $env:HSR_WORKER_EVIDENCE ".runtime/removals/$outputOwner.json") -Raw|ConvertFrom-Json
     $outputAbsent=Invoke-ReaderRuntime $Runtime @('ps','--all','--filter',"name=^hsr-observation-$outputOwner`$",'--format','{{.ID}}')
     Assert-Proof ($outputRemoval.Schema -ceq 'hsr-worker-recorded-output-v1' -and $outputRemoval.HeaderSha256 -ceq $outputSeal.HeaderSha256 -and $outputRemoval.Removal.ContainerAbsenceConfirmed -and $nativeRemoval.ContainerAbsenceConfirmed -and $outputRemoval.Removal.Intent.Owner -eq $outputHeader.Native.Owner -and $nativeRemoval.Intent.Owner -eq $outputHeader.Native.Owner -and $nativeRemoval.Intent.Job.JobId -eq $keyboardJob.job_id -and [string]::IsNullOrWhiteSpace($outputAbsent.Text)) 'RecordedOutputRemovalAcknowledgementMatchesIndependentOwnedAbsence'
+    # Deliberately reproduce the durable retired-intent/copy gap, not a claimed process crash.
+    # Keep the exact original acknowledgement outside the stage, without modifying originals.
+    $outputAck=Join-Path $outputScope 'native-removal.json'; $heldAck=Join-Path $folder 'held-output-removal.json'
+    foreach($ownedPath in @($outputAck,$heldAck)){
+        if(-not [IO.Path]::GetFullPath($ownedPath).StartsWith([IO.Path]::GetFullPath($repoRoot)+[IO.Path]::DirectorySeparatorChar,[StringComparison]::Ordinal)){throw 'WORKER_PROOF_MOVE_SCOPE_INVALID'}
+    }
+    $beforeOutput=@('start.json','bundle.bin','seal.json'|ForEach-Object {$_+':'+(Get-FileHash -LiteralPath (Join-Path $outputScope $_) -Algorithm SHA256).Hash})
+    $originalAckHash=(Get-FileHash -LiteralPath $outputAck -Algorithm SHA256).Hash
+    Move-Item -LiteralPath $outputAck -Destination $heldAck
+    $savedRepairDatabase=$env:HSR_WORKER_DATABASE; $env:HSR_WORKER_DATABASE=$null
+    try {
+        $repairOutput=@(& dotnet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --recover 2>&1)
+        $repairExit=$LASTEXITCODE; $repairResult=($repairOutput -join "`n")|ConvertFrom-Json
+        Assert-Proof ($repairExit -eq 0 -and $repairResult.State -ceq 'Recovered' -and $repairResult.Recovered -eq 0 -and (Get-FileHash -LiteralPath $outputAck -Algorithm SHA256).Hash -ceq $originalAckHash -and -not (Test-Path (Join-Path $env:HSR_WORKER_EVIDENCE ".runtime/intents/$outputOwner.json"))) 'RetiredIntentRecordingRepairCopiesActualRemovalWithoutDatabaseOrReplay'
+        $repairOutput=@(& dotnet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --recover 2>&1)
+        $repairExit=$LASTEXITCODE
+        $afterOutput=@('start.json','bundle.bin','seal.json'|ForEach-Object {$_+':'+(Get-FileHash -LiteralPath (Join-Path $outputScope $_) -Algorithm SHA256).Hash})
+        Assert-Proof ($repairExit -eq 0 -and ($beforeOutput -join "`n") -ceq ($afterOutput -join "`n") -and (Get-FileHash -LiteralPath $outputAck -Algorithm SHA256).Hash -ceq $originalAckHash -and -not (Test-Path ($outputAck+'.pending'))) 'RecordingRemovalRepairIsIdempotentAndPreservesAllOriginalBytes'
+        Move-Item -LiteralPath $outputAck -Destination ($outputAck+'.pending')
+        $repairOutput=@(& dotnet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --recover 2>&1)
+        $repairExit=$LASTEXITCODE
+        Assert-Proof ($repairExit -eq 0 -and (Get-FileHash -LiteralPath $outputAck -Algorithm SHA256).Hash -ceq $originalAckHash -and -not (Test-Path ($outputAck+'.pending'))) 'ExactPendingRemovalCopyResumesWithoutReplacingOriginalOutput'
+    } finally {$env:HSR_WORKER_DATABASE=$savedRepairDatabase}
     $stage='command-progress'
     $output=@(& dotnet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --inspect-command-progress $org $keyboardJob.job_id 1 2>&1)
     $progressExit=$LASTEXITCODE; $progressSummary=($output -join "`n") | ConvertFrom-Json
@@ -352,6 +375,9 @@ try {
     $afterProgress=@(Get-ChildItem -LiteralPath $crashScope -File | Sort-Object Name | ForEach-Object {$_.Name+':'+(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash})
     $recoveredFacts=(Invoke-ProofSql "select json_build_object('state',j.state,'generation',j.generation,'attempts',(select count(*) from hsr.job_attempts where job_id=j.id),'archive',j.archive_index_sha256) from hsr.scan_jobs j where j.id='$($crashJob.job_id)'" ) | ConvertFrom-Json
     Assert-Proof ($restartExit -eq 3 -and $restartResult.State -ceq 'Blocked' -and $restartResult.JobId -eq $crashJob.job_id -and $restartResult.ErrorCode -ceq 'WORKER_INPUT_OUTCOME_UNCONFIRMED' -and $recoveredFacts.generation -eq 1 -and $recoveredFacts.attempts -eq 1 -and $null -eq $recoveredFacts.archive -and [string]::IsNullOrWhiteSpace($crashGone.Text) -and -not (Test-Path $crashIntent) -and ($beforeProgress -join "`n") -ceq ($afterProgress -join "`n")) 'NativeRestartPreservesCommandPrefixWithoutReplayingCrashedAttempt'
+    $recoveredOutputRemoval=Get-Content (Join-Path $crashOutputScope 'native-removal.json') -Raw|ConvertFrom-Json
+    $recoveredNativeRemoval=Get-Content (Join-Path $crashEvidence ".runtime/removals/$crashOwner.json") -Raw|ConvertFrom-Json
+    Assert-Proof ($recoveredOutputRemoval.HeaderSha256 -ceq (Get-FileHash -LiteralPath (Join-Path $crashOutputScope 'start.json') -Algorithm SHA256).Hash.ToLowerInvariant() -and $recoveredOutputRemoval.Removal.Intent.Owner -eq $crashOutputHeader.Native.Owner -and $recoveredOutputRemoval.Removal.ContainerAbsenceConfirmed -and $recoveredOutputRemoval.Removal.RecoveredAfterRestart -and $recoveredNativeRemoval.Intent.Owner -eq $crashOutputHeader.Native.Owner -and $recoveredNativeRemoval.ContainerAbsenceConfirmed -and -not (Test-Path (Join-Path $crashOutputScope 'seal.json')) -and -not (Test-Path (Join-Path $crashOutputScope 'bundle.bin'))) 'ActualCrashedChildCleanupCanBeAcknowledgedWithoutInventingCompleteMedia'
     $capacityRequest=[Guid]::NewGuid()
     $admission=Invoke-ProofSql "begin; set local role authenticated; select set_config('request.jwt.claim.sub','$user',true); select row_to_json(r) from hsr.create_scan('$org','$capacityRequest') r; commit;"
     $capacityJob=($admission -split "`n" | Where-Object {$_ -match '^\{'}) | ConvertFrom-Json

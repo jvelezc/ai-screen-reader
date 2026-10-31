@@ -1,6 +1,6 @@
 # Remaining product completion gates
 
-October 30, 2026. Product: Privensic Screen Reader. This is the ordered remainder
+October 31, 2026. Product: Privensic Screen Reader. This is the ordered remainder
 of the original plan, not a claim that all milestones are complete. The original
 proposal under `outputs/` is unchanged. Read [current delivery evidence](validation/recorded-evidence-claims-v1.md)
 for the accepted recorded-claim slice and its controlled-fixture limits.
@@ -78,10 +78,17 @@ reported: all nine CI jobs,2,606 tests per OS,57 native requirements and exact
 151-file private deployment pass. [Protected retained-output reads](decisions/0068-retained-recording-output-reads.md)
 now implement manifest and bounded whole-ZIP export through HTTP1.12/private MCP;
 their [validation gates](validation/retained-recording-output-v1.md) remain
-separate. Missing, incomplete and cleanup-unconfirmed media cannot be exported.
-**Next:** exact private delivery and original-account consumer acceptance, then
-publication reconciliation under the original attempt, restart-time cleanup
-acknowledgement repair, partial media recovery and the failure injections below.
+separate. Core25fdf07 passes2,657 tests per OS,57 actual native requirements,
+289 database requirements and exact151-file private delivery. UI f7c1127 through
+existing Edge v9 passes621 tests per OS; the original application account saves
+a765,454-byte ZIP matching the independent private original, and sign-in plus
+the same descriptor survive reload. Missing, incomplete and cleanup-unconfirmed
+media cannot be exported.
+[Restart-time cleanup acknowledgement repair](decisions/0069-recording-removal-recovery.md)
+is the current implementation increment; its [validation record](validation/recording-removal-recovery-v1.md)
+separates local, CI and deployment checks.
+**Next:** finish that delivery, then publication reconciliation under the original
+attempt, partial media recovery and the failure injections below.
 Automatic worker restart stays disabled.
 
 Exercise the actual Linux worker under crash after input, upload before metadata

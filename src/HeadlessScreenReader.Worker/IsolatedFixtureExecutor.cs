@@ -210,6 +210,9 @@ public sealed partial class IsolatedFixtureExecutor : IFixtureExecutor
             if (!await RemoveOwnedAsync(intent)) throw new BrowserOperationException("WORKER_CONTAINER_CLEANUP_UNCONFIRMED");
             await _journal.RecordRemovalAsync(intent, true, CancellationToken.None);
         }
+        using var repair = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        await RecordedOutputJournal.RecoverRemovalsAsync(Path.Combine(Path.GetDirectoryName(_journal.IntentsDirectory)!, "recorded-output"),
+            _journal, repair.Token).ConfigureAwait(false);
         return intents.Count;
     }
 

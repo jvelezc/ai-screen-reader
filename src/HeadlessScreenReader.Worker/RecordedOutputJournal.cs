@@ -6,6 +6,11 @@ namespace HeadlessScreenReader.Worker;
 public sealed record RecordedOutputHeader(string Schema, NativeOwnership Native, FixtureJob Job, Guid WorkerId);
 public sealed record RecordedOutputSeal(string Schema, string HeaderSha256, int Bytes, string BundleSha256);
 public sealed record RecordedOutputRemoval(string Schema, string HeaderSha256, NativeRemoval Removal);
+public sealed record RecordedOutputRecovery(int Examined, int Repaired, int AlreadyAcknowledged, int AwaitingRemoval)
+{
+    public bool IsCompletionReceipt => false;
+    public bool CanReplay => false;
+}
 public sealed record RecordedOutputSnapshot(RecordedOutputHeader Header, RecordedOutputSeal Seal, byte[] Bundle,
     NativeRemoval? NativeRemoval)
 {
@@ -54,12 +59,59 @@ public sealed class RecordedOutputJournal
     /// <summary>Copy the actual ownership journal's recorded removal, never a caller-supplied success flag.</summary>
     public async Task AcknowledgeRemovalAsync(OwnershipJournal journal, CancellationToken token)
     {
-        Require(ReadHeader(_directory) == _header);
+        token.ThrowIfCancellationRequested(); ValidateInventory(_directory);
+        Require(ReadHeader(_directory) == _header && TraversalArchive.Hash(ReadBytes(_directory, "start.json", 8192)) == _headerHash);
         var bytes = ReadBytes(journal.RemovalsDirectory, _header.Native.Owner.ToString("N") + ".json", 8192);
         var removal = Decode<NativeRemoval>(bytes);
         Require(removal.Schema == "hsr-native-removal-v1" && removal.Intent == _header.Native && removal.ContainerAbsenceConfirmed);
         var marker = new RecordedOutputRemoval(Schema, _headerHash, removal);
-        await WriteNewAsync(_directory, "native-removal.json", JsonSerializer.SerializeToUtf8Bytes(marker, ReaderWorkerWire.Json), token).ConfigureAwait(false);
+        var expected = JsonSerializer.SerializeToUtf8Bytes(marker, ReaderWorkerWire.Json);
+        var destination = Path.Combine(_directory, "native-removal.json");
+        var pending = destination + ".pending";
+        if (Path.Exists(pending)) Require(ReadBytes(_directory, "native-removal.json.pending", 8192).AsSpan().SequenceEqual(expected));
+        if (Path.Exists(destination)) Require(ReadBytes(_directory, "native-removal.json", 8192).AsSpan().SequenceEqual(expected));
+        else if (Path.Exists(pending))
+        {
+            token.ThrowIfCancellationRequested(); File.Move(pending, destination, overwrite: false);
+            Require(ReadBytes(_directory, "native-removal.json", 8192).AsSpan().SequenceEqual(expected));
+        }
+        else await WriteNewAsync(_directory, "native-removal.json", expected, token).ConfigureAwait(false);
+        token.ThrowIfCancellationRequested();
+        Require(ReadHeader(_directory) == _header && TraversalArchive.Hash(ReadBytes(_directory, "start.json", 8192)) == _headerHash);
+    }
+
+    /// <summary>Repair historical cleanup acknowledgements, including retired intents. Does not seal, publish or execute work.</summary>
+    public static async Task<RecordedOutputRecovery> RecoverRemovalsAsync(string root, OwnershipJournal journal, CancellationToken token)
+    {
+        token.ThrowIfCancellationRequested(); root = Path.GetFullPath(root);
+        try { Regular(root, true); }
+        catch (DirectoryNotFoundException) { return new(0, 0, 0, 0); }
+        catch (FileNotFoundException) { return new(0, 0, 0, 0); }
+        Regular(journal.RemovalsDirectory, true);
+        var examined = 0; var repaired = 0; var acknowledged = 0; var awaiting = 0;
+        // Stream bounded per-attempt metadata; never load recording payloads during startup.
+        foreach (var directory in Directory.EnumerateFileSystemEntries(root))
+        {
+            token.ThrowIfCancellationRequested(); Regular(directory, true); ValidateInventory(directory);
+            var header = ReadHeader(directory);
+            Require(Path.GetFileName(directory) == Path.GetFileName(DirectoryFor(root, header.Job)));
+            examined++;
+            var removalPath = Path.Combine(journal.RemovalsDirectory, header.Native.Owner.ToString("N") + ".json");
+            var found = true;
+            try { Regular(removalPath); }
+            catch (FileNotFoundException) { found = false; }
+            if (!found)
+            {
+                Require(!Path.Exists(Path.Combine(directory, "native-removal.json"))
+                    && !Path.Exists(Path.Combine(directory, "native-removal.json.pending")));
+                awaiting++; continue;
+            }
+            var existed = Path.Exists(Path.Combine(directory, "native-removal.json"));
+            var output = new RecordedOutputJournal(directory, header, TraversalArchive.Hash(ReadBytes(directory, "start.json", 8192)));
+            await output.AcknowledgeRemovalAsync(journal, token).ConfigureAwait(false);
+            if (existed) acknowledged++; else repaired++;
+        }
+        token.ThrowIfCancellationRequested(); return new(examined, repaired, acknowledged, awaiting);
     }
 
     /// <summary>Operator-private exact-attempt read. Consumers additionally need current caller/producer checks before and after storage.</summary>
@@ -67,17 +119,7 @@ public sealed class RecordedOutputJournal
     {
         expected.Validate(); Require(expected.RecordObservation && worker != Guid.Empty);
         token.ThrowIfCancellationRequested(); root = Path.GetFullPath(root); Regular(root, true);
-        var directory = DirectoryFor(root, expected); Regular(directory, true);
-        string[] permitted = ["start.json", "bundle.bin", "seal.json", "native-removal.json"];
-        var files = Directory.EnumerateFileSystemEntries(directory).Take(9).ToArray();
-        Require(files.Length <= 8);
-        foreach (var file in files)
-        {
-            var name = Path.GetFileName(file);
-            Require(permitted.Contains(name) || name.EndsWith(".pending", StringComparison.Ordinal) && permitted.Contains(name[..^8]));
-            Regular(file);
-            Require(new FileInfo(file).Length <= (name.StartsWith("bundle.bin", StringComparison.Ordinal) ? PassiveObservationRecording.MaximumBundleBytes : 8192));
-        }
+        var directory = DirectoryFor(root, expected); Regular(directory, true); ValidateInventory(directory);
         var headerBytes = ReadBytes(directory, "start.json", 8192); var header = Decode<RecordedOutputHeader>(headerBytes); Validate(header);
         Require(header.Job == expected && header.WorkerId == worker);
         if (!File.Exists(Path.Combine(directory, "seal.json"))) throw new BrowserOperationException("WORKER_OUTPUT_NOT_SEALED");
@@ -96,6 +138,20 @@ public sealed class RecordedOutputJournal
             removal = marker.Removal;
         }
         token.ThrowIfCancellationRequested(); return new(header, seal, bundle, removal);
+    }
+
+    private static void ValidateInventory(string directory)
+    {
+        string[] permitted = ["start.json", "bundle.bin", "seal.json", "native-removal.json"];
+        var files = Directory.EnumerateFileSystemEntries(directory).Take(9).ToArray();
+        Require(files.Length <= 8);
+        foreach (var file in files)
+        {
+            var name = Path.GetFileName(file);
+            Require(permitted.Contains(name) || name.EndsWith(".pending", StringComparison.Ordinal) && permitted.Contains(name[..^8]));
+            Regular(file);
+            Require(new FileInfo(file).Length <= (name.StartsWith("bundle.bin", StringComparison.Ordinal) ? PassiveObservationRecording.MaximumBundleBytes : 8192));
+        }
     }
 
     private static void Validate(RecordedOutputHeader header)
