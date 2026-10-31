@@ -40,12 +40,17 @@ engine reason. Preserve that attempt, identify its actual cause and safe error,
 then verify a distinct bounded recording. Remaining
 fault/provider/website/intervention gates stay separate.
 
-**Scoped recording-failure diagnostics are implemented.** The framed child now
+**Scoped recording-failure diagnostics are accepted at1200190.** The framed child
 preserves only a closed reason and exact original stream scope; the host grants no
 acknowledgement/completion. Unknown errors stay unconfirmed. Original native
-cleanup and caller-stop priority remain. The focused set passes153, full Windows2,983
-and disposable database450; hosted migration/body hash/grants match. CI, exact delivery
-and fresh hosted diagnosis remain open. [Validation](validation/recording-failure-diagnostics-v1.md).
+cleanup and caller-stop priority remain. All nine CI jobs pass2,983 per OS/native71/
+database450/operations172; exact151-file delivery, TLS/private guards and hosted
+migration/body hash/grants match. A distinct normal original-account recording,
+without an observer, retains seven checkpoints/184 images but safely fails
+Unconfirmed with no result. The same worker remains healthy/native0. Collector-
+cause preservation through sanitized teardown passes81 focused and3,007 full
+Windows tests; CI/promotion and a new hosted diagnosis remain gates. No resource limit
+is increased and the failed attempts are preserved. [Validation](validation/recording-failure-diagnostics-v1.md).
 
 **Unfinished original-image retention accepted at65689fc.**
 Completed source JPEGs now transfer through a separately admitted, hash-bound

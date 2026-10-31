@@ -424,6 +424,32 @@ public sealed class RecordedSourceTests
     }
 
     [Fact]
+    public async Task ActualRecordingCollectorKeepsSafeExportCauseAfterSanitizedShutdownFailure()
+    {
+        using var files = new Files();
+        var probe = await ChromiumFixtureBrowser.LaunchTraversalRecordingAsync(Path.Combine(files.Root, "probe"));
+        try
+        {
+            Assert.Null(probe.CollectorFailureCode);
+            await Assert.ThrowsAsync<IOException>(() => probe.CopyCompletedSourcesAsync((_, _) =>
+                throw new IOException("private-path-and-payload")));
+            var error = await Assert.ThrowsAsync<BrowserOperationException>(async () => await probe.DisposeAsync());
+            Assert.Equal("CHROMIUM_COLLECTOR_STOP_UNCONFIRMED", error.Code);
+            Assert.Equal("WORKER_PROGRESS_MEDIA_EXPORT_UNCONFIRMED", probe.CollectorFailureCode);
+            Assert.Equal(BrowserShutdownPhase.Faulted, probe.ShutdownStatus.Phase);
+            Assert.Equal(0, probe.ShutdownStatus.ActiveCalls);
+            Assert.DoesNotContain("private-path-and-payload", JsonSerializer.Serialize(probe.ShutdownStatus), StringComparison.Ordinal);
+            await Assert.ThrowsAsync<BrowserOperationException>(async () => await probe.DisposeAsync());
+            Assert.Equal("WORKER_PROGRESS_MEDIA_EXPORT_UNCONFIRMED", probe.CollectorFailureCode);
+        }
+        finally
+        {
+            try { await probe.DisposeAsync(); }
+            catch (BrowserOperationException error) when (error.Code == "CHROMIUM_COLLECTOR_STOP_UNCONFIRMED") { }
+        }
+    }
+
+    [Fact]
     public async Task WrongSourceAcknowledgementStopsActualChildBeforeAnyCommandCheckpoint()
     {
         using var files = new Files(); var input = new Pipe(); var progress = new Pipe(); using var output = new MemoryStream();
@@ -440,7 +466,7 @@ public sealed class RecordedSourceTests
             await progress.Writer.CompleteAsync();
             var failureBytes = await ReaderWorkerWire.ReadAsync(progress.Reader.AsStream(), FixtureRecordingFailureProtocol.MaximumBytes, stop.Token);
             var failure = FixtureRecordingFailureProtocol.Read(Assert.IsType<byte[]>(failureBytes), files.Start, 0, 1);
-            Assert.Equal(FixtureRecordingFailureReason.Unconfirmed, failure.Reason);
+            Assert.Equal(FixtureRecordingFailureReason.SourceExportUnconfirmed, failure.Reason);
             Assert.Null(await ReaderWorkerWire.ReadAsync(progress.Reader.AsStream(), FixtureProgressProtocol.MaximumFrameBytes, stop.Token));
         }
         finally { await input.Writer.CompleteAsync(); await progress.Writer.CompleteAsync(); await child; }

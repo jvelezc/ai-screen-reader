@@ -14,6 +14,19 @@ public sealed class FixtureRecordingFailureTests
     private static FixtureRecordingFailure Failure(FixtureProgressStart start, int checkpoints = 3, int sources = 2) =>
         new(FixtureRecordingFailureProtocol.Schema, start.ExecutionId, checkpoints, sources, FixtureRecordingFailureReason.CaptureBudgetExceeded);
 
+    [Fact]
+    public void InternalCollectorCauseCannotBeSerializedIntoTraversalReports()
+    {
+        var result = new HeadlessScreenReader.Cli.RecordedTraversalResult(null,
+            new("FinalizeAndDecodeOriginalMedia", "CAPTURE_STOP_UNCONFIRMED", null, [], null, null), null)
+        { CollectorFailureCode = "CAPTURE_FRAME_LIMIT" };
+        var json = JsonSerializer.Serialize(result);
+        Assert.Contains("CAPTURE_STOP_UNCONFIRMED", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("CollectorFailureCode", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("CAPTURE_FRAME_LIMIT", json, StringComparison.Ordinal);
+        Assert.Null(result.Receipt); Assert.Null(result.Recording.Media); Assert.Null(result.Recording.Alignment);
+    }
+
     [Theory]
     [InlineData("CAPTURE_FRAME_LIMIT", FixtureRecordingFailureReason.CaptureBudgetExceeded)]
     [InlineData("CAPTURE_FRAME_INVALID", FixtureRecordingFailureReason.CaptureFrameInvalid)]
@@ -43,6 +56,59 @@ public sealed class FixtureRecordingFailureTests
         var publicCode = FixtureRecordingFailureProtocol.ErrorCode(reason);
         Assert.Matches("^[A-Z_]{3,64}$", publicCode); Assert.True(FixtureRecordingFailureProtocol.IsPublicCode(publicCode));
         Assert.False(FixtureRecordingFailureProtocol.IsPublicCode(publicCode + "_PRIVATE"));
+    }
+
+    [Theory]
+    [InlineData("CAPTURE_STOP_UNCONFIRMED", "CAPTURE_FRAME_LIMIT", FixtureRecordingFailureReason.CaptureBudgetExceeded)]
+    [InlineData("CAPTURE_STOP_UNCONFIRMED", "CAPTURE_FRAME_INVALID", FixtureRecordingFailureReason.CaptureFrameInvalid)]
+    [InlineData("CAPTURE_STOP_UNCONFIRMED", "CAPTURE_FRAME_WRITE_FAILED", FixtureRecordingFailureReason.CaptureWriteFailed)]
+    [InlineData("CAPTURE_STOP_UNCONFIRMED", "WORKER_PROGRESS_MEDIA_EXPORT_UNCONFIRMED", FixtureRecordingFailureReason.SourceExportUnconfirmed)]
+    [InlineData("CHROMIUM_COLLECTOR_STOP_UNCONFIRMED", "CAPTURE_FRAME_LIMIT", FixtureRecordingFailureReason.CaptureBudgetExceeded)]
+    [InlineData("CHROMIUM_COLLECTOR_STOP_UNCONFIRMED", "CAPTURE_FRAME_INVALID", FixtureRecordingFailureReason.CaptureFrameInvalid)]
+    [InlineData("CHROMIUM_COLLECTOR_STOP_UNCONFIRMED", "CAPTURE_FRAME_WRITE_FAILED", FixtureRecordingFailureReason.CaptureWriteFailed)]
+    [InlineData("CHROMIUM_COLLECTOR_STOP_UNCONFIRMED", "WORKER_PROGRESS_MEDIA_EXPORT_UNCONFIRMED", FixtureRecordingFailureReason.SourceExportUnconfirmed)]
+    public void KnownCollectorStopCauseMapsWithoutLosingUncertaintyOrDisclosingDetails(string outer, string code, FixtureRecordingFailureReason reason)
+    {
+        var start = Start(); var cause = new BrowserOperationException(code, new IOException("private-path-and-payload"));
+        cause.Data["Private"] = "private-path-and-payload";
+        var failure = new BrowserOperationException(outer, cause);
+        var diagnostic = FixtureRecordingFailureProtocol.FromException(start, 3, 2, failure);
+        Assert.Equal(reason, diagnostic.Reason);
+        var bytes = FixtureProgressProtocol.Encode(diagnostic);
+        Assert.Equal(diagnostic, FixtureRecordingFailureProtocol.Read(bytes, start, 3, 2));
+        Assert.DoesNotContain("private-path-and-payload", Encoding.UTF8.GetString(bytes), StringComparison.Ordinal);
+        using var document = JsonDocument.Parse(bytes);
+        Assert.Equal(["Schema", "ExecutionId", "CheckpointSequence", "SourceSequence", "Reason"],
+            document.RootElement.EnumerateObject().Select(p => p.Name));
+    }
+
+    [Theory]
+    [InlineData("foreign")]
+    [InlineData("deep")]
+    [InlineData("private")]
+    [InlineData("raw")]
+    [InlineData("not-collector")]
+    [InlineData("wrong-shutdown")]
+    [InlineData("missing")]
+    public void ForeignDeepUnknownOrRawStopCausesRemainUnconfirmed(string kind)
+    {
+        var known = new BrowserOperationException("CAPTURE_FRAME_LIMIT");
+        var failure = kind switch
+        {
+            "foreign" => new BrowserOperationException("PRIVATE_BROWSER_DETAIL", known),
+            "deep" => new BrowserOperationException("CAPTURE_STOP_UNCONFIRMED", new BrowserOperationException("CAPTURE_STOP_UNCONFIRMED", known)),
+            "private" => new BrowserOperationException("CAPTURE_STOP_UNCONFIRMED", new BrowserOperationException("CAPTURE_FRAME_LIMIT_PRIVATE")),
+            "raw" => new BrowserOperationException("CAPTURE_STOP_UNCONFIRMED", new IOException("private-path-and-payload")),
+            "wrong-shutdown" => new BrowserOperationException("CHROMIUM_BROWSER_CLOSE_UNCONFIRMED", known),
+            "missing" => new BrowserOperationException("CAPTURE_STOP_UNCONFIRMED"),
+            _ => new BrowserOperationException("CAPTURE_STOP_UNCONFIRMED", new BrowserOperationException("WORKER_PROGRESS_INVALID"))
+        };
+        var start = Start(); var diagnostic = FixtureRecordingFailureProtocol.FromException(start, 0, 0, failure);
+        Assert.Equal(FixtureRecordingFailureReason.Unconfirmed, diagnostic.Reason);
+        var bytes = FixtureProgressProtocol.Encode(diagnostic);
+        Assert.Equal(diagnostic, FixtureRecordingFailureProtocol.Read(bytes, start, 0, 0));
+        Assert.DoesNotContain("PRIVATE", Encoding.UTF8.GetString(bytes), StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("private-path-and-payload", Encoding.UTF8.GetString(bytes), StringComparison.Ordinal);
     }
 
     [Theory]

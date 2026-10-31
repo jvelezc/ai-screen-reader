@@ -146,8 +146,13 @@ engine reason. Preserve the failed attempt, identify the actual cause and safe
 structured error, then verify a distinct bounded recording and its complete
 originals without replaying uncertain input. The
 scoped [failure diagnostics](validation/recording-failure-diagnostics-v1.md) are
-implemented with2,983 local Windows tests and450 database checks. Their CI, exact
-delivery and a distinct hosted recording remain pending. The
+accepted at1200190 with all nine CI jobs,2,983 per OS/native71/database450/operations172
+and exact151-file delivery. A distinct normal original-account run, without an
+observer, retains seven checkpoints/184 images but still safely fails Unconfirmed;
+its worker remains healthy/native0. Preserving a closed collector cause through
+sanitized teardown passes81 focused and3,007 full Windows tests; CI, promotion and
+a new hosted diagnosis remain pending. No resource increase or failed-attempt replay
+is authorized by partial evidence. The
 remaining actual failure injections below stay open.
 Automatic worker restart stays disabled.
 

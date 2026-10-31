@@ -15,7 +15,11 @@ public sealed record TraversalRecordingEvidence(string Stage, string? ErrorCode,
     public BrowserShutdownStatus? Shutdown { get; init; }
 }
 public sealed record RecordedTraversalResult(TraversalReceipt? Receipt, TraversalRecordingEvidence Recording,
-    FixtureBrowserEnvironment? Environment);
+    FixtureBrowserEnvironment? Environment)
+{
+    [System.Text.Json.Serialization.JsonIgnore]
+    internal string? CollectorFailureCode { get; init; }
+}
 
 /// <summary>Four fixed synthetic routes. No arbitrary recording, user fields, replay or human input.</summary>
 public static class TraversalRecordingDemo
@@ -86,7 +90,8 @@ public static class TraversalRecordingDemo
         catch (Exception exception) when (exception is PlaywrightException or IOException or TimeoutException or UnauthorizedAccessException)
         { error = "TRAVERSAL_RECORDING_FAILED"; }
         return new(receipt, new(stage, error, alignment, samples.ToImmutable(), media, ownedProbe?.CaptureStatus)
-        { RunnerOriginHostMilliseconds = runnerOriginHostMilliseconds, Shutdown = ownedProbe?.ShutdownStatus }, environment);
+        { RunnerOriginHostMilliseconds = runnerOriginHostMilliseconds, Shutdown = ownedProbe?.ShutdownStatus }, environment)
+        { CollectorFailureCode = ownedProbe?.CollectorFailureCode };
     }
 
     public static async Task<int> RunAsync(string outputRoot, CancellationToken cancellationToken = default)

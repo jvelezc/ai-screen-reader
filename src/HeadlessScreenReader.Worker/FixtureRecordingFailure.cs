@@ -21,7 +21,15 @@ public static class FixtureRecordingFailureProtocol
 
     public static FixtureRecordingFailure FromException(FixtureProgressStart start, int checkpoints, int sources, Exception failure)
     {
-        var reason = failure is BrowserOperationException known ? known.Code switch
+        var specific = failure is BrowserOperationException
+        {
+            Code: "CAPTURE_STOP_UNCONFIRMED" or "CHROMIUM_COLLECTOR_STOP_UNCONFIRMED", InnerException: BrowserOperationException
+            {
+                Code: "CAPTURE_FRAME_LIMIT" or "CAPTURE_FRAME_INVALID" or "CAPTURE_FRAME_WRITE_FAILED"
+                or "WORKER_PROGRESS_MEDIA_EXPORT_UNCONFIRMED"
+            } cause
+        } ? cause : failure;
+        var reason = specific is BrowserOperationException known ? known.Code switch
         {
             "CAPTURE_FRAME_LIMIT" => FixtureRecordingFailureReason.CaptureBudgetExceeded,
             "CAPTURE_FRAME_INVALID" => FixtureRecordingFailureReason.CaptureFrameInvalid,

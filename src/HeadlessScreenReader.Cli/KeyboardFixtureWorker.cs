@@ -28,7 +28,8 @@ public static class KeyboardFixtureWorker
                 || result.Recording.Shutdown is not { } shutdown || result.Recording.CaptureLifecycle is not { } capture
                 || result.Recording.Alignment is not { } alignment || result.Recording.RunnerOriginHostMilliseconds is not { } origin
                 || result.Recording.ErrorCode is not null)
-                throw new BrowserOperationException(result.Recording.ErrorCode ?? "WORKER_KEYBOARD_RECORDING_UNCONFIRMED");
+                throw new BrowserOperationException(result.Recording.ErrorCode ?? "WORKER_KEYBOARD_RECORDING_UNCONFIRMED",
+                    result.CollectorFailureCode is { } code ? new BrowserOperationException(code) : null);
             // These zero-input facts describe only the retained pre-traversal capture.
             // The actual route's attempted/completed inputs and verification remain in traversal.json.
             var baseline = new FixtureObservation(FixtureObservation.CurrentSchema, job, "synthetic-shop", FixtureObservation.Profile,

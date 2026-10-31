@@ -101,7 +101,13 @@ public sealed class PrivatePixelTransportTests
         Assert.False(stop.IsCompleted); Assert.Equal(1, h.Broker.Status.ActiveReads); finish.SetResult();
         using var denied = await read; Assert.Equal(HttpStatusCode.Unauthorized, denied.StatusCode);
         using var revoked = await stop; Assert.Equal(HttpStatusCode.NoContent, revoked.StatusCode); Assert.Equal(0, h.Broker.Status.ActiveReads);
-        Assert.DoesNotContain("PNG", await denied.Content.ReadAsStringAsync());
+        Assert.Equal("application/problem+json", denied.Content.Headers.ContentType!.MediaType);
+        using var problem = JsonDocument.Parse(await denied.Content.ReadAsStringAsync());
+        Assert.Equal(401, problem.RootElement.GetProperty("status").GetInt32());
+        Assert.Equal("VIEWER_AUTHORITY_DENIED", problem.RootElement.GetProperty("title").GetString());
+        Assert.Equal("VIEWER_AUTHORITY_DENIED", problem.RootElement.GetProperty("detail").GetString());
+        Assert.Equal(["detail", "status", "title", "traceId", "type"],
+            problem.RootElement.EnumerateObject().Select(p => p.Name).Order(StringComparer.Ordinal));
     }
     private sealed class Host : IAsyncDisposable
     {

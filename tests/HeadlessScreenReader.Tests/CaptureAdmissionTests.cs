@@ -87,6 +87,42 @@ public sealed class CaptureAdmissionTests
         await Assert.ThrowsAsync<BrowserOperationException>(() => gate.ExcludeAsync(() => Task.CompletedTask));
     }
 
+    [Theory]
+    [InlineData("CAPTURE_FRAME_LIMIT")]
+    [InlineData("CAPTURE_FRAME_INVALID")]
+    [InlineData("CAPTURE_FRAME_WRITE_FAILED")]
+    [InlineData("WORKER_PROGRESS_MEDIA_EXPORT_UNCONFIRMED")]
+    public async Task KnownCollectorFailureCannotExposePayloadOrImplySuccessfulCaptureStop(string code)
+    {
+        var gate = new CaptureAdmission();
+        var original = new BrowserOperationException(code, new IOException("private-path-and-payload"));
+        original.Data["Private"] = "private-path-and-payload";
+        var error = await Assert.ThrowsAsync<BrowserOperationException>(() => gate.ExcludeAsync(() => throw original));
+        Assert.Equal("CAPTURE_STOP_UNCONFIRMED", error.Code);
+        Assert.Null(error.InnerException);
+        Assert.DoesNotContain(code, error.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("private-path-and-payload", error.ToString(), StringComparison.Ordinal);
+        Assert.Equal(CapturePhase.Faulted, gate.Status.Phase);
+        await Assert.ThrowsAsync<BrowserInputDeniedException>(() => gate.RunAsync(() => Task.FromResult(true), input: true));
+        await Assert.ThrowsAsync<BrowserOperationException>(() => gate.ExcludeAsync(() => Task.CompletedTask));
+    }
+
+    [Theory]
+    [InlineData("PRIVATE_BROWSER_DETAIL")]
+    [InlineData("CAPTURE_FRAME_LIMIT_PRIVATE")]
+    [InlineData("WORKER_PROGRESS_INVALID")]
+    public async Task UnknownCollectorErrorStillHasNoInnerPayloadAndCannotReopenCapture(string code)
+    {
+        var gate = new CaptureAdmission();
+        var original = new BrowserOperationException(code, new IOException("private-path-and-payload"));
+        var error = await Assert.ThrowsAsync<BrowserOperationException>(() => gate.ExcludeAsync(() => throw original));
+        Assert.Equal("CAPTURE_STOP_UNCONFIRMED", error.Code); Assert.Null(error.InnerException);
+        Assert.DoesNotContain(code, error.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("private-path-and-payload", error.ToString(), StringComparison.Ordinal);
+        Assert.Equal(CapturePhase.Faulted, gate.Status.Phase);
+        await Assert.ThrowsAsync<BrowserInputDeniedException>(() => gate.RunAsync(() => Task.FromResult(true), input: true));
+    }
+
     [Fact]
     public async Task Resume_KeepsAdmissionClosedUntilFreshBaselineAndRotatesEpoch()
     {

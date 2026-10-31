@@ -32,6 +32,7 @@ public sealed class ChromiumRecordingProbe : IAsyncDisposable
     private readonly HashSet<int> _copied = [];
     private bool _videoStarted;
     private Task? _stop;
+    private string? _collectorFailure;
 
     internal ChromiumRecordingProbe(ChromiumFixtureBrowser browser, PreciseScreencastSource source, string folder)
     { _browser = browser; _source = source; _folder = folder; }
@@ -40,6 +41,8 @@ public sealed class ChromiumRecordingProbe : IAsyncDisposable
     public FixtureBrowserEnvironment Environment => _browser.Environment;
     public CaptureStatus CaptureStatus => _browser.CaptureStatus;
     public BrowserShutdownStatus ShutdownStatus => _browser.ShutdownStatus;
+    /// <summary>Closed collector cause retained during stop; neither a stop acknowledgement nor recording completion.</summary>
+    public string? CollectorFailureCode => Volatile.Read(ref _collectorFailure);
 
     public async Task CopyCompletedSourcesAsync(Func<ImmutableArray<CompletedCaptureSource>, CancellationToken, Task> sink,
         CancellationToken token = default)
@@ -127,13 +130,24 @@ public sealed class ChromiumRecordingProbe : IAsyncDisposable
     private async Task StopCoreAsync()
     {
         var exports = _exports.CloseAdmission();
+        if (_exports.Status.ErrorCode is not null)
+            Interlocked.CompareExchange(ref _collectorFailure, "WORKER_PROGRESS_MEDIA_EXPORT_UNCONFIRMED", null);
         try { await _source.StopAsync().ConfigureAwait(false); }
+        catch (BrowserOperationException failure) when (failure.Code is "CAPTURE_FRAME_LIMIT" or "CAPTURE_FRAME_INVALID" or "CAPTURE_FRAME_WRITE_FAILED")
+        {
+            Interlocked.CompareExchange(ref _collectorFailure, failure.Code, null);
+            throw;
+        }
         finally
         {
             await exports.ConfigureAwait(false);
             if (_videoStarted) await _browser.DiagnosticPage.Screencast.StopAsync().ConfigureAwait(false);
         }
-        if (_exports.Status.ErrorCode is not null) throw new BrowserOperationException("WORKER_PROGRESS_MEDIA_EXPORT_UNCONFIRMED");
+        if (_exports.Status.ErrorCode is not null)
+        {
+            Interlocked.CompareExchange(ref _collectorFailure, "WORKER_PROGRESS_MEDIA_EXPORT_UNCONFIRMED", null);
+            throw new BrowserOperationException("WORKER_PROGRESS_MEDIA_EXPORT_UNCONFIRMED");
+        }
     }
 
     public async Task<RecordingProbeMedia> FinishAndInspectAsync()

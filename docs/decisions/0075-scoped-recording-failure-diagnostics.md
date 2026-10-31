@@ -1,6 +1,7 @@
 # 0075: Scoped recording-failure diagnostics
 
-October31,2026. Status: implemented; delivery and fresh hosted diagnosis pending.
+October31,2026. Status: terminal diagnostics accepted at1200190; collector-cause
+preservation implemented, with its validation/delivery and hosted cause pending.
 
 An admitted keyboard recording can retain command checkpoints and source images
 but fail before producing its complete original bundle. The framed child formerly
@@ -16,6 +17,16 @@ It carries no page data, message, stack, file path, credentials, input count,
 cleanup assertion, goal or completion reference. Known constant recording errors
 map to specific reasons. Unknown exceptions map only to `Unconfirmed`. A start
 that never passed admission validation emits no diagnostic.
+
+A distinct normal hosted attempt still fails as Unconfirmed. Capture stop and
+browser disposal intentionally sanitize collector failures; the recording probe
+therefore retains its own closed cause during stop. Only frame budget, invalid
+frame, write failure or source-export uncertainty can cross this path. A private
+JSON-ignored CLI field carries that scalar into the terminal diagnostic mapper;
+no exception object or message is serialized. Only the exact immediate capture-
+stop/collector-stop wrappers are recognized. Unknown/deeper/other shutdown causes
+stay Unconfirmed. Privacy stop, browser shutdown and native removal keep their
+existing separate acknowledgement and halt rules. Capture limits are unchanged.
 
 The host validates the exact execution and accepted prefix, the declared plan and
 source limits, required fields, strict types, duplicate/unknown fields and the

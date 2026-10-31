@@ -59,9 +59,12 @@ route retains seven checkpoints/250 images but no complete output and only a
 generic engine reason. Preserve that attempt; identify the cause and safe error
 before verifying a distinct bounded recording. Wider completion gates stay open.
 Scoped [recording-failure diagnostics](docs/validation/recording-failure-diagnostics-v1.md)
-now implement a closed child/host reason without private exception data or any
-completion authority. Local Windows2,983/database450 pass; CI, delivery and actual
-hosted diagnosis remain separate pending gates.
+are accepted at1200190: all nine CI jobs,2,983 per OS/native71/database450/
+operations172, exact151-file delivery and original-account safe failure pass.
+A distinct normal recording retains seven checkpoints/184 images but remains
+Unconfirmed with no result. Collector-cause preservation through sanitized
+teardown passes81 focused and3,007 full Windows checks; CI/delivery and the actual
+hosted cause remain separate gates.
 Partial originals cannot become a final video, replay or completion.
 
 For a working local MCP prototype with approved public HTTPS reading, isolated link navigation and Claude configuration, see [Use HeadlessScreenReader with Claude](docs/prototype/claude.md). Public browsing requires a running Linux Podman or Docker engine; the trusted fixture connection also runs directly on Windows.
