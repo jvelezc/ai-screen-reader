@@ -2,6 +2,7 @@ from pathlib import Path
 import signal
 import subprocess
 import sys
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -16,6 +17,17 @@ class HostCommandTests(unittest.TestCase):
 
     def test_actual_child_returns_bounded_utf8_output(self):
         self.assertEqual("confirmed", host_runtime.run_checked(self.command("print('confirmed')")))
+
+    def test_actual_child_uses_traversable_root_instead_of_operator_caller_directory(self):
+        source = ("import sys;sys.path.insert(0,sys.argv[1]);"
+                  "from host_runtime import run_checked;"
+                  "print(run_checked([sys.executable,'-I','-c','import os;print(os.getcwd())']))")
+        with tempfile.TemporaryDirectory() as caller:
+            result = subprocess.run(self.command(source) + [str(Path(host_runtime.__file__).resolve().parent)],
+                                    cwd=caller, capture_output=True, text=True, timeout=10)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual('/', result.stdout.strip())
+        self.assertEqual('', result.stderr)
 
     def test_known_nonzero_exit_requires_explicit_opt_in_and_still_bounds_output(self):
         command = self.command("import sys;print('settled');sys.exit(3)")

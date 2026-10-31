@@ -52,8 +52,9 @@ def run_checked(arguments, *, env=None, timeout=30, accepted_codes=(0,)):
             and all(type(code) is int for code in accepted_codes), 'DEPLOY_COMMAND_CODES_INVALID')
     # File-backed output bounds memory even if a broken child is noisy. Never log raw output.
     with tempfile.TemporaryFile() as output, tempfile.TemporaryFile() as errors:
+        # A root operator may start in /root, which the rootless worker cannot traverse.
         process = subprocess.Popen(arguments, stdin=subprocess.DEVNULL, stdout=output,
-                                   stderr=errors, env=env, start_new_session=True)
+                                   stderr=errors, env=env, cwd="/", start_new_session=True)
         try:
             process.wait(timeout=timeout)
         except subprocess.TimeoutExpired:

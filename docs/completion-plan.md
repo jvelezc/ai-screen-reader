@@ -124,12 +124,14 @@ three-file function readback. The original account reads 71 images and downloads
 source image 71 matching its independent private bytes/hash/time/producer; keyboard,
 320px reflow, reload persistence and prior complete-recording/graph reads pass.
 Partial images remain unassessed and cannot become a final video, replay or
-successful job. **Next:** admit one scoped hosted keyboard run, interrupt only
-its independently identified native child after durable actual input, and prove
-original-image readback plus exact owned cleanup. The attempt must remain
-blocked/uncertain with no replacement, replay, fabricated archive or successful
-goal. Local/CI crash proof and this completed hosted run do not replace that
-hosted interruption gate. The remaining actual failure injections below stay open.
+successful job. A [real hosted interruption](validation/hosted-interrupted-source-readback-v1.md)
+now passes at core6cbec97/UI4018a55/Edge10: the original account admits route4,
+only its identified child is killed after durable actual input, all90 prior
+originals survive within117 saved images, owned cleanup is confirmed and the
+same blocked attempt is read after reconnect. The second intent lacks a result;
+input stays Unknown and cannot be replayed. No seal, archive or successful goal
+is invented. **Next:** validate and privately install the [operator directory fix](validation/operator-command-directory-v1.md), then prove first publication through the ordered maintenance wrapper. The
+remaining actual failure injections below stay open.
 Automatic worker restart stays disabled.
 
 Exercise the actual Linux worker under crash after input, upload before metadata

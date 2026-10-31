@@ -41,8 +41,10 @@ storage. [Validation](docs/validation/retained-source-images-v1.md) records acce
 core `4381d44` (2,858 tests per OS, all nine CI jobs, exact 151-file delivery) and
 UI `166746e`/existing Edge v10 (705 per OS, exact three files). The original account
 reads 71 images and downloads source image 71 matching its private original bytes and
-timestamp; keyboard/reflow and restored sign-in pass. **Next:** scoped hosted
-interruption after actual input, owned cleanup and partial-original readback.
+timestamp; keyboard/reflow and restored sign-in pass. A [real hosted interruption](docs/validation/hosted-interrupted-source-readback-v1.md)
+now preserves117 images after actual input and owned-child loss; the original
+account downloads matching bytes and reconnects to the same blocked attempt.
+**Next:** validate and privately install the [operator directory fix](docs/validation/operator-command-directory-v1.md), then prove first publication through the ordered maintenance wrapper.
 Partial originals cannot become a final video, replay or completion.
 
 For a working local MCP prototype with approved public HTTPS reading, isolated link navigation and Claude configuration, see [Use HeadlessScreenReader with Claude](docs/prototype/claude.md). Public browsing requires a running Linux Podman or Docker engine; the trusted fixture connection also runs directly on Windows.

@@ -74,9 +74,12 @@ was saved; actual file comparison and a fresh same-profile tab establish the
 result, rather than treating that tool timeout as product failure.
 
 This hosted source run completed normally. Actual interrupted-source retention
-remains separately proven by local/CI native cases. **Next:** a scoped hosted
-crash after actual input, exact owned cleanup and original-account partial-image
-readback, with no replacement attempt or inferred successful goal.
+was separately proven by local/CI native cases at that point. A later
+[actual hosted interruption](hosted-interrupted-source-readback-v1.md) now passes:
+117 retained originals after owned-child loss, blocked same-producer attempt,
+fresh user readback, matching image download and actual reconnect. The second
+intent remains Unknown; no complete recording or inferred goal is manufactured.
+**Next:** validate/install the [operator directory fix](operator-command-directory-v1.md), then prove first publication through the ordered maintenance wrapper. Remaining failure/provider/website gates stay open.
 
 | Requirement | Evidence |
 | --- | --- |

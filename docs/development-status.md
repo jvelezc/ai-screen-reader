@@ -16,10 +16,15 @@ pass 2,858 tests per OS, native 71/database 361/operations 171, followed by exac
 committed files. The original account reads 71 images, keyboard-selects/downloads
 source image 71 and matches its exact private bytes/time/producer. Narrow layout and
 reload persistence pass; five originals, graph and loaded/seekable video remain
-available. **Next:** scoped hosted crash-after-input acceptance with partial
-original-image readback and independently confirmed owned cleanup. No uncertain
-input is replayed. First publication through the maintenance wrapper and the
-remaining fault/provider/website/intervention gates remain separate.
+available. [Actual hosted interruption](validation/hosted-interrupted-source-readback-v1.md)
+now passes at core6cbec97/UI4018a55/Edge10: one original-account route4 admission,
+durable actual input, exact owned-child kill and native removal,117 retained
+images/1,576,655 bytes, blocked original producer/gen1 with one attempt and no
+archive. Source117 matches exact private bytes/time; reconnect preserves identity.
+The second saved intent has no result and stays Unknown; recording is unavailable
+and assessment requires the original recording. Both services are ready and the
+worker is thawed. **Next:** validate and privately install the [operator directory fix](validation/operator-command-directory-v1.md), then prove first publication through the ordered maintenance wrapper. Remaining
+fault/provider/website/intervention gates stay separate.
 
 **Unfinished original-image retention accepted at65689fc.**
 Completed source JPEGs now transfer through a separately admitted, hash-bound
