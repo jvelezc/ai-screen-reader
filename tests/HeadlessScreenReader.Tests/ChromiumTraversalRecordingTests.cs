@@ -133,6 +133,131 @@ public sealed class ChromiumTraversalRecordingTests
     }
 
     [Fact]
+    public async Task TerminalObservedCheckpointPrecedesTheFinalOriginalTransfer()
+    {
+        var folder = Path.Combine(NewFolder(), "media");
+        var plan = TraversalDemo.Plans[0];
+        var terminalIntent = false; var terminalObserved = false;
+        var prematureTransfer = false; var acquisitionContinuedDuringTransfer = false;
+        var finalCopies = 0; var before = -1; var after = -1;
+        var copied = new HashSet<int>();
+        var result = await TraversalRecordingDemo.RunRouteAsync(folder, plan, checkpoint: async (checkpoint, token) =>
+        {
+            if (checkpoint.CommandIndex != plan.Instructions.Length) return;
+            if (checkpoint.Phase == TraversalCheckpointPhase.Intent)
+            {
+                terminalIntent = true;
+                // Actual renderer time models a pending durable intent acknowledgement.
+                await Task.Delay(250, token);
+            }
+            if (checkpoint.Phase == TraversalCheckpointPhase.Observed) terminalObserved = true;
+        }, sources: async (originals, token) =>
+        {
+            if (terminalIntent)
+            {
+                prematureTransfer |= !terminalObserved;
+                finalCopies++;
+                before = Directory.GetFiles(folder, "source-*.jpg").Length;
+                // The final transfer may wait on storage after acquisition has been joined.
+                await Task.Delay(500, token);
+                after = Directory.GetFiles(folder, "source-*.jpg").Length;
+                acquisitionContinuedDuringTransfer |= before != after;
+            }
+            foreach (var source in originals)
+            {
+                Assert.True(copied.Add(source.Frame.Sequence), "An acquired original was transferred twice.");
+                Assert.Equal(source.Frame.Sha256, Convert.ToHexStringLower(SHA256.HashData(source.Content)));
+            }
+        });
+        Assert.False(prematureTransfer, "The final source transfer ran before the terminal observed checkpoint.");
+        Assert.False(acquisitionContinuedDuringTransfer, "Acquisition continued during the final source transfer.");
+        Assert.True(terminalIntent); Assert.True(terminalObserved); Assert.Equal(1, finalCopies);
+        Assert.InRange(before, 3, 250); Assert.Equal(before, after);
+        Assert.Null(result.Recording.ErrorCode); Assert.Equal("Complete", result.Recording.Stage);
+        var media = Assert.IsType<RecordingProbeMedia>(result.Recording.Media);
+        Assert.Equal(media.PreciseFrames.Length, copied.Count);
+        Assert.Equal(TraversalReachability.Reached, result.Receipt!.Reachability);
+        Assert.Equal(TraversalBarrier.NoneObserved, result.Receipt.Barrier);
+        Assert.Equal(2, result.Receipt.AttemptedKeystrokes); Assert.Equal(2, result.Receipt.CompletedKeystrokes);
+        Assert.Equal(CapturePhase.Closed, result.Recording.CaptureLifecycle!.Phase);
+        Assert.Equal(BrowserShutdownPhase.Closed, result.Recording.Shutdown!.Phase);
+        Assert.Equal(0, result.Recording.Shutdown.ActiveCalls);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task TerminalCheckpointFailureCannotStartTheFinalTransferOrClaimARecording(bool cancelled)
+    {
+        using var cancellation = new CancellationTokenSource();
+        var folder = Path.Combine(NewFolder(), "media");
+        var plan = TraversalDemo.Plans[0];
+        var terminalIntent = false; var terminalCopies = 0;
+        TraversalAttempt? lastAttempt = null;
+        var result = await TraversalRecordingDemo.RunRouteAsync(folder, plan, cancellation.Token,
+            checkpoint: async (checkpoint, token) =>
+            {
+                if (checkpoint.CommandIndex != plan.Instructions.Length) return;
+                if (checkpoint.Phase == TraversalCheckpointPhase.Intent)
+                {
+                    terminalIntent = true;
+                    await Task.Delay(250, token);
+                }
+                if (checkpoint.Phase != TraversalCheckpointPhase.Observed) return;
+                lastAttempt = checkpoint.Attempt;
+                if (cancelled) { cancellation.Cancel(); token.ThrowIfCancellationRequested(); }
+                throw new IOException("synthetic-private-terminal-checkpoint");
+            }, sources: (_, _) =>
+            {
+                if (terminalIntent) terminalCopies++;
+                return Task.CompletedTask;
+            });
+        var attempt = Assert.IsType<TraversalAttempt>(lastAttempt);
+        Assert.Equal(1, attempt.Step!.BrowserKeystrokes);
+        Assert.Equal(VerificationStatus.Satisfied, attempt.Step.Verification);
+        Assert.Equal(0, terminalCopies);
+        Assert.Null(result.Recording.Media);
+        Assert.False(result.Receipt?.HasRecording ?? false);
+        Assert.Equal(cancelled ? "TRAVERSAL_RECORDING_CANCELLED" : "TRAVERSAL_RECORDING_FAILED", result.Recording.ErrorCode);
+        Assert.Equal(cancelled ? "CalibrateAfter" : "Traverse", result.Recording.Stage);
+        Assert.DoesNotContain("synthetic-private-terminal-checkpoint", JsonSerializer.Serialize(result));
+        Assert.Equal(BrowserShutdownPhase.Closed, result.Recording.Shutdown!.Phase);
+        Assert.Equal(0, result.Recording.Shutdown.ActiveCalls);
+    }
+
+    [Fact]
+    public async Task IntermediateObservedCheckpointStillReceivesItsCompletedOriginalsBeforeAcknowledgement()
+    {
+        var folder = Path.Combine(NewFolder(), "media");
+        var waitingForObserved = false; var transfers = 0; var transferredBeforeObserved = -1;
+        var result = await TraversalRecordingDemo.RunRouteAsync(folder, TraversalDemo.Plans[2],
+            checkpoint: async (checkpoint, token) =>
+            {
+                if (checkpoint.CommandIndex != 1) return;
+                if (checkpoint.Phase == TraversalCheckpointPhase.Intent)
+                {
+                    waitingForObserved = true;
+                    await Task.Delay(250, token);
+                }
+                if (checkpoint.Phase == TraversalCheckpointPhase.Observed)
+                {
+                    transferredBeforeObserved = transfers;
+                    waitingForObserved = false;
+                }
+            }, sources: (_, _) =>
+            {
+                if (waitingForObserved) transfers++;
+                return Task.CompletedTask;
+            });
+        Assert.InRange(transferredBeforeObserved, 1, 250);
+        Assert.Null(result.Recording.ErrorCode); Assert.Equal("Complete", result.Recording.Stage);
+        Assert.Equal(TraversalReachability.Unknown, result.Receipt!.Reachability);
+        Assert.Equal(3, result.Receipt.AttemptedKeystrokes); Assert.Equal(3, result.Receipt.CompletedKeystrokes);
+        Assert.Equal(CapturePhase.Closed, result.Recording.CaptureLifecycle!.Phase);
+        Assert.Equal(BrowserShutdownPhase.Closed, result.Recording.Shutdown!.Phase);
+    }
+
+    [Fact]
     public async Task FinalOriginalTransferCannotExtendActualSourceAcquisitionAfterTheRouteEnds()
     {
         var folder = Path.Combine(NewFolder(), "media");

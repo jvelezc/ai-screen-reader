@@ -46,9 +46,13 @@ The focused decoder/privacy/traversal/timing/synthetic-media/framed-failure set
 discovers, executes and passes162,0 failed/skipped. The full pinned Windows
 Release suite discovers, executes and passes3,106,0 failed/skipped, in8m20s.
 Strict Release build has0 warnings/errors and full format verification passes.
-New-source CI, exact private delivery and fresh hosted
-recording acceptance remain gates. A count or passing local control alone is not
-proof of the precise earlier hosted exception.
+Delivery7fd3fc5 now passes all nine CI jobs and3,106 tests per OS, with151 exact
+installed files, the actual dedicated image and trusted TLS independently matched.
+Three distinct original-account recordings complete on the same worker and all
+five originals match private S3; actual graph/native playback passes for blocked
+activation and delivered keys with an Unknown goal. These hosted clips are shorter
+than10seconds, separate from the >10second native controls. A passing control alone
+is not proof of the precise earlier hosted exception.
 
 CI41350330957 passes all71 actual Linux worker cases, then fails release-image
 export with `no space left on device`; no release archive is produced or promoted.
@@ -64,7 +68,10 @@ zero failures/skips, but the20minute Windows job limit cancels final CLI checks;
 the check-run annotation explicitly confirms that deadline. The earlier complete
 Windows batch took19m26s, and browser installation varies. The matrix CI budget is
 now25minutes; product/input/shutdown/decode deadlines are unchanged. Neither
-incomplete CI run authorizes private promotion. Require a fresh all-job success.
+incomplete CI run authorizes private promotion. The subsequent successful
+[CI41353035479](https://github.com/jvelezc/ai-screen-reader/actions/runs/41353035479)
+and [private deploy41354703343](https://github.com/jvelezc/ai-screen-reader/actions/runs/41354703343)
+provide the accepted7fd3fc5 delivery.
 
 | Requirement | Evidence |
 | --- | --- |
@@ -78,11 +85,12 @@ incomplete CI run authorizes private promotion. Require a fresh all-job success.
 
 ## Next acceptance gate
 
-Require both CI platforms and successful release export, promote the exact tested
-artifact privately, then admit distinct normal recordings under the original
-account. Read complete originals, source/action links and actual native playback
-on successful runs; use closed failure reasons for any stop. Do not replay the
-failed run or turn an engine/media limit into a website barrier. Exact delivery,
-local/native success and actual account acceptance remain separate. Wider failure,
-authority, website, intervention, operations and human/AT work remains in the
+Bounded decoding is delivered at7fd3fc5. A fourth original-account run, checkout
+preview, then exhausts the250-source-image budget while retaining all250 originals
+and two observed command results. Its recording stays blocked and unarchived.
+The [terminal observed-source drain](terminal-observed-source-drain-v1.md#next-acceptance-gate)
+is the current fix/delivery gate. Preserve old attempts and actual input uncertainty;
+engine/media limits cannot establish a website barrier. Exact delivery, native
+controls and actual account acceptance stay separate. Wider failure, authority,
+website, intervention, operations and human/AT work remains in the
 [ordered completion plan](../completion-plan.md).

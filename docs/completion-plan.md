@@ -140,7 +140,7 @@ at5b75935/HTTP1.14/private MCP21: all nine CI jobs (2,936 per OS/native71/databa
 operations172), exact151-file delivery, UIc614141/Edge11 and queued/active account
 stop pass. The fresh active case preserves190 images and exact native cleanup;
 the same healthy worker completes a distinct no-input job without restarting.
-**Next:** [finish bounded complete-video decoding](validation/bounded-complete-video-decoding-v1.md#next-acceptance-gate).
+**Next:** [deliver the terminal observed-source drain](validation/terminal-observed-source-drain-v1.md#next-acceptance-gate).
 Actual Chromium reproduces image acquisition continuing during final transfer
 and a video that has not yet finalized. Join both acquisition collectors before
 the owned final transfer inside the existing input-denied capture drain. The
@@ -153,8 +153,18 @@ installed files. On November1 the original browser/account reconnects without
 another password entry. A distinct normal route identifies finalization failure
 with238 retained source images. A separate valid >10second Chromium control
 exposes the old250-video-frame decoder cutoff. Sequential bounded decoding passes
-162 focused and3,106 full Windows checks with clean strict build/format. Both CI
-platforms, exact delivery and fresh hosted recordings remain gates. Preserve
+162 focused and3,106 full Windows checks with clean strict build/format. Delivery
+7fd3fc5 now passes all nine CI jobs,3,106 per OS/native71/database461/operations172
+and151 independently matched installed files. Three distinct normal original-account
+recordings retain five exact S3 originals on the same worker; actual graph/video
+playback passes for zero-call Blocked activation and three delivered keys/Unknown
+goal. A separate checkout-preview run reaches the250-source-image count, retains
+all3,367,671 original bytes and two observed results, then safely blocks without
+an archive. A real regression exposes source transfer before the terminal observed
+checkpoint. The local fix defers only that copy into the existing joined final
+drain; 23 focused and 3,112 full Windows checks pass, with zero failed/skipped,
+a zero-warning strict build and clean format verification. New CI, exact delivery
+and fresh remaining-route acceptance are gates. All resource bounds remain unchanged. Preserve
 every acquired original, all declared resource limits and every failed attempt;
 do not replay uncertain input. The
 scoped [failure diagnostics](validation/recording-failure-diagnostics-v1.md) are

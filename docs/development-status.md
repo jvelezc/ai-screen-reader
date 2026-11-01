@@ -34,7 +34,7 @@ original images and exact native cleanup; the same worker then completes a disti
 no-input job without a restart. UIc614141/Edge11, source190 exact download,
 keyboard/320px, reconnect and saved sign-in pass in their named scopes.
 [Cancellation receipt](validation/caller-scan-cancellation-v1.md).
-**Next:** [finish bounded complete-video decoding](validation/bounded-complete-video-decoding-v1.md#next-acceptance-gate).
+**Next:** [deliver the terminal observed-source drain](validation/terminal-observed-source-drain-v1.md#next-acceptance-gate).
 Actual Chromium checks show the final transfer can prolong image acquisition and
 begin before video finalizes. The repair joins both collectors inside the existing
 input-denied capture drain before the finite transfer;162 focused checks pass.
@@ -54,8 +54,17 @@ The hosted worker job now reclaims only its unused Android SDK before building.
 CI41351099639 exports the verified151-file release and both OS suites pass3,106;
 the20minute Windows batch limit cancels its final CLI checks. Its CI budget is
 now25minutes, supported by the measured19m26s previous complete Windows batch.
-Fresh all-job CI/exact delivery and hosted acceptance remain gates.
-Source/host capture limits are unchanged;
+Delivery7fd3fc5 now passes all nine CI jobs,3,106 per OS/native71/database461/
+operations172 and151 exact installed files. Three fresh normal original-account
+recordings complete on the same worker and all five originals match S3. Actual
+graph/video playback passes for zero-call Blocked activation and three delivered
+keys with an Unknown goal. The next checkout-preview run hits the250-image count
+with all250 originals/3,367,671 bytes intact, two retained observed results and no
+archive. The terminal checkpoint was exporting sources while capture still admitted
+frames. The local repair defers that final copy into the joined, input-denied drain;
+23 focused and 3,112 full Windows checks pass, with zero failed/skipped, a clean
+strict build and format verification. New CI/delivery and fresh remaining-route
+acceptance remain gates. Source/host capture limits are unchanged;
 every original and failed attempt is preserved. Broader fault/provider/website/
 intervention acceptance stays separate.
 

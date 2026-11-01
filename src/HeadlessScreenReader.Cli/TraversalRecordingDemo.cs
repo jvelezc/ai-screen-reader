@@ -66,7 +66,12 @@ public static class TraversalRecordingDemo
                 {
                     if (probe.CaptureStatus.Phase != CapturePhase.Permitted)
                         throw new BrowserOperationException("WORKER_PROGRESS_CAPTURE_EXCLUDED");
-                    if (sources is not null) await probe.CopyCompletedSourcesAsync(sources, token).ConfigureAwait(false);
+                    // Retain the last observed result now. Its remaining originals are copied by
+                    // finalization after acquisition is joined, so that transfer cannot prolong capture.
+                    var terminalObservation = value.Phase == TraversalCheckpointPhase.Observed
+                        && value.CommandIndex == plan.Instructions.Length;
+                    if (sources is not null && !terminalObservation)
+                        await probe.CopyCompletedSourcesAsync(sources, token).ConfigureAwait(false);
                     if (checkpoint is not null) await checkpoint(value, token).ConfigureAwait(false);
                 }).ConfigureAwait(false);
             runnerOriginHostMilliseconds = time.GetElapsedTime(started, receipt.Clock!.OriginTimestamp).TotalMilliseconds;

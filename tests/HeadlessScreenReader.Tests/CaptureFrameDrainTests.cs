@@ -33,6 +33,23 @@ public sealed class CaptureFrameDrainTests
     }
 
     [Theory]
+    [InlineData(250, 1)]
+    [InlineData(32, 512 * 1024)]
+    public async Task DefaultFrameAndByteBudgetsRemainClosedAtTheirDeclaredBoundaries(int frames, int bytes)
+    {
+        var drain = new CaptureFrameDrain(0);
+        var written = new List<int>();
+        Task Sink(int sequence) { written.Add(sequence); return Task.CompletedTask; }
+        for (var frame = 1; frame <= frames; frame++) await drain.WriteAsync(frame, bytes, Sink);
+        Assert.Equal(Enumerable.Range(1, frames), written);
+        Assert.Equal(new(frames, 0, (long)frames * bytes, null), drain.Status);
+        await drain.WriteAsync(frames + 1, 1, Sink);
+        await drain.CloseAdmission();
+        Assert.Equal(frames, written.Count);
+        Assert.Equal(new(frames, 0, (long)frames * bytes, "CAPTURE_FRAME_LIMIT"), drain.Status);
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task ExactFrameAndByteBounds_AreAllowedAndNextWriteFailsClosed(bool byteBound)

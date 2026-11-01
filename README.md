@@ -2,7 +2,7 @@
 
 Local .NET screen-reader foundation for the architecture in [the development plan](outputs/HeadlessScreenReader-Architecture-Review-and-Development-Plan.md).
 
-The [leased observation worker](docs/decisions/0037-isolated-observation-worker.md) connects tenant-authorized admission to isolated synthetic-shop observation, private saved bytes and fenced queue completion. Its private VPS deployment and rollback are accepted. A real signed-in tenant fixture completed and its report matched independently verified private S3 evidence. Private MCP supports durable fixture scans, saved reports and explicit archive reads alongside live reading. The [real application-user reader](docs/validation/private-tenant-reader-v1.md) also passes authentication/RLS, navigation, matching graph evidence and independent native close. The [authenticated core API](docs/validation/core-api-ingress-v1.md) is live at [https://89.117.17.81](https://89.117.17.81/openapi/v1.json). The notebook's live reader and operator-imported archive reconnect/graph/video workflows are accepted within their named scopes. **Next: [finish bounded complete-video decoding](docs/validation/bounded-complete-video-decoding-v1.md#next-acceptance-gate).** [Current status](docs/development-status.md) separates local, CI, exact deployment and real-account acceptance.
+The [leased observation worker](docs/decisions/0037-isolated-observation-worker.md) connects tenant-authorized admission to isolated synthetic-shop observation, private saved bytes and fenced queue completion. Its private VPS deployment and rollback are accepted. A real signed-in tenant fixture completed and its report matched independently verified private S3 evidence. Private MCP supports durable fixture scans, saved reports and explicit archive reads alongside live reading. The [real application-user reader](docs/validation/private-tenant-reader-v1.md) also passes authentication/RLS, navigation, matching graph evidence and independent native close. The [authenticated core API](docs/validation/core-api-ingress-v1.md) is live at [https://89.117.17.81](https://89.117.17.81/openapi/v1.json). The notebook's live reader and operator-imported archive reconnect/graph/video workflows are accepted within their named scopes. **Next: [deliver the terminal observed-source drain](docs/validation/terminal-observed-source-drain-v1.md#next-acceptance-gate).** [Current status](docs/development-status.md) separates local, CI, exact deployment and real-account acceptance.
 
 Privensic Screen Reader now [checks assessment claims against admitted originals](docs/decisions/0062-recorded-evidence-claims.md); imports and file hashes alone cannot verify a barrier. Current admitted routes are explicitly controlled fixtures. It has an [automated website-evidence assessment](docs/decisions/0057-automated-website-evidence-readiness.md): supplied results â†’ eight requirements â†’ Ready, Insufficient evidence, or No blocking barrier documented. Unknown URLs require scanner results; no findings are fabricated and no human-review task is inserted. [Admitted provenance](docs/decisions/0058-admitted-observation-provenance.md) binds originals to the actual workspace, scan, job, generation and worker through atomic completion. [Explicit passive recording](docs/decisions/0059-admitted-passive-recording.md) adds original video and one capture state with zero input edges on the sanitized fixture. [Admitted keyboard recordings](docs/decisions/0060-admitted-keyboard-recordings.md) now retain actual route graphs, keys, timing and five originals; full delivery acceptance is tracked separately.
 
@@ -54,15 +54,20 @@ All nine CI jobs pass (2,936 per OS/native71/database431/operations172), and151
 actual deployed files match. Original-account queued stop, after-input stop with190
 unchanged images/owned cleanup, and a subsequent no-input job under the same healthy
 worker pass through UIc614141/Edge11. [Cancellation receipt](docs/validation/caller-scan-cancellation-v1.md).
-**Next:** [finish finite recording finalization](docs/validation/finite-recording-finalization-v1.md#next-acceptance-gate).
+**Current recording gate:** [deliver the terminal observed-source drain](docs/validation/terminal-observed-source-drain-v1.md#next-acceptance-gate).
 Coreac228d7 passes all nine CI jobs (3,007 per OS/native71/database450/operations172)
 and exact151-file private delivery. A distinct normal original-account recording
 completes with five independently matched S3 originals and actual graph/video
 playback; its separate repeat fails Unconfirmed. The hosted failure remains open.
-New actual Chromium checks show image acquisition and video must stop before
-final original transfer. That repair passes162 focused checks and3,012 full
-Windows tests, with clean strict build/format. CI, exact delivery and fresh
-account acceptance remain separate gates. The
+Finite acquisition and bounded complete-video decoding are delivered through
+7fd3fc5: all nine CI jobs,3,106 tests per OS, native71/database461/operations172
+and151 exact installed files. Three new original-account recordings complete
+on the same worker; all five originals match S3 and actual graph/video playback
+passes for blocked and delivered-input cases. A distinct checkout-preview run
+then hits the250-source-image budget and remains blocked with no archive.
+The [terminal-transfer repair](docs/decisions/0079-terminal-observed-source-drain.md)
+passes23 focused checks locally and keeps all existing resource limits. New
+full checks, CI, exact delivery and distinct hosted route acceptance remain gates. The
 [safe failure diagnostics](docs/validation/recording-failure-diagnostics-v1.md)
 and original failed attempts are preserved; no resource limit is increased.
 Partial originals cannot become a final video, replay or completion.
@@ -81,7 +86,7 @@ through Edge Functions in existing Supabase project `gpnijaxrgtwzwtrqsbcu`; it i
 third-party consumer. Reader, jobs and evidence logic stay here.
 
 The current bounded workspace/report API and [tenant-owned read-only fixture sessions](docs/decisions/0044-tenant-reader-sessions.md) publish
-[contract 1.13.0](docs/decisions/0073-protected-original-image-reads.md) at `/openapi/v1.json`,
+[contract 1.14.0](docs/decisions/0074-caller-owned-scan-cancellation.md) at `/openapi/v1.json`,
 including response schemas and safe errors. See [HTTP examples](docs/protocol/core-api.http)
 and [the remaining recovery gates](docs/completion-plan.md#next-recover-interrupted-recordings-safely).
 The [private HTTP-backed MCP mode](docs/decisions/0051-private-http-backed-mcp.md)
