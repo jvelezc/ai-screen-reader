@@ -64,6 +64,49 @@ public sealed class ChromiumCaptureProbeTests
     }
 
     [Fact]
+    public async Task NativeDecoderRetainsWholeValidVideoBeyondLegacyTenSecondCeiling()
+    {
+        var folder = Path.GetFullPath(Path.Combine("artifacts", "capture-decoder-controls", Guid.NewGuid().ToString("N")));
+        Directory.CreateDirectory(folder);
+        await using var browser = await ChromiumFixtureBrowser.LaunchAsync(fixture: BundledFixture.CapturePrivacy);
+        var page = browser.DiagnosticPage;
+        await page.SetViewportSizeAsync(320, 240);
+        await page.EvaluateAsync("() => { document.documentElement.style.background = document.body.style.background = '#e41a3d'; }");
+        _ = await page.ScreenshotAsync(new() { Type = Microsoft.Playwright.ScreenshotType.Jpeg });
+        var first = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var last = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var frames = 0; var greenAfter = int.MaxValue;
+        var video = Path.Combine(folder, "whole-long-control.webm");
+        _ = await page.Screencast.StartAsync(new()
+        {
+            Path = video,
+            Size = new() { Width = 320, Height = 240 },
+            OnFrame = _ =>
+            {
+                var count = Interlocked.Increment(ref frames);
+                first.TrySetResult();
+                if (count >= Volatile.Read(ref greenAfter)) last.TrySetResult();
+                return Task.CompletedTask;
+            }
+        });
+        await first.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        // Measurement hold on a deliberately public positive control. No user input.
+        await Task.Delay(TimeSpan.FromSeconds(11));
+        await page.EvaluateAsync("() => { document.documentElement.style.background = document.body.style.background = '#20b840'; }");
+        Interlocked.Exchange(ref greenAfter, Volatile.Read(ref frames) + 3);
+        await last.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await page.Screencast.StopAsync();
+        var original = await File.ReadAllBytesAsync(video);
+        var digest = SHA256.HashData(original);
+        var decoded = await CaptureProbeDecoder.InspectAsync(page, original, video: true);
+        Assert.InRange(decoded.Frames, 251, 10000);
+        Assert.True(decoded.FirstFrameCanaryPixels > 320 * 240 / 2, JsonSerializer.Serialize(decoded));
+        Assert.Equal(0, decoded.LastFrameCanaryPixels);
+        Assert.True(decoded.CanaryPixels >= decoded.FirstFrameCanaryPixels);
+        Assert.Equal(digest, SHA256.HashData(await File.ReadAllBytesAsync(video)));
+    }
+
+    [Fact]
     public async Task AlreadyCancelledProbe_RetainsExplicitFailedReceiptWithoutStartingCollectors()
     {
         using var cancellation = new CancellationTokenSource();

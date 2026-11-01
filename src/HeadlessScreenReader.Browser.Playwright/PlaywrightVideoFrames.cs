@@ -21,42 +21,50 @@ internal static class PlaywrightVideoFrames
             await using (var stream = new FileStream(input, FileMode.CreateNew))
                 await stream.WriteAsync(video).ConfigureAwait(false);
             var start = new ProcessStartInfo(executable)
-            { UseShellExecute = false, CreateNoWindow = true, RedirectStandardError = true };
+            { UseShellExecute = false, CreateNoWindow = true, RedirectStandardError = true, RedirectStandardOutput = true };
             foreach (var argument in new[] { "-v", "error", "-threads", "1", "-i", input, "-vsync", "0",
-                "-frames:v", "251", "-threads", "1", Path.Combine(root, "frame-%04d.png") }) start.ArgumentList.Add(argument);
+                "-frames:v", (PngFrameReader.MaximumFrames + 1).ToString(System.Globalization.CultureInfo.InvariantCulture),
+                // The pinned minimal build supplies image2, not the image2pipe output muxer.
+                // Its pipe protocol appends each complete PNG without creating frame files.
+                "-threads", "1", "-f", "image2", "-update", "1", "-c:v", "png", "pipe:1" }) start.ArgumentList.Add(argument);
             using var process = new Process { StartInfo = start };
             if (!process.Start()) throw new BrowserOperationException("CAPTURE_DECODER_UNAVAILABLE");
-            var errors = process.StandardError.ReadToEndAsync();
+            var errors = DrainErrorsAsync(process.StandardError.BaseStream);
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             try
             {
-                await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(10)).ConfigureAwait(false);
-                _ = await errors.ConfigureAwait(false);
+                var frames = await PngFrameReader.ReadAsync(process.StandardOutput.BaseStream, timeout.Token).ConfigureAwait(false);
+                await process.WaitForExitAsync(timeout.Token).ConfigureAwait(false);
+                await errors.ConfigureAwait(false);
                 if (process.ExitCode != 0) throw new BrowserOperationException("CAPTURE_DECODE_FAILED");
+                if (frames.IsEmpty) throw new BrowserOperationException("CAPTURE_FRAME_COUNT_INVALID");
+                return frames;
             }
-            catch (TimeoutException)
+            catch (OperationCanceledException) when (timeout.IsCancellationRequested)
             {
-                if (!process.HasExited) process.Kill(entireProcessTree: true);
-                await process.WaitForExitAsync().ConfigureAwait(false);
                 throw new BrowserOperationException("CAPTURE_DECODE_TIMEOUT");
             }
-            var files = Directory.GetFiles(root, "frame-*.png").Order(StringComparer.Ordinal).ToArray();
-            if (files.Length is 0 or > 250) throw new BrowserOperationException("CAPTURE_FRAME_COUNT_INVALID");
-            var frames = ImmutableArray.CreateBuilder<byte[]>();
-            foreach (var file in files)
+            finally
             {
-                var bytes = await File.ReadAllBytesAsync(file).ConfigureAwait(false);
-                if (bytes.Length is 0 or > 4 * 1024 * 1024) throw new BrowserOperationException("CAPTURE_FRAME_SIZE_INVALID");
-                frames.Add(bytes);
+                if (!process.HasExited)
+                    try { process.Kill(entireProcessTree: true); }
+                    catch (InvalidOperationException) when (process.HasExited) { }
+                await process.WaitForExitAsync().ConfigureAwait(false);
+                await errors.ConfigureAwait(false);
             }
-            return frames.ToImmutable();
         }
         finally
         {
             // Only known leaf files in this freshly owned directory; no recursive deletion.
             if (File.Exists(input)) File.Delete(input);
-            foreach (var file in Directory.GetFiles(root, "frame-*.png")) File.Delete(file);
             Directory.Delete(root);
         }
+    }
+
+    private static async Task DrainErrorsAsync(Stream errors)
+    {
+        var buffer = new byte[4096];
+        while (await errors.ReadAsync(buffer).ConfigureAwait(false) != 0) { }
     }
 
     private static string ResolveExecutable()

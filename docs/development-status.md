@@ -34,7 +34,7 @@ original images and exact native cleanup; the same worker then completes a disti
 no-input job without a restart. UIc614141/Edge11, source190 exact download,
 keyboard/320px, reconnect and saved sign-in pass in their named scopes.
 [Cancellation receipt](validation/caller-scan-cancellation-v1.md).
-**Next:** [locate and repair the intermittent recording fault](validation/recording-failure-boundaries-v1.md#next-acceptance-gate).
+**Next:** [finish bounded complete-video decoding](validation/bounded-complete-video-decoding-v1.md#next-acceptance-gate).
 Actual Chromium checks show the final transfer can prolong image acquisition and
 begin before video finalizes. The repair joins both collectors inside the existing
 input-denied capture drain before the finite transfer;162 focused checks pass.
@@ -42,9 +42,16 @@ The repair is delivered at7fbf57a: all nine CI jobs,3,012 tests per OS,
 native71/database450/operations172 and151 exact installed files. A fresh normal
 original-account run completes with five independently matched originals and
 actual graph/video playback; a separate normal repeat still fails Unconfirmed.
-Closed failure boundaries pass242 focused and3,060 full Windows checks, plus461
-actual isolated PostgreSQL cases. CI and exact delivery remain separate gates.
-Broader fault/provider/website/intervention acceptance stays separate.
+Closed failure boundaries are delivered at9cb3dae: all nine CI jobs,3,060 per OS,
+native71/database461/operations172 and151 exact installed files. On November1,
+the original browser restores its saved account session without another password
+entry. A distinct normal route identifies media finalization failure and retains
+238 source images. A separate actual >10second Chromium control exposes the old
+250-video-frame decoder cutoff. Sequential bounded decoding now passes162 focused
+and3,106 full Windows checks with clean strict build/format; CI/exact delivery
+and fresh hosted acceptance remain gates. Source/host capture limits are unchanged;
+every original and failed attempt is preserved. Broader fault/provider/website/
+intervention acceptance stays separate.
 
 **Scoped recording-failure diagnostics are accepted at1200190.** The framed child
 preserves only a closed reason and exact original stream scope; the host grants no
@@ -582,7 +589,7 @@ flowchart LR
     Keyboard --> Claims[Accepted source-bound recorded claims]
     Claims --> Compact[Accepted compact original-account progress consumer]
     Compact --> Retained[Core retained checkpoint graph and byte reads]
-    Retained --> Next[NEXT: locate and repair the recording fault]
+    Retained --> Next[NEXT: bounded complete-video decoding]
     Next --> Durable[Broader hosted recovery and workflow acceptance]
     Client --> ViewerControl[Human takeover acceptance]
     classDef done fill:#dcfce7,stroke:#166534,color:#14532d

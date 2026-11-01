@@ -140,7 +140,7 @@ at5b75935/HTTP1.14/private MCP21: all nine CI jobs (2,936 per OS/native71/databa
 operations172), exact151-file delivery, UIc614141/Edge11 and queued/active account
 stop pass. The fresh active case preserves190 images and exact native cleanup;
 the same healthy worker completes a distinct no-input job without restarting.
-**Next:** [locate and repair the intermittent recording fault](validation/recording-failure-boundaries-v1.md#next-acceptance-gate).
+**Next:** [finish bounded complete-video decoding](validation/bounded-complete-video-decoding-v1.md#next-acceptance-gate).
 Actual Chromium reproduces image acquisition continuing during final transfer
 and a video that has not yet finalized. Join both acquisition collectors before
 the owned final transfer inside the existing input-denied capture drain. The
@@ -148,8 +148,13 @@ repair is delivered at7fbf57a: all nine CI jobs,3,012 per OS, native71/database4
 operations172 and151 exact installed files. A fresh normal original-account run
 completes with five independently matched originals and actual graph/video
 playback; a separate normal repeat still fails Unconfirmed. Closed failure
-boundaries pass242 focused and3,060 full Windows checks, plus461 actual isolated
-PostgreSQL cases; CI and exact delivery remain separate gates. Preserve
+boundaries are delivered at9cb3dae, with all nine CI jobs,3,060 per OS and151 exact
+installed files. On November1 the original browser/account reconnects without
+another password entry. A distinct normal route identifies finalization failure
+with238 retained source images. A separate valid >10second Chromium control
+exposes the old250-video-frame decoder cutoff. Sequential bounded decoding passes
+162 focused and3,106 full Windows checks with clean strict build/format. Both CI
+platforms, exact delivery and fresh hosted recordings remain gates. Preserve
 every acquired original, all declared resource limits and every failed attempt;
 do not replay uncertain input. The
 scoped [failure diagnostics](validation/recording-failure-diagnostics-v1.md) are
