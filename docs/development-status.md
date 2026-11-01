@@ -48,8 +48,11 @@ the original browser restores its saved account session without another password
 entry. A distinct normal route identifies media finalization failure and retains
 238 source images. A separate actual >10second Chromium control exposes the old
 250-video-frame decoder cutoff. Sequential bounded decoding now passes162 focused
-and3,106 full Windows checks with clean strict build/format; CI/exact delivery
-and fresh hosted acceptance remain gates. Source/host capture limits are unchanged;
+and3,106 full Windows checks with clean strict build/format. CI41350330957 passes
+all71 Linux worker cases, then runs out of disk while exporting the release image.
+The hosted worker job now reclaims only its unused Android SDK before building;
+fresh complete CI/exact delivery and hosted acceptance remain gates.
+Source/host capture limits are unchanged;
 every original and failed attempt is preserved. Broader fault/provider/website/
 intervention acceptance stays separate.
 

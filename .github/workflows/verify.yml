@@ -17,6 +17,19 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
+      - name: Reserve disk space for the tested release image
+        if: runner.environment == 'github-hosted'
+        shell: bash
+        run: |
+          df -h "$GITHUB_WORKSPACE"
+          # This job uses .NET and Chromium, not the hosted image's Android SDK.
+          hsr_android_root=/usr/local/lib/android
+          if [ -d "$hsr_android_root" ]; then
+            test ! -L "$hsr_android_root"
+            test "$(realpath -- "$hsr_android_root")" = /usr/local/lib/android
+            sudo rm -rf --one-file-system -- "$hsr_android_root"
+          fi
+          df -h "$GITHUB_WORKSPACE"
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json

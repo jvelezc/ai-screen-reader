@@ -50,6 +50,14 @@ New-source CI, exact private delivery and fresh hosted
 recording acceptance remain gates. A count or passing local control alone is not
 proof of the precise earlier hosted exception.
 
+CI41350330957 passes all71 actual Linux worker cases, then fails release-image
+export with `no space left on device`; no release archive is produced or promoted.
+The worker job now reclaims only the unused Android installation at the verified
+literal `/usr/local/lib/android` on GitHub-hosted runners and prints disk capacity
+before/after. It preserves the tested image, release binding and all existing
+gates. The [runner image inventory](https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2404-Readme.md#android)
+documents that installation. A fresh complete CI run is still required.
+
 | Requirement | Evidence |
 | --- | --- |
 | Decode a complete >10second actual native video without modifying originals | `NativeDecoderRetainsWholeValidVideoBeyondLegacyTenSecondCeiling` |
@@ -62,7 +70,7 @@ proof of the precise earlier hosted exception.
 
 ## Next acceptance gate
 
-Require full Windows validation and both CI platforms, promote the exact tested
+Require both CI platforms and successful release export, promote the exact tested
 artifact privately, then admit distinct normal recordings under the original
 account. Read complete originals, source/action links and actual native playback
 on successful runs; use closed failure reasons for any stop. Do not replay the
