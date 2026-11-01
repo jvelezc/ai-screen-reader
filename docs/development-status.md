@@ -1,6 +1,6 @@
 # Original development goals and next step
 
-Updated October 31, 2026. The original proposal under `outputs/` remains unchanged. This status document tracks implementation against its acceptance gates.
+Updated November 1, 2026. The original proposal under `outputs/` remains unchanged. This status document tracks implementation against its acceptance gates.
 
 **Protected original-image reads and consumer accepted at core `4381d44`/UI `166746e`.**
 API 1.13 and twenty private MCP tools expose a bounded subset manifest and 64 KiB
@@ -50,8 +50,11 @@ entry. A distinct normal route identifies media finalization failure and retains
 250-video-frame decoder cutoff. Sequential bounded decoding now passes162 focused
 and3,106 full Windows checks with clean strict build/format. CI41350330957 passes
 all71 Linux worker cases, then runs out of disk while exporting the release image.
-The hosted worker job now reclaims only its unused Android SDK before building;
-fresh complete CI/exact delivery and hosted acceptance remain gates.
+The hosted worker job now reclaims only its unused Android SDK before building.
+CI41351099639 exports the verified151-file release and both OS suites pass3,106;
+the20minute Windows batch limit cancels its final CLI checks. Its CI budget is
+now25minutes, supported by the measured19m26s previous complete Windows batch.
+Fresh all-job CI/exact delivery and hosted acceptance remain gates.
 Source/host capture limits are unchanged;
 every original and failed attempt is preserved. Broader fault/provider/website/
 intervention acceptance stays separate.

@@ -58,6 +58,14 @@ before/after. It preserves the tested image, release binding and all existing
 gates. The [runner image inventory](https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2404-Readme.md#android)
 documents that installation. A fresh complete CI run is still required.
 
+CI41351099639 verifies that disk repair: native71/database461/operations172 and
+the complete151-file release archive pass. Both OS suites pass3,106 tests with
+zero failures/skips, but the20minute Windows job limit cancels final CLI checks;
+the check-run annotation explicitly confirms that deadline. The earlier complete
+Windows batch took19m26s, and browser installation varies. The matrix CI budget is
+now25minutes; product/input/shutdown/decode deadlines are unchanged. Neither
+incomplete CI run authorizes private promotion. Require a fresh all-job success.
+
 | Requirement | Evidence |
 | --- | --- |
 | Decode a complete >10second actual native video without modifying originals | `NativeDecoderRetainsWholeValidVideoBeyondLegacyTenSecondCeiling` |
