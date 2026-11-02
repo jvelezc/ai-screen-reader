@@ -32,7 +32,7 @@ public sealed record AdmittedKeyboardRecording(string Schema, FixtureJob Job, st
             .All(value => !string.IsNullOrWhiteSpace(value) && value.Length <= 500 && !value.Any(char.IsControl)));
         Require(BaselineSha256 == baselineDigest && VideoSha256 == videoDigest && VideoBytes == videoBytes
             && videoBytes is >= 4 and <= PassiveObservationRecording.MaximumBundleBytes && SourceFramesSha256 == framesDigest
-            && DecodedVideoFrames is >= 1 and <= 10000);
+            && DecodedVideoFrames is >= 1 and <= PassiveObservationRecording.MaximumDecodedVideoFrames);
         Require(Capture is { Phase: CapturePhase.Closed, EventsTruncated: false } && !Capture.Events.IsDefaultOrEmpty
             && Capture.Events.Any(e => e.Phase == CapturePhase.Excluded));
         Require(Receipt is not null && Receipt.Schema == "hsr-traversal-v1" && Receipt.Profile == FixtureObservation.Profile

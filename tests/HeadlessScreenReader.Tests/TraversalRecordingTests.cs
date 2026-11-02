@@ -13,6 +13,80 @@ public sealed class TraversalRecordingTests
     private static ImmutableArray<VideoMarkerFrame> Video(int count = 30) =>
         Enumerable.Range(0, count).Select(i => new VideoMarkerFrame(i, i * 40, new(0, i == 0 ? 7 : 8))).ToImmutableArray();
 
+    [Theory]
+    [InlineData(251)]
+    [InlineData(282)]
+    [InlineData(10000)]
+    public async Task LongCompleteVideoRetainsLateCuesWithinTheExistingDecodedFrameContract(int frames)
+    {
+        var original = await Receipt();
+        var at = frames == 251 ? 9700 : frames * 40 - 480;
+        var receipt = original with
+        {
+            DurationMilliseconds = at + 1000,
+            Observations = [.. original.Observations.Select(o => o with { CaptureWindow = new(at, at + 20) })],
+            Attempts = [original.Attempts[0] with { StartedMilliseconds = at + 10, FinishedMilliseconds = at + 100 }],
+            Timeline = [original.Timeline[0] with { ElapsedMilliseconds = at }]
+        };
+        var aligned = TraversalRecording.Align(receipt, new(Epoch, 0), 100, "doc", Hash, Source, Video(frames));
+        Assert.True(aligned.Calibrated, aligned.ReasonCode);
+        Assert.Equal(Epoch, aligned.AnchorUnixMilliseconds);
+        Assert.Equal(41, aligned.UncertaintyMilliseconds);
+        Assert.Equal(receipt.Observations.Length + receipt.Attempts.Length + receipt.Timeline.Length, aligned.Cues.Length);
+        Assert.All(aligned.Cues, cue => Assert.Equal(RecordingCueCoverage.Covered, cue.Coverage));
+        var observation = aligned.Cues.Single(c => c.EvidenceId == "o1");
+        Assert.Equal((at + 59) / 1000d, observation.StartSeconds);
+        Assert.Equal((at + 161) / 1000d, observation.EndSeconds);
+        Assert.True(observation.FirstFrame >= 243);
+        Assert.True(observation.LastFrame < frames);
+        if (frames > 251) Assert.True(observation.FirstFrame > 250);
+        Assert.Equal(TraversalReachability.Unknown, receipt.Reachability);
+        Assert.Equal(TraversalBarrier.NoneObserved, receipt.Barrier);
+    }
+
+    [Theory]
+    [InlineData("index")]
+    [InlineData("time")]
+    [InlineData("tick")]
+    [InlineData("objective")]
+    public async Task InvalidSuffixBeyondLegacyVideoBoundaryCannotProduceTraversalCues(string invalid)
+    {
+        var frames = Video(282);
+        var last = frames[^1];
+        frames = frames.SetItem(281, invalid switch
+        {
+            "index" => last with { Index = 282 },
+            "time" => last with { PresentationMilliseconds = double.NaN },
+            "tick" => last with { Marker = new(0, 256) },
+            _ => last with { Marker = new(1, 8) }
+        });
+        var result = TraversalRecording.Align(await Receipt(), new(Epoch, 0), 100, "doc", Hash, Source, frames);
+        Assert.Equal("TRAVERSAL_RECORDING_FRAME_EVIDENCE_INVALID", result.ReasonCode);
+        Assert.False(result.Calibrated); Assert.Empty(result.Cues);
+        Assert.Null(result.AnchorUnixMilliseconds); Assert.Null(result.UncertaintyMilliseconds);
+    }
+
+    [Fact]
+    public async Task DecodedVideoImmediatelyBeyondTheExistingContractCannotProduceTraversalCues()
+    {
+        var result = TraversalRecording.Align(await Receipt(), new(Epoch, 0), 100, "doc", Hash, Source, Video(10001));
+        Assert.Equal("TRAVERSAL_RECORDING_FRAME_EVIDENCE_INVALID", result.ReasonCode);
+        Assert.False(result.Calibrated); Assert.Empty(result.Cues);
+        Assert.Null(result.AnchorUnixMilliseconds); Assert.Null(result.UncertaintyMilliseconds);
+    }
+
+    [Fact]
+    public async Task ConflictingMarkerBeyondLegacyVideoBoundaryKeepsTimingUnknown()
+    {
+        var video = Enumerable.Range(0, 282).Select(i =>
+            new VideoMarkerFrame(i, i * 40, new(0, i == 281 ? 8 : 7))).ToImmutableArray();
+        ImmutableArray<SourceMarkerFrame> source = [Source[0], new("later.jpg", Epoch + 281 * 40 + 1000, new(0, 8))];
+        var result = TraversalRecording.Align(await Receipt(), new(Epoch, 0), 100, "doc", Hash, source, video);
+        Assert.Equal("TRAVERSAL_RECORDING_UNCERTAINTY_EXCEEDS_TARGET", result.ReasonCode);
+        Assert.False(result.Calibrated); Assert.Empty(result.Cues);
+        Assert.Null(result.AnchorUnixMilliseconds); Assert.Null(result.UncertaintyMilliseconds);
+    }
+
     [Fact]
     public async Task PresentationIndexRetainsReversedRawDeliveriesAndCalibratesWithoutChangingTimestampsOrOutcome()
     {
@@ -229,7 +303,7 @@ public sealed class TraversalRecordingTests
         foreach (var source in sources)
             Assert.Equal("TRAVERSAL_RECORDING_FRAME_EVIDENCE_INVALID",
                 TraversalRecording.Align(receipt, new(Epoch, 0), 100, "doc", Hash, source, Video()).ReasonCode);
-        ImmutableArray<VideoMarkerFrame>[] videos = [[], Video(251), Video().SetItem(1, new(3, 40, new(0, 8))),
+        ImmutableArray<VideoMarkerFrame>[] videos = [[], Video(10001), Video().SetItem(1, new(3, 40, new(0, 8))),
             Video().SetItem(1, new(1, 41, new(0, 8))), Video().SetItem(1, new(1, 40, new(0, 256)))];
         foreach (var video in videos)
             Assert.Equal("TRAVERSAL_RECORDING_FRAME_EVIDENCE_INVALID",

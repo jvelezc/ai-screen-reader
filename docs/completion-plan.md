@@ -140,7 +140,7 @@ at5b75935/HTTP1.14/private MCP21: all nine CI jobs (2,936 per OS/native71/databa
 operations172), exact151-file delivery, UIc614141/Edge11 and queued/active account
 stop pass. The fresh active case preserves190 images and exact native cleanup;
 the same healthy worker completes a distinct no-input job without restarting.
-**Next:** [deliver the terminal observed-source drain](validation/terminal-observed-source-drain-v1.md#next-acceptance-gate).
+**Next:** [finish long-video timing](validation/long-video-timing-v1.md#next-acceptance-gate).
 Actual Chromium reproduces image acquisition continuing during final transfer
 and a video that has not yet finalized. Join both acquisition collectors before
 the owned final transfer inside the existing input-denied capture drain. The
@@ -163,8 +163,14 @@ all3,367,671 original bytes and two observed results, then safely blocks without
 an archive. A real regression exposes source transfer before the terminal observed
 checkpoint. The local fix defers only that copy into the existing joined final
 drain; 23 focused and 3,112 full Windows checks pass, with zero failed/skipped,
-a zero-warning strict build and clean format verification. New CI, exact delivery
-and fresh remaining-route acceptance are gates. All resource bounds remain unchanged. Preserve
+a zero-warning strict build and clean format verification. Delivery6488605 passes
+all nine CI jobs,3,112 per OS and151 exact installed files. All four fresh routes
+on one healthy worker retain20 matching originals, one attempt each and native0.
+Actual checkout6.16s and feedback11.28s playback ends. The282-frame feedback movie
+retains invalid calibration because two timing analyzers still capped video250.
+The local timing fix uses the existing10,000-frame decoder/archive bound;110
+reviewed and3,129 full Windows checks, strict build and format pass. New CI/delivery and fresh
+calibrated long playback remain gates. All source/byte/uncertainty bounds remain unchanged. Preserve
 every acquired original, all declared resource limits and every failed attempt;
 do not replay uncertain input. The
 scoped [failure diagnostics](validation/recording-failure-diagnostics-v1.md) are

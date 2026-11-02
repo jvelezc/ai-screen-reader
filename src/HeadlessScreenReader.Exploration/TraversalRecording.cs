@@ -24,7 +24,8 @@ public static class TraversalRecording
             || receipt.Observations.Any(o => o.Snapshot.DocumentId != documentId)
             || videoSha256.Length != 64 || videoSha256.Any(c => !char.IsAsciiHexDigit(c)))
             return Unknown("TRAVERSAL_RECORDING_IDENTITY_UNVERIFIED");
-        if (source.IsDefaultOrEmpty || source.Length > 500 || video.IsDefaultOrEmpty || video.Length > 250
+        if (source.IsDefaultOrEmpty || source.Length > 500 || video.IsDefaultOrEmpty
+            || video.Length > PassiveObservationRecording.MaximumDecodedVideoFrames
             || source.Any(f => !double.IsFinite(f.PresentationUnixMilliseconds) || f.PresentationUnixMilliseconds <= 0
                 || f.Marker is not { Objective: 0, Tick: >= 0 and <= 255 })
             || source.Zip(source.Skip(1)).Any(p => p.Second.PresentationUnixMilliseconds < p.First.PresentationUnixMilliseconds)

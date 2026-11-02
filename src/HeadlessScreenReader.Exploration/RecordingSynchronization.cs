@@ -38,7 +38,8 @@ public static class RecordingSynchronization
             return Unknown("RECORDING_ACTION_EVIDENCE_INVALID");
         if (actions.Zip(actions.Skip(1)).Any(pair => pair.Second.HostAttemptMilliseconds < pair.First.HostCompletionMilliseconds))
             return Unknown("RECORDING_ACTION_EVIDENCE_INVALID");
-        if (source.IsDefaultOrEmpty || source.Length > 500 || video.IsDefaultOrEmpty || video.Length > 250
+        if (source.IsDefaultOrEmpty || source.Length > 500 || video.IsDefaultOrEmpty
+            || video.Length > PassiveObservationRecording.MaximumDecodedVideoFrames
             || source.Any(f => !double.IsFinite(f.PresentationUnixMilliseconds) || f.PresentationUnixMilliseconds <= 0 || !Valid(f.Marker))
             || video.Where((f, i) => f.Index != i || f.PresentationMilliseconds != i * 40 || !Valid(f.Marker)).Any())
             return Unknown("RECORDING_FRAME_EVIDENCE_INVALID");

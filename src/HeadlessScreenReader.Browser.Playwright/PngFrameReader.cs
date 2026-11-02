@@ -7,7 +7,7 @@ namespace HeadlessScreenReader.Browser.Playwright;
 /// <summary>Frames native PNG output without sampling. Pixel validation remains independent in Chromium.</summary>
 internal static class PngFrameReader
 {
-    internal const int MaximumFrames = 10000;
+    internal const int MaximumFrames = PassiveObservationRecording.MaximumDecodedVideoFrames;
     internal const int MaximumFrameBytes = 4 * 1024 * 1024;
     internal const int MaximumBytes = 16 * 1024 * 1024;
     private static readonly byte[] Signature = [137, 80, 78, 71, 13, 10, 26, 10];

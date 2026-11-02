@@ -12,6 +12,7 @@ public sealed record PassiveObservationRecording(string Schema, FixtureJob Job, 
 {
     public const string CurrentSchema = "hsr-passive-observation-recording-v1";
     public const int MaximumBundleBytes = 25 * 1024 * 1024;
+    public const int MaximumDecodedVideoFrames = 10000;
     public const string VideoFile = "original.webm";
     public const string CaptureFile = "capture-state.json";
     public string Timing => "NotAlignedToSnapshot";
@@ -23,7 +24,7 @@ public sealed record PassiveObservationRecording(string Schema, FixtureJob Job, 
     {
         if (Schema != CurrentSchema || Job != observation.Job || !Job.RecordObservation || Job.TraversalRoute != 0
             || ObservationSha256 != observationDigest || VideoSha256 != videoDigest || VideoBytes != videoBytes
-            || videoBytes is < 4 or > MaximumBundleBytes || DecodedVideoFrames is < 1 or > 10000
+            || videoBytes is < 4 or > MaximumBundleBytes || DecodedVideoFrames is < 1 or > MaximumDecodedVideoFrames
             || ObservedSourceFrames is < 1 or > 2048 || Capture is not { Phase: CapturePhase.Closed, EventsTruncated: false }
             || Capture.Events.IsDefaultOrEmpty || !Capture.Events.Any(e => e.Phase == CapturePhase.Excluded)
             || States.IsDefault || States.Length != 1 || States[0] != new PassiveObservationState("capture-1",

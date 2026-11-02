@@ -8,6 +8,59 @@ public sealed class RecordingSynchronizationTests
 {
     private const double Epoch = 1_800_000_000_000;
 
+    [Theory]
+    [InlineData(251)]
+    [InlineData(282)]
+    [InlineData(10000)]
+    public void LongCompleteVideoRetainsTheLateObjectiveWithinTheExistingDecodedFrameContract(int frames)
+    {
+        var input = LongInputs(frames);
+        var result = RecordingSynchronization.Analyze(new(Epoch, 0), 0, input.Actions, input.Source, input.Video);
+        Assert.Equal(SynchronizationVerification.Verified, result.Verification);
+        Assert.Equal("RECORDING_SYNCHRONIZATION_VERIFIED", result.ReasonCode);
+        Assert.Equal(20, result.Markers.Length);
+        Assert.Equal(Epoch, result.AnchorUnixMilliseconds); Assert.Equal(41, result.UncertaintyMilliseconds);
+        Assert.Equal(250, result.TargetMilliseconds);
+        var late = result.Markers.Single(m => m.Objective == 20);
+        Assert.Equal(frames - 1, late.VideoFrameIndex);
+        Assert.Equal(20, late.MeasuredLagMilliseconds); Assert.Equal(61, late.ConservativeAbsoluteErrorMilliseconds);
+        Assert.All(result.Markers, marker => Assert.NotNull(marker.VideoFrameIndex));
+    }
+
+    [Theory]
+    [InlineData("index")]
+    [InlineData("time")]
+    [InlineData("tick")]
+    [InlineData("objective")]
+    public void InvalidSuffixBeyondLegacyVideoBoundaryCannotVerifySynchronization(string invalid)
+    {
+        var input = LongInputs(282);
+        var last = input.Video[^1];
+        var video = input.Video.SetItem(281, invalid switch
+        {
+            "index" => last with { Index = 282 },
+            "time" => last with { PresentationMilliseconds = double.NaN },
+            "tick" => last with { Marker = new(20, 256) },
+            _ => last with { Marker = new(21, 31) }
+        });
+        var result = RecordingSynchronization.Analyze(new(Epoch, 0), 0, input.Actions, input.Source, video);
+        Assert.Equal(SynchronizationVerification.Unknown, result.Verification);
+        Assert.Equal("RECORDING_FRAME_EVIDENCE_INVALID", result.ReasonCode);
+        Assert.Empty(result.Markers); Assert.Null(result.AnchorUnixMilliseconds);
+        Assert.Null(result.UncertaintyMilliseconds);
+    }
+
+    [Fact]
+    public void DecodedVideoImmediatelyBeyondTheExistingContractCannotVerifySynchronization()
+    {
+        var input = LongInputs(10001);
+        var result = RecordingSynchronization.Analyze(new(Epoch, 0), 0, input.Actions, input.Source, input.Video);
+        Assert.Equal(SynchronizationVerification.Unknown, result.Verification);
+        Assert.Equal("RECORDING_FRAME_EVIDENCE_INVALID", result.ReasonCode);
+        Assert.Empty(result.Markers); Assert.Null(result.AnchorUnixMilliseconds);
+        Assert.Null(result.UncertaintyMilliseconds);
+    }
+
     [Fact]
     public void ReversedSourceClockOverlappingActionsOrInvalidMarkerCode_RemainsUnknown()
     {
@@ -87,6 +140,21 @@ public sealed class RecordingSynchronizationTests
         var conflict = input.Actions.SetItem(0, input.Actions[0] with { BrowserKeydownUnixMilliseconds = Epoch + 100_000 });
         Assert.Equal("RECORDING_CLOCK_INTERVAL_CONFLICT", RecordingSynchronization.Analyze(new(Epoch, 0), 0,
             conflict, input.Source, input.Video).ReasonCode);
+    }
+
+    private static (ImmutableArray<RecordedActionMarker> Actions, ImmutableArray<SourceMarkerFrame> Source, ImmutableArray<VideoMarkerFrame> Video) LongInputs(int frames)
+    {
+        var input = Inputs(20);
+        var at = (frames - 1) * 40 - 20;
+        var actions = input.Actions.SetItem(19, input.Actions[19] with
+        {
+            HostAttemptMilliseconds = at,
+            HostCompletionMilliseconds = at + 10,
+            BrowserKeydownUnixMilliseconds = Epoch + at + 5
+        });
+        var video = input.Video.Take(30).Concat(Enumerable.Range(30, frames - 30).Select(i =>
+            new VideoMarkerFrame(i, i * 40, new(i == frames - 1 ? 20 : 19, 31)))).ToImmutableArray();
+        return (actions, input.Source, video);
     }
 
     private static (ImmutableArray<RecordedActionMarker> Actions, ImmutableArray<SourceMarkerFrame> Source, ImmutableArray<VideoMarkerFrame> Video) Inputs(double lag)

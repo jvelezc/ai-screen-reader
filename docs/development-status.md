@@ -34,7 +34,7 @@ original images and exact native cleanup; the same worker then completes a disti
 no-input job without a restart. UIc614141/Edge11, source190 exact download,
 keyboard/320px, reconnect and saved sign-in pass in their named scopes.
 [Cancellation receipt](validation/caller-scan-cancellation-v1.md).
-**Next:** [deliver the terminal observed-source drain](validation/terminal-observed-source-drain-v1.md#next-acceptance-gate).
+**Next:** [finish long-video timing](validation/long-video-timing-v1.md#next-acceptance-gate).
 Actual Chromium checks show the final transfer can prolong image acquisition and
 begin before video finalizes. The repair joins both collectors inside the existing
 input-denied capture drain before the finite transfer;162 focused checks pass.
@@ -63,8 +63,14 @@ with all250 originals/3,367,671 bytes intact, two retained observed results and 
 archive. The terminal checkpoint was exporting sources while capture still admitted
 frames. The local repair defers that final copy into the joined, input-denied drain;
 23 focused and 3,112 full Windows checks pass, with zero failed/skipped, a clean
-strict build and format verification. New CI/delivery and fresh remaining-route
-acceptance remain gates. Source/host capture limits are unchanged;
+strict build and format verification. Delivery6488605 passes all nine CI jobs,
+3,112 per OS and151 exact installed files. Four fresh original-account routes
+retain all20 matching originals on one healthy worker, one attempt each, native0.
+Actual checkout6.16s and feedback11.28s graph/video acceptance passes with explicit
+invalid timing for the282-frame feedback movie. Two remaining250-frame analyzer
+gates are aligned locally with the existing10,000-frame decoder/archive contract;
+110 reviewed and3,129 full Windows checks, strict build and format pass. New CI/delivery
+and fresh calibrated long playback remain gates. Source/host/byte/uncertainty limits are unchanged;
 every original and failed attempt is preserved. Broader fault/provider/website/
 intervention acceptance stays separate.
 
