@@ -5,9 +5,12 @@ of the original plan, not a claim that all milestones are complete. The original
 proposal under `outputs/` is unchanged. Read [current delivery evidence](validation/recorded-evidence-claims-v1.md)
 for the accepted recorded-claim slice and its controlled-fixture limits.
 
-**Current delivery:** core38ba353/HTTP1.16/private MCP21, existing Edge11 and
-UIe1d1571. All nine core CI jobs pass,3,270 per OS/native71/database501/
-operations172; UI passes773 per OS. Exact151-file private delivery and actual
+**Current protocol delivery:** core d604eca/HTTP1.17/private MCP21, Edge12 and
+UI adapter e196c47. All nine core CI jobs pass,3309 per OS/native71/database509/
+operations172; the route follow-up passes174 local Linux operations checks.
+UI passes800 per OS. Exact151-file private delivery and trusted HTTPS catalogue
+guards pass; chooser and original-account catalogue acceptance remain open.
+[Catalogue receipt](validation/workspace-catalog-v1.md). Earlier actual
 publication diagnostics/recovery pass in their named scopes. The original account
 sees the specific unavailable-storage cause, then verifies the same-original
 zero-input recovery and a distinct normal run. All115 retained files are unchanged;
@@ -251,9 +254,10 @@ storage reconstruction and database fencing receipts separately.
 
 ## Next: validate real hosted authority loss
 
-First expose bounded discovery of the caller's own workspaces through the core
-API and existing Edge consumer. This lets the original account choose an isolated
-test workspace while keeping its working workspace and sign-in available. Do not
+Bounded caller-owned discovery is delivered through core HTTP1.17 and existing
+Edge12; the consumer adapter passes800 per OS. Next connect and verify workspace
+selection so the original account can choose an isolated test workspace while
+keeping its working workspace and sign-in available. Do not
 introduce a service/replacement identity or expose another caller's membership.
 
 Use isolated test workspaces under the intended application identity. Test real

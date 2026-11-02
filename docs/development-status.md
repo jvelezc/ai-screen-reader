@@ -2,6 +2,15 @@
 
 Updated November 1, 2026. The original proposal under `outputs/` remains unchanged. This status document tracks implementation against its acceptance gates.
 
+**November 2 protocol update:** caller-owned workspace discovery is privately
+delivered at core d604eca/HTTP1.17, existing Edge12 and UI adapter e196c47.
+All nine core CI jobs pass (3309 per OS/database509/native71/operations172), UI
+passes800 per OS, and the HTTPS-route follow-up passes174 local Linux checks.
+The151-file CI/installed match and actual401/400/404 gateway guards are verified.
+The chooser and original-account catalogue acceptance remain open; discovery does
+not itself exercise provider expiry or membership revocation.
+[Catalogue receipt](validation/workspace-catalog-v1.md).
+
 **Current accepted delivery: core38ba353/HTTP1.16/private MCP21, existing Edge11
 and UIe1d1571.** All9 core CI jobs pass:3,270 per OS/native71/database501/
 operations172; UI passes773 per OS. Exact151-file private delivery, trusted TLS

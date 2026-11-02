@@ -1,7 +1,8 @@
 # Caller-owned workspace catalogue v1
 
-November 2, 2026. **Source in progress; not delivered.** Current private delivery
-remains core38ba353/HTTP1.16, UIe1d1571 and existing Edge11. Publication-diagnostics
+November 2, 2026. **Core HTTP1.17 privately delivered; consumer selection and
+original-account catalogue acceptance remain open.** Core d604eca, UI adapter
+e196c47 and Edge12 implement the protocol. Earlier publication-diagnostics
 acceptance and the original account's retained recordings remain unchanged.
 
 ## Purpose and boundary
@@ -47,8 +48,36 @@ verification passes. Full Windows discovers/executes/passes3,309, failed/skipped
 including39 new cases. Fresh TRX counters, unique execution IDs and the exact
 focused/full case multiset are independently verified. Five long JSON arguments
 share a truncated display name, so39 executions have35 displayed names; the
-individual execution IDs remain distinct. Both CI platforms, exact private
-delivery and actual application-user/consumer acceptance remain separate gates.
+individual execution IDs remain distinct.
+
+All nine core CI jobs pass on the first attempt in run41412138378: Windows and
+Ubuntu each3309; database509, native71 and operations172. Private deployment
+41414140624 is Ready for d604eca. All151 installed files match the independently
+read CI archive; manifest SHA256
+`21d57f50df756763c4d41011d6260f3234057963480cbc0d6781d450354bddca`
+and native image
+`sha256:5533c5f405f7e3d6426f1ee55b9e56e5f60fb26e015d7656c3e1abd3bd7031b2`
+agree. Both services are healthy/unfrozen with Restart=no and native0.
+
+Live HTTPS verification caught a deployment gap: the existing wildcard forwarded
+catalogue child paths but omitted the new exact root, producing404 before core
+authentication. The two new static route-contract tests reproduce that omission
+(one failed, one passed), then both pass with only `/api/workspaces` added to the
+explicit route list. All174 local Linux operations checks pass in a separate
+Python container, with0 failed/skipped and no hosted deployment performed by the
+unit suite. Caddy's existing compare-and-replace operator validates/reloads the
+owned site with rollback; independent readback confirms its new SHA256
+`eb66c4e4515bcfcfb88c2b8c73857c943453dcacb5c21b51f6b2e98c954bed34`
+and unchanged unrelated configuration. Actual trusted HTTPS now returns401 on
+both catalogue routes,400 on a forbidden limit query, and404 on the private
+portal/config/MCP/readiness paths. Static routing tests do not attest TLS or RLS.
+
+The separate consumer adapter adds27 cases and passes all800 on both CI platforms
+in run41416153454, plus local frozen-dependency/type/lint/build checks. Existing
+Edge11's three files are checked against the previous canonical source before
+replacement; active Edge12's three files match e196c47 exactly on readback.
+Original-caller manual authentication and the fixed upstream remain unchanged.
+The actual chooser and original-account acceptance are still separate gates.
 
 | Requirement | Evidence |
 | --- | --- |
@@ -57,11 +86,12 @@ delivery and actual application-user/consumer acceptance remain separate gates.
 | Fresh denial, safe errors and no actor/query injection | `ProviderDenialOrOutageCannotBecomeEmptyCatalogOrRawDisclosure`, `CatalogPreservesGlobalQueryDenialBeforeIdentityLookup`, `ProviderRevocationIsRecheckedBeforeNextPageWithoutCachedNames` |
 | Actual HTTP contract and contradictory-schema rejection | `ActualHttpWorkspaceCatalogMatchesPublishedPageAndCursorContract`, `PublishedWorkspacePageSchemaRejectsImpossibleContinuationOrBound` |
 | Actual database scope and revocation between pages |8 new pgTAP cases, including `CatalogContinuationRetainsOriginalCallerRls`, `ForeignCursorCannotGrantForeignMembership`, `NextCatalogPageCannotRestoreRevokedMembership` |
+| HTTPS root coverage and private-route preservation | `test_caller_workspace_catalog_paths_are_forwarded_to_core`, `test_private_portal_and_mcp_paths_are_not_forwarded`; actual post-replacement401/400/404 checks |
 
 ## Next
 
-Complete local/CI/delivery checks before consuming the new API through the
-existing Supabase Edge adapter and notebook workspace selection. Keep credentials
+Connect notebook workspace selection to the delivered core and existing
+Supabase Edge adapter, then verify it with the original account. Keep credentials
 server-side, original caller scope and result/media clearing. Actual original-user
 provider expiry/revocation across observation, graph, original paging and playback
 remains the subsequent acceptance gate; local provider fixtures cannot replace it.
