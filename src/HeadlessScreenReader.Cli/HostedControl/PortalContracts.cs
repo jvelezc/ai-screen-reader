@@ -63,6 +63,8 @@ internal sealed record PortalReadinessResponse(string Schema, string State, stri
 internal sealed record PortalSessionResponse(Guid UserId, string Email);
 /// <summary>A currently visible tenant workspace.</summary>
 internal sealed record PortalWorkspaceResponse(Guid Id, string Name);
+/// <summary>One bounded page of workspaces visible through the current caller's RLS.</summary>
+internal sealed record PortalWorkspacePageResponse(PortalWorkspaceResponse[] Workspaces, Guid? NextCursor);
 /// <summary>Idempotent workspace bootstrap receipt.</summary>
 internal sealed record PortalWorkspaceBootstrap(Guid Id, bool Created);
 /// <summary>Client request identity only; fixture and profile remain server controlled.</summary>

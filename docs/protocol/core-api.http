@@ -1,5 +1,5 @@
 # Core-side requests. Lovable application traffic must instead invoke Supabase Edge Functions.
-# These examples describe source contract 1.16.0; inspect live OpenAPI before use.
+# These examples describe source contract 1.17.0; inspect live OpenAPI before use.
 # Closed WORKER_PUBLICATION causes on a blocked report mean Unavailable or Invalid.
 # Inspect the SAME scan's retained output if available; no code guarantees recovery or permits replay.
 # Set accessToken only in your HTTP client's private local environment; never commit a real JWT.
@@ -21,6 +21,16 @@
 # An import is not a scan admission or permission grant.
 @archive = 55555555-5555-4555-8555-555555555555
 @indexSha256 = replace-with-retained-index-sha256
+
+### Discover only the current caller's workspaces; no creation or membership restoration
+GET {{baseUrl}}/api/workspaces
+Authorization: Bearer {{accessToken}}
+
+### Continue only when nextCursor is non-null; pages contain at most fifty workspaces
+# Copy the previous response's exact nextCursor. A cursor is not access authority.
+@workspaceCursor = replace-with-the-exact-nextCursor
+GET {{baseUrl}}/api/workspaces/page/{{workspaceCursor}}
+Authorization: Bearer {{accessToken}}
 
 ### Retained diagnostic graph and full-checkpoint manifest; no input or media
 GET {{baseUrl}}/api/workspaces/{{organization}}/scans/{{scan}}/progress/graph

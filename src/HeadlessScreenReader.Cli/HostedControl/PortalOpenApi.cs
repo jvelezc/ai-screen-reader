@@ -12,7 +12,7 @@ internal static class PortalOpenApi
 {
     private static readonly Lazy<string> Cached = new(Build);
     public static string Document => Cached.Value;
-    public const string ContractVersion = "1.16.0";
+    public const string ContractVersion = "1.17.0";
 
     private static string Build()
     {
@@ -23,6 +23,7 @@ internal static class PortalOpenApi
             ["Configuration"] = Schema<PortalConfigurationResponse>(),
             ["Session"] = Schema<PortalSessionResponse>(),
             ["Workspace"] = Schema<PortalWorkspaceResponse>(),
+            ["WorkspacePage"] = Schema<PortalWorkspacePageResponse>(),
             ["ScanCreated"] = Schema<PortalScanCreatedResponse>(),
             ["ScanCancellation"] = Schema<PortalScanCancellationResponse>(),
             ["Scan"] = Schema<PortalScanResponse>(),
@@ -77,6 +78,8 @@ internal static class PortalOpenApi
             ["/internal/ready"] = Path("get", Operation("PortalReadiness", "Listener readiness; not a tenant sign-in assertion", "Readiness")),
             ["/api/session"] = Path("get", Operation("PortalSession", "Auth-server-validated current identity", "Session", true)),
             ["/api/workspace"] = Path("post", Operation("EnsurePersonalWorkspace", "Create or resume this subject's workspace", "Workspace", true, "EmptyRequest", 201)),
+            ["/api/workspaces"] = Path("get", Operation("ListMyWorkspaces", "At most fifty current-caller RLS workspaces; explicit continuation and no workspace creation", "WorkspacePage", true)),
+            ["/api/workspaces/page/{after}"] = Path("get", Operation("ListMoreMyWorkspaces", "Next current-caller RLS page after a workspace UUID; cursor is not access authority", "WorkspacePage", true, workspaceCursor: true)),
             ["/api/workspaces/{organization}"] = Path("get", Operation("GetPortalWorkspace", "Read a currently authorized workspace", "Workspace", true, organization: true)),
             ["/api/workspaces/{organization}/scans"] = new JsonObject
             {
@@ -167,6 +170,21 @@ internal static class PortalOpenApi
                     && context.TypeInfo.Type != typeof(PortalSourceImageRequest)
                     && context.TypeInfo.Type != typeof(EvidenceReadinessRequest))
                     value["required"] = Strings(properties.Select(property => property.Key).ToArray());
+                if (context.TypeInfo.Type == typeof(PortalWorkspacePageResponse))
+                {
+                    properties["workspaces"]!["maxItems"] = 50;
+                    properties["workspaces"]!["items"] = Reference("Workspace");
+                    properties["nextCursor"]!["format"] = "uuid";
+                    value["allOf"] = new JsonArray(new JsonObject
+                    {
+                        ["if"] = new JsonObject
+                        {
+                            ["properties"] = new JsonObject { ["nextCursor"] = new JsonObject { ["type"] = "string" } },
+                            ["required"] = Strings("nextCursor")
+                        },
+                        ["then"] = new JsonObject { ["properties"] = new JsonObject { ["workspaces"] = new JsonObject { ["minItems"] = 1 } } }
+                    });
+                }
                 if (context.TypeInfo.Type == typeof(PortalScanCancellationResponse))
                 {
                     properties["scope"]!["const"] = "AdmittedRunCancellation";
@@ -537,7 +555,7 @@ internal static class PortalOpenApi
     };
 
     private static JsonObject Operation(string id, string summary, string output, bool authenticated = false,
-        string? body = null, int success = 200, bool organization = false, bool scan = false, string media = "application/json", bool session = false, bool archive = false)
+        string? body = null, int success = 200, bool organization = false, bool scan = false, string media = "application/json", bool session = false, bool archive = false, bool workspaceCursor = false)
     {
         var response = Response("Successful scoped response", output, media);
         if (success == 201) response["headers"] = new JsonObject
@@ -564,7 +582,7 @@ internal static class PortalOpenApi
         if (body is not null) result["requestBody"] = new JsonObject
         { ["required"] = true, ["content"] = new JsonObject { ["application/json"] = new JsonObject { ["schema"] = Reference(body) } } };
         var parameters = new JsonArray();
-        foreach (var name in new[] { organization ? "organization" : null, scan ? "scan" : null, session ? "session" : null, archive ? "archive" : null }.OfType<string>())
+        foreach (var name in new[] { organization ? "organization" : null, scan ? "scan" : null, session ? "session" : null, archive ? "archive" : null, workspaceCursor ? "after" : null }.OfType<string>())
             parameters.Add(new JsonObject { ["name"] = name, ["in"] = "path", ["required"] = true, ["schema"] = new JsonObject { ["type"] = "string", ["format"] = "uuid" } });
         if (parameters.Count > 0) result["parameters"] = parameters;
         return result;

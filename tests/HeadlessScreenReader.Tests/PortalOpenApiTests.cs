@@ -195,7 +195,7 @@ public sealed class PortalOpenApiTests
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         var spec = document.RootElement;
         Assert.Equal("3.1.0", spec.GetProperty("openapi").GetString());
-        Assert.Equal("1.16.0", spec.GetProperty("info").GetProperty("version").GetString());
+        Assert.Equal("1.17.0", spec.GetProperty("info").GetProperty("version").GetString());
         Assert.Equal("https://json-schema.org/draft/2020-12/schema", spec.GetProperty("jsonSchemaDialect").GetString());
         Assert.Equal("http", spec.GetProperty("components").GetProperty("securitySchemes").GetProperty("bearerAuth").GetProperty("type").GetString());
         var operations = new[]
@@ -551,6 +551,56 @@ public sealed class PortalOpenApiTests
 
     // Independent, bounded evaluator for the keywords emitted by these DTO schemas.
     // Drift cases above prove that successful serialization alone is not the assertion.
+    [Theory]
+    [InlineData(0)]
+    [InlineData(2)]
+    [InlineData(51)]
+    public async Task ActualHttpWorkspaceCatalogMatchesPublishedPageAndCursorContract(int count)
+    {
+        var rows = JsonSerializer.Serialize(Enumerable.Range(1, count).Select(i => new
+        { id = Guid.Parse($"a2000000-0000-0000-0000-{i:x12}"), name = "Visible " + i }));
+        using var handler = new WorkspaceCatalogTests.CatalogHandler(_ => rows); using var provider = new HttpClient(handler);
+        await using var server = await WorkspaceCatalogTests.Start(new SupabasePortalClient(provider, PortalProjectClientTests.Key));
+        using var http = PortalHttpTests.Authorized(server);
+        using var document = JsonDocument.Parse(await http.GetStringAsync("/openapi/v1.json"));
+        using var response = await http.GetAsync("/api/workspaces"); Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var spec = document.RootElement;
+        Assert.True(Matches(body.RootElement, Component(spec, "WorkspacePage"), spec));
+        var first = spec.GetProperty("paths").GetProperty("/api/workspaces").GetProperty("get");
+        Assert.Equal("ListMyWorkspaces", first.GetProperty("operationId").GetString());
+        Assert.True(first.GetProperty("security")[0].TryGetProperty("bearerAuth", out _));
+        var more = spec.GetProperty("paths").GetProperty("/api/workspaces/page/{after}").GetProperty("get");
+        var cursor = Assert.Single(more.GetProperty("parameters").EnumerateArray());
+        Assert.Equal("after", cursor.GetProperty("name").GetString()); Assert.Equal("path", cursor.GetProperty("in").GetString());
+        Assert.True(cursor.GetProperty("required").GetBoolean()); Assert.Equal("uuid", cursor.GetProperty("schema").GetProperty("format").GetString());
+        Assert.Equal("WorkspacePage", ReferenceComponent(first.GetProperty("responses").GetProperty("200").GetProperty("content").GetProperty("application/json").GetProperty("schema")));
+    }
+
+    [Theory]
+    [InlineData("empty-continuation")]
+    [InlineData("overlarge")]
+    [InlineData("invalid-cursor")]
+    public async Task PublishedWorkspacePageSchemaRejectsImpossibleContinuationOrBound(string change)
+    {
+        await using var server = await PortalHttpTests.Start(new PortalProjectStub()); using var http = PortalHttpTests.Authorized(server);
+        using var document = JsonDocument.Parse(await http.GetStringAsync("/openapi/v1.json")); var spec = document.RootElement;
+        var items = new System.Text.Json.Nodes.JsonArray(Enumerable.Range(1, 50).Select(i => (System.Text.Json.Nodes.JsonNode)new System.Text.Json.Nodes.JsonObject
+        { ["id"] = Guid.Parse($"a2000000-0000-0000-0000-{i:x12}").ToString("D"), ["name"] = "Visible " + i }).ToArray());
+        var payload = new System.Text.Json.Nodes.JsonObject
+        { ["workspaces"] = items, ["nextCursor"] = "a2000000-0000-0000-0000-000000000032" };
+        using var original = JsonDocument.Parse(payload.ToJsonString());
+        Assert.True(Matches(original.RootElement, Component(spec, "WorkspacePage"), spec));
+        if (change == "empty-continuation") items.Clear();
+        else if (change == "overlarge") items.Add(new System.Text.Json.Nodes.JsonObject
+        { ["id"] = "a2000000-0000-0000-0000-000000000033", ["name"] = "One extra" });
+        else payload["nextCursor"] = "not-a-uuid";
+        using var changed = JsonDocument.Parse(payload.ToJsonString());
+        Assert.False(Matches(changed.RootElement, Component(spec, "WorkspacePage"), spec));
+    }
+
+    private static string ReferenceComponent(JsonElement schema) => schema.GetProperty("$ref").GetString()!.Split('/')[^1];
+
     private static bool Matches(JsonElement value, JsonElement schema, JsonElement spec)
     {
         if (schema.TryGetProperty("$ref", out var reference))
@@ -596,6 +646,7 @@ public sealed class PortalOpenApiTests
         }
         if (value.ValueKind == JsonValueKind.Array)
         {
+            if (schema.TryGetProperty("minItems", out var minimum) && value.GetArrayLength() < minimum.GetInt32()) return false;
             if (schema.TryGetProperty("maxItems", out var maximum) && value.GetArrayLength() > maximum.GetInt32()) return false;
             if (schema.TryGetProperty("items", out var items) && value.EnumerateArray().Any(item => !Matches(item, items, spec))) return false;
         }

@@ -11,6 +11,8 @@ internal interface IPortalProjectClient
     Task<PortalIdentity> AuthenticateAsync(string bearer, CancellationToken token);
     Task<PortalWorkspaceBootstrap> EnsureWorkspaceAsync(PortalIdentity actor, CancellationToken token);
     Task<PortalWorkspaceResponse?> WorkspaceAsync(PortalIdentity actor, Guid organization, CancellationToken token);
+    Task<PortalWorkspacePageResponse> WorkspacesAsync(PortalIdentity actor, Guid? after, CancellationToken token) =>
+        throw new PortalFault(503, "CONTROL_WORKSPACE_CATALOG_UNAVAILABLE");
     Task<PortalScanResponse[]> ScansAsync(PortalIdentity actor, Guid organization, CancellationToken token);
     Task<PortalScanCreatedResponse> CreateScanAsync(PortalIdentity actor, Guid organization, Guid request, CancellationToken token);
     Task<PortalScanCreatedResponse> CreateRecordedObservationAsync(PortalIdentity actor, Guid organization, Guid request, CancellationToken token) =>
@@ -129,6 +131,18 @@ internal sealed class SupabasePortalClient(HttpClient http, string publishableKe
         var rows = Rows(json.RootElement);
         if (rows.Length > 51) throw InvalidResponse();
         return rows.Select(row => Scan(row, organization)).ToArray();
+    }
+
+    public async Task<PortalWorkspacePageResponse> WorkspacesAsync(PortalIdentity actor, Guid? after, CancellationToken token)
+    {
+        PortalWorkspaceCatalog.ValidateCursor(after);
+        var path = "rest/v1/organizations?select=id,name&order=id.asc&limit=51"
+            + (after is { } cursor ? "&id=gt." + cursor.ToString("D") : "");
+        using var request = Request(HttpMethod.Get, path, actor.Token);
+        using var json = await SendAsync(request, false, token).ConfigureAwait(false);
+        var rows = Rows(json.RootElement);
+        if (rows.Length > PortalWorkspaceCatalog.PageSize + 1) throw InvalidResponse();
+        return PortalWorkspaceCatalog.Page(rows.Select(row => new PortalWorkspaceResponse(Id(row, "id"), Text(row, "name", 120))).ToArray(), after);
     }
 
     public async Task<PortalScanCreatedResponse> CreateScanAsync(PortalIdentity actor, Guid organization, Guid requestId, CancellationToken token)

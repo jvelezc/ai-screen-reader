@@ -93,6 +93,7 @@ internal sealed class HostedControlServer : IAsyncDisposable
             catch { await FailAsync(context, 503, "CONTROL_OPERATION_UNCONFIRMED").ConfigureAwait(false); }
         });
         app.MapPortal(options, readerRuntimeReady);
+        app.MapWorkspaceCatalog();
         app.MapReaderSessions();
         app.MapArchiveReads();
         app.MapEvidenceReadiness();
