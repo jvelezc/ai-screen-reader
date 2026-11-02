@@ -34,6 +34,7 @@ public sealed class ObservationCoordinator(IWorkerLeases leases, IFixtureExecuto
         StoredObservation? stored = null;
         string? error = null;
         string? evidenceError = null;
+        var publicationStarted = false;
         try
         {
             var bytes = await executor.ExecuteAsync(lease, async cancellation =>
@@ -43,6 +44,7 @@ public sealed class ObservationCoordinator(IWorkerLeases leases, IFixtureExecuto
                 return await leases.RenewAsync(lease, timeout.Token).ConfigureAwait(false);
             }, execution.Token);
             execution.Token.ThrowIfCancellationRequested();
+            publicationStarted = true;
             stored = await store.PersistAsync(bytes, lease.Job, execution.Token, lease.WorkerId);
         }
         catch (Exception exception)
@@ -61,7 +63,9 @@ public sealed class ObservationCoordinator(IWorkerLeases leases, IFixtureExecuto
                 ? "OWNED_BROWSER_CLOSE_UNCONFIRMED"
                 : token.IsCancellationRequested ? "WORKER_STOP_REQUESTED"
                 : exception is BrowserOperationException recordingFailure && FixtureRecordingFailureProtocol.IsPublicCode(recordingFailure.Code)
-                ? recordingFailure.Code : "FIXTURE_OBSERVATION_UNCONFIRMED";
+                ? recordingFailure.Code
+                : publicationStarted && PublicationFailureCode(exception) is { } publicationCode
+                ? publicationCode : "FIXTURE_OBSERVATION_UNCONFIRMED";
         }
         finally { await heartbeatStop.CancelAsync(); }
         // Join the real database callback. Cancellation of a waiter does not release ownership.
@@ -96,6 +100,18 @@ public sealed class ObservationCoordinator(IWorkerLeases leases, IFixtureExecuto
         { OffHostReadbackVerified = stored.OffHostReadbackVerified };
         return completed ? completion : await ReconcileCancellationAsync(lease, completion);
     }
+
+    private static string? PublicationFailureCode(Exception exception) => exception switch
+    {
+        ObservationArchiveException { Failure: ObservationArchiveFailure.Unavailable }
+            or TraversalArchiveException { Failure: TraversalArchiveFailure.Unavailable } => EvidencePublicationFailureProtocol.StorageUnavailable,
+        ObservationArchiveException { Failure: ObservationArchiveFailure.WriteUnconfirmed }
+            or TraversalArchiveException { Failure: TraversalArchiveFailure.WriteUnconfirmed } => EvidencePublicationFailureProtocol.WriteUnconfirmed,
+        ObservationArchiveException { Failure: ObservationArchiveFailure.Invalid }
+            or TraversalArchiveException { Failure: TraversalArchiveFailure.Invalid } => EvidencePublicationFailureProtocol.ContentInvalid,
+        TraversalArchiveException { Failure: TraversalArchiveFailure.Missing } => EvidencePublicationFailureProtocol.OriginalMissing,
+        _ => null
+    };
 
     /// <summary>Called only before allocation or after execution/storage and actual cleanup callbacks have joined.</summary>
     private async Task<WorkerResult> ReconcileCancellationAsync(WorkerLease lease, WorkerResult unconfirmed)

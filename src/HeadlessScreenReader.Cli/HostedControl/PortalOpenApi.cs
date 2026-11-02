@@ -12,7 +12,7 @@ internal static class PortalOpenApi
 {
     private static readonly Lazy<string> Cached = new(Build);
     public static string Document => Cached.Value;
-    public const string ContractVersion = "1.15.0";
+    public const string ContractVersion = "1.16.0";
 
     private static string Build()
     {
@@ -481,7 +481,7 @@ internal static class PortalOpenApi
                 if (context.TypeInfo.Type == typeof(PortalReportResponse))
                 {
                     properties["evidenceState"]!["enum"] = Strings("Pending", "Available", "Unavailable", "NotCollected", "Invalid");
-                    value["description"] = "Execution, evidence and worker permission are separate. Only Available carries an observation. A leased Pending report requires the original-caller database-time workerPermission snapshot. Expired/Missing calls for fenced recovery without replay; raw leased state is preserved. Other states carry null or omitted permission. Optional workerArchive is the completed job's atomic producer receipt, with historical readback; current availability requires archive reads. Null means no admitted archive, including legacy jobs/operator imports. This input-free observation package contains no recording or verified goal. Required-state null means unobserved. A blocked job is not an accessibility barrier.";
+                    value["description"] = "Execution, evidence and worker permission are separate. Only Available carries an observation. A leased Pending report requires the original-caller database-time workerPermission snapshot. Expired/Missing calls for fenced recovery without replay; raw leased state is preserved. Other states carry null or omitted permission. Closed WORKER_PUBLICATION codes preserve a failed persistence phase on a blocked job: storage unavailable, unconfirmed write and missing original are Unavailable; invalid content is Invalid. They do not establish retained originals, recoverability, completed input or a verified goal. Preserve the same attempt; inspect retained originals if available and await fresh-authority storage-only recovery without replay or overwriting originals. Older generic failures remain NotCollected. Optional workerArchive is the completed job's atomic producer receipt, separate from current availability. Required-state null means unobserved. A blocked job is not an accessibility barrier.";
                     value["allOf"] = JsonNode.Parse("""
                         [
                           {"if":{"properties":{"evidenceState":{"const":"Available"}}},
@@ -495,7 +495,13 @@ internal static class PortalOpenApi
                            "then":{"required":["workerPermission"],"properties":{"evidenceState":{"const":"Pending"},"workerPermission":{"type":"object"}}},
                            "else":{"properties":{"workerPermission":{"const":null}}}},
                           {"if":{"properties":{"evidenceState":{"const":"Invalid"}}},
-                           "then":{"properties":{"scan":{"properties":{"state":{"const":"observed"}}}}}}
+                           "then":{"properties":{"scan":{"properties":{"state":{"enum":["observed","blocked"]}}}}}},
+                          {"if":{"properties":{"evidenceState":{"const":"Invalid"},"scan":{"properties":{"state":{"const":"blocked"}}}}},
+                           "then":{"properties":{"errorCode":{"const":"WORKER_PUBLICATION_CONTENT_INVALID"}}}},
+                          {"if":{"required":["errorCode"],"properties":{"errorCode":{"enum":["WORKER_PUBLICATION_STORAGE_UNAVAILABLE","WORKER_PUBLICATION_WRITE_UNCONFIRMED","WORKER_PUBLICATION_ORIGINAL_MISSING"]}}},
+                           "then":{"properties":{"scan":{"properties":{"state":{"const":"blocked"}}},"evidenceState":{"const":"Unavailable"},"workerArchive":{"const":null},"workerPermission":{"const":null}}}},
+                          {"if":{"required":["errorCode"],"properties":{"errorCode":{"const":"WORKER_PUBLICATION_CONTENT_INVALID"}}},
+                           "then":{"properties":{"scan":{"properties":{"state":{"const":"blocked"}}},"evidenceState":{"const":"Invalid"},"workerArchive":{"const":null},"workerPermission":{"const":null}}}}
                         ]
                         """);
                 }

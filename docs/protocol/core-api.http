@@ -1,5 +1,7 @@
 # Core-side requests. Lovable application traffic must instead invoke Supabase Edge Functions.
-# These examples describe source contract 1.13.0; inspect live OpenAPI before use.
+# These examples describe source contract 1.16.0; inspect live OpenAPI before use.
+# Closed WORKER_PUBLICATION causes on a blocked report mean Unavailable or Invalid.
+# Inspect the SAME scan's retained output if available; no code guarantees recovery or permits replay.
 # Set accessToken only in your HTTP client's private local environment; never commit a real JWT.
 @baseUrl = http://localhost:6086
 @accessToken =

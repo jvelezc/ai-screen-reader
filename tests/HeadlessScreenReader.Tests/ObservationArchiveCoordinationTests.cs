@@ -16,13 +16,18 @@ public sealed class ObservationArchiveCoordinationTests
     {
         public Task<byte[]> ExecuteAsync(FixtureJob job, CancellationToken token) => Task.FromResult(bytes);
     }
+    private sealed class FailedExecutor(Exception failure) : IFixtureExecutor
+    {
+        public Task<byte[]> ExecuteAsync(FixtureJob job, CancellationToken token) => Task.FromException<byte[]>(failure);
+    }
     private sealed class Leases(WorkerLease lease) : IWorkerLeases
     {
         public int Completes { get; private set; }
         public List<string> Blocks { get; } = [];
         public Func<StoredObservation, Task<bool>> Complete { get; init; } = _ => Task.FromResult(true);
+        public Func<Task<bool>> Renew { get; init; } = () => Task.FromResult(true);
         public Task<WorkerClaim> ClaimAsync(Guid worker, CancellationToken token) => Task.FromResult(new WorkerClaim("Claimed", lease));
-        public Task<bool> RenewAsync(WorkerLease actual, CancellationToken token) { Assert.Same(lease, actual); return Task.FromResult(true); }
+        public Task<bool> RenewAsync(WorkerLease actual, CancellationToken token) { Assert.Same(lease, actual); return Renew(); }
         public Task<bool> CompleteAsync(WorkerLease actual, StoredObservation stored, CancellationToken token)
         { Assert.Same(lease, actual); Completes++; return Complete(stored); }
         public Task<bool> BlockAsync(WorkerLease actual, string code, CancellationToken token)
@@ -64,18 +69,18 @@ public sealed class ObservationArchiveCoordinationTests
     }
 
     [Theory]
-    [InlineData(ObservationArchiveFailure.Unavailable, "EVIDENCE_S3_UNAVAILABLE")]
-    [InlineData(ObservationArchiveFailure.Invalid, "EVIDENCE_S3_CONTENT_INVALID")]
-    [InlineData(ObservationArchiveFailure.WriteUnconfirmed, "EVIDENCE_S3_WRITE_UNCONFIRMED")]
-    public async Task RemoteFailureRetainsLocalBytesAndBlocksWithoutInventingCompletion(ObservationArchiveFailure failure, string code)
+    [InlineData(ObservationArchiveFailure.Unavailable, "EVIDENCE_S3_UNAVAILABLE", EvidencePublicationFailureProtocol.StorageUnavailable)]
+    [InlineData(ObservationArchiveFailure.Invalid, "EVIDENCE_S3_CONTENT_INVALID", EvidencePublicationFailureProtocol.ContentInvalid)]
+    [InlineData(ObservationArchiveFailure.WriteUnconfirmed, "EVIDENCE_S3_WRITE_UNCONFIRMED", EvidencePublicationFailureProtocol.WriteUnconfirmed)]
+    public async Task RemoteFailureRetainsLocalBytesAndBlocksWithoutInventingCompletion(ObservationArchiveFailure failure, string code, string publicationCode)
     {
         using var evidence = new Evidence(); var leases = new Leases(evidence.Lease);
         var archive = new Archive((_, _, _, _) => Task.FromException(new ObservationArchiveException(failure)));
         var result = await new ObservationCoordinator(leases, new Executor(evidence.Bytes), new(evidence.Root, archive))
             .RunOnceAsync(evidence.Lease.WorkerId, CancellationToken.None);
         Assert.Equal("Blocked", result.State); Assert.Equal(code, result.EvidenceErrorCode);
-        Assert.Equal("FIXTURE_OBSERVATION_UNCONFIRMED", result.ErrorCode);
-        Assert.Equal(0, leases.Completes); Assert.Equal(new[] { "FIXTURE_OBSERVATION_UNCONFIRMED" }, leases.Blocks);
+        Assert.Equal(publicationCode, result.ErrorCode);
+        Assert.Equal(0, leases.Completes); Assert.Equal(new[] { publicationCode }, leases.Blocks);
         Assert.Null(result.OffHostReadbackVerified); Assert.Null(result.Reference);
         Assert.Equal(evidence.Bytes, await File.ReadAllBytesAsync(evidence.FilePath));
     }
@@ -120,5 +125,92 @@ public sealed class ObservationArchiveCoordinationTests
             .RunOnceAsync(evidence.Lease.WorkerId, CancellationToken.None);
         Assert.Equal("Observed", result.State); Assert.False(result.OffHostReadbackVerified);
         Assert.Equal(evidence.Bytes, await File.ReadAllBytesAsync(evidence.FilePath)); Assert.Equal(1, leases.Completes);
+    }
+
+    [Theory]
+    [InlineData("baseline")]
+    [InlineData("producer")]
+    public async Task ArchiveLikeCollectionErrorCannotClaimThatPublicationStarted(string kind)
+    {
+        using var evidence = new Evidence(); var leases = new Leases(evidence.Lease);
+        Exception failure = kind == "baseline" ? new ObservationArchiveException(ObservationArchiveFailure.Unavailable)
+            : new TraversalArchiveException(TraversalArchiveFailure.Unavailable);
+        var result = await new ObservationCoordinator(leases, new FailedExecutor(failure), new(evidence.Root))
+            .RunOnceAsync(evidence.Lease.WorkerId, default);
+        Assert.Equal("Blocked", result.State); Assert.Equal("FIXTURE_OBSERVATION_UNCONFIRMED", result.ErrorCode);
+        Assert.Equal(new[] { "FIXTURE_OBSERVATION_UNCONFIRMED" }, leases.Blocks); Assert.Equal(0, leases.Completes);
+        Assert.False(File.Exists(evidence.FilePath)); Assert.Null(result.Reference); Assert.Null(result.OffHostReadbackVerified);
+    }
+
+    [Theory]
+    [InlineData("baselineNegative")]
+    [InlineData("baselineExcess")]
+    [InlineData("producerNegative")]
+    [InlineData("producerExcess")]
+    public async Task UndefinedArchiveFailureCannotBecomeAKnownPublicationCause(string caseId)
+    {
+        using var evidence = new Evidence(); var leases = new Leases(evidence.Lease);
+        Exception failure = caseId switch
+        {
+            "baselineNegative" => new ObservationArchiveException((ObservationArchiveFailure)(-1)),
+            "baselineExcess" => new ObservationArchiveException((ObservationArchiveFailure)3),
+            "producerNegative" => new TraversalArchiveException((TraversalArchiveFailure)(-1)),
+            _ => new TraversalArchiveException((TraversalArchiveFailure)4)
+        };
+        var archive = new Archive((_, _, _, _) => Task.FromException(failure));
+        var result = await new ObservationCoordinator(leases, new Executor(evidence.Bytes), new(evidence.Root, archive))
+            .RunOnceAsync(evidence.Lease.WorkerId, default);
+        Assert.Equal("FIXTURE_OBSERVATION_UNCONFIRMED", result.ErrorCode); Assert.Equal("Blocked", result.State);
+        Assert.Equal(new[] { "FIXTURE_OBSERVATION_UNCONFIRMED" }, leases.Blocks); Assert.Equal(0, leases.Completes);
+        Assert.Null(result.Reference); Assert.Null(result.OffHostReadbackVerified);
+        Assert.Equal(evidence.Bytes, await File.ReadAllBytesAsync(evidence.FilePath));
+    }
+
+    [Fact]
+    public async Task CallerStopOverridesTypedPublicationFailureAfterActualCallbackSettlement()
+    {
+        using var evidence = new Evidence(); using var stop = new CancellationTokenSource();
+        var entered = Signal(); var release = Signal(); var leases = new Leases(evidence.Lease); var settled = false;
+        var archive = new Archive(async (_, _, _, _) =>
+        {
+            entered.SetResult(); await release.Task; settled = true;
+            throw new ObservationArchiveException(ObservationArchiveFailure.Unavailable);
+        });
+        var run = new ObservationCoordinator(leases, new Executor(evidence.Bytes), new(evidence.Root, archive))
+            .RunOnceAsync(evidence.Lease.WorkerId, stop.Token);
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5)); stop.Cancel();
+        Assert.False(run.IsCompleted); Assert.Empty(leases.Blocks); Assert.Equal(0, leases.Completes);
+        release.SetResult(); var result = await run;
+        Assert.True(settled); Assert.Equal("WORKER_STOP_REQUESTED", result.ErrorCode);
+        Assert.Equal(new[] { "WORKER_STOP_REQUESTED" }, leases.Blocks); Assert.Equal(0, leases.Completes);
+        Assert.Null(result.Reference); Assert.Null(result.OffHostReadbackVerified);
+    }
+
+    [Fact]
+    public async Task LostHeartbeatOutranksTypedPublicationCauseAfterStorageSettles()
+    {
+        using var evidence = new Evidence(); var entered = Signal(); var release = Signal(); var renewalLost = Signal();
+        var renews = 0; var leases = new Leases(evidence.Lease)
+        {
+            Renew = () =>
+            {
+                if (++renews == 1) return Task.FromResult(true);
+                renewalLost.SetResult(); return Task.FromResult(false);
+            }
+        };
+        var archive = new Archive(async (_, _, _, _) =>
+        {
+            entered.SetResult(); await release.Task;
+            throw new ObservationArchiveException(ObservationArchiveFailure.Unavailable);
+        });
+        var run = new ObservationCoordinator(leases, new Executor(evidence.Bytes), new(evidence.Root, archive))
+            .RunOnceAsync(evidence.Lease.WorkerId, default);
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await renewalLost.Task.WaitAsync(TimeSpan.FromSeconds(15));
+        Assert.False(run.IsCompleted); Assert.Empty(leases.Blocks); Assert.Equal(0, leases.Completes);
+        release.SetResult(); var result = await run;
+        Assert.Equal("Unconfirmed", result.State); Assert.Equal("WORKER_LEASE_UNCONFIRMED", result.ErrorCode);
+        Assert.Empty(leases.Blocks); Assert.Equal(0, leases.Completes); Assert.Null(result.Reference);
+        Assert.Null(result.OffHostReadbackVerified); Assert.Equal(evidence.Bytes, await File.ReadAllBytesAsync(evidence.FilePath));
     }
 }

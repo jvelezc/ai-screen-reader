@@ -36,17 +36,29 @@ Demonstrate the reached and Unknown routes through the original account, plus
 deterministic rejection tests, actual Chromium and both CI platforms. A complete
 single route need not be a sufficient website-evidence package.
 
-## Next: report expired worker permission before safe recovery
+## Next: explain failed evidence publication
 
-The bounded actual lease-expiry test is accepted: the original generation and
-intent remain Unknown and cannot be replayed; ordered recovery blocks the job;
-a distinct normal run still completes and plays its exact originals. See the
-[actual expiry receipt](validation/hosted-lease-expiry-v1.md). The experiment found
-a caller gap while the raw job remains leased. [Worker-permission reporting](validation/worker-permission-reporting-v1.md)
-adds the independent database-time snapshot and safe-recovery advice. Local
-implementation is ready; exact CI, deployment and new original-user acceptance
-remain required. The earlier safeguards and historical evidence follow.
+[Worker-permission reporting is accepted](validation/worker-permission-reporting-v1.md)
+at core734c761/HTTP1.15/private MCP21, UIb9df07c and existing Edge11. Both CI
+platforms pass3,212; native71/database483/operations172 and151 exact installed
+files pass. The original account sees leased/Expired before recovery, then the
+same uncertain attempt blocks without replay and its39 retained files match.
+A distinct run retains5 matching S3 originals and actual graph/videoEnded3.20s.
 
+The [actual upload-before-metadata boundary](validation/hosted-upload-before-metadata-v1.md)
+now passes: five uploaded originals while database completion stays unacknowledged,
+same-attempt storage-only recovery/zero inputs and61 unchanged retained files.
+Original-account graph/video ends3.00s; a distinct normal five-original recording
+ends4.04s. All60 owned guard checks settle and native0/services ready are verified.
+The [one-worker storage denial](validation/hosted-storage-outage-v1.md) also passes
+its independent requirements:3 matched packets, absent uploaded originals,
+blocked/no receipt,60 unchanged retained files, same-original zero-input recovery
+and actual recovered3.00s/distinct normal3.40s playback. The observer's incorrect
+Unproven/WorkerStopped:false classification remains recorded; the worker correctly
+stays healthy. Independent denial absence and all108 guard checks pass.
+**Next:** [preserve publication causes and safe next actions](validation/publication-failure-diagnostics-v1.md).
+Current reports still expose a generic observation failure; the new source is in
+progress and not delivered. The earlier safeguards and historical evidence follow.
 The first safeguard blocks an expired keyboard lease instead of allocating a
 replacement attempt. It retains the original worker/generation and a visible
 `WORKER_INPUT_OUTCOME_UNCONFIRMED` reason. Stopped-source assessment requires a
@@ -149,7 +161,7 @@ at5b75935/HTTP1.14/private MCP21: all nine CI jobs (2,936 per OS/native71/databa
 operations172), exact151-file delivery, UIc614141/Edge11 and queued/active account
 stop pass. The fresh active case preserves190 images and exact native cleanup;
 the same healthy worker completes a distinct no-input job without restarting.
-**Next:** [validate one actual job's lease expiry](validation/hosted-lease-expiry-v1.md).
+**Historical next gate, now accepted:** [one actual job's lease expiry](validation/hosted-lease-expiry-v1.md).
 The actual64KiB fault remains blocked/no archive/native0; every retained stage
 byte is restored and71 partial source images match. A distinct normal job on
 the same worker completes without restart (2 keys/Reached,58 sources/78 frames,

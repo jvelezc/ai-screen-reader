@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using HeadlessScreenReader.Cli.HostedControl;
+using HeadlessScreenReader.Domain;
 
 namespace HeadlessScreenReader.Tests;
 
@@ -194,7 +195,7 @@ public sealed class PortalOpenApiTests
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         var spec = document.RootElement;
         Assert.Equal("3.1.0", spec.GetProperty("openapi").GetString());
-        Assert.Equal("1.15.0", spec.GetProperty("info").GetProperty("version").GetString());
+        Assert.Equal("1.16.0", spec.GetProperty("info").GetProperty("version").GetString());
         Assert.Equal("https://json-schema.org/draft/2020-12/schema", spec.GetProperty("jsonSchemaDialect").GetString());
         Assert.Equal("http", spec.GetProperty("components").GetProperty("securitySchemes").GetProperty("bearerAuth").GetProperty("type").GetString());
         var operations = new[]
@@ -459,6 +460,58 @@ public sealed class PortalOpenApiTests
             case "pending-observed": value["evidenceState"] = "Pending"; value["observation"] = null; break;
             case "not-collected-observed": value["evidenceState"] = "NotCollected"; value["observation"] = null; break;
             case "invalid-queued": value["evidenceState"] = "Invalid"; value["observation"] = null; value["scan"]!["state"] = "queued"; break;
+        }
+        using var body = JsonDocument.Parse(value.ToJsonString());
+        Assert.False(Matches(body.RootElement, Component(spec.RootElement, "Report"), spec.RootElement));
+    }
+
+    [Theory]
+    [InlineData(EvidencePublicationFailureProtocol.StorageUnavailable, "Unavailable")]
+    [InlineData(EvidencePublicationFailureProtocol.WriteUnconfirmed, "Unavailable")]
+    [InlineData(EvidencePublicationFailureProtocol.ContentInvalid, "Invalid")]
+    [InlineData(EvidencePublicationFailureProtocol.OriginalMissing, "Unavailable")]
+    public async Task ActualHttpPublicationFailureMatchesItsSchemaWithoutObservationOrReceipt(string code, string evidence)
+    {
+        var project = new PortalProjectStub(); var reader = new PortalObservationStub();
+        project.Record = project.Record with { State = "blocked" };
+        project.Job = project.Job with { State = "blocked", Generation = 1, ErrorCode = code };
+        await using var server = await PortalHttpTests.Start(project, reader); using var http = PortalHttpTests.Authorized(server);
+        using var spec = JsonDocument.Parse(await http.GetStringAsync("/openapi/v1.json"));
+        using var response = await http.GetAsync(PortalHttpTests.Prefix + "/" + project.Record.Id.ToString("D"));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.True(Matches(body.RootElement, Component(spec.RootElement, "Report"), spec.RootElement));
+        Assert.Equal(evidence, body.RootElement.GetProperty("evidenceState").GetString());
+        Assert.Equal(code, body.RootElement.GetProperty("errorCode").GetString());
+        Assert.Equal("blocked", body.RootElement.GetProperty("scan").GetProperty("state").GetString());
+        Assert.Equal(JsonValueKind.Null, body.RootElement.GetProperty("observation").ValueKind);
+        Assert.Equal(JsonValueKind.Null, body.RootElement.GetProperty("workerArchive").ValueKind);
+        Assert.Equal(JsonValueKind.Null, body.RootElement.GetProperty("workerPermission").ValueKind);
+        Assert.Equal(0, reader.Calls);
+    }
+
+    [Theory]
+    [InlineData("wrongState")]
+    [InlineData("wrongEvidence")]
+    [InlineData("notCollected")]
+    [InlineData("unknownIntegrityCause")]
+    [InlineData("producerReceipt")]
+    [InlineData("observation")]
+    public void PublishedSchemaRejectsContradictoryPublicationFacts(string change)
+    {
+        var project = new PortalProjectStub(); using var spec = JsonDocument.Parse(PortalOpenApi.Document);
+        var value = JsonSerializer.SerializeToNode(new PortalReportResponse(project.Record with { State = "blocked" },
+            "Unavailable", EvidencePublicationFailureProtocol.StorageUnavailable, null), PortalJson.Options)!;
+        switch (change)
+        {
+            case "wrongState": value["scan"]!["state"] = "observed"; break;
+            case "wrongEvidence": value["evidenceState"] = "Invalid"; break;
+            case "notCollected": value["evidenceState"] = "NotCollected"; break;
+            case "unknownIntegrityCause": value["evidenceState"] = "Invalid"; value["errorCode"] = "CONTROL_EVIDENCE_UNCONFIRMED"; break;
+            case "producerReceipt":
+                value["workerArchive"] = JsonSerializer.SerializeToNode(WorkerEvidenceTests.Receipt(new(project.Job.OrganizationId,
+                    project.Job.ScanId, project.Job.JobId, 1)), PortalJson.Options); break;
+            default: value["observation"] = JsonSerializer.SerializeToNode(Observation(), PortalJson.Options); break;
         }
         using var body = JsonDocument.Parse(value.ToJsonString());
         Assert.False(Matches(body.RootElement, Component(spec.RootElement, "Report"), spec.RootElement));

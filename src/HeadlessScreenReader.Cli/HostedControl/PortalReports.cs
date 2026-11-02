@@ -83,6 +83,10 @@ internal sealed class PortalScanService(IPortalProjectClient project, IPortalObs
         if (job is null) return new(record, "Unavailable", "CONTROL_JOB_NOT_FOUND", null);
         if (job.OrganizationId != organization || job.ScanId != scan)
             throw new PortalFault(503, "CONTROL_PROVIDER_RESPONSE_UNCONFIRMED");
+        var publicationFailure = EvidencePublicationFailureProtocol.Parse(job.ErrorCode);
+        if (publicationFailure is not null && (job.State != "blocked" || job.JobId == Guid.Empty || job.Generation is < 1 or > 3
+            || job.Digest is not null || job.Reference is not null))
+            throw new PortalFault(503, "CONTROL_PUBLICATION_FAILURE_UNCONFIRMED");
         if (job.WorkerArchive is not null && job.State != "completed")
             throw new PortalFault(503, "CONTROL_EVIDENCE_IDENTITY_UNCONFIRMED");
         var expectedState = job.State switch
@@ -111,7 +115,8 @@ internal sealed class PortalScanService(IPortalProjectClient project, IPortalObs
             return new(record, "Pending", job.ErrorCode, null) { WorkerPermission = permission };
         }
         if (job.WorkerPermission is not null) throw new PortalFault(503, "CONTROL_WORKER_PERMISSION_UNCONFIRMED");
-        if (job.State == "blocked") return new(record, "NotCollected", job.ErrorCode, null);
+        if (job.State == "blocked") return new(record, publicationFailure is { } failure
+            ? EvidencePublicationFailureProtocol.EvidenceState(failure) : "NotCollected", job.ErrorCode, null);
         if (job.State != "completed") return new(record, "Pending", job.ErrorCode, null);
         try { job.WorkerArchive?.Validate(new(organization, scan, job.JobId, job.Generation) { RecordObservation = job.RecordObservation, TraversalRoute = job.TraversalRoute }); }
         catch (BrowserOperationException) { throw new PortalFault(503, "CONTROL_EVIDENCE_IDENTITY_UNCONFIRMED"); }

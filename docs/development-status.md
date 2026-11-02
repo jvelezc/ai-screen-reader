@@ -34,7 +34,21 @@ original images and exact native cleanup; the same worker then completes a disti
 no-input job without a restart. UIc614141/Edge11, source190 exact download,
 keyboard/320px, reconnect and saved sign-in pass in their named scopes.
 [Cancellation receipt](validation/caller-scan-cancellation-v1.md).
-**Next:** [make expired worker permission explicit to API, MCP and notebook consumers](validation/worker-permission-reporting-v1.md).
+**Next:** [preserve publication causes and safe next actions](validation/publication-failure-diagnostics-v1.md).
+The actual [upload-before-metadata fault](validation/hosted-upload-before-metadata-v1.md)
+passes atcore734c761/Edge11/UI916e228: five originals uploaded while database result
+fields stay null; original-account leased/Expired/no-repeat diagnostics; same-attempt
+storage-only Published/zero inputs;61 retained files unchanged. Actual recovered
+graph/video ends3.00s; a distinct normal job retains five exact S3 originals,
+81 source images/101 frames and actual Ended4.04s playback. All60 guard checks
+settle; native0 and ready/unfrozen services are independently confirmed. The next
+network storage fault now passes its independently verified requirements:3 denied
+packets, blocked/no receipt,60 unchanged retained files, same-original zero-input
+recovery, actual recovered3.00s and distinct normal3.40s playback,108 settled guard
+checks and independent denial absence. Its observer wrongly required worker exit;
+the raw Unproven/WorkerStopped:false record is retained beside the independent
+facts. Specific durable publication diagnostics are in progress, not delivered.
+Earlier increment records follow.
 The scoped64KiB volume really filled; the original job stays blocked/no archive,
 all retained stage bytes are restored and71 partial source images match. A
 distinct normal job on the same worker completes without restart:2 keys/Reached,
@@ -45,7 +59,8 @@ header/media/native proof, sealing, publishing or replaying the failed attempt.
 Old-binary recovery and new deployment pass; automatic promotion is restored.
 Fresh original-account routee5e8214f retains5 exact S3 originals,2 keys/Reached,
 60 sources/82 frames,86.62ms timing and actual Ended3.28s/errornull playback.
-No lease-expiry fault has run yet; its one-job controlled trial is preparation.
+At that earlier increment the lease-expiry trial was preparation; its actual
+accepted receipt and the later reporting repair are linked in the current plan.
 Actual Chromium checks show the final transfer can prolong image acquisition and
 begin before video finalizes. The repair joins both collectors inside the existing
 input-denied capture drain before the finite transfer;162 focused checks pass.

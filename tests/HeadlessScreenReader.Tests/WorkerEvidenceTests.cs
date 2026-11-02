@@ -141,6 +141,31 @@ public sealed class WorkerEvidenceTests
     }
 
     [Theory]
+    [InlineData(TraversalArchiveFailure.Missing, EvidencePublicationFailureProtocol.OriginalMissing)]
+    [InlineData(TraversalArchiveFailure.Invalid, EvidencePublicationFailureProtocol.ContentInvalid)]
+    [InlineData(TraversalArchiveFailure.Unavailable, EvidencePublicationFailureProtocol.StorageUnavailable)]
+    [InlineData(TraversalArchiveFailure.WriteUnconfirmed, EvidencePublicationFailureProtocol.WriteUnconfirmed)]
+    public async Task ProducerPublicationFailureKeepsSpecificCauseAndOriginalWithoutCompletion(TraversalArchiveFailure failure, string expected)
+    {
+        var root = Path.Combine(Path.GetTempPath(), "hsr-producer-failure-" + Guid.NewGuid().ToString("N"));
+        var lease = new WorkerLease(FixtureWorkerTests.Job(), Guid.NewGuid(), Guid.NewGuid());
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(FixtureWorkerTests.Receipt(lease.Job), ObservationStore.Json);
+        var objects = new TraversalArchiveTests.Objects(); var leases = new Leases(lease, true);
+        objects.BeforeWrite = (_, _, _, _) => Task.FromException(new TraversalArchiveException(failure));
+        try
+        {
+            var result = await new ObservationCoordinator(leases, new Executor(bytes), new(root, producer: new(new(objects))))
+                .RunOnceAsync(lease.WorkerId, default);
+            Assert.Equal("Blocked", result.State); Assert.Equal(expected, result.ErrorCode);
+            Assert.Equal(new[] { expected }, leases.BlockCodes); Assert.Null(leases.Completed);
+            Assert.Null(result.Reference); Assert.Null(result.OffHostReadbackVerified);
+            Assert.Equal(bytes, await File.ReadAllBytesAsync(Path.Combine(root, lease.Job.Reference.Replace('/', Path.DirectorySeparatorChar))));
+            Assert.DoesNotContain(objects.Values.Keys, path => path.EndsWith("/index.json", StringComparison.Ordinal));
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    }
+
+    [Theory]
     [InlineData("tenant")]
     [InlineData("scan")]
     [InlineData("generation")]
@@ -186,10 +211,11 @@ public sealed class WorkerEvidenceTests
     {
         public StoredObservation? Completed { get; private set; }
         public int Blocks { get; private set; }
+        public List<string> BlockCodes { get; } = [];
         public Task<WorkerClaim> ClaimAsync(Guid worker, CancellationToken token) => Task.FromResult(new WorkerClaim("Claimed", lease));
         public Task<bool> RenewAsync(WorkerLease actual, CancellationToken token) => Task.FromResult(true);
         public Task<bool> CompleteAsync(WorkerLease actual, StoredObservation stored, CancellationToken token)
         { Completed = stored; return Task.FromResult(accepted); }
-        public Task<bool> BlockAsync(WorkerLease actual, string code, CancellationToken token) { Blocks++; return Task.FromResult(true); }
+        public Task<bool> BlockAsync(WorkerLease actual, string code, CancellationToken token) { Blocks++; BlockCodes.Add(code); return Task.FromResult(true); }
     }
 }

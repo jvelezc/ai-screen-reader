@@ -71,6 +71,10 @@ public sealed partial class HostedScanClient : IAsyncDisposable
             using var document = await _transport.SendAsync(HttpMethod.Get, Collection + $"/{id:D}").ConfigureAwait(false);
             var report = Parse<HostedScanReport>(document); ValidateScan(report.Scan);
             Require(report.Scan.Id == id && SafeCode(report.ErrorCode));
+            var publicationFailure = EvidencePublicationFailureProtocol.Parse(report.ErrorCode);
+            if (publicationFailure is { } publication)
+                Require(report.Scan.State == "blocked" && report.EvidenceState == EvidencePublicationFailureProtocol.EvidenceState(publication)
+                    && report.WorkerArchive is null && report.WorkerPermission is null);
             if (report.WorkerPermission is { } permission)
             {
                 try { permission.Validate(_options.Organization, id); }
@@ -123,7 +127,8 @@ public sealed partial class HostedScanClient : IAsyncDisposable
             {
                 "Pending" => report.Scan.State is "queued" or "leased",
                 "NotCollected" => report.Scan.State == "blocked",
-                "Invalid" => report.Scan.State == "observed" && report.ErrorCode is not null,
+                "Invalid" => report.Scan.State == "observed" && report.ErrorCode is not null
+                    || report.Scan.State == "blocked" && publicationFailure == EvidencePublicationFailureKind.ContentInvalid,
                 "Unavailable" => report.ErrorCode is not null,
                 _ => false
             }));
@@ -141,8 +146,11 @@ public sealed partial class HostedScanClient : IAsyncDisposable
                 Observation = (object?)null,
                 GoalVerification = "NotAssessed",
                 CanReplay = false,
-                NextActionCode = recovery ? "AwaitFencedRecovery" : report.EvidenceState == "Pending" ? "PollExplicitly" : "InspectEvidenceState",
+                PublicationFailure = publicationFailure?.ToString(),
+                NextActionCode = recovery ? "AwaitFencedRecovery" : publicationFailure is not null ? "InspectRetainedPublication"
+                    : report.EvidenceState == "Pending" ? "PollExplicitly" : "InspectEvidenceState",
                 NextAction = recovery ? "Await fenced recovery; preserve retained input; do not resend or replay commands."
+                    : publicationFailure is { } knownPublication ? EvidencePublicationFailureProtocol.NextAction(knownPublication)
                     : report.EvidenceState == "Pending" ? "Poll scan_report explicitly; do not create another request ID."
                     : "Inspect the evidence/engine state and support code; it is not an accessibility barrier or a verified objective."
             }, error ? "HOSTED_SCAN_EVIDENCE_" + report.EvidenceState.ToUpperInvariant() : null);
