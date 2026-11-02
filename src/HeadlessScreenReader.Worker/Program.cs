@@ -174,9 +174,10 @@ try
     using var producerObjects = archiveConfiguration is null ? null : new S3TraversalObjectStore(archiveConfiguration);
     var producer = new WorkerEvidenceFinalizer(new TraversalArchive(producerObjects is null
         ? new FileTraversalObjectStore(Path.Combine(evidence, "archives")) : producerObjects));
-    await using var leases = new PostgresWorkerLeases(connection);
+    await using var database = WorkerDatabase.Create(connection);
+    await using var leases = new PostgresWorkerLeases(database);
     var coordinator = new ObservationCoordinator(leases, executor, new(evidence, archive, producer));
-    await using var publicLeases = args[0] is "--poll" or "--once-public" ? new PostgresPublicWebsiteLeases(connection) : null;
+    await using var publicLeases = args[0] is "--poll" or "--once-public" ? new PostgresPublicWebsiteLeases(database) : null;
     if (publicLeases is not null) await publicLeases.VerifySchemaAsync(stop.Token);
     await using var publicSupervisor = publicLeases is not null
         ? await IsolatedPublicReaderSupervisor.StartAsync(evidence, PublicWebsiteRuntime.Scripts, runtime, image) : null;

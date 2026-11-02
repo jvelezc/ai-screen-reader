@@ -11,7 +11,7 @@ $created=$false; $built=$false; $removed=$false; $imageRemoved=$false; $ready=$f
 $cases=[Collections.Generic.List[string]]::new()
 $releaseCreated=$false
 $script:executed=0; $script:failed=0
-$expected=if($IsLinux){72}else{70}; $linuxSignalPerformed=$false
+$expected=if($IsLinux){73}else{70}; $linuxSignalPerformed=$false
 $crashStarted=$false; $crashEvidence=$null
 $recoveryResources=[Collections.Generic.List[string]]::new()
 $names=@('POSTGRES_PASSWORD','HSR_WORKER_DATABASE','HSR_WORKER_IMAGE','HSR_WORKER_EVIDENCE','HSR_WORKER_RUNTIME','HSR_WORKER_SECCOMP',
@@ -157,7 +157,7 @@ try {
         $null=Invoke-ReaderRuntime $Runtime @('exec',$name,'psql','-X','-U','postgres','-d','postgres','-qAt','-v','ON_ERROR_STOP=1','--single-transaction','-f','/tmp/migration.sql')
     }
     $user=[Guid]::NewGuid(); $org=[Guid]::NewGuid(); $request=[Guid]::NewGuid(); $password=[Guid]::NewGuid().ToString('N')
-    $null=Invoke-ProofSql "create role hsr_proof_worker login password '$password'; grant hsr_worker to hsr_proof_worker; insert into auth.users(id) values('$user'); insert into hsr.organizations(id,name) values('$org','Worker acceptance'); insert into hsr.memberships values('$org','$user');"
+    $null=Invoke-ProofSql "create role hsr_proof_worker login connection limit 4 password '$password'; grant hsr_worker to hsr_proof_worker; insert into auth.users(id) values('$user'); insert into hsr.organizations(id,name) values('$org','Worker acceptance'); insert into hsr.memberships values('$org','$user');"
     $admission=Invoke-ProofSql "begin; set local role authenticated; select set_config('request.jwt.claim.sub','$user',true); select row_to_json(r) from hsr.create_scan('$org','$request') r; commit;"
     $job=($admission -split "`n" | Where-Object {$_ -match '^\{'}) | ConvertFrom-Json
     if(-not $job.job_id){throw 'WORKER_ADMISSION_UNCONFIRMED'}
@@ -486,6 +486,9 @@ create trigger proof_stop_publication before update on hsr.scan_jobs for each ro
             if(-not $process.Start()){throw 'WORKER_POLL_START_UNCONFIRMED'}
             $line=$process.StandardOutput.ReadLineAsync()
             if(-not $line.Wait(10000) -or ($line.Result|ConvertFrom-Json).State -ne 'Empty'){throw 'WORKER_POLL_READY_UNCONFIRMED'}
+            $fixtureLine=$process.StandardOutput.ReadLineAsync()
+            if(-not $fixtureLine.Wait(10000) -or ($fixtureLine.Result|ConvertFrom-Json).State -ne 'Empty'){throw 'WORKER_FIXTURE_POLL_READY_UNCONFIRMED'}
+            Assert-Proof ((Invoke-ProofSql "select count(*) from pg_stat_activity where usename='hsr_proof_worker' and application_name='hsr-observation-worker'") -ceq '1') 'BothDurableQueuesReuseOneBoundedWorkerDatabasePool'
             $second=@(& dotnet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --recover 2>&1)
             $secondExit=$LASTEXITCODE
             Assert-Proof ($secondExit -eq 3 -and -not $process.HasExited) 'ConcurrentNativeCoordinatorCannotAcquireRetainedOwnership'

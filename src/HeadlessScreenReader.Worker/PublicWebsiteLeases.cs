@@ -27,9 +27,12 @@ public interface IPublicWebsiteLeases
     Task<bool> BlockAsync(PublicWebsiteLease lease, string code, CancellationToken token);
 }
 
-public sealed class PostgresPublicWebsiteLeases(string connectionString) : IPublicWebsiteLeases, IAsyncDisposable
+public sealed class PostgresPublicWebsiteLeases : IPublicWebsiteLeases, IAsyncDisposable
 {
-    private readonly NpgsqlDataSource _source = WorkerDatabase.Create(connectionString);
+    private readonly NpgsqlDataSource _source;
+    private readonly bool _ownsSource;
+    public PostgresPublicWebsiteLeases(string connectionString) { _source = WorkerDatabase.Create(connectionString); _ownsSource = true; }
+    internal PostgresPublicWebsiteLeases(NpgsqlDataSource source) { ArgumentNullException.ThrowIfNull(source); _source = source; }
     private sealed record ClaimWire([property: JsonPropertyName("status")] string Status,
         [property: JsonPropertyName("token")] Guid? Token = null, [property: JsonPropertyName("job")] PublicWebsiteJob? Job = null);
 
@@ -91,5 +94,5 @@ public sealed class PostgresPublicWebsiteLeases(string connectionString) : IPubl
         return await command.ExecuteScalarAsync(token).ConfigureAwait(false) is true;
     }
 
-    public ValueTask DisposeAsync() => _source.DisposeAsync();
+    public ValueTask DisposeAsync() => _ownsSource ? _source.DisposeAsync() : ValueTask.CompletedTask;
 }

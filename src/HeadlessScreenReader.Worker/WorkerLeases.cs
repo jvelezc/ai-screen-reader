@@ -28,7 +28,9 @@ public interface IWorkerLeases
 public sealed class PostgresWorkerLeases : IWorkerLeases, IAsyncDisposable
 {
     private readonly NpgsqlDataSource _source;
-    public PostgresWorkerLeases(string connectionString) => _source = WorkerDatabase.Create(connectionString);
+    private readonly bool _ownsSource;
+    public PostgresWorkerLeases(string connectionString) { _source = WorkerDatabase.Create(connectionString); _ownsSource = true; }
+    internal PostgresWorkerLeases(NpgsqlDataSource source) { ArgumentNullException.ThrowIfNull(source); _source = source; }
 
     public async Task<WorkerClaim> ClaimAsync(Guid worker, CancellationToken token)
     {
@@ -81,5 +83,5 @@ public sealed class PostgresWorkerLeases : IWorkerLeases, IAsyncDisposable
         foreach (var value in values) command.Parameters.AddWithValue(value);
         return await command.ExecuteScalarAsync(token) is true;
     }
-    public ValueTask DisposeAsync() => _source.DisposeAsync();
+    public ValueTask DisposeAsync() => _ownsSource ? _source.DisposeAsync() : ValueTask.CompletedTask;
 }

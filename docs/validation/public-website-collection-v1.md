@@ -78,7 +78,33 @@ unconfirmed intents. Both operator modes exclude database/storage credentials.
 Focused Domain/codec/coordinator checks pass94. The full Windows solution discovers,
 executes and passes3613, failed/not-executed0, in8m46s. A final nonincremental
 Release build has0 warnings/errors and the required format verification is clean.
-Linux .NET CI, new native Docker composition and promotion remain separate gates.
+All nine [CI41521635045 jobs](https://github.com/jvelezc/ai-screen-reader/actions/runs/41521635045)
+now pass for e7f5c74: Windows/Ubuntu3613 each, native72, database631 and
+operations180. Actual Docker public run e44358afc41b47299bfd8b947242967f uses
+image `sha256:a161a4fc1fcb7359cff4e1ed17a73efd8764994b627057b2225143df1167526d`,
+retains the real source captures and confirms native/database absence.
+
+The root-owned operator helper is installed from that tested commit, with its
+previous bytes backed up. All nine installed module hashes match; current
+fdb867c readiness passes, service invocations and public listeners are unchanged.
+The new public schema and worker release are not promoted.
+
+### Current correction: one bounded worker pool
+
+Hosted read-only metadata confirms the worker login's connection limit is4.
+Independent fixture/public data sources could each reserve a pool of3 connections.
+The process now owns one existing-configured pool of3, shared by both adapters,
+leaving the remaining login slot for separate maintenance. Public string
+constructors retain owned disposal; internal borrowed adapters leave disposal to
+the composing process. No grants, credential handling or lease SQL changes.
+
+Focused checks pass160; the corrected full Windows suite passes3613 in8m29s,
+failed/skipped0. Actual corrected public run e6d1b1a00c6c4844854a25ae8c93d009
+retains22389 original bytes and confirms scoped producer/digest and owned absence.
+The Linux CI proof now consumes both queue polls before independently checking
+one live worker session as `BothDurableQueuesReuseOneBoundedWorkerDatabasePool`;
+the disposable role enforces the same connection limit4. That new native case
+remains pending corrected CI, and raises the Linux native requirement count to73.
 
 | Requirement | Evidence |
 | --- | --- |

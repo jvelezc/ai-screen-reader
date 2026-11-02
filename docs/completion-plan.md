@@ -31,8 +31,13 @@ unknown resource group and preserving unrelated ownership. Strict build/format p
 Canonical URL admission, scoped durable jobs, parent-side worker authority,
 retained original observation bytes and actual owned retirement now pass locally.
 There are3613 full Windows tests,631 database and180 Linux operational checks;
-strict nonincremental Release build/format pass. The new migration is not
-hosted and automatic promotion is deliberately held for this increment.
+strict nonincremental Release build/format pass. All9 collection CI41521635045
+jobs now pass, including3613 per OS/native72/database631/operations180. All nine
+root-owned operator module hashes match that tested source and existing fdb867c
+readiness passes without service/listener changes. A shared-pool correction
+preserves the actual four-connection worker budget; corrected full Windows3613
+and actual collection pass, while its new Linux pool case awaits corrected CI.
+The new migration is not hosted and automatic promotion remains deliberately held.
 **Next:** expose that collection through authenticated independent core API/MCP,
 then existing Edge and the customer form. Deliver the
 [sign-in → URL → automated results journey](product-access.md), using the
