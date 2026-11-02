@@ -28,23 +28,7 @@ public interface IWorkerLeases
 public sealed class PostgresWorkerLeases : IWorkerLeases, IAsyncDisposable
 {
     private readonly NpgsqlDataSource _source;
-    public PostgresWorkerLeases(string connectionString)
-    {
-        var settings = new NpgsqlConnectionStringBuilder(connectionString)
-        {
-            IncludeErrorDetail = false,
-            LogParameters = false,
-            CommandTimeout = 10,
-            Timeout = 10,
-            MaxPoolSize = 3,
-            ApplicationName = "hsr-observation-worker"
-        };
-        var loopback = settings.Host is "localhost" or "127.0.0.1" or "::1";
-        if (string.IsNullOrWhiteSpace(settings.Username) || string.IsNullOrWhiteSpace(settings.Password)
-            || !loopback && settings.SslMode != SslMode.VerifyFull)
-            throw new ArgumentException("WORKER_DATABASE_CONFIGURATION_INVALID");
-        _source = NpgsqlDataSource.Create(settings.ConnectionString);
-    }
+    public PostgresWorkerLeases(string connectionString) => _source = WorkerDatabase.Create(connectionString);
 
     public async Task<WorkerClaim> ClaimAsync(Guid worker, CancellationToken token)
     {

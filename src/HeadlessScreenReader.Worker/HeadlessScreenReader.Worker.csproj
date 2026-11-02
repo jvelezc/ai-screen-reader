@@ -6,4 +6,10 @@
     <PackageReference Include="AWSSDK.Core" />
   </ItemGroup>
   <ItemGroup><InternalsVisibleTo Include="HeadlessScreenReader.Tests" /></ItemGroup>
+  <ItemGroup>
+    <None Include="../../scripts/Start-IsolatedPublicReader.ps1" Link="public-reader-scripts/Start-IsolatedPublicReader.ps1" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="../../scripts/Stop-IsolatedPublicReader.ps1" Link="public-reader-scripts/Stop-IsolatedPublicReader.ps1" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="../../scripts/ReaderIsolation.psm1" Link="public-reader-scripts/ReaderIsolation.psm1" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="../../ops/prototype/playwright-seccomp.json" Link="ops/prototype/playwright-seccomp.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

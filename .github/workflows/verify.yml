@@ -12,7 +12,7 @@ jobs:
   observation-worker:
     name: Leased observation worker (Linux)
     runs-on: ubuntu-24.04
-    timeout-minutes: 12
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
         with:
@@ -53,6 +53,7 @@ jobs:
           name: observation-worker-linux
           path: |
             artifacts/worker-linux/
+            artifacts/public-collection/**/run.json
             !artifacts/worker-linux/**/host.json
             !artifacts/worker-linux/**/host.json.*
           retention-days: 7

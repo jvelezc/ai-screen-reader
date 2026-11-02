@@ -11,7 +11,7 @@ $created=$false; $built=$false; $removed=$false; $imageRemoved=$false; $ready=$f
 $cases=[Collections.Generic.List[string]]::new()
 $releaseCreated=$false
 $script:executed=0; $script:failed=0
-$expected=if($IsLinux){71}else{69}; $linuxSignalPerformed=$false
+$expected=if($IsLinux){72}else{70}; $linuxSignalPerformed=$false
 $crashStarted=$false; $crashEvidence=$null
 $recoveryResources=[Collections.Generic.List[string]]::new()
 $names=@('POSTGRES_PASSWORD','HSR_WORKER_DATABASE','HSR_WORKER_IMAGE','HSR_WORKER_EVIDENCE','HSR_WORKER_RUNTIME','HSR_WORKER_SECCOMP',
@@ -128,6 +128,15 @@ try {
     $stage='s3-evidence'
     $s3=& (Join-Path $PSScriptRoot 'Test-S3Evidence.ps1') -Runtime $Runtime -Image $imageId -PublishedCli $testedControl -Folder (Join-Path $folder 's3')
     Assert-Proof ($s3.Ready -and $s3.Passed -eq 10 -and $s3.ServerRemoved -and $s3.NetworkRemoved -and $s3.NativeOwnershipRecovered) 'ActualSignedS3FinalizationAndOffHostReadbackPreserveNativeFacts'
+    $stage='public-website-collection'
+    $publicLines=@(& pwsh -NoProfile -File (Join-Path $PSScriptRoot 'Test-PublicWebsiteCollection.ps1') -Runtime $Runtime -Image $imageId 2>&1)
+    $publicExit=$LASTEXITCODE
+    $publicLines|Set-Content (Join-Path $folder 'public-collection.json') -Encoding utf8NoBOM
+    $public=$publicLines -join "`n"|ConvertFrom-Json
+    Assert-Proof ($publicExit -eq 0 -and $public.Ready -and $public.DatabaseRemoved -and $public.OwnedNativeAbsent -and
+        $public.Facts.Captures -eq 2 -and $public.Facts.Nodes -eq 9 -and $public.Facts.RootObserved -and $public.Facts.DigestMatches -and
+        $public.Facts.ProducerMatches -and $public.Facts.JobMatches -and $public.Facts.OrganizationMatches -and
+        $public.Facts.Inputs -eq 0 -and -not $public.Facts.Goal -and -not $public.HostedProjectChanged -and -not $public.OriginalAccountAcceptance) 'ActualPublicSourceJobRetainsTwoSameScopeCapturesBeforeRetiringItsQueueCapability'
     $stage='database'
     $postgres=Resolve-ReaderDatabaseImage $Runtime
     $env:POSTGRES_PASSWORD=[Guid]::NewGuid().ToString('N')

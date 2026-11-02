@@ -144,6 +144,93 @@ class HostRuntimeTests(unittest.TestCase):
                     self.runtime.probe(COMMIT)
                 self.assertEqual("DEPLOY_RUNTIME_UNCONFIRMED", str(caught.exception))
 
+    def public_ready(self):
+        return {"Schema": "hsr-public-website-runtime-readiness-v1", "State": "PublicWebsiteRuntimeReady", "Image": IMAGE,
+                "Source": "https://screenreader.privensic.com/ci/v1/source", "Captures": 2, "ObservedNodes": 9,
+                "SameDocument": True, "NativeShutdownConfirmed": True, "ResourcesAbsenceConfirmed": True,
+                "Recovered": 0, "DatabaseAccessed": False, "ObservationPersisted": False, "DispatchedInputs": 0, "GoalVerified": False}
+
+    def public_release(self):
+        path = self.base / "releases" / COMMIT / "manifest.json"
+        value = json.loads(path.read_text())
+        value["files"]["worker/public-reader-scripts/Start-IsolatedPublicReader.ps1"] = "d" * 64
+        path.write_text(json.dumps(value))
+
+    def test_public_capability_requires_both_independent_native_readiness_receipts(self):
+        self.public_release()
+        for count in (1, 2048):
+            with self.subTest(case="nodes_" + str(count)), patch.object(self.runtime, "worker",
+                    side_effect=[self.ready(), self.public_ready() | {"ObservedNodes": count}]) as worker:
+                self.runtime.probe(COMMIT)
+                self.assertEqual([(COMMIT, "readiness", "--check-runtime"), (COMMIT, "readiness", "--check-public-runtime")],
+                                 [call.args for call in worker.call_args_list])
+
+    def test_public_capability_cannot_promote_unknown_or_unconfirmed_native_facts(self):
+        self.public_release()
+        changes = {"schema": {"Schema": "other"}, "state": {"State": "Ready"}, "image": {"Image": "sha256:" + "d" * 64},
+                   "source": {"Source": "https://other.example/"}, "captures": {"Captures": 1}, "boolean_captures": {"Captures": True},
+                   "empty": {"ObservedNodes": 0}, "too_many": {"ObservedNodes": 2049}, "boolean_nodes": {"ObservedNodes": True},
+                   "document": {"SameDocument": False}, "native": {"NativeShutdownConfirmed": False}, "absence": {"ResourcesAbsenceConfirmed": False},
+                   "recovery": {"Recovered": -1}, "boolean_recovery": {"Recovered": True}, "database": {"DatabaseAccessed": True},
+                   "persisted": {"ObservationPersisted": True}, "input": {"DispatchedInputs": 1}, "boolean_input": {"DispatchedInputs": False},
+                   "goal": {"GoalVerified": True}, "extra": {"extra": True}}
+        for label, change in changes.items():
+            with self.subTest(case=label), patch.object(self.runtime, "worker", side_effect=[self.ready(), self.public_ready() | change]):
+                with self.assertRaises(ReleaseError) as caught:
+                    self.runtime.probe(COMMIT)
+                self.assertEqual("DEPLOY_PUBLIC_RUNTIME_UNCONFIRMED", str(caught.exception))
+        for key in self.public_ready():
+            value = self.public_ready(); del value[key]
+            with self.subTest(case="missing_" + key), patch.object(self.runtime, "worker", side_effect=[self.ready(), value]):
+                with self.assertRaises(ReleaseError) as caught:
+                    self.runtime.probe(COMMIT)
+                self.assertEqual("DEPLOY_PUBLIC_RUNTIME_UNCONFIRMED", str(caught.exception))
+
+    def test_public_recovery_retires_inventory_after_queue_recovery(self):
+        pending = self.base / "state" / "evidence" / ".public-reader-runtime" / "intents"
+        pending.mkdir(parents=True); intent = pending / "owned.json"; intent.write_text("retain until native absence")
+        calls = []
+        def recover(commit, scope, mode):
+            calls.append((commit, scope, mode))
+            self.assertTrue(intent.exists())
+            if mode == "--recover":
+                return {"State": "Recovered", "Recovered": 0}
+            intent.unlink()
+            return {"Schema": "hsr-public-reader-recovery-v1", "State": "PublicReaderRecovered", "Recovered": 1}
+        with patch.object(self.runtime, "worker", side_effect=recover):
+            self.runtime.recover(COMMIT, "evidence")
+        self.assertEqual([(COMMIT, "evidence", "--recover"), (COMMIT, "evidence", "--recover-public-reader")], calls)
+        self.assertEqual([], list(pending.iterdir()))
+
+    def test_public_recovery_cannot_acknowledge_remaining_or_invalid_inventory(self):
+        pending = self.base / "state" / "evidence" / ".public-reader-runtime" / "intents"
+        pending.mkdir(parents=True); sentinel = pending / "owned.json"; sentinel.write_text("retain")
+        valid = {"Schema": "hsr-public-reader-recovery-v1", "State": "PublicReaderRecovered", "Recovered": 1}
+        for label, change in {"remaining": {}, "schema": {"Schema": "other"}, "state": {"State": "Ready"},
+                "negative": {"Recovered": -1}, "boolean": {"Recovered": True}, "extra": {"extra": True}}.items():
+            with self.subTest(case=label), patch.object(self.runtime, "worker", side_effect=[{"State": "Recovered", "Recovered": 0}, valid | change]):
+                with self.assertRaises(ReleaseError) as caught:
+                    self.runtime.recover(COMMIT, "evidence")
+                self.assertEqual("DEPLOY_PUBLIC_READER_RECOVERY_UNCONFIRMED", str(caught.exception))
+                self.assertEqual("retain", sentinel.read_text())
+
+    def test_empty_public_inventory_preserves_previous_release_operator_modes(self):
+        pending = self.base / "state" / "evidence" / ".public-reader-runtime" / "intents"
+        pending.mkdir(parents=True)
+        with patch.object(self.runtime, "worker", return_value={"State": "Recovered", "Recovered": 0}) as worker:
+            self.runtime.recover(COMMIT, "evidence")
+        worker.assert_called_once_with(COMMIT, "evidence", "--recover")
+
+    def test_public_operator_modes_keep_the_closed_credential_environment(self):
+        for mode in ("--check-public-runtime", "--recover-public-reader"):
+            with self.subTest(case=mode), patch.dict(os.environ, {"HSR_WORKER_DATABASE": "private-database-canary"}), \
+                    patch("host_runtime.run_checked", return_value='{}') as run:
+                self.runtime.worker(COMMIT, "readiness", mode)
+                args, kwargs = run.call_args
+                self.assertEqual(mode, args[0][-1])
+                self.assertNotIn("HSR_WORKER_DATABASE", kwargs["env"])
+                self.assertNotIn("private-database-canary", str(run.call_args))
+
     def test_recovery_requires_explicit_current_schema_and_nonnegative_count(self):
         for label, receipt in {"state": {"State": "Empty", "Recovered": 0},
                                "negative": {"State": "Recovered", "Recovered": -1},

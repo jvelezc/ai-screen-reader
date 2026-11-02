@@ -110,7 +110,7 @@ class HostRuntime:
                 "DEPLOY_IMAGE_UNCONFIRMED")
 
     def worker(self, commit, scope, mode):
-        require(scope in ("evidence", "readiness") and mode in ("--recover", "--check-runtime", "--recover-reader"),
+        require(scope in ("evidence", "readiness") and mode in ("--recover", "--check-runtime", "--recover-reader", "--check-public-runtime", "--recover-public-reader"),
                 "DEPLOY_OPERATION_INVALID")
         env = self.environment() | {"HSR_WORKER_IMAGE": self.manifest(commit)["image"],
                                     "HSR_WORKER_RUNTIME": "podman",
@@ -142,6 +142,19 @@ class HostRuntime:
                         and type(reader.get("Recovered")) is int and reader["Recovered"] >= 0,
                         "DEPLOY_READER_RECOVERY_UNCONFIRMED")
                 require(not any(pending.iterdir()), "DEPLOY_READER_RECOVERY_UNCONFIRMED")
+        public_root = self.base / "state" / scope / ".public-reader-runtime"
+        if public_root.exists() or public_root.is_symlink():
+            require(public_root.is_dir() and not public_root.is_symlink(), "DEPLOY_PUBLIC_READER_JOURNAL_INVALID")
+            pending = public_root / "intents"
+            require(pending.is_dir() and not pending.is_symlink(), "DEPLOY_PUBLIC_READER_JOURNAL_INVALID")
+            if any(pending.iterdir()):
+                recovered = self.worker(commit, scope, "--recover-public-reader")
+                require(isinstance(recovered, dict) and set(recovered) == {"Schema", "State", "Recovered"}
+                        and recovered.get("Schema") == "hsr-public-reader-recovery-v1"
+                        and recovered.get("State") == "PublicReaderRecovered"
+                        and type(recovered.get("Recovered")) is int and recovered["Recovered"] >= 0,
+                        "DEPLOY_PUBLIC_READER_RECOVERY_UNCONFIRMED")
+                require(not any(pending.iterdir()), "DEPLOY_PUBLIC_READER_RECOVERY_UNCONFIRMED")
 
     def probe(self, commit):
         validate_evidence_configuration(self.base)
@@ -157,6 +170,22 @@ class HostRuntime:
                 and type(receipt.get("DispatchedInputs")) is int and receipt["DispatchedInputs"] == 0
                 and receipt.get("GoalVerified") is False and type(receipt.get("Recovered")) is int and receipt["Recovered"] >= 0,
                 "DEPLOY_RUNTIME_UNCONFIRMED")
+        manifest = self.manifest(commit)
+        if "worker/public-reader-scripts/Start-IsolatedPublicReader.ps1" in manifest["files"]:
+            public = self.worker(commit, "readiness", "--check-public-runtime")
+            require(isinstance(public, dict) and set(public) == {"Schema", "State", "Image", "Source", "Captures", "ObservedNodes",
+                    "SameDocument", "NativeShutdownConfirmed", "ResourcesAbsenceConfirmed", "Recovered", "DatabaseAccessed",
+                    "ObservationPersisted", "DispatchedInputs", "GoalVerified"}
+                    and public.get("Schema") == "hsr-public-website-runtime-readiness-v1"
+                    and public.get("State") == "PublicWebsiteRuntimeReady" and public.get("Image") == manifest["image"]
+                    and public.get("Source") == "https://screenreader.privensic.com/ci/v1/source"
+                    and type(public.get("Captures")) is int and public["Captures"] == 2
+                    and type(public.get("ObservedNodes")) is int and 1 <= public["ObservedNodes"] <= 2048
+                    and public.get("SameDocument") is True and public.get("NativeShutdownConfirmed") is True
+                    and public.get("ResourcesAbsenceConfirmed") is True and type(public.get("Recovered")) is int and public["Recovered"] >= 0
+                    and public.get("DatabaseAccessed") is False and public.get("ObservationPersisted") is False
+                    and type(public.get("DispatchedInputs")) is int and public["DispatchedInputs"] == 0
+                    and public.get("GoalVerified") is False, "DEPLOY_PUBLIC_RUNTIME_UNCONFIRMED")
 
     def stop(self):
         run_checked(["/usr/bin/systemctl", "stop", UNIT], timeout=190)

@@ -5,11 +5,16 @@ of the original plan, not a claim that all milestones are complete. The original
 proposal under `outputs/` is unchanged. Read [current delivery evidence](validation/recorded-evidence-claims-v1.md)
 for the accepted recorded-claim slice and its controlled-fixture limits.
 
-**Current hosted delivery:** core9455013/HTTP1.17/private MCP21, existing Edge12
-and UI00bc2bb. All nine core CI41454031773 jobs pass:3354 per OS, native71,
-database509 and operations174. UI CI41439156245 passes821 per OS. Private
-deployment41456833152 independently matches all151 files and the rootless image;
-trusted TLS and access guards pass. Original-account choice, saved sign-in,
+**Current private deployment:** fdb867c, CI41506870871 and private promotion
+41510425776. All nine CI jobs pass:3519 per OS, native71, database509 and
+operations174, plus the actual Docker managed-public normal/crash/recovery proof.
+All156 installed files/4004213350 bytes independently match their manifest,
+the immutable rootless image matches and owned containers/networks are0;
+PowerShell is installed. The last original-account acceptance remains
+core9455013/HTTP1.17/private MCP21, existing Edge12 and UI00bc2bb.
+UI CI41439156245 passes821 per OS. That accepted151-file release independently
+matched its manifest and rootless image; trusted TLS and access guards pass.
+Original-account choice, saved sign-in,
 capture-time RLS denial, cached-path clearing, failed storage reauthorization and
 the initial original-file operation denial are accepted in their named scopes.
 Only the isolated test membership is restored; working50/sign-in are preserved.
@@ -19,18 +24,26 @@ Only the isolated test membership is restored; working50/sign-in are preserved.
 from Foundation provenance. Commit8d6a3a7/CI41495426459 passes all nine jobs,
 Windows/Ubuntu3464 each and actual Docker capture/close/owned cleanup.
 [Worker scope](validation/public-reader-worker-v1.md).
-**In progress:** [managed public ownership and recovery](validation/public-reader-runtime-v1.md).
-Actual source capture, normal retirement, abrupt-parent-exit recovery and preserving
-an unrelated owner pass locally;165 focused and3519 full Windows tests pass.
-Strict build/format are clean. The new CI gate remains pending. Hosted public-target admission is not enabled.
-**Next:** complete that runtime gate, then connect trusted tenant-scoped URL jobs
-and retained results through core API/MCP and existing Edge. Deliver the
+**Managed runtime accepted in CI:** [public ownership and recovery](validation/public-reader-runtime-v1.md),
+actual source capture, normal retirement, abrupt-parent-exit recovery, refusing an
+unknown resource group and preserving unrelated ownership. Strict build/format pass.
+**In progress:** [public website collection](validation/public-website-collection-v1.md).
+Canonical URL admission, scoped durable jobs, parent-side worker authority,
+retained original observation bytes and actual owned retirement now pass locally.
+There are3613 full Windows tests,631 database and180 Linux operational checks;
+strict nonincremental Release build/format pass. The new migration is not
+hosted and automatic promotion is deliberately held for this increment.
+**Next:** expose that collection through authenticated independent core API/MCP,
+then existing Edge and the customer form. Deliver the
 [sign-in → URL → automated results journey](product-access.md), using the
 [versioned mock sites](test-site-scenarios.md) within the existing test website
-for feature-specific MCP/API validation. Real provider
-expiry readback and local-journal mid-I/O authority remain explicit separate
-acceptance checks. Chrome is reconnected; the renewed original-account,
-non-refreshing provider/Edge expiry check is running and awaits actual expiry.
+for feature-specific MCP/API validation. The real original-account provider/Edge
+expiry check now passes: the separate non-refreshing session expires at19:11:44Z;
+at19:11:50.031Z the provider returns403 bad_jwt/expired and existing Edge returns
+401 CONTROL_AUTHENTICATION_REQUIRED, support2a27d0532a944db99d01353aaf6c7460.
+The normal persisted notebook session remains intact. This proves provider and
+existing Edge expiry only; core expiry, notebook clearing and local-journal
+mid-I/O authority remain separate acceptance checks.
 
 ## Accepted: verify assessment claims against recorded originals
 

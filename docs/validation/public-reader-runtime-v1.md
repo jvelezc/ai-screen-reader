@@ -4,8 +4,15 @@ November2,2026. Local Windows host with real rootless Podman Linux resources
 passes the managed source and abrupt-parent-exit proofs. The focused suite
 discovers/passes165, failed/skipped0. Strict build has0 warnings/errors, the full
 Windows suite discovers/passes3519 with0 failed/skipped, and required format is
-clean. This increment's CI remains pending. Hosted release9455013/HTTP1.17/private MCP21, Edge12 and UI
-00bc2bb are unchanged. This does not expose hosted URL admission or publish a UI.
+clean. All nine CI41506870871 jobs now pass, including3519 tests on each OS and
+the actual Docker normal/crash/recovery proof. Private deployment41510425776
+promotes fdb867c. Independent rehashing confirms all156 installed files,
+4004213350 bytes, with0 missing/extra/mismatched files; manifest SHA-256 is
+`3e4764f5059b1bf7312bd0f4ac7278dd4f99b47d7608ff89975999325998a6f9`.
+The rootless image `sha256:f630c2bbe12f68fbf2eff4449d57d283f1cc4ba1cfc2d90c9c15b1e19aadfdf7`
+matches independently, owned containers/networks are0 and PowerShell is installed. The last
+original-account acceptance is9455013/HTTP1.17/private MCP21 through Edge12 and
+UI00bc2bb. This does not expose hosted URL admission or publish a UI.
 
 ## Resulting behavior
 
@@ -48,7 +55,11 @@ supervisor recovers one intent and independently confirms container/network
 absence before retirement. A different owner's network survives recovery and is
 then removed by exact ID. Pending intents end at0. No native-shutdown inference
 is made from this crash recovery. This local host is Windows; Linux resources run
-inside the Podman VM. Docker/Linux CI is a distinct required execution.
+inside the Podman VM. Docker/Linux CI independently passes normal run
+ac349a932f8a41829b1d05e9e1defd3d, proof5f11edd2d2894af89eba1cb8dfc78e79,
+with image `sha256:554aef73f32109849aa38eb4914880cdf01ed887dc67a79710eec2e7817b0e7e`.
+Both actual captures have9 nodes; native shutdown, transport join, owned absence,
+unknown-group refusal and abrupt-exit recovery pass. Docker has0 stdin warnings.
 
 Before killing that child, the proof adds an unexpected network under its owner
 prefix. Cleanup refuses the complete group before deletion; independent inspection

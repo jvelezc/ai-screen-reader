@@ -5,6 +5,18 @@ public sealed record PublicReaderSource(string Profile, string TargetUrl, string
 {
     public const string CurrentProfile = "hsr-approved-public-readonly-v1";
 
+    /// <summary>Validate the submitted spelling before deriving a canonical source and exact DNS host.</summary>
+    public static PublicReaderSource FromUrl(string targetUrl)
+    {
+        if (string.IsNullOrWhiteSpace(targetUrl) || targetUrl.Length > 2048 || targetUrl != targetUrl.Trim()
+            || !Uri.TryCreate(targetUrl, UriKind.Absolute, out var uri))
+            throw new BrowserOperationException("PUBLIC_READER_SOURCE_INVALID");
+        var submitted = new PublicReaderSource(CurrentProfile, targetUrl, uri.IdnHost.ToLowerInvariant());
+        submitted.Validate();
+        var canonical = submitted with { TargetUrl = new UriBuilder(uri) { Host = submitted.AllowedHost, Port = -1 }.Uri.AbsoluteUri };
+        canonical.Validate(); return canonical;
+    }
+
     public void Validate()
     {
         if (Profile != CurrentProfile || string.IsNullOrWhiteSpace(TargetUrl) || TargetUrl.Length > 2048

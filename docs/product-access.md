@@ -24,10 +24,20 @@ not the customer application.
 The current UI can use recorded controlled-fixture results and explicitly imported
 scanner data. A URL alone requires real backend scan results; it must not fabricate
 findings. The approved-public read-only worker base now has real source and native
-cleanup proof. Its managed ownership and actual abrupt-exit recovery now pass
-locally, with3519 full Windows tests and clean strict build/format; this increment's
-CI is still required. Hosted URL admission, collection and report integration remain
-to be connected. Existing signup requires confirmed email; a new account must
+cleanup proof. Its managed ownership and actual abrupt-exit recovery pass in
+CI41506870871 on Windows and Ubuntu with3519 tests each; all nine jobs pass.
+Private deployment41510425776 promotes fdb867c. This is operational deployment,
+separate from the last original-account HTTP1.17/private MCP21 acceptance.
+
+The next local increment now connects canonical public URLs to scoped queue jobs,
+an actual isolated worker and two retained same-document captures. Its actual
+[collection receipt](validation/public-website-collection-v1.md),631 database
+checks and180 Linux operational checks pass. Core API/MCP admission and result
+retrieval, existing Edge consumption and the customer form remain to be connected.
+Read-only observations leave task outcomes and evidence sufficiency unassessed.
+This increment is not hosted; automatic promotion is temporarily held until the
+tested schema and operational readiness are installed together.
+Existing signup requires confirmed email; a new account must
 receive its own authorized workspace or an explicitly granted membership.
 
 ## Required implementation and acceptance
