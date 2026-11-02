@@ -78,7 +78,7 @@ finally {
     }
     if($created){
         $logs=Invoke-ReaderRuntime $Runtime @('logs',$name) -AllowFailure
-        $logs.Text|Set-Content (Join-Path $folderPath 'server.log') -Encoding utf8NoBOM
+        ($logs.Text,$logs.StandardError -join "`n")|Set-Content (Join-Path $folderPath 'server.log') -Encoding utf8NoBOM
         $item=((Invoke-ReaderRuntime $Runtime @('inspect',$name)).Text|ConvertFrom-Json)[0]
         $serverState=[pscustomobject]@{Status=$item.State.Status;Running=$item.State.Running;ExitCode=$item.State.ExitCode;OomKilled=$item.State.OOMKilled}
         if($item.Config.Labels.'hsr.s3.proof' -ne $owner){throw 'S3_SERVER_OWNER_MISMATCH'}

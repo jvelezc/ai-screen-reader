@@ -44,7 +44,7 @@ try {
     $control | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $folder 'control-runtime.json') -Encoding utf8NoBOM
     $stage='image'
     $build=Invoke-ReaderRuntime $Runtime @('build','--tag',$image,'--label',"hsr.worker.proof=$owner",'--file',(Join-Path $repoRoot 'ops/worker/Containerfile'),$repoRoot) -AllowFailure
-    $build.Text | Set-Content (Join-Path $folder 'build.log') -Encoding utf8NoBOM
+    ($build.Text, $build.StandardError -join "`n") | Set-Content (Join-Path $folder 'build.log') -Encoding utf8NoBOM
     if($build.Code -ne 0){throw 'WORKER_IMAGE_BUILD_FAILED'}; $built=$true
     $imageId=(Invoke-ReaderRuntime $Runtime @('image','inspect','--format','{{.Id}}',$image)).Text.Trim()
     if($imageId -match '^[a-f0-9]{64}$'){$imageId='sha256:'+$imageId}

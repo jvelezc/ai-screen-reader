@@ -3,9 +3,9 @@
 November2,2026. The customer release gate is [sign in → URL → saved results](../product-access.md).
 This increment implements canonical URL admission, scoped durable work and actual
 isolated collection. The API/MCP, existing Edge, customer form and public UI origin
-remain to be connected. No hosted migration has been applied. Automatic private
-promotion is deliberately held until the tested schema and operator readiness are
-installed together; the existing fdb867c private release keeps running.
+remain to be connected. The tested basic public-collection migration is now hosted,
+and a5817a5 is privately promoted after the VPS readiness repair described below.
+Automatic private promotion remains held while the next API increment is developed.
 
 ## Retained facts and their limits
 
@@ -85,9 +85,8 @@ image `sha256:a161a4fc1fcb7359cff4e1ed17a73efd8764994b627057b2225143df1167526d`,
 retains the real source captures and confirms native/database absence.
 
 The root-owned operator helper is installed from that tested commit, with its
-previous bytes backed up. All nine installed module hashes match; current
-fdb867c readiness passes, service invocations and public listeners are unchanged.
-The new public schema and worker release are not promoted.
+previous bytes backed up. All nine installed module hashes match. The hosted
+basic schema and private worker are promoted; there is still no public customer UI.
 
 ### Current correction: one bounded worker pool
 
@@ -104,7 +103,46 @@ retains22389 original bytes and confirms scoped producer/digest and owned absenc
 The Linux CI proof now consumes both queue polls before independently checking
 one live worker session as `BothDurableQueuesReuseOneBoundedWorkerDatabasePool`;
 the disposable role enforces the same connection limit4. That new native case
-remains pending corrected CI, and raises the Linux native requirement count to73.
+passes in [CI41527404570](https://github.com/jvelezc/ai-screen-reader/actions/runs/41527404570),
+with all nine jobs successful and73 Linux native requirements satisfied.
+
+### Private deployment repair and runtime diagnostics
+
+The first a5817a5 promotion,41531650218, failed its public-source readiness gate
+and rolled back to fdb867c. Both services resumed on the prior release. The VPS
+had Podman4.9.3 and netavark1.4.0 but no `aardvark-dns`. Its native warning entered
+the launcher's combined output and cleanup JSON parsing failed. The missing
+Ubuntu24.04 package `aardvark-dns=1.4.0-5` was installed after a simulated package
+transaction confirmed one addition with no upgrades/removals. No container or
+service restart was required by that installation.
+
+The exact staged image then passed independent public readiness: two9-node
+captures, same document, native shutdown and all five resources absent, with no
+database configuration, persisted observations, input or verified goal. Retried
+[private deployment41534173325](https://github.com/jvelezc/ai-screen-reader/actions/runs/41534173325)
+returns `Ready` for a5817a58f48c9cdc3d9f64cdf323c626920fc054, previous fdb867c,
+run2d5f308f47fb4ac5b63f923c97e34ed4. This proves private promotion, not the
+original-account website-result journey or new assistive-technology acceptance.
+
+The launcher now captures stdout and stderr separately with a structured argument
+list. Both pipes drain concurrently. JSON/IDs use only stdout; diagnostics remain
+available separately, and failed commands retain a bounded diagnostic message.
+Build/server diagnostic logs explicitly retain both streams. The first new
+regression fails against the old helper. All six Windows regression cases pass
+after the fix; both operating-system CI jobs now execute and verify those six.
+Actual local collection run13282666ec7d417cb8b6b672e9889161 again retains22390
+original bytes, checks digest/producer/source and independently confirms native
+and disposable-database absence. Hosted project changedfalse; original-account
+acceptancefalse. Linux CI for this stream correction remains pending its push.
+
+| Requirement | Evidence |
+| --- | --- |
+| Successful native diagnostics cannot corrupt JSON | `SuccessfulRuntimeJsonExcludesDiagnosticStream` |
+| Allowed failures keep output, diagnostics and native exit separately | `AllowedFailurePreservesSeparateOutputAndExitCode` |
+| Failed commands preserve bounded useful diagnostics | `FailedRuntimeRetainsBoundedDiagnostic` |
+| Diagnostic JSON cannot substitute for stdout | `DiagnosticOnlyOutputCannotBecomeSuccessfulJson` |
+| Explicit UTF-8 output survives capture | `UnicodeOutputIsPreserved` |
+| Both pipes can exceed their native buffer without deadlock | `BothRuntimePipesDrainBeyondTheirBuffer` |
 
 | Requirement | Evidence |
 | --- | --- |

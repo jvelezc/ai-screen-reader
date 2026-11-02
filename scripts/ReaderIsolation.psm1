@@ -21,11 +21,31 @@ function Resolve-ReaderDatabaseImage {
 
 function Invoke-ReaderRuntime {
     param([string]$Runtime, [string[]]$Arguments, [switch]$AllowFailure)
-    $lines = @(& $Runtime @Arguments 2>&1)
-    $code = $LASTEXITCODE
-    $text = ($lines | ForEach-Object { "$_" }) -join "`n"
-    if ($code -ne 0 -and -not $AllowFailure) { throw "CONTAINER_COMMAND_FAILED ($code): $($Arguments[0]); $($text.Substring(0, [Math]::Min(1600, $text.Length)))" }
-    return [pscustomobject]@{ Code = $code; Text = $text }
+    $start = [Diagnostics.ProcessStartInfo]::new($Runtime)
+    $start.UseShellExecute = $false
+    $start.CreateNoWindow = $true
+    $start.RedirectStandardOutput = $true
+    $start.RedirectStandardError = $true
+    $start.StandardOutputEncoding = [Text.Encoding]::UTF8
+    $start.StandardErrorEncoding = [Text.Encoding]::UTF8
+    foreach ($argument in $Arguments) { $start.ArgumentList.Add($argument) }
+    $process = [Diagnostics.Process]::new()
+    $process.StartInfo = $start
+    try {
+        if (-not $process.Start()) { throw 'CONTAINER_COMMAND_START_UNCONFIRMED' }
+        # Drain both pipes concurrently. Diagnostics must never enter JSON or ID output.
+        $output = $process.StandardOutput.ReadToEndAsync()
+        $diagnostics = $process.StandardError.ReadToEndAsync()
+        $process.WaitForExit()
+        $code = $process.ExitCode
+        $text = $output.GetAwaiter().GetResult()
+        $errorText = $diagnostics.GetAwaiter().GetResult()
+    } finally { $process.Dispose() }
+    if ($code -ne 0 -and -not $AllowFailure) {
+        $detail = if ([string]::IsNullOrWhiteSpace($errorText)) { $text } else { $errorText }
+        throw "CONTAINER_COMMAND_FAILED ($code): $($Arguments[0]); $($detail.Substring(0, [Math]::Min(1600, $detail.Length)))"
+    }
+    return [pscustomobject]@{ Code = $code; Text = $text; StandardError = $errorText }
 }
 
 function Stop-ReaderIsolation {
@@ -130,7 +150,7 @@ function Start-ReaderIsolation {
         }
         if (-not $ready) {
             $logs = Invoke-ReaderRuntime $Runtime @('logs', $ctx.Fence) -AllowFailure
-            throw "NAMESPACE_FENCE_NOT_READY: $($logs.Text)"
+            throw "NAMESPACE_FENCE_NOT_READY: $($logs.Text)`n$($logs.StandardError)"
         }
         $policies = @()
         foreach ($command in @('iptables', 'ip6tables')) {

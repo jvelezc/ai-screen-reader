@@ -178,6 +178,15 @@ jobs:
         run: dotnet build HeadlessScreenReader.slnx -c Release --no-restore
       - name: Check formatting
         run: dotnet format HeadlessScreenReader.slnx --verify-no-changes --no-restore
+      - name: Verify native runtime output and diagnostic separation
+        run: |
+          New-Item -ItemType Directory -Force artifacts/native-runtime-streams | Out-Null
+          pwsh -NoProfile -File scripts/Test-ReaderRuntimeStreams.ps1 | Set-Content artifacts/native-runtime-streams/proof.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $proof = Get-Content artifacts/native-runtime-streams/proof.json -Raw | ConvertFrom-Json
+          if ($proof.State -cne 'Ready' -or $proof.Executed -ne 6 -or $proof.Passed -ne 6 -or $proof.Failed -ne 0 -or $proof.Cases.Count -ne 6) {
+            throw 'Runtime output stream proof is incomplete.'
+          }
       - name: Install Chromium
         run: pwsh -NoProfile -File src/HeadlessScreenReader.Cli/bin/Release/net10.0/playwright.ps1 install chromium --with-deps
       - name: Permit sandboxed Chromium on Ubuntu

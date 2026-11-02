@@ -20,7 +20,7 @@ try {
     }
     $stage = 'image'
     $build = Invoke-ReaderRuntime $Runtime @('build', '--tag', $image, '--label', "hsr.headed.owner=$runId", '--file', (Join-Path $repoRoot 'ops/headed/Containerfile'), $repoRoot) -AllowFailure
-    $build.Text | Set-Content (Join-Path $folder 'build.log') -Encoding utf8NoBOM
+    ($build.Text, $build.StandardError -join "`n") | Set-Content (Join-Path $folder 'build.log') -Encoding utf8NoBOM
     if ($build.Code -ne 0) { throw 'HEADED_IMAGE_BUILD_FAILED' }
     $built = $true
     $stage = 'create'
