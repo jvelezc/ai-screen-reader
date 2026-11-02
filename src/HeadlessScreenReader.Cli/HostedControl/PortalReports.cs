@@ -101,6 +101,16 @@ internal sealed class PortalScanService(IPortalProjectClient project, IPortalObs
             if (record.OrganizationId != organization || record.Id != scan || record.State != expectedState)
                 throw new PortalFault(503, "CONTROL_STATE_UNCONFIRMED");
         }
+        if (job.State == "leased")
+        {
+            var permission = job.WorkerPermission ?? throw new PortalFault(503, "CONTROL_WORKER_PERMISSION_UNCONFIRMED");
+            try { permission.Validate(organization, scan); }
+            catch (BrowserOperationException) { throw new PortalFault(503, "CONTROL_WORKER_PERMISSION_UNCONFIRMED"); }
+            if (permission.JobId != job.JobId || permission.Generation != job.Generation)
+                throw new PortalFault(503, "CONTROL_WORKER_PERMISSION_UNCONFIRMED");
+            return new(record, "Pending", job.ErrorCode, null) { WorkerPermission = permission };
+        }
+        if (job.WorkerPermission is not null) throw new PortalFault(503, "CONTROL_WORKER_PERMISSION_UNCONFIRMED");
         if (job.State == "blocked") return new(record, "NotCollected", job.ErrorCode, null);
         if (job.State != "completed") return new(record, "Pending", job.ErrorCode, null);
         try { job.WorkerArchive?.Validate(new(organization, scan, job.JobId, job.Generation) { RecordObservation = job.RecordObservation, TraversalRoute = job.TraversalRoute }); }

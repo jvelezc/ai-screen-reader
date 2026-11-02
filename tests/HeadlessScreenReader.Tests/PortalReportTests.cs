@@ -21,6 +21,16 @@ public sealed class PortalReportTests
         var project = new PortalProjectStub(); var reader = new PortalObservationStub();
         project.Record = project.Record with { State = scanState };
         project.Job = project.Job with { State = jobState, ErrorCode = jobState == "blocked" ? "WORKER_RUNTIME_UNCONFIRMED" : null };
+        if (jobState == "leased")
+        {
+            var time = new DateTimeOffset(2026, 11, 1, 0, 0, 0, TimeSpan.Zero);
+            project.Job = project.Job with
+            {
+                Generation = 1,
+                WorkerPermission = new(ScanWorkerPermissionSnapshot.CurrentSchema,
+                project.Job.OrganizationId, project.Job.ScanId, project.Job.JobId, 1, "Active", time, time.AddSeconds(30))
+            };
+        }
         var result = await Report(project, reader);
         Assert.Equal(evidence, result.EvidenceState); Assert.Null(result.Observation); Assert.Equal(0, reader.Calls);
         Assert.Equal(project.Job.ErrorCode, result.ErrorCode);

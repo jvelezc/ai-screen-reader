@@ -34,13 +34,18 @@ original images and exact native cleanup; the same worker then completes a disti
 no-input job without a restart. UIc614141/Edge11, source190 exact download,
 keyboard/320px, reconnect and saved sign-in pass in their named scopes.
 [Cancellation receipt](validation/caller-scan-cancellation-v1.md).
-**Next:** [finish cleanup recovery after the actual full-volume fault](validation/hosted-full-staging-disk-v1.md).
+**Next:** [make expired worker permission explicit to API, MCP and notebook consumers](validation/worker-permission-reporting-v1.md).
 The scoped64KiB volume really filled; the original job stays blocked/no archive,
 all retained stage bytes are restored and71 partial source images match. A
 distinct normal job on the same worker completes without restart:2 keys/Reached,
-58 sources/78 frames and5 matching S3 originals. Empty acknowledgement startup
-recovery is the exposed gap:161 focused/3,145 full Windows pass with clean strict
-build/format; exact CI candidate repair and hosted delivery remain pending.
+58 sources/78 frames and5 matching S3 originals. Empty acknowledgement recovery
+is delivered atc6e367b: all9 CI jobs/3,145 per OS/native71/database461/operations172,
+151 exact installed files and actual original metadata repair without changing
+header/media/native proof, sealing, publishing or replaying the failed attempt.
+Old-binary recovery and new deployment pass; automatic promotion is restored.
+Fresh original-account routee5e8214f retains5 exact S3 originals,2 keys/Reached,
+60 sources/82 frames,86.62ms timing and actual Ended3.28s/errornull playback.
+No lease-expiry fault has run yet; its one-job controlled trial is preparation.
 Actual Chromium checks show the final transfer can prolong image acquisition and
 begin before video finalizes. The repair joins both collectors inside the existing
 input-denied capture drain before the finite transfer;162 focused checks pass.

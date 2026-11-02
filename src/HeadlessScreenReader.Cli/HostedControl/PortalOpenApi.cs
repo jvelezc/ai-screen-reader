@@ -12,7 +12,7 @@ internal static class PortalOpenApi
 {
     private static readonly Lazy<string> Cached = new(Build);
     public static string Document => Cached.Value;
-    public const string ContractVersion = "1.14.0";
+    public const string ContractVersion = "1.15.0";
 
     private static string Build()
     {
@@ -465,10 +465,23 @@ internal static class PortalOpenApi
                     properties["nodes"]!["maxItems"] = 2048;
                     properties["evidenceStorage"]!["description"] = "S3: verified private object copy; Local: server disk; LocalFallback: server disk after remote copy missing. Unknown future locations remain unconfirmed.";
                 }
+                if (context.TypeInfo.Type == typeof(ScanWorkerPermissionSnapshot))
+                {
+                    properties["schema"]!["const"] = ScanWorkerPermissionSnapshot.CurrentSchema;
+                    properties["generation"]!["minimum"] = 1;
+                    properties["generation"]!["maximum"] = 3;
+                    properties["status"]!["enum"] = Strings("Active", "Expired", "Missing");
+                    value["description"] = "Original-caller snapshot checked against database time for the exact leased job/generation. Active expires after checkedAt; Expired expires at or before checkedAt; Missing has null expiresAt. This historical observation never grants input, replay, renewal or completion authority. Expired or Missing requires fenced recovery, not command resubmission or indefinite polling.";
+                    value["allOf"] = JsonNode.Parse("""
+                        [{"if":{"properties":{"status":{"const":"Missing"}}},
+                          "then":{"properties":{"expiresAt":{"const":null}}},
+                          "else":{"properties":{"expiresAt":{"type":"string","format":"date-time"}}}}]
+                        """);
+                }
                 if (context.TypeInfo.Type == typeof(PortalReportResponse))
                 {
                     properties["evidenceState"]!["enum"] = Strings("Pending", "Available", "Unavailable", "NotCollected", "Invalid");
-                    value["description"] = "Execution and evidence are separate. Only Available carries an observation. Optional workerArchive is the completed job's atomic producer receipt, with historical readback; current availability requires archive reads. Null means no admitted archive, including legacy jobs/operator imports. This input-free observation package contains no recording or verified goal. Required-state null means unobserved. A blocked job is not an accessibility barrier.";
+                    value["description"] = "Execution, evidence and worker permission are separate. Only Available carries an observation. A leased Pending report requires the original-caller database-time workerPermission snapshot. Expired/Missing calls for fenced recovery without replay; raw leased state is preserved. Other states carry null or omitted permission. Optional workerArchive is the completed job's atomic producer receipt, with historical readback; current availability requires archive reads. Null means no admitted archive, including legacy jobs/operator imports. This input-free observation package contains no recording or verified goal. Required-state null means unobserved. A blocked job is not an accessibility barrier.";
                     value["allOf"] = JsonNode.Parse("""
                         [
                           {"if":{"properties":{"evidenceState":{"const":"Available"}}},
@@ -478,6 +491,9 @@ internal static class PortalOpenApi
                            "then":{"properties":{"scan":{"properties":{"state":{"enum":["queued","leased"]}}}}}},
                           {"if":{"properties":{"evidenceState":{"const":"NotCollected"}}},
                            "then":{"properties":{"scan":{"properties":{"state":{"const":"blocked"}}}}}},
+                          {"if":{"properties":{"scan":{"properties":{"state":{"const":"leased"}}}}},
+                           "then":{"required":["workerPermission"],"properties":{"evidenceState":{"const":"Pending"},"workerPermission":{"type":"object"}}},
+                           "else":{"properties":{"workerPermission":{"const":null}}}},
                           {"if":{"properties":{"evidenceState":{"const":"Invalid"}}},
                            "then":{"properties":{"scan":{"properties":{"state":{"const":"observed"}}}}}}
                         ]

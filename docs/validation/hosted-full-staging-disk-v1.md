@@ -1,13 +1,12 @@
 # Scoped hosted full-staging-disk failure v1
 
-Status: actual scoped volume exhaustion, retained-byte restoration and a distinct
-normal-capacity job pass. The fault exposed an empty cleanup-acknowledgement
-startup gap; its fix passes161 focused and3,145 full Windows tests, strict build
-and formatting, with CI, exact candidate delivery and actual original-stage
-recovery still pending.
-The verified live baseline is
-core5053852, all nine CI jobs/3,129 per OS, native71/database461/operations172,
-151 exact deployed files and accepted controlled long-video graph/playback.
+Status: accepted within this declared failure scope atc6e367b. Actual scoped
+volume exhaustion, retained-byte restoration, distinct no-restart capacity,
+original empty-acknowledgement recovery and fresh post-deployment graph/playback
+pass. All9 CI jobs/3,145 per OS/native71/database461/operations172 and151 exact
+installed files are independently verified. The fault ran on baseline5053852;
+the exposed metadata fix is delivered atc6e367b. Controlled long-video timing is
+accepted separately at5053852.
 [Timing receipt](long-video-timing-v1.md).
 
 ## Declared and exercised fault
@@ -77,9 +76,11 @@ index4a0ed416797d1bc8fb16e184ae6b30d983521de9cd8bed462d1b8705997a5f08,
 manifest752bf60ec0c12f3cf47ec2f76cb6a4f35c952c948c4313790460ec7a8a92a65d.
 Both worker/control PIDs and invocation IDs are unchanged from5053852. This proves
 capacity recovery without replaying the failed job. Actual consumer playback of
-this control and startup recovery are separate checks.
+this control and startup recovery are separate checks. The original account later
+verifies all five originals,3 nodes/2 edges,2 actual keys/Reached and75.24ms stored
+calibration, and plays the native original from0 to Ended3.12s/errornull.
 
-## Exposed recovery gap and next gate
+## Exposed recovery gap and delivered fix
 
 The full volume left an empty native-removal.json.pending. The existing recovery
 requires an exact completed pending acknowledgement, so it rejects this actual
@@ -90,12 +91,48 @@ existing destination. It cannot seal, publish or repair partial recording bytes.
 Wrong/corrupt/foreign/unconfirmed/oversized metadata stays denied and unchanged.
 
 161 focused and3,145 full Windows cases pass locally, zero failed/skipped; strict
-build has zero warnings/errors and format verify/no-restore exits0. Both CI OSs,
-exact successful-CI artifact and actual original-stage cleanup recovery remain.
-Deployment first recovers with the previous binary, so promotion must be held
-until the exact successful candidate can reconcile this metadata safely. Preserve
-the original failed run, every retained media/header byte and the independent
-native-removal proof. No successful startup recovery is claimed yet.
+build has zero warnings/errors and format verify/no-restore exits0.
+[CI41372019770](https://github.com/jvelezc/ai-screen-reader/actions/runs/41372019770)
+passes all9 jobs. Independent TRX verifies3,145 per OS including all16 new cases,
+the carried17 timing/6 terminal-limit/45 PNG cases and actual>10s Chromium decode.
+Native71/database461/operations172 receipts are independently Ready.
+
+Deployment recovers with the previous binary first. A temporary owned automatic
+promotion hold therefore kept5053852 serving until all9 candidate CI jobs passed.
+All151 actual CI artifact files were independently verified and the exact candidate
+installed without activation. The global queue/native inventory was idle. Ordered
+control/worker stop then candidate operator `--recover` returned Recovered0 (no
+native cleanup work) and resumed only the actual empty acknowledgement to848 bytes,
+SHA7c7edbe3fe8850dd12e4e124c5b1a0051922813fdd4abbe3c0bcd97b8e7b06fa.
+Header/61,440-byte partial media/independent native proof are unchanged; no seal,
+publication, input or completion. Old5053852 recovery succeeds and its services
+restart healthy. The original empty pending file remains in the root-private backup.
+An independent helper rereads the exact marker against native proof and header,
+and all71/1,012,060 source bytes still match. DB remains blocked/gen1/one attempt/
+zero leases/no result or archive. Recovery never replays the failed attempt.
+
+Automatic promotion is restored and independently read back true.
+[Deployment41373935469](https://github.com/jvelezc/ai-screen-reader/actions/runs/41373935469)
+is Ready/run779c6d31cc6841cda531f705946c05ff, previous5053852. All151 installed
+files/manifest5769918b107539b97252aeb0f557e67681eb239871436ed9b02b4755c3ae90e8
+and rootless imageecd37aad712cc95c737552a24be1220c53f467d9fd59339eec65c805cee7b5f8
+match actual CI. Trusted default TLS/HTTP1.14, cancellation schema and anonymous
+guards pass. Services are running, unfrozen, Restart=no with native0; no owned
+measurement guard or test mount remains. Public MCP/plugin remains deferred.
+
+## Fresh original-account control on the new release
+
+The same saved original account admits scane5e8214f-545f-4118-aa1a-18a64cf337ea/
+job12269adb-51c2-434d-92e5-a195e0d51b07 on new producer0b6f6af2-af8c-4287-a8f5-5df554688e28.
+One gen1 attempt completes/zero leases/native0 with2 confirmed keys/Reached/
+NoneObserved,3 nodes/2 edges,60 sources/82 decoded video frames and closed capture.
+Five originals independently match private S3 and the1,123,589-byte archive,
+indexc707a99b06924d412ce1e22fc9c23a98061a1a0243e1909ddc986fc6aa42ff2e,
+manifest87d4ded3cc7a48fae9f72107e7a0a95de19ba2b800bd727e41dcc2aa3d590f42.
+Actual UI verifies5 originals, selects a2 withObserved/Satisfied/1 completed call,
+Covered1.526839–2.078048s and86.624478125ms uncertainty. Native playback starts at0
+and ends3.28s/errornull. Fresh reread of the failed original still shows blocked/
+NotCollected, input/objective Unconfirmed; it is never promoted by metadata repair.
 
 | Requirement | Deterministic regression evidence |
 | --- | --- |
@@ -111,7 +148,7 @@ Local commands use repository-pinned SDK10.0.402: strict Release build with
 warnings as errors, `dotnet test HeadlessScreenReader.slnx -c Release` and
 `dotnet format HeadlessScreenReader.slnx --verify-no-changes --no-restore`.
 Linux/CI, exact hosted repair/delivery, actual account and real human/AT acceptance
-remain separate. No test is presented as an actual full-disk write; the scoped
+are separate. No test is presented as an actual full-disk write; the scoped
 hosted fault supplies that evidence independently.
 
 **Done when:** actual volume exhaustion stays an engine/storage failure, originals
@@ -120,3 +157,4 @@ cleanup is independently confirmed, every retained byte survives fault removal,
 all temporary mounts/guards settle, a distinct normal job recovers capacity and
 the exposed incomplete-acknowledgement startup state is safely reconciled.
 Keep network outage, lease expiry, provider loss and human/AT gates separate.
+Next is [one actual job's controlled lease-expiry validation](hosted-lease-expiry-v1.md).

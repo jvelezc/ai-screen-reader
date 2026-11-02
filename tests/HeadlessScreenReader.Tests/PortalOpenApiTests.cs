@@ -10,6 +10,34 @@ namespace HeadlessScreenReader.Tests;
 
 public sealed class PortalOpenApiTests
 {
+    [Theory]
+    [InlineData("Active")]
+    [InlineData("Expired")]
+    [InlineData("Missing")]
+    public void ReportSchemaDescribesPermissionWithoutConflatingExecutionOrEvidence(string status)
+    {
+        var clock = new DateTimeOffset(2026, 11, 1, 0, 0, 0, TimeSpan.Zero);
+        var report = new PortalReportResponse(new(PortalProjectClientTests.Organization, PortalProjectClientTests.Scan,
+            "synthetic-shop", "hsr-desktop-reader-v13", "leased", clock), "Pending", null, null)
+        {
+            WorkerPermission = new(HeadlessScreenReader.Domain.ScanWorkerPermissionSnapshot.CurrentSchema,
+            PortalProjectClientTests.Organization, PortalProjectClientTests.Scan, PortalProjectClientTests.Job, 1, status,
+            clock, status == "Missing" ? null : clock.AddTicks(status == "Active" ? 1 : -1))
+        };
+        using var spec = JsonDocument.Parse(PortalOpenApi.Document);
+        using var body = JsonDocument.Parse(JsonSerializer.Serialize(report, PortalJson.Options));
+        Assert.True(Matches(body.RootElement, Component(spec.RootElement, "Report"), spec.RootElement));
+        var missing = JsonNode.Parse(body.RootElement.GetRawText())!; missing.AsObject().Remove("workerPermission");
+        using var missingBody = JsonDocument.Parse(missing.ToJsonString());
+        Assert.False(Matches(missingBody.RootElement, Component(spec.RootElement, "Report"), spec.RootElement));
+        var terminal = JsonNode.Parse(body.RootElement.GetRawText())!; terminal["scan"]!["state"] = "blocked"; terminal["evidenceState"] = "NotCollected";
+        using var terminalBody = JsonDocument.Parse(terminal.ToJsonString());
+        Assert.False(Matches(terminalBody.RootElement, Component(spec.RootElement, "Report"), spec.RootElement));
+        var invalid = JsonNode.Parse(body.RootElement.GetRawText())!; invalid["workerPermission"]!["status"] = "Running";
+        using var invalidBody = JsonDocument.Parse(invalid.ToJsonString());
+        Assert.False(Matches(invalidBody.RootElement, Component(spec.RootElement, "Report"), spec.RootElement));
+    }
+
     [Fact]
     public void RetainedGraphAndCheckpointShapesUseStringEnumsAndSeparateExportAndSourceHashes()
     {
@@ -166,7 +194,7 @@ public sealed class PortalOpenApiTests
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         var spec = document.RootElement;
         Assert.Equal("3.1.0", spec.GetProperty("openapi").GetString());
-        Assert.Equal("1.14.0", spec.GetProperty("info").GetProperty("version").GetString());
+        Assert.Equal("1.15.0", spec.GetProperty("info").GetProperty("version").GetString());
         Assert.Equal("https://json-schema.org/draft/2020-12/schema", spec.GetProperty("jsonSchemaDialect").GetString());
         Assert.Equal("http", spec.GetProperty("components").GetProperty("securitySchemes").GetProperty("bearerAuth").GetProperty("type").GetString());
         var operations = new[]
@@ -268,6 +296,16 @@ public sealed class PortalOpenApiTests
     {
         var project = new PortalProjectStub();
         project.Job = project.Job with { State = jobState };
+        if (jobState == "leased")
+        {
+            var time = new DateTimeOffset(2026, 11, 1, 0, 0, 0, TimeSpan.Zero);
+            project.Job = project.Job with
+            {
+                Generation = 1,
+                WorkerPermission = new(HeadlessScreenReader.Domain.ScanWorkerPermissionSnapshot.CurrentSchema,
+                project.Job.OrganizationId, project.Job.ScanId, project.Job.JobId, 1, "Active", time, time.AddSeconds(30))
+            };
+        }
         project.Record = project.Record with { State = jobState == "completed" ? "observed" : jobState };
         var reader = new PortalObservationStub { Value = available ? Observation() : null };
         await using var server = await PortalHttpTests.Start(project, reader);

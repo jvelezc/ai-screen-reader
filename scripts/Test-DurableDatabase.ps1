@@ -11,7 +11,7 @@ New-Item -ItemType Directory -Path $folder | Out-Null
 $created = $false; $removed = $false; $ready = $false; $stage = 'create'; $errorCode = $null
 $cases = [Collections.Generic.List[string]]::new()
 $script:discovered = 0; $script:executed = 0; $script:failed = 0
-$expectedCases = 461
+$expectedCases = 483
 $oldPassword = $env:POSTGRES_PASSWORD
 
 function Wait-DatabaseReady {
@@ -100,6 +100,8 @@ try {
     Invoke-DatabaseFile 'tests/database/keyboard-recording.sql' 'keyboard-recording' -Expected 27 -User 'supabase_admin'
     $stage = 'keyboard-replay-fence'
     Invoke-DatabaseFile 'tests/database/keyboard-replay-fence.sql' 'keyboard-replay-fence' -Expected 14 -User 'supabase_admin'
+    $stage = 'worker-permission'
+    Invoke-DatabaseFile 'tests/database/worker-permission.sql' 'worker-permission' -Expected 22 -User 'supabase_admin'
     $stage = 'recorded-publication'
     Invoke-DatabaseFile 'tests/database/recorded-publication.sql' 'recorded-publication' -Expected 64 -User 'supabase_admin'
     $stage = 'scan-cancellation'

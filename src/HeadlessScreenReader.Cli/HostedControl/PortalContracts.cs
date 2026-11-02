@@ -85,6 +85,7 @@ internal sealed record PortalJobResult(Guid OrganizationId, Guid ScanId, Guid Jo
     public bool RecordObservation { get; init; }
     public int TraversalRoute { get; init; }
     public WorkerEvidenceArchive? WorkerArchive { get; init; }
+    public ScanWorkerPermissionSnapshot? WorkerPermission { get; init; }
 }
 /// <summary>Stored source semantics. Null required state remains unobserved.</summary>
 internal sealed record PortalNodeResponse(string Id, string? ParentId, string Role, string Name,
@@ -98,6 +99,7 @@ internal sealed record PortalReportResponse(PortalScanResponse Scan, string Evid
     string? ErrorCode, PortalObservationResponse? Observation)
 {
     public WorkerEvidenceArchive? WorkerArchive { get; init; }
+    public ScanWorkerPermissionSnapshot? WorkerPermission { get; init; }
 }
 
 internal sealed class PortalFault(int status, string code) : Exception(code)

@@ -71,6 +71,13 @@ public sealed partial class HostedScanClient : IAsyncDisposable
             using var document = await _transport.SendAsync(HttpMethod.Get, Collection + $"/{id:D}").ConfigureAwait(false);
             var report = Parse<HostedScanReport>(document); ValidateScan(report.Scan);
             Require(report.Scan.Id == id && SafeCode(report.ErrorCode));
+            if (report.WorkerPermission is { } permission)
+            {
+                try { permission.Validate(_options.Organization, id); }
+                catch (BrowserOperationException) { Require(false); }
+                Require(report.Scan.State == "leased" && report.EvidenceState == "Pending");
+            }
+            if (report.Scan.State == "leased" && report.EvidenceState == "Pending") Require(report.WorkerPermission is not null);
             if (report.WorkerArchive is { } producer)
             {
                 Require(report.Scan.State == "observed" && producer.Job is not null
@@ -122,16 +129,21 @@ public sealed partial class HostedScanClient : IAsyncDisposable
             }));
             if (offset != 0) return ToolReply.Error("PAGE_BOUNDS_INVALID");
             var error = report.EvidenceState is "Invalid" or "Unavailable";
+            var recovery = report.WorkerPermission?.Status is "Expired" or "Missing";
             return new(error ? "error" : "scan-report", null, ScreenReaderSession.Profile, new
             {
                 report.Scan,
                 report.EvidenceState,
                 report.ErrorCode,
                 report.WorkerArchive,
+                report.WorkerPermission,
                 ReportId = fingerprint,
                 Observation = (object?)null,
                 GoalVerification = "NotAssessed",
-                NextAction = report.EvidenceState == "Pending" ? "Poll scan_report explicitly; do not create another request ID."
+                CanReplay = false,
+                NextActionCode = recovery ? "AwaitFencedRecovery" : report.EvidenceState == "Pending" ? "PollExplicitly" : "InspectEvidenceState",
+                NextAction = recovery ? "Await fenced recovery; preserve retained input; do not resend or replay commands."
+                    : report.EvidenceState == "Pending" ? "Poll scan_report explicitly; do not create another request ID."
                     : "Inspect the evidence/engine state and support code; it is not an accessibility barrier or a verified objective."
             }, error ? "HOSTED_SCAN_EVIDENCE_" + report.EvidenceState.ToUpperInvariant() : null);
         }, token);

@@ -35,7 +35,13 @@ public sealed partial class HostedScanTests
     private static object Observation(string storage = "S3", object[]? nodes = null) => new
     { documentId = "document", digest = new string('a', 64), readerProfile = ScreenReaderSession.Profile, dispatchedInputs = 0, goalVerified = false, nodes = nodes ?? [Node()], limitations = new[] { "Bounded synthetic fixture" }, evidenceStorage = storage };
     private static object Report(object? observation = null, string evidence = "Available", string state = "observed", string? error = null) => new
-    { scan = Scan(state), evidenceState = evidence, errorCode = error, observation = evidence == "Available" ? observation ?? Observation() : observation };
+    {
+        scan = Scan(state),
+        evidenceState = evidence,
+        errorCode = error,
+        observation = evidence == "Available" ? observation ?? Observation() : observation,
+        workerPermission = state == "leased" && evidence == "Pending" ? PermissionSnapshot("Active") : null
+    };
     private static JsonElement Data(ToolReply reply) { using var json = JsonDocument.Parse(reply.ToJson()); return json.RootElement.GetProperty("data").Clone(); }
     private static JsonNode Tree(object value) => JsonSerializer.SerializeToNode(value, new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
     private static HttpResponseMessage Json(object value, int status = 200) => new((HttpStatusCode)status)

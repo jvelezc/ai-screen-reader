@@ -36,11 +36,18 @@ public sealed class ChromiumPortalTests
         var row = page.Locator("#runs button[aria-current='true'] .run-state");
         await Assertions.Expect(row).ToHaveTextAsync("Queued");
         project.Record = project.Record with { State = "leased" };
-        project.Job = project.Job with { State = "leased", Generation = 1 };
+        var time = new DateTimeOffset(2026, 11, 1, 0, 0, 0, TimeSpan.Zero);
+        project.Job = project.Job with
+        {
+            State = "leased",
+            Generation = 1,
+            WorkerPermission = new(ScanWorkerPermissionSnapshot.CurrentSchema,
+            project.Job.OrganizationId, project.Job.ScanId, project.Job.JobId, 1, "Active", time, time.AddSeconds(30))
+        };
         await Assertions.Expect(page.Locator("#facts")).ToContainTextAsync("Observing");
         await Assertions.Expect(row).ToHaveTextAsync("Observing");
         project.Record = project.Record with { State = scanState };
-        project.Job = project.Job with { State = jobState };
+        project.Job = project.Job with { State = jobState, WorkerPermission = null };
         await Assertions.Expect(page.Locator("#facts")).ToContainTextAsync(label);
         await Assertions.Expect(row).ToHaveTextAsync(label);
         Assert.Equal(1, project.CreateCalls);

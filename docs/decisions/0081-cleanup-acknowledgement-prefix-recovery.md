@@ -1,7 +1,9 @@
 # 0081: Resume only authoritative cleanup acknowledgement prefixes
 
-Status: implemented;161 focused/3,145 full Windows pass with clean strict build
-and formatting. CI/hosted delivery/actual metadata-repair acceptance pending.
+Status: delivered atc6e367b.161 focused/3,145 full Windows and both CI OSs pass,
+all9 CI jobs succeed and all151 installed files match the exact artifact. The
+actual empty acknowledgement recovers without changing header/media/native proof;
+old-binary recovery, deployment and original-account graph/playback pass.
 
 An actual64KiB staging-volume failure retained a61,440-byte partial bundle and
 an empty native-removal.json.pending. Native absence had been independently

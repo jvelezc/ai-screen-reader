@@ -17,4 +17,5 @@ internal sealed record HostedScanReport(HostedScan Scan, string EvidenceState, s
     HostedScanObservation? Observation)
 {
     public WorkerEvidenceArchive? WorkerArchive { get; init; }
+    public ScanWorkerPermissionSnapshot? WorkerPermission { get; init; }
 }

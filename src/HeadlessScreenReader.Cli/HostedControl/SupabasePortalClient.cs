@@ -53,6 +53,36 @@ internal sealed class SupabasePortalClient(HttpClient http, string publishableKe
         return result;
     }
 
+    private async Task<ScanWorkerPermissionSnapshot> WorkerPermissionAsync(PortalIdentity actor, PortalJobResult job, CancellationToken token)
+    {
+        using var request = Request(HttpMethod.Post, "rest/v1/rpc/read_scan_job_permission", actor.Token);
+        request.Content = new StringContent(JsonSerializer.Serialize(new
+        { p_org = job.OrganizationId, p_scan = job.ScanId, p_job = job.JobId, p_generation = job.Generation }),
+            System.Text.Encoding.UTF8, "application/json");
+        using var json = await SendAsync(request, false, token).ConfigureAwait(false);
+        var row = Single(json.RootElement);
+        var fields = row.EnumerateObject().Select(p => p.Name).ToArray();
+        if (fields.Length != 7 || !fields.ToHashSet(StringComparer.Ordinal).SetEquals(
+            ["organization_id", "scan_id", "job_id", "generation", "status", "checked_at", "expires_at"])) throw InvalidResponse();
+        if (row.GetProperty("generation").ValueKind != JsonValueKind.Number
+            || !row.GetProperty("generation").TryGetInt64(out var generation)
+            || row.GetProperty("checked_at").ValueKind != JsonValueKind.String
+            || !row.GetProperty("checked_at").TryGetDateTimeOffset(out var checkedAt)) throw InvalidResponse();
+        var expiry = row.GetProperty("expires_at"); DateTimeOffset? expiresAt = null;
+        if (expiry.ValueKind != JsonValueKind.Null)
+        {
+            if (expiry.ValueKind != JsonValueKind.String || !expiry.TryGetDateTimeOffset(out var value)) throw InvalidResponse();
+            expiresAt = value;
+        }
+        var result = new ScanWorkerPermissionSnapshot(ScanWorkerPermissionSnapshot.CurrentSchema,
+            Id(row, "organization_id"), Id(row, "scan_id"), Id(row, "job_id"), generation,
+            Text(row, "status", 16), checkedAt, expiresAt);
+        try { result.Validate(job.OrganizationId, job.ScanId); }
+        catch (BrowserOperationException) { throw InvalidResponse(); }
+        if (result.JobId != job.JobId || result.Generation != job.Generation) throw InvalidResponse();
+        return result;
+    }
+
     public async Task<PortalIdentity> AuthenticateAsync(string bearer, CancellationToken token)
     {
         if (bearer.Length is < 10 or > 8192 || !Regex.IsMatch(bearer, "\\A[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\z"))
@@ -203,6 +233,8 @@ internal sealed class SupabasePortalClient(HttpClient http, string publishableKe
             catch (BrowserOperationException) { throw InvalidResponse(); }
             result = result with { WorkerArchive = receipt };
         }
+        if (result.State == "leased")
+            result = result with { WorkerPermission = await WorkerPermissionAsync(actor, result, token).ConfigureAwait(false) };
         return result;
     }
 

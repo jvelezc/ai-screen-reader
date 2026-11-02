@@ -36,7 +36,16 @@ Demonstrate the reached and Unknown routes through the original account, plus
 deterministic rejection tests, actual Chromium and both CI platforms. A complete
 single route need not be a sufficient website-evidence package.
 
-## Next: recover interrupted recordings safely
+## Next: report expired worker permission before safe recovery
+
+The bounded actual lease-expiry test is accepted: the original generation and
+intent remain Unknown and cannot be replayed; ordered recovery blocks the job;
+a distinct normal run still completes and plays its exact originals. See the
+[actual expiry receipt](validation/hosted-lease-expiry-v1.md). The experiment found
+a caller gap while the raw job remains leased. [Worker-permission reporting](validation/worker-permission-reporting-v1.md)
+adds the independent database-time snapshot and safe-recovery advice. Local
+implementation is ready; exact CI, deployment and new original-user acceptance
+remain required. The earlier safeguards and historical evidence follow.
 
 The first safeguard blocks an expired keyboard lease instead of allocating a
 replacement attempt. It retains the original worker/generation and a visible
@@ -140,14 +149,17 @@ at5b75935/HTTP1.14/private MCP21: all nine CI jobs (2,936 per OS/native71/databa
 operations172), exact151-file delivery, UIc614141/Edge11 and queued/active account
 stop pass. The fresh active case preserves190 images and exact native cleanup;
 the same healthy worker completes a distinct no-input job without restarting.
-**Next:** [finish cleanup recovery after the actual full-volume fault](validation/hosted-full-staging-disk-v1.md).
+**Next:** [validate one actual job's lease expiry](validation/hosted-lease-expiry-v1.md).
 The actual64KiB fault remains blocked/no archive/native0; every retained stage
 byte is restored and71 partial source images match. A distinct normal job on
 the same worker completes without restart (2 keys/Reached,58 sources/78 frames,
-5 S3 originals). The exposed empty-acknowledgement startup fix passes161 focused
-and3,145 full Windows cases with clean strict build/format. Finish both CI OSs,
-exact successful candidate metadata recovery and safe delivery/restart; partial
-media and the failed attempt remain incomplete and non-replayable.
+5 S3 originals). The exposed empty-acknowledgement recovery fix is delivered at
+c6e367b: all9 CI jobs/3,145 per OS/native71/database461/operations172,151 exact
+installed files and actual original metadata repair. Header/media/native proof
+remain unchanged and unsealed; old-binary recovery/new deployment pass and normal
+promotion is restored. A fresh original-account run retains5 exact S3 originals,
+2 keys/Reached,60 sources/82 frames and actual3.28s native playback to Ended.
+Next is the one-job controlled expiry trial; it has not changed any lease yet.
 Actual Chromium reproduces image acquisition continuing during final transfer
 and a video that has not yet finalized. Join both acquisition collectors before
 the owned final transfer inside the existing input-denied capture drain. The
@@ -181,9 +193,10 @@ native-pause controls retain267/326 complete frames and verified stored calibrat
 The original account selects actual a4 at10.80–11.81s/frames269–295/87.98ms and
 plays the entire13.04s original to Ended/errornull. Four keys/Unknown goal, all
 originals and the failed host-delay measurements remain explicit. Next is the
-scoped full-staging-disk recovery below. The actual fault and distinct normal
-capacity control now pass; its empty-acknowledgement startup fix still needs
-exact CI candidate repair and hosted delivery. All source/byte/uncertainty bounds remain unchanged. Preserve
+scoped failure recovery below. The actual full-volume fault, metadata-prefix
+recovery, distinct capacity job and fresh deployment control now pass atc6e367b.
+Next is one actual recorded job's controlled server-lease expiry. All
+source/byte/uncertainty bounds remain unchanged. Preserve
 every acquired original, all declared resource limits and every failed attempt;
 do not replay uncertain input. The
 scoped [failure diagnostics](validation/recording-failure-diagnostics-v1.md) are
