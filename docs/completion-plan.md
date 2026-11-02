@@ -254,26 +254,27 @@ storage reconstruction and database fencing receipts separately.
 
 ## Next: validate real hosted authority loss
 
-Bounded caller-owned discovery and explicit selection are delivered through core
-bf2a8bd/HTTP1.17, existing Edge12 and UI6eaf97f. Core passes3309 per OS and the
-consumer passes817 per OS. The original account verifies isolated selection,
-reconnect, revoked-after-listing denial, scope clearing and exact test-membership
-restoration while its working workspace and sign-in remain available. An
-unassigned sentinel is excluded. No scan or native reader is started by these
-metadata checks. Do not introduce a service/replacement identity or expose
-another caller's membership.
+Caller-owned discovery/selection and post-native original-authority checks are
+delivered through core5d8aec9/HTTP1.17, existing Edge12 and UI00bc2bb. All9 core
+CI jobs pass3348 per OS with exact151-file private delivery; the UI passes821 per
+OS. Actual original-account capture-time RLS loss clears protected views and
+independently retires the exact owner before expiry. Working50 runs/sign-in remain,
+test membership is restored and the foreign sentinel stays unassigned. Three
+missed timing windows remain inconclusive. Do not substitute a service/replacement
+identity or expose another caller's membership.
 
-First close the post-native authorization boundary: recheck the original caller
-after joined initialization, capture and commands before publishing any result.
-Known access loss must clear consumer access even when native cleanup is still
-unconfirmed; it must not acknowledge retirement or release quarantined capacity.
-Focused256 and full Windows3348 pass with0 failed/skipped; strict build and format
-pass. Remote CI, deployment and actual hosted native acceptance are pending.
-[Boundary receipt](validation/reader-authority-v1.md).
+First close the identified archive failure path: failed manifest/file work must
+still recheck the original caller before returning its mapped storage error.
+Six regressions fail on baseline and pass after correction;136 related checks,
+strict build/full Windows3354 and required format pass, failed/skipped0.
+Remote CI/private delivery remain pending.
+[Archive correction](validation/archive-read-authority-v1.md);
+[accepted native boundary](validation/reader-authority-v1.md).
 
 Use isolated test workspaces under the intended application identity. Test real
-provider-token expiry and membership revocation during observation, graph read,
-original-file paging and playback loading. Confirm the API and Edge deny current
+provider-token expiry and remaining membership-revocation graph/file/playback
+lifecycles. Reuse the one controlled admitted recording in the isolated scope;
+no new fixture input is needed for its protected-read checks. Confirm API/Edge deny current
 access, the notebook clears results and media, and native reader ownership is
 retired or remains explicitly unresolved. Do not revoke unrelated memberships or
 substitute a privileged service identity for application-user acceptance.

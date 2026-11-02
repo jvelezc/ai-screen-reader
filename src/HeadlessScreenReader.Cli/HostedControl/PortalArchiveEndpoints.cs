@@ -52,21 +52,22 @@ internal sealed class PortalArchiveReader(IPortalProjectClient project, Traversa
         try { TraversalArchive.ValidateIdentity(identity); }
         catch (TraversalArchiveException) { throw new PortalFault(400, "CONTROL_ARCHIVE_IDENTITY_INVALID"); }
         if (archive is null) throw new PortalFault(503, "CONTROL_ARCHIVE_UNAVAILABLE");
-        T result;
+        T? result = default; PortalFault? failure = null;
         try { result = await read(archive, identity).ConfigureAwait(false); }
         catch (TraversalArchiveException error)
         {
-            throw error.Failure switch
+            failure = error.Failure switch
             {
                 TraversalArchiveFailure.Missing => new PortalFault(404, "CONTROL_ARCHIVE_NOT_FOUND"),
                 TraversalArchiveFailure.Invalid => new PortalFault(409, "CONTROL_ARCHIVE_INVALID"),
                 _ => new PortalFault(503, "CONTROL_ARCHIVE_UNAVAILABLE")
             };
         }
-        // A page that completed after membership loss must not escape with old authority.
+        // Successful and failed storage work must both use current caller authority.
         await Authorize().ConfigureAwait(false);
         token.ThrowIfCancellationRequested();
-        return result;
+        if (failure is not null) throw failure;
+        return result!;
     }
 }
 

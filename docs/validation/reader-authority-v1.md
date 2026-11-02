@@ -1,12 +1,14 @@
 # Original-authority checks after native reader work
 
-Status November2,2026:39 new deterministic/wire cases and256 relevant checks
-pass locally, failed/skipped0. Strict Release build passes with0 warnings/errors.
-The full Windows solution discovers and passes3348, failed/skipped0; required
-format verification is clean. UI typecheck/build and820 tests pass, with its same
-six existing lint warnings. No CI, private
-deployment or actual hosted-native acceptance of this correction is claimed yet.
-The installed accepted release remains bf2a8bd/HTTP1.17, Edge12 and UI6eaf97f.
+Status November2,2026: core5d8aec9/HTTP1.17/private MCP21 passes all9
+[CI41432120262](https://github.com/jvelezc/ai-screen-reader/actions/runs/41432120262)
+jobs,3348 per OS/database509/native71/operations174. Strict build/format pass.
+[Private deployment41435030064](https://github.com/jvelezc/ai-screen-reader/actions/runs/41435030064)
+is Ready with151 exact CI/installed files and matching rootless image/TLS/guards.
+Existing Edge12 and UI00bc2bb pass821 per OS in CI41439156245; six existing lint
+warnings remain. The original account's actual capture-time RLS loss and normal
+native retirement are accepted below. Provider expiry and other evidence-load
+lifecycles remain separate.
 
 ## Behavior
 
@@ -56,14 +58,39 @@ private `.git/testagent/reader-authority-20261102/` directory. UI regression che
 exercise the unchanged reset behavior for combined401/403/404 observation
 failures; this is consumer compatibility, not a new deployed frontend feature.
 
+## Actual original-account capture-time acceptance
+
+Only the isolated workspace6da73acb-5232-4348-8cb8-dab9d89f72fb is used under the
+original SDK account. Reader27e20a25-747d-4b72-a610-63f6ec34cf4e first exposes31
+authorized nodes, input0/goalNo. Exact rootless owner labels and two consumed
+control/worker loopback samples establish held native work. After the exact test
+membership is removed, manual release requires that same owner still paused:
+postMutationHoldConfirmed=true. This causal ordering does not rely on comparing
+clocks across hosts. Native20-second exchange deadline is unchanged.
+
+The original notebook receives CONTROL_WORKSPACE_NOT_FOUND, support reference
+a51fbba10de745968785d2d2fbf171fd; all reader panels/snapshots clear and the account
+stays signed in. Independent normal removal is durably recorded at12:08:47.7047738Z,
+before server expiry12:09:09Z. Native0, unchanged healthy/unfrozen services and all
+four owned timers/one watcher inactive are separately verified. Only the exact
+test membership is restored: test1/working1/sentinel0. The original account then
+opens its working workspace and sees50 runs and one reader panel. No credential
+entry or target input is needed for this read-only test.
+
+Three missed pause-relative timing windows remain retained and inconclusive.
+Only the request-coordinated case is accepted. Its source-hashed QA watcher and
+independent backstop are removed from active state. Local reader expiry is not
+provider-token expiry. Raw receipts and the actual screenshot remain private
+under `.git/testagent/reader-authority-20261102/`.
+
 ## Remaining acceptance
 
-After full verification and green CI, install and verify the exact151-file
-artifact and runtime image. Use the original signed-in application account and
-only its isolated test workspace for real hosted access changes. Preserve the
+Use the original signed-in application account and only its isolated test
+workspace for remaining hosted access changes. Preserve the
 working membership, foreign sentinel isolation and original provider identity.
 Retain actual denial, cleared consumer results/media and exact native absence or
 explicit unconfirmed ownership. Do not label a denial before observation as
 revocation during native capture. Provider expiry, observation, graph, original
-file pages and playback loading remain separate acceptance cases. No human/AT,
+file pages and playback loading remain separate acceptance cases. The discovered
+[archive error-path gap](archive-read-authority-v1.md) is being corrected. No human/AT,
 arbitrary-site or legal-sufficiency completion follows from these checks.

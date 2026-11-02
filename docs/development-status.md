@@ -2,25 +2,31 @@
 
 Updated November 2, 2026. The original proposal under `outputs/` remains unchanged. This status document tracks implementation against its acceptance gates.
 
-**Current accepted delivery: core bf2a8bd/HTTP1.17/private MCP21, existing Edge12
-and UI6eaf97f.** All nine core CI jobs pass:3309 per OS/database509/native71/
-operations174; UI passes817 per OS. The exact151-file private release, runtime
-image, trusted TLS and401/400/404 gateway guards are verified. The original
-account explicitly opens and reconnects to its isolated workspace. Revoking only
-that membership after listing denies a stale choice and clears the selected
-scope; restoring it makes the choice available again. The working membership and
-sign-in stay available, and an unassigned sentinel never appears. These metadata
-checks start no native reader or scan and do not complete real provider expiry or
-membership revocation during native work or evidence loading.
+**Current accepted delivery: core5d8aec9/HTTP1.17/private MCP21, existing Edge12
+and UI00bc2bb.** All nine core CI41432120262 jobs pass:3348 per OS/database509/
+native71/operations174; UI CI41439156245 passes821 per OS. Exact151-file private
+deployment41435030064, runtime image, trusted TLS and negative guards match.
+Original-account choice/reconnect and actual capture-time RLS revocation pass:
+only the isolated membership is removed while its exact native owner remains
+paused; release denies the late result and clears reader views. Independent normal
+removal is recorded before expiry, with native0, unchanged healthy/unfrozen
+services and all owned guards inactive. Only the test membership is restored;
+the working workspace retains50 runs and saved sign-in. Three missed timing
+windows remain inconclusive. Real provider expiry and evidence-load lifecycles
+remain separate gates.
 [Catalogue receipt](validation/workspace-catalog-v1.md);
 [consumer chooser receipt](https://github.com/jvelezc/ai-screen-reader-ui/blob/main/docs/validation/workspace-choice-v1.md).
 
-**In progress:** original-authority rechecks after joined native initialization,
-observation and commands, including known access loss with unconfirmed cleanup.
-Focused checks pass256, full Windows3348 with0 failed/skipped, strict build with0
-warnings/errors and clean required format. UI compatibility passes820 tests.
-Remote CI, deployment and hosted native acceptance remain separate.
-[Boundary receipt](validation/reader-authority-v1.md).
+**In progress:** archive read errors must still recheck the original caller.
+Six real HTTP regressions fail on baseline and pass after correction;136 related
+checks pass. Strict build passes with0 warnings/errors, full Windows3354 with0
+failed/skipped and clean required format. CI and private promotion are pending.
+The original account has one observed controlled
+recording in its isolated scope; five originals and4.08s video verify. Its first
+storage-held reauthorization returns unavailable and remains unaccepted timing/
+outage evidence, with exact test membership and network restored.
+[Native boundary receipt](validation/reader-authority-v1.md);
+[archive correction](validation/archive-read-authority-v1.md).
 
 **Earlier accepted publication delivery: core38ba353/HTTP1.16/private MCP21, existing Edge11
 and UIe1d1571.** All9 core CI jobs pass:3,270 per OS/native71/database501/

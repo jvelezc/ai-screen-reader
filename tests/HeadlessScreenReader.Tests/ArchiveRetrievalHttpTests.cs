@@ -114,6 +114,35 @@ public sealed class ArchiveRetrievalHttpTests
     }
 
     [Theory]
+    [InlineData("manifest", TraversalArchiveFailure.Missing)]
+    [InlineData("file", TraversalArchiveFailure.Missing)]
+    [InlineData("manifest", TraversalArchiveFailure.Invalid)]
+    [InlineData("file", TraversalArchiveFailure.Invalid)]
+    [InlineData("manifest", TraversalArchiveFailure.Unavailable)]
+    [InlineData("file", TraversalArchiveFailure.Unavailable)]
+    public async Task FailedArchiveReadCannotMaskAuthorityLostDuringItsWork(string operation, TraversalArchiveFailure failure)
+    {
+        var fixture = await ArchiveHttpFixture.Create();
+        await using var server = await fixture.Start();
+        using var http = PortalHttpTests.Authorized(server);
+        var writes = fixture.Store.Writes;
+        fixture.Store.BeforeRead = () => fixture.Project.WorkspaceHidden = true;
+        fixture.Store.Failure = failure;
+        using var response = await http.PostAsJsonAsync(fixture.Path + "/" + operation, operation == "manifest"
+            ? (object)new { fixture.Identity.IndexSha256 } : new { fixture.Identity.IndexSha256, path = "original-000.bin" });
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+        var text = await response.Content.ReadAsStringAsync();
+        using var problem = JsonDocument.Parse(text);
+        Assert.Equal("CONTROL_WORKSPACE_NOT_FOUND", problem.RootElement.GetProperty("title").GetString());
+        Assert.Equal("CONTROL_WORKSPACE_NOT_FOUND", problem.RootElement.GetProperty("detail").GetString());
+        Assert.Equal(404, problem.RootElement.GetProperty("status").GetInt32());
+        Assert.Matches("^[a-f0-9]{32}$", problem.RootElement.GetProperty("supportReference").GetString()!);
+        Assert.DoesNotContain("fileSha256", text); Assert.DoesNotContain("data", text);
+        Assert.Equal(1, fixture.Store.Reads); Assert.Equal(writes, fixture.Store.Writes);
+    }
+
+    [Theory]
     [InlineData("missing-index", 404, "CONTROL_ARCHIVE_NOT_FOUND")]
     [InlineData("missing-part", 404, "CONTROL_ARCHIVE_NOT_FOUND")]
     [InlineData("corrupt-index", 409, "CONTROL_ARCHIVE_INVALID")]
