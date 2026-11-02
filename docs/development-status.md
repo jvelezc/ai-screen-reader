@@ -34,7 +34,13 @@ original images and exact native cleanup; the same worker then completes a disti
 no-input job without a restart. UIc614141/Edge11, source190 exact download,
 keyboard/320px, reconnect and saved sign-in pass in their named scopes.
 [Cancellation receipt](validation/caller-scan-cancellation-v1.md).
-**Next:** [finish long-video timing](validation/long-video-timing-v1.md#next-acceptance-gate).
+**Next:** [finish cleanup recovery after the actual full-volume fault](validation/hosted-full-staging-disk-v1.md).
+The scoped64KiB volume really filled; the original job stays blocked/no archive,
+all retained stage bytes are restored and71 partial source images match. A
+distinct normal job on the same worker completes without restart:2 keys/Reached,
+58 sources/78 frames and5 matching S3 originals. Empty acknowledgement startup
+recovery is the exposed gap:161 focused/3,145 full Windows pass with clean strict
+build/format; exact CI candidate repair and hosted delivery remain pending.
 Actual Chromium checks show the final transfer can prolong image acquisition and
 begin before video finalizes. The repair joins both collectors inside the existing
 input-denied capture drain before the finite transfer;162 focused checks pass.
@@ -68,9 +74,13 @@ strict build and format verification. Delivery6488605 passes all nine CI jobs,
 retain all20 matching originals on one healthy worker, one attempt each, native0.
 Actual checkout6.16s and feedback11.28s graph/video acceptance passes with explicit
 invalid timing for the282-frame feedback movie. Two remaining250-frame analyzer
-gates are aligned locally with the existing10,000-frame decoder/archive contract;
-110 reviewed and3,129 full Windows checks, strict build and format pass. New CI/delivery
-and fresh calibrated long playback remain gates. Source/host/byte/uncertainty limits are unchanged;
+gates are aligned with the existing10,000-frame decoder/archive contract. Delivery
+5053852 passes all nine CI jobs,3,129 per OS and151 exact installed files. Declared
+native-pause controls retain267/326 decoded frames and verified timing. Actual
+original-account a4 selection covers10.80–11.81s/frames269–295 with87.98ms
+uncertainty; full native playback ends13.04s/errornull. Four keys/Unknown goal
+and failed host-delay measurements remain explicit. Next is scoped disk failure
+and capacity recovery. Source/host/byte/uncertainty limits are unchanged;
 every original and failed attempt is preserved. Broader fault/provider/website/
 intervention acceptance stays separate.
 

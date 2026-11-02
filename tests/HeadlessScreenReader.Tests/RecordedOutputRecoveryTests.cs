@@ -73,6 +73,120 @@ public sealed class RecordedOutputRecoveryTests : IDisposable
         Assert.Equal(original, await File.ReadAllBytesAsync(Marker)); Assert.False(File.Exists(Marker + ".pending"));
         Assert.False(File.Exists(Path.Combine(Stage, "seal.json")));
     }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(20)]
+    [InlineData(-1)]
+    public async Task StartupCompletesOnlyTheAuthoritativePendingPrefixWithoutSealingPartialMedia(int prefixLength)
+    {
+        var state = await Started();
+        await state.Output.AcknowledgeRemovalAsync(state.Native, default);
+        var expected = await File.ReadAllBytesAsync(Marker);
+        var length = prefixLength < 0 ? expected.Length - 1 : prefixLength;
+        var pending = Marker + ".pending";
+        Assert.StartsWith(Path.GetFullPath(_root) + Path.DirectorySeparatorChar, Path.GetFullPath(pending));
+        File.Move(Marker, pending);
+        await File.WriteAllBytesAsync(pending, expected[..length]);
+        var header = await File.ReadAllBytesAsync(Path.Combine(Stage, "start.json"));
+        var partial = Enumerable.Range(0, 61440).Select(i => (byte)(i % 251)).ToArray();
+        await File.WriteAllBytesAsync(Path.Combine(Stage, "bundle.bin.pending"), partial);
+        Assert.Equal(new(1, 1, 0, 0), await RecordedOutputJournal.RecoverRemovalsAsync(Outputs, state.Native, default));
+        Assert.Equal(expected, await File.ReadAllBytesAsync(Marker)); Assert.False(File.Exists(pending));
+        Assert.Equal(header, await File.ReadAllBytesAsync(Path.Combine(Stage, "start.json")));
+        Assert.Equal(partial, await File.ReadAllBytesAsync(Path.Combine(Stage, "bundle.bin.pending")));
+        Assert.False(File.Exists(Path.Combine(Stage, "bundle.bin"))); Assert.False(File.Exists(Path.Combine(Stage, "seal.json")));
+        Assert.Equal("WORKER_OUTPUT_NOT_SEALED", Assert.Throws<BrowserOperationException>(() =>
+            RecordedOutputJournal.Read(Outputs, Job, Worker, default)).Code);
+        Assert.Equal(new(1, 0, 1, 0), await RecordedOutputJournal.RecoverRemovalsAsync(Outputs, state.Native, default));
+        Assert.Equal(0, await new IsolatedFixtureExecutor("podman", Image, journal: state.Native).RecoverAsync());
+        Assert.Empty(state.Native.ReadPending());
+    }
+
+    [Theory]
+    [InlineData("owner", 0)]
+    [InlineData("tenant", 20)]
+    [InlineData("generation", 0)]
+    [InlineData("unconfirmed", 20)]
+    [InlineData("schema", 0)]
+    public async Task ForeignRemovalCannotExtendEvenAnOtherwiseValidPendingPrefix(string field, int prefixLength)
+    {
+        var state = await Started(); await state.Output.AcknowledgeRemovalAsync(state.Native, default);
+        var prefix = (await File.ReadAllBytesAsync(Marker))[..prefixLength]; File.Delete(Marker);
+        await File.WriteAllBytesAsync(Marker + ".pending", prefix);
+        var path = Path.Combine(state.Native.RemovalsDirectory, state.Intent.Owner.ToString("N") + ".json");
+        var removal = JsonSerializer.Deserialize<NativeRemoval>(await File.ReadAllBytesAsync(path), ReaderWorkerWire.Json)!;
+        removal = field switch
+        {
+            "owner" => removal with { Intent = removal.Intent with { Owner = Guid.NewGuid() } },
+            "tenant" => removal with { Intent = removal.Intent with { Job = removal.Intent.Job with { OrganizationId = Guid.NewGuid() } } },
+            "generation" => removal with { Intent = removal.Intent with { Job = removal.Intent.Job with { Generation = 2 } } },
+            "unconfirmed" => removal with { ContainerAbsenceConfirmed = false },
+            _ => removal with { Schema = "other" }
+        };
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(removal, ReaderWorkerWire.Json); await File.WriteAllBytesAsync(path, bytes);
+        Assert.Equal("WORKER_OUTPUT_INVALID", (await Assert.ThrowsAsync<BrowserOperationException>(() =>
+            RecordedOutputJournal.RecoverRemovalsAsync(Outputs, state.Native, default))).Code);
+        Assert.Equal(prefix, await File.ReadAllBytesAsync(Marker + ".pending")); Assert.False(File.Exists(Marker));
+        Assert.Equal(bytes, await File.ReadAllBytesAsync(path)); Assert.False(File.Exists(Path.Combine(Stage, "seal.json")));
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(20)]
+    [InlineData(-1)]
+    public async Task MismatchedPendingPrefixIsPreservedWithoutExtendingOrAcknowledging(int prefixLength)
+    {
+        var state = await Started(); await state.Output.AcknowledgeRemovalAsync(state.Native, default);
+        var expected = await File.ReadAllBytesAsync(Marker); File.Delete(Marker);
+        var bad = expected[..(prefixLength < 0 ? expected.Length - 1 : prefixLength)]; bad[^1] ^= 1;
+        await File.WriteAllBytesAsync(Marker + ".pending", bad);
+        Assert.Equal("WORKER_OUTPUT_INVALID", (await Assert.ThrowsAsync<BrowserOperationException>(() =>
+            RecordedOutputJournal.RecoverRemovalsAsync(Outputs, state.Native, default))).Code);
+        Assert.Equal(bad, await File.ReadAllBytesAsync(Marker + ".pending")); Assert.False(File.Exists(Marker));
+    }
+
+    [Fact]
+    public async Task PendingRecordOneByteBeyondExpectedLengthCannotBeTruncatedIntoAnAcknowledgement()
+    {
+        var state = await Started(); await state.Output.AcknowledgeRemovalAsync(state.Native, default);
+        var bad = (await File.ReadAllBytesAsync(Marker)).Concat(new byte[] { 0 }).ToArray(); File.Delete(Marker);
+        Assert.True(bad.Length < 8192); await File.WriteAllBytesAsync(Marker + ".pending", bad);
+        Assert.Equal("WORKER_OUTPUT_INVALID", (await Assert.ThrowsAsync<BrowserOperationException>(() =>
+            RecordedOutputJournal.RecoverRemovalsAsync(Outputs, state.Native, default))).Code);
+        Assert.Equal(bad, await File.ReadAllBytesAsync(Marker + ".pending")); Assert.False(File.Exists(Marker));
+    }
+
+    [Fact]
+    public async Task MissingNativeRemovalCannotFillAnEmptyPendingAcknowledgement()
+    {
+        var state = await Started(removed: false); await File.WriteAllBytesAsync(Marker + ".pending", []);
+        Assert.Equal("WORKER_OUTPUT_INVALID", (await Assert.ThrowsAsync<BrowserOperationException>(() =>
+            RecordedOutputJournal.RecoverRemovalsAsync(Outputs, state.Native, default))).Code);
+        Assert.Empty(await File.ReadAllBytesAsync(Marker + ".pending")); Assert.False(File.Exists(Marker));
+        Assert.Equal(state.Intent, Assert.Single(state.Native.ReadPending()));
+    }
+
+    [Fact]
+    public async Task CancelledRecoveryCannotExtendTheEmptyPendingRecord()
+    {
+        var state = await Started(); await File.WriteAllBytesAsync(Marker + ".pending", []);
+        using var stop = new CancellationTokenSource(); stop.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => RecordedOutputJournal.RecoverRemovalsAsync(Outputs, state.Native, stop.Token));
+        Assert.Empty(await File.ReadAllBytesAsync(Marker + ".pending")); Assert.False(File.Exists(Marker));
+    }
+
+    [Fact]
+    public async Task CorruptFinalRecordPreventsAnyExtensionOfTheValidPendingPrefix()
+    {
+        var state = await Started(); await state.Output.AcknowledgeRemovalAsync(state.Native, default);
+        var prefix = (await File.ReadAllBytesAsync(Marker))[..20]; byte[] bad = [1, 2, 3];
+        await File.WriteAllBytesAsync(Marker + ".pending", prefix); await File.WriteAllBytesAsync(Marker, bad);
+        Assert.Equal("WORKER_OUTPUT_INVALID", (await Assert.ThrowsAsync<BrowserOperationException>(() =>
+            RecordedOutputJournal.RecoverRemovalsAsync(Outputs, state.Native, default))).Code);
+        Assert.Equal(prefix, await File.ReadAllBytesAsync(Marker + ".pending")); Assert.Equal(bad, await File.ReadAllBytesAsync(Marker));
+    }
     [Fact]
     public async Task MissingNativeRemovalRemainsAwaitingAndDoesNotRetireOrAcknowledgeTheIntent()
     {

@@ -66,9 +66,33 @@ public sealed class RecordedOutputJournal
         Require(removal.Schema == "hsr-native-removal-v1" && removal.Intent == _header.Native && removal.ContainerAbsenceConfirmed);
         var marker = new RecordedOutputRemoval(Schema, _headerHash, removal);
         var expected = JsonSerializer.SerializeToUtf8Bytes(marker, ReaderWorkerWire.Json);
+        Require(expected.Length is > 0 and <= 8192);
         var destination = Path.Combine(_directory, "native-removal.json");
         var pending = destination + ".pending";
-        if (Path.Exists(pending)) Require(ReadBytes(_directory, "native-removal.json.pending", 8192).AsSpan().SequenceEqual(expected));
+        // Validate any final record before extending a temporary acknowledgement. Never repair media here.
+        if (Path.Exists(destination)) Require(ReadBytes(_directory, "native-removal.json", 8192).AsSpan().SequenceEqual(expected));
+        if (Path.Exists(pending))
+        {
+            Regular(pending); byte[] prefix;
+            using (var input = new FileStream(pending, FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                Require(input.Length <= expected.Length); prefix = new byte[checked((int)input.Length)];
+                input.ReadExactly(prefix); Require(input.ReadByte() == -1);
+            }
+            Require(prefix.AsSpan().SequenceEqual(expected.AsSpan(0, prefix.Length)));
+            if (prefix.Length < expected.Length)
+            {
+                token.ThrowIfCancellationRequested(); Regular(pending);
+                await using (var file = new FileStream(pending, FileMode.Open, FileAccess.ReadWrite, FileShare.None, 4096, FileOptions.Asynchronous | FileOptions.WriteThrough))
+                {
+                    Require(file.Length == prefix.Length); var confirmed = new byte[prefix.Length];
+                    await file.ReadExactlyAsync(confirmed, token).ConfigureAwait(false); Require(confirmed.AsSpan().SequenceEqual(prefix));
+                    await file.WriteAsync(expected.AsMemory(prefix.Length), token).ConfigureAwait(false);
+                    await file.FlushAsync(token).ConfigureAwait(false); file.Flush(flushToDisk: true);
+                }
+                Require(ReadBytes(_directory, "native-removal.json.pending", 8192).AsSpan().SequenceEqual(expected));
+            }
+        }
         if (Path.Exists(destination)) Require(ReadBytes(_directory, "native-removal.json", 8192).AsSpan().SequenceEqual(expected));
         else if (Path.Exists(pending))
         {

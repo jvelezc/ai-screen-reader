@@ -1,7 +1,8 @@
 # 0080: Align timing checks with the complete decoded-video contract
 
-Status: implemented locally; full checks, delivery and fresh hosted timing remain
-separate gates.
+Status: delivered at5053852; all nine CI jobs, exact private delivery and declared
+controlled long-video original-account graph/native playback pass. Wider release
+gates remain separate.
 
 ## Problem
 

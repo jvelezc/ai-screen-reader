@@ -140,7 +140,14 @@ at5b75935/HTTP1.14/private MCP21: all nine CI jobs (2,936 per OS/native71/databa
 operations172), exact151-file delivery, UIc614141/Edge11 and queued/active account
 stop pass. The fresh active case preserves190 images and exact native cleanup;
 the same healthy worker completes a distinct no-input job without restarting.
-**Next:** [finish long-video timing](validation/long-video-timing-v1.md#next-acceptance-gate).
+**Next:** [finish cleanup recovery after the actual full-volume fault](validation/hosted-full-staging-disk-v1.md).
+The actual64KiB fault remains blocked/no archive/native0; every retained stage
+byte is restored and71 partial source images match. A distinct normal job on
+the same worker completes without restart (2 keys/Reached,58 sources/78 frames,
+5 S3 originals). The exposed empty-acknowledgement startup fix passes161 focused
+and3,145 full Windows cases with clean strict build/format. Finish both CI OSs,
+exact successful candidate metadata recovery and safe delivery/restart; partial
+media and the failed attempt remain incomplete and non-replayable.
 Actual Chromium reproduces image acquisition continuing during final transfer
 and a video that has not yet finalized. Join both acquisition collectors before
 the owned final transfer inside the existing input-denied capture drain. The
@@ -168,9 +175,15 @@ all nine CI jobs,3,112 per OS and151 exact installed files. All four fresh route
 on one healthy worker retain20 matching originals, one attempt each and native0.
 Actual checkout6.16s and feedback11.28s playback ends. The282-frame feedback movie
 retains invalid calibration because two timing analyzers still capped video250.
-The local timing fix uses the existing10,000-frame decoder/archive bound;110
-reviewed and3,129 full Windows checks, strict build and format pass. New CI/delivery and fresh
-calibrated long playback remain gates. All source/byte/uncertainty bounds remain unchanged. Preserve
+The timing fix uses the existing10,000-frame decoder/archive bound and is delivered
+at5053852: all nine CI jobs,3,129 per OS and151 exact installed files. Declared
+native-pause controls retain267/326 complete frames and verified stored calibration.
+The original account selects actual a4 at10.80–11.81s/frames269–295/87.98ms and
+plays the entire13.04s original to Ended/errornull. Four keys/Unknown goal, all
+originals and the failed host-delay measurements remain explicit. Next is the
+scoped full-staging-disk recovery below. The actual fault and distinct normal
+capacity control now pass; its empty-acknowledgement startup fix still needs
+exact CI candidate repair and hosted delivery. All source/byte/uncertainty bounds remain unchanged. Preserve
 every acquired original, all declared resource limits and every failed attempt;
 do not replay uncertain input. The
 scoped [failure diagnostics](validation/recording-failure-diagnostics-v1.md) are

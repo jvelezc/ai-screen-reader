@@ -4,8 +4,9 @@ Status: delivered at `6488605`; all nine CI jobs pass, with 3,112 tests per OS.
 Exact private delivery and all four fresh original-account routes pass independent
 storage/native checks. Actual checkout/feedback graph and native playback pass;
 the complete282-frame feedback movie explicitly retains invalid calibration.
-That separate [timing gap](long-video-timing-v1.md) is Next. Older failed attempts
-remain intact.
+That separate [timing gap](long-video-timing-v1.md) is delivered at5053852 with
+declared controlled long-video acceptance. Older failed attempts and the stored
+uncalibrated recording remain intact.
 
 ## Exact live baseline
 
@@ -168,9 +169,10 @@ remain false. Its partial images do not become a new recording or successful goa
 ## Next acceptance gate
 
 The exact CI/release and four-route original-retention gates pass, including
-actual checkout/feedback consumer playback. Next, [finish long-video timing](long-video-timing-v1.md#next-acceptance-gate):
-retain the complete movie while making valid graph/media links available beyond
-the legacy boundary. Keep genuine ambiguity, old failed attempts and raw originals
+actual checkout/feedback consumer playback. Subsequent [long-video timing](long-video-timing-v1.md)
+passes at5053852 with fresh controlled graph/video acceptance beyond the old
+boundary. Next is [scoped full-staging-disk failure and recovery](hosted-full-staging-disk-v1.md).
+Keep genuine ambiguity, old failed attempts and raw originals
 intact. No source
 limit increase, sampling, replay, successful goal or Ready package follows from
 partial media. Wider fault/provider/website/intervention/operations/human/AT gates

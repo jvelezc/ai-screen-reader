@@ -1,8 +1,10 @@
 # Complete-video timing v1
 
-Status: 110 focused and 3,129 full Windows checks pass, zero failed/skipped;
-strict build and full format pass. New CI, exact private delivery and fresh
-original-account long-video timing remain pending.
+Status: delivered at5053852, all nine CI jobs pass with3,129 tests per OS and
+151 exact installed files. Fresh controlled native-pause recordings retain267/326
+complete frames with calibrated timing. The original account selects the actual
+late interval and plays the326-frame original to Ended13.04s/errornull. The named
+timing gate passes; wider release gates remain separate.
 
 ## Delivered baseline and discovered gap
 
@@ -65,13 +67,99 @@ dotnet format HeadlessScreenReader.slnx --verify-no-changes --no-restore
 | Keep conflicting later transitions Unknown under the unchanged uncertainty target | `ConflictingMarkerBeyondLegacyVideoBoundaryKeepsTimingUnknown`, `ConservativeBound_AtTargetPassesAndImmediatelyAboveRemainsUnknown` |
 | Decode an entire actual long Chromium original without altering its bytes | `NativeDecoderRetainsWholeValidVideoBeyondLegacyTenSecondCeiling` |
 
+## Exact timing-fix delivery
+
+[CI41365144011](https://github.com/jvelezc/ai-screen-reader/actions/runs/41365144011)
+passes all nine jobs for5053852a2d9400585663856967c63873860cb51e. Independent
+downloaded Windows/Ubuntu TRX each discover/execute/pass3,129, zero failed/skipped,
+including all17 new cases,45 PNG cases and actual >10second native control.
+Native71/database461/operations172 Ready receipts independently pass.
+[Deployment41366973226](https://github.com/jvelezc/ai-screen-reader/actions/runs/41366973226)
+is Ready, run9b9d0dc2e5c4407190b71f6d4691b505, previous6488605.
+
+All151 actual CI/archive/installed files match manifest
+`2435b9fb976db14691c3c638f317ca45cc4fcebf8e5135f9608049995b26259c` and image
+`sha256:09aafa3618c3db46f3adb1f938dd60fe78402397170165ab5191d44a73e55f96`.
+Default TLS, API1.14 contract/guards and dedicated rootless image pass. Worker
+PID3260955/invocation1ec2df596e024583a8c900137c219cd0 and control PID3260984/
+invocationeb557e893bdd4086a5ca4df81da7cad0 remain healthy, unfrozen and Restart=no;
+native absence independently passes after each settled case. Existing Edge11/
+UIc614141 are unchanged. A fresh tab in the original browser profile restores
+the original saved application account automatically after hydration.
+
+## Fresh collection and explicit measurement conditions
+
+The original account first admits scan12a648ee-0b49-424d-a2bb-112197763b0e,
+job75b8d6c4-d1d7-4cfa-8fef-9228f8d3069a. It completes once under producer
+cdcefa51-728c-406e-86cd-9708bea63dc8, gen1/zero leases, four actual keys and Unknown
+goal. Its110 source/130 decoded frames and all five originals independently match
+private storage. Stored calibration is60.23245078125001ms with52 cues. It is a
+shorter normal recording, so it does not by itself exercise the fixed count gate.
+
+Two distinct host-acknowledgement-delay controls intentionally hold the coordinator
+while its exact owned native container remains independently unfrozen. A60second
+thaw watchdog is armed; finally restores the same coordinator invocation and
+stops its owned guard. The helper sends zero input. Both hit the unchanged capture
+budget and remain blocked, one attempt/zero leases, with no archive:
+
+| Condition / scan / job | Independently retained facts |
+| --- | --- |
+|6.200144s delay /f7b9039c-2fc8-47bf-99fe-fd3aa348a53d /5d35b19b-eccc-42ac-bef8-13bebd135709 |250 exact source images/3,364,638 bytes; no completed recording, CanReplayfalse, native absent |
+|5.000178s delay /ef9edd15-6b8f-4ac7-9965-fe829d435387 /a80d2183-104d-46c8-8354-1b657e90a564 |228 retained images/3,069,477 bytes; native collection hit its budget before final delivery, no completed recording or replay, native absent |
+
+These are preserved failed measurements, not successful long-video validation or
+website barriers. No failed attempt is retried or reconstructed. Every reported
+retained image independently matches its original private manifest.
+
+Two further distinct controls pause only the identified rootless native container
+after its first retained source image. The parent coordinator and its heartbeat
+remain running. Independent Podman/cgroup checks confirm the actual pause; a12s
+owned unpause watchdog is armed. Finally unpauses that exact container, settles
+owned guards and restores the same service invocations. This is an explicit
+controlled acquisition interruption; helper-dispatched input is zero.
+
+| Pause / scan / job | Verified original and stored alignment |
+| --- | --- |
+|5.500190s /0e3c2af0-b908-4ad3-820f-c8bab3c4f079 /f9958677-bf75-4fbd-965d-cea6721e205a |104 source/267 decoded frames, all five originals match, four actual keys/Unknown goal,75.60766230468744ms calibration/55 cues |
+|7.000189s /cbcceb21-3144-47a8-8c91-9402972c6f50 /751c149c-044e-4390-b08c-f2fb237eee79 |116 source/326 decoded frames, all five originals match, four actual keys/Unknown goal,87.97510898437486ms calibration/52 cues |
+
+The latter recording's actual a4 cue is Covered at10.795932117578126–11.812673595312498s,
+frames269–295. Twenty-five retained cues reach beyond the old250-frame boundary.
+The stored result is TRAVERSAL_RECORDING_CALIBRATED, not an independent diagnostic
+substituted for an original. Both complete once, gen1/zero leases, no error, same
+producer and healthy service invocations; native count is independently zero.
+
+For the326-frame case, index is
+`3d31b15ed9bc1066b3b1e120bba572e9dbc9d988a878c617eec35e654e35d7ce`, manifest
+`1f816b43c16e4f70df5c5f4928d72b60734c6a4a090f8eb23972156478cfa5eb`, archive
+2,045,333 bytes. Baseline is
+`db51c6ad43b1b5f00205a65b420dcc23daad9306872a6673b46bed2c4ac78103`, traversal
+`e93eed83066d711daadabe5908888f142d92b5775b42ae0ec8218510c8a39eb9`, video
+`6dbec6b3cc56d223528f9977fce51fc68cb7c72b1742d37677f4f7d9950cf61b` (88,534 bytes),
+source ZIP`d51342f437e2cdb9c6803d76b86246aab9eafb77e54be8aa9f95319728297f99`.
+Every stored part and all five originals match the retained source independently.
+These are measurement-condition controls; human usability, real AT speech and
+general website behavior are separate acceptance scopes.
+
+## Original-account consumer acceptance
+
+Through unchanged UI/Edge/core, the original account verifies all five originals,
+reads the five-state/four-edge graph and selects a4. The observed action remains
+Unknown/TimedOut with one completed call, input-may-have-occurred true and complete
+input evidence. The app displays stored87.97510898437486ms uncertainty, Covered
+media10.795932–11.812674s and seeks the actual native player to10.795932s.
+
+The13.04second original loads without a media error, seeks to zero, plays through
+its controlled acquisition-pause interval and naturally ends at13.04s/errornull.
+This is actual agent-operated original-account consumption of the immutable326
+frame recording; it does not establish human usability or actual AT speech.
+The historical282-frame recording keeps its original invalid calibration/hash.
+
 ## Next acceptance gate
 
-Complete all nine CI jobs and independently check both platform TRX.
-Promote only that exact successful artifact and independently verify every
-installed file/image. Then admit a distinct original-account long route, match
-every original and input/goal fact, select the actual graph action and verify its
-calibrated interval and native playback past the old boundary. Keep any genuine
+CI, exact delivery, fresh controlled long-video storage/timing and actual original
+account graph/native playback gates pass. Next, [validate scoped full-staging-disk
+failure and capacity recovery](hosted-full-staging-disk-v1.md). Keep any genuine
 clock ambiguity explicit; do not rewrite the historical recording or manufacture
 precision. All source/byte/uncertainty limits remain unchanged. Wider failure,
 provider, website, intervention, operations and human/AT gates stay in the

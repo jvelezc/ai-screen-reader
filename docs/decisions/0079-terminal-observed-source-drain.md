@@ -1,6 +1,8 @@
 # 0079: Copy terminal originals inside the final acquisition drain
 
-Status: implemented locally; delivery and hosted acceptance tracked separately.
+Status: delivered at6488605, with all nine CI jobs, exact private delivery and
+fresh four-route retention acceptance. Subsequent long-video timing is delivered
+separately at5053852.
 
 ## Problem
 

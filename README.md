@@ -2,7 +2,7 @@
 
 Local .NET screen-reader foundation for the architecture in [the development plan](outputs/HeadlessScreenReader-Architecture-Review-and-Development-Plan.md).
 
-The [leased observation worker](docs/decisions/0037-isolated-observation-worker.md) connects tenant-authorized admission to isolated synthetic-shop observation, private saved bytes and fenced queue completion. Its private VPS deployment and rollback are accepted. A real signed-in tenant fixture completed and its report matched independently verified private S3 evidence. Private MCP supports durable fixture scans, saved reports and explicit archive reads alongside live reading. The [real application-user reader](docs/validation/private-tenant-reader-v1.md) also passes authentication/RLS, navigation, matching graph evidence and independent native close. The [authenticated core API](docs/validation/core-api-ingress-v1.md) is live at [https://89.117.17.81](https://89.117.17.81/openapi/v1.json). The notebook's live reader and operator-imported archive reconnect/graph/video workflows are accepted within their named scopes. **Next: [finish long-video timing](docs/validation/long-video-timing-v1.md#next-acceptance-gate).** [Current status](docs/development-status.md) separates local, CI, exact deployment and real-account acceptance.
+The [leased observation worker](docs/decisions/0037-isolated-observation-worker.md) connects tenant-authorized admission to isolated synthetic-shop observation, private saved bytes and fenced queue completion. Its private VPS deployment and rollback are accepted. A real signed-in tenant fixture completed and its report matched independently verified private S3 evidence. Private MCP supports durable fixture scans, saved reports and explicit archive reads alongside live reading. The [real application-user reader](docs/validation/private-tenant-reader-v1.md) also passes authentication/RLS, navigation, matching graph evidence and independent native close. The [authenticated core API](docs/validation/core-api-ingress-v1.md) is live at [https://89.117.17.81](https://89.117.17.81/openapi/v1.json). The notebook's live reader and operator-imported archive reconnect/graph/video workflows are accepted within their named scopes. **Next: [finish cleanup recovery after the actual full-volume fault](docs/validation/hosted-full-staging-disk-v1.md).** [Current status](docs/development-status.md) separates local, CI, exact deployment and real-account acceptance.
 
 Privensic Screen Reader now [checks assessment claims against admitted originals](docs/decisions/0062-recorded-evidence-claims.md); imports and file hashes alone cannot verify a barrier. Current admitted routes are explicitly controlled fixtures. It has an [automated website-evidence assessment](docs/decisions/0057-automated-website-evidence-readiness.md): supplied results â†’ eight requirements â†’ Ready, Insufficient evidence, or No blocking barrier documented. Unknown URLs require scanner results; no findings are fabricated and no human-review task is inserted. [Admitted provenance](docs/decisions/0058-admitted-observation-provenance.md) binds originals to the actual workspace, scan, job, generation and worker through atomic completion. [Explicit passive recording](docs/decisions/0059-admitted-passive-recording.md) adds original video and one capture state with zero input edges on the sanitized fixture. [Admitted keyboard recordings](docs/decisions/0060-admitted-keyboard-recordings.md) now retain actual route graphs, keys, timing and five originals; full delivery acceptance is tracked separately.
 
@@ -54,7 +54,7 @@ All nine CI jobs pass (2,936 per OS/native71/database431/operations172), and151
 actual deployed files match. Original-account queued stop, after-input stop with190
 unchanged images/owned cleanup, and a subsequent no-input job under the same healthy
 worker pass through UIc614141/Edge11. [Cancellation receipt](docs/validation/caller-scan-cancellation-v1.md).
-**Current recording gate:** [finish long-video timing](docs/validation/long-video-timing-v1.md#next-acceptance-gate).
+**Current recording gate:** [finish cleanup recovery after the full-volume fault](docs/validation/hosted-full-staging-disk-v1.md).
 Coreac228d7 passes all nine CI jobs (3,007 per OS/native71/database450/operations172)
 and exact151-file private delivery. A distinct normal original-account recording
 completes with five independently matched S3 originals and actual graph/video
@@ -72,9 +72,17 @@ originals. Actual checkout6.16s and feedback11.28s playback ends; the latter's
 282-frame video retains invalid calibration. Both timing analyzers still had
 legacy250-frame gates despite the existing10,000-frame decoder/archive contract.
 The [complete-video timing fix](docs/decisions/0080-complete-video-timing-bound.md)
-passes110 reviewed and3,129 full Windows checks, strict build and format, preserving
-every source/byte limit and the250ms timing target. New CI/delivery and fresh calibrated
-long playback remain gates. The
+is delivered at5053852: all nine CI jobs,3,129 per OS and151 exact installed files.
+A declared native-pause control retains326 complete video frames/116 sources;
+the original account selects a4 at10.80–11.81s with87.98ms uncertainty and plays
+the entire13.04s original to Ended. Four keys/Unknown goal and failed measurement
+attempts stay explicit. Every source/byte bound and the250ms target remain unchanged.
+The actual64KiB full-volume trial stays blocked/no archive/native0; every retained
+stage byte is restored and71 partial source images match. A distinct normal job
+recovers capacity without restart (2 keys/Reached,58 sources/78 frames,5 S3 originals).
+The exposed empty-acknowledgement startup fix passes161 focused/3,145 full Windows
+checks and clean strict build/format. Next is [exact CI candidate metadata recovery
+and delivery](docs/validation/hosted-full-staging-disk-v1.md). The
 [safe failure diagnostics](docs/validation/recording-failure-diagnostics-v1.md)
 and original failed attempts are preserved; no resource limit is increased.
 Partial originals cannot become a final video, replay or completion.
