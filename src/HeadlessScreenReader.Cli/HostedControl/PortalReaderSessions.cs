@@ -92,6 +92,7 @@ internal sealed partial class PortalReaderSessions : IAsyncDisposable
             catch { throw new PortalFault(503, "CONTROL_READER_OPEN_UNCONFIRMED"); }
             var entry = new Entry(actor.UserId, organization, id, started, expires, browser);
             _sessions.Add(entry.Id, entry);
+            PortalFault? authorizationFailure = null;
             try
             {
                 // Actual initialization is joined even after an HTTP caller departs. Its owner already consumes capacity.
@@ -100,13 +101,17 @@ internal sealed partial class PortalReaderSessions : IAsyncDisposable
                 entry.Observations = browser.InitialCaptures;
                 EnsureOpen();
                 token.ThrowIfCancellationRequested();
+                try { await AuthorizeAsync(actor, organization, token).ConfigureAwait(false); }
+                catch (PortalFault failure) { authorizationFailure = failure; throw; }
+                EnsureOpen();
+                token.ThrowIfCancellationRequested();
                 if (Expired(entry)) throw new PortalFault(404, "CONTROL_READER_NOT_FOUND");
                 return Response(entry);
             }
             catch (Exception error)
             {
                 entry.OpenFailed = true;
-                await CloseCoreAsync(entry).ConfigureAwait(false);
+                await CloseFailedNativeWorkAsync(entry, authorizationFailure).ConfigureAwait(false);
                 if (error is OperationCanceledException or PortalFault) throw;
                 throw new PortalFault(503, "CONTROL_READER_OPEN_UNCONFIRMED");
             }
@@ -129,10 +134,15 @@ internal sealed partial class PortalReaderSessions : IAsyncDisposable
             var entry = await FindAsync(actor, organization, session, token).ConfigureAwait(false);
             if (entry.Observations >= MaximumObservations) throw new PortalFault(409, "CONTROL_READER_BUDGET_EXHAUSTED");
             entry.Observations++;
+            PortalFault? authorizationFailure = null;
             try
             {
                 // Join the actual capture rather than releasing the controller when the HTTP caller leaves.
                 var snapshot = await entry.Browser.CaptureAsync().ConfigureAwait(false);
+                token.ThrowIfCancellationRequested();
+                try { await AuthorizeAsync(actor, organization, token).ConfigureAwait(false); }
+                catch (PortalFault failure) { authorizationFailure = failure; throw; }
+                EnsureOpen();
                 token.ThrowIfCancellationRequested();
                 if (Expired(entry))
                 {
@@ -148,7 +158,7 @@ internal sealed partial class PortalReaderSessions : IAsyncDisposable
             catch
             {
                 // A canceled, oversized or failed capture never leaves an uncertain active collector reusable.
-                if (_sessions.ContainsKey(entry.Id)) await CloseCoreAsync(entry).ConfigureAwait(false);
+                await CloseFailedNativeWorkAsync(entry, authorizationFailure).ConfigureAwait(false);
                 throw;
             }
         }
@@ -196,6 +206,17 @@ internal sealed partial class PortalReaderSessions : IAsyncDisposable
     private bool Expired(Entry entry) => _time.GetElapsedTime(entry.OpenedAt) >= Lifetime;
     private static PortalReaderSessionResponse Response(Entry entry) => new(entry.Organization, entry.Id,
         "Foundation", ScreenReaderSession.Profile, "Open", entry.ExpiresAt, true);
+
+    private async Task CloseFailedNativeWorkAsync(Entry entry, PortalFault? authorizationFailure)
+    {
+        if (!_sessions.ContainsKey(entry.Id)) return;
+        try { await CloseCoreAsync(entry).ConfigureAwait(false); }
+        catch (PortalFault) when (authorizationFailure is { Status: 401 or 403 or 404 })
+        {
+            // Clear access in consumers without acknowledging native retirement or releasing quarantine.
+            throw new PortalFault(authorizationFailure.Status, "CONTROL_READER_ACCESS_CHANGED_CLOSE_UNCONFIRMED");
+        }
+    }
 
     private async Task CloseCoreAsync(Entry entry)
     {

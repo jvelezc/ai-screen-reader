@@ -254,11 +254,22 @@ storage reconstruction and database fencing receipts separately.
 
 ## Next: validate real hosted authority loss
 
-Bounded caller-owned discovery is delivered through core HTTP1.17 and existing
-Edge12; the consumer adapter passes800 per OS. Next connect and verify workspace
-selection so the original account can choose an isolated test workspace while
-keeping its working workspace and sign-in available. Do not
-introduce a service/replacement identity or expose another caller's membership.
+Bounded caller-owned discovery and explicit selection are delivered through core
+bf2a8bd/HTTP1.17, existing Edge12 and UI6eaf97f. Core passes3309 per OS and the
+consumer passes817 per OS. The original account verifies isolated selection,
+reconnect, revoked-after-listing denial, scope clearing and exact test-membership
+restoration while its working workspace and sign-in remain available. An
+unassigned sentinel is excluded. No scan or native reader is started by these
+metadata checks. Do not introduce a service/replacement identity or expose
+another caller's membership.
+
+First close the post-native authorization boundary: recheck the original caller
+after joined initialization, capture and commands before publishing any result.
+Known access loss must clear consumer access even when native cleanup is still
+unconfirmed; it must not acknowledge retirement or release quarantined capacity.
+Focused256 and full Windows3348 pass with0 failed/skipped; strict build and format
+pass. Remote CI, deployment and actual hosted native acceptance are pending.
+[Boundary receipt](validation/reader-authority-v1.md).
 
 Use isolated test workspaces under the intended application identity. Test real
 provider-token expiry and membership revocation during observation, graph read,

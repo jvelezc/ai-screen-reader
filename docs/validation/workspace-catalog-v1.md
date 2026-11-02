@@ -1,9 +1,15 @@
 # Caller-owned workspace catalogue v1
 
-November 2, 2026. **Core HTTP1.17 privately delivered; consumer selection and
-original-account catalogue acceptance remain open.** Core d604eca, UI adapter
-e196c47 and Edge12 implement the protocol. Earlier publication-diagnostics
-acceptance and the original account's retained recordings remain unchanged.
+November 2, 2026. **Core HTTP1.17 privately delivered; explicit consumer selection
+and original-account catalogue metadata acceptance pass.** Core d604eca, UI
+adapter e196c47 and Edge12 introduce the protocol. Core bf2a8bd adds the exact
+HTTPS catalogue root, passes all9 CI jobs (3309 per OS/database509/native71/
+operations174) and matches the151 installed files/runtime image. UI6eaf97f passes
+817 per OS. Original-account selection/reconnect, denied stale choice after exact
+test-membership revocation, restoration and foreign-sentinel exclusion pass;
+neither acceptance workspace has scans and no native reader starts. Provider
+expiry and scan-lifecycle authority loss remain separate gates. Earlier
+publication-diagnostics acceptance and retained recordings remain unchanged.
 
 ## Purpose and boundary
 

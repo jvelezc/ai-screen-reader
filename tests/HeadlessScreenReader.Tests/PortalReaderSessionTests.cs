@@ -26,6 +26,7 @@ public sealed class PortalReaderSessionTests
         var project = new ReaderProjectStub(); var browser = new ReaderBrowserStub();
         await using var sessions = new PortalReaderSessions(project, new FakeTimeProvider(), () => Task.FromResult<IPortalReaderBrowser>(browser));
         var opened = await sessions.OpenAsync(Actor, Organization, default);
+        Assert.Equal(2, project.WorkspaceCalls);
         project.Hidden = denial == "revoked";
         var actor = denial == "subject" ? Other : Actor;
         var organization = denial == "tenant" ? Guid.NewGuid() : Organization;
@@ -40,10 +41,11 @@ public sealed class PortalReaderSessionTests
         });
         Assert.Equal(404, fault.Status);
         Assert.Equal(denial == "revoked" ? "CONTROL_WORKSPACE_NOT_FOUND" : "CONTROL_READER_NOT_FOUND", fault.Code);
-        Assert.Equal(2, project.WorkspaceCalls);
+        Assert.Equal(3, project.WorkspaceCalls);
         Assert.Equal(0, browser.Captures); Assert.Equal(0, browser.Closes);
         project.Hidden = false;
         Assert.Equal(opened, await sessions.ReadAsync(Actor, Organization, opened.SessionId, default));
+        Assert.Equal(4, project.WorkspaceCalls);
     }
 
     [Fact]

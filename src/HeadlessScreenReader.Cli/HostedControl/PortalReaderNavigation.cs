@@ -37,6 +37,7 @@ internal sealed partial class PortalReaderSessions
             if (entry.PublishedDocumentId is null) throw new PortalFault(409, "CONTROL_READER_OBSERVATION_REQUIRED");
             if (entry.PublishedDocumentId != request.ExpectedDocumentId) throw new PortalFault(409, "CONTROL_READER_DOCUMENT_CHANGED");
             if (entry.Observations >= MaximumObservations) throw new PortalFault(409, "CONTROL_READER_BUDGET_EXHAUSTED");
+            PortalFault? authorizationFailure = null;
             try
             {
                 entry.CommandSnapshot = null;
@@ -60,6 +61,9 @@ internal sealed partial class PortalReaderSessions
                 var step = await entry.Reader.ExecuteAsync(command, expectedDocumentId: request.ExpectedDocumentId,
                     cancellationToken: CancellationToken.None).ConfigureAwait(false);
                 token.ThrowIfCancellationRequested();
+                try { await AuthorizeAsync(actor, organization, token).ConfigureAwait(false); }
+                catch (PortalFault failure) { authorizationFailure = failure; throw; }
+                token.ThrowIfCancellationRequested();
                 EnsureOpen();
                 if (Expired(entry)) throw new PortalFault(404, "CONTROL_READER_NOT_FOUND");
                 if (step.Outcome == ReaderOutcome.BrowserError || step.Mode != ReaderMode.Browse || step.BrowserKeystrokes != 0 || step.InputMayHaveOccurred
@@ -81,7 +85,7 @@ internal sealed partial class PortalReaderSessions
             }
             catch
             {
-                if (_sessions.ContainsKey(entry.Id)) await CloseCoreAsync(entry).ConfigureAwait(false);
+                await CloseFailedNativeWorkAsync(entry, authorizationFailure).ConfigureAwait(false);
                 throw;
             }
         }

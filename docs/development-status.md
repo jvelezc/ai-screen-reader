@@ -1,17 +1,28 @@
 # Original development goals and next step
 
-Updated November 1, 2026. The original proposal under `outputs/` remains unchanged. This status document tracks implementation against its acceptance gates.
+Updated November 2, 2026. The original proposal under `outputs/` remains unchanged. This status document tracks implementation against its acceptance gates.
 
-**November 2 protocol update:** caller-owned workspace discovery is privately
-delivered at core d604eca/HTTP1.17, existing Edge12 and UI adapter e196c47.
-All nine core CI jobs pass (3309 per OS/database509/native71/operations172), UI
-passes800 per OS, and the HTTPS-route follow-up passes174 local Linux checks.
-The151-file CI/installed match and actual401/400/404 gateway guards are verified.
-The chooser and original-account catalogue acceptance remain open; discovery does
-not itself exercise provider expiry or membership revocation.
-[Catalogue receipt](validation/workspace-catalog-v1.md).
+**Current accepted delivery: core bf2a8bd/HTTP1.17/private MCP21, existing Edge12
+and UI6eaf97f.** All nine core CI jobs pass:3309 per OS/database509/native71/
+operations174; UI passes817 per OS. The exact151-file private release, runtime
+image, trusted TLS and401/400/404 gateway guards are verified. The original
+account explicitly opens and reconnects to its isolated workspace. Revoking only
+that membership after listing denies a stale choice and clears the selected
+scope; restoring it makes the choice available again. The working membership and
+sign-in stay available, and an unassigned sentinel never appears. These metadata
+checks start no native reader or scan and do not complete real provider expiry or
+membership revocation during native work or evidence loading.
+[Catalogue receipt](validation/workspace-catalog-v1.md);
+[consumer chooser receipt](https://github.com/jvelezc/ai-screen-reader-ui/blob/main/docs/validation/workspace-choice-v1.md).
 
-**Current accepted delivery: core38ba353/HTTP1.16/private MCP21, existing Edge11
+**In progress:** original-authority rechecks after joined native initialization,
+observation and commands, including known access loss with unconfirmed cleanup.
+Focused checks pass256, full Windows3348 with0 failed/skipped, strict build with0
+warnings/errors and clean required format. UI compatibility passes820 tests.
+Remote CI, deployment and hosted native acceptance remain separate.
+[Boundary receipt](validation/reader-authority-v1.md).
+
+**Earlier accepted publication delivery: core38ba353/HTTP1.16/private MCP21, existing Edge11
 and UIe1d1571.** All9 core CI jobs pass:3,270 per OS/native71/database501/
 operations172; UI passes773 per OS. Exact151-file private delivery, trusted TLS
 and anonymous guards match. The original account sees the specific storage failure

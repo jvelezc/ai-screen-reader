@@ -39,6 +39,26 @@ are discarded. Native cleanup failures return
 capacity release is fabricated. An authorized explicit close can retry cleanup.
 Shutdown attempts cleanup for every owned browser and reports failures.
 
+## Post-native original-authority boundary (November 2, 2026)
+
+Initialization, capture and reader commands recheck workspace RLS with the same
+original caller after joined native work and before publishing a result or
+appending its trace. Cancellation, drain and lifetime checks still apply. A
+denial discards the newly captured data and joins actual cleanup; attempted work,
+provider authorization and confirmed native retirement remain separate facts.
+
+If that post-work check establishes401,403 or404 and cleanup then fails, retain
+the denial status with `CONTROL_READER_ACCESS_CHANGED_CLOSE_UNCONFIRMED`.
+Consumers clear protected views through their existing denial behavior, while
+the server retains quarantined ownership until cleanup is actually confirmed.
+A provider503 cannot establish access loss; a native policy403 is not an
+authorization failure. Either with failed cleanup remains503
+`CONTROL_READER_CLOSE_UNCONFIRMED`. A successful close is never inferred.
+
+The HTTP1.17 shapes and generic Problem response contract are unchanged. This is
+a behavioral security correction, with no new capability, schema or grant.
+[Validation and limits](../validation/reader-authority-v1.md).
+
 This is the first tenant-owned session capability, not complete HTTP/MCP parity.
 The existing stdio MCP workspace and its input policy are unchanged. Next, adapt
 the shared reader engine's document-fenced navigation and timeline to owned HTTP
