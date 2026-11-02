@@ -5,6 +5,16 @@ of the original plan, not a claim that all milestones are complete. The original
 proposal under `outputs/` is unchanged. Read [current delivery evidence](validation/recorded-evidence-claims-v1.md)
 for the accepted recorded-claim slice and its controlled-fixture limits.
 
+**Current delivery:** core38ba353/HTTP1.16/private MCP21, existing Edge11 and
+UIe1d1571. All nine core CI jobs pass,3,270 per OS/native71/database501/
+operations172; UI passes773 per OS. Exact151-file private delivery and actual
+publication diagnostics/recovery pass in their named scopes. The original account
+sees the specific unavailable-storage cause, then verifies the same-original
+zero-input recovery and a distinct normal run. All115 retained files are unchanged;
+actual recovered5.40s and normal5.44s playback end without errors.
+[Publication diagnostics receipt](validation/publication-failure-diagnostics-v1.md).
+**Next:** [validate real hosted authority loss](#next-validate-real-hosted-authority-loss).
+
 ## Accepted: verify assessment claims against recorded originals
 
 Core1.9, existing Edge v6 and UIe8cfb2d join these contracts. The original account
@@ -36,7 +46,7 @@ Demonstrate the reached and Unknown routes through the original account, plus
 deterministic rejection tests, actual Chromium and both CI platforms. A complete
 single route need not be a sufficient website-evidence package.
 
-## Next: explain failed evidence publication
+## Accepted: explain failed evidence publication
 
 [Worker-permission reporting is accepted](validation/worker-permission-reporting-v1.md)
 at core734c761/HTTP1.15/private MCP21, UIb9df07c and existing Edge11. Both CI
@@ -56,9 +66,12 @@ blocked/no receipt,60 unchanged retained files, same-original zero-input recover
 and actual recovered3.00s/distinct normal3.40s playback. The observer's incorrect
 Unproven/WorkerStopped:false classification remains recorded; the worker correctly
 stays healthy. Independent denial absence and all108 guard checks pass.
-**Next:** [preserve publication causes and safe next actions](validation/publication-failure-diagnostics-v1.md).
-Current reports still expose a generic observation failure; the new source is in
-progress and not delivered. The earlier safeguards and historical evidence follow.
+[Specific publication causes and safe next actions](validation/publication-failure-diagnostics-v1.md)
+are now delivered at38ba353/HTTP1.16. The actual original-account storage denial
+shows Unavailable and the specific cause, without claiming known input, a goal or
+retained files. Same-attempt recovery publishes5 matching originals with0 inputs;
+all115 retained files match and126 guard checks settle. Both recovered5.40s and
+distinct normal5.44s playback pass. The earlier safeguards and historical evidence follow.
 The first safeguard blocks an expired keyboard lease instead of allocating a
 replacement attempt. It retains the original worker/generation and a visible
 `WORKER_INPUT_OUTCOME_UNCONFIRMED` reason. Stopped-source assessment requires a
@@ -236,7 +249,12 @@ replace a completed receipt, cannot report a successful goal from uncertain
 input, and recover bounded capacity after restart. Keep actual native recovery,
 storage reconstruction and database fencing receipts separately.
 
-## Then: validate real hosted authority loss
+## Next: validate real hosted authority loss
+
+First expose bounded discovery of the caller's own workspaces through the core
+API and existing Edge consumer. This lets the original account choose an isolated
+test workspace while keeping its working workspace and sign-in available. Do not
+introduce a service/replacement identity or expose another caller's membership.
 
 Use isolated test workspaces under the intended application identity. Test real
 provider-token expiry and membership revocation during observation, graph read,
@@ -294,3 +312,23 @@ review task is inserted into that decision workflow.
 Public MCP hosting, an official plugin and client onboarding remain deferred by
 the user. Broader feature-path search and reasonable-effort metrics are later
 extensions; graph size or failure to find a path alone is not a difficulty verdict.
+
+## After product acceptance: complete documentation
+
+Finish the user and operator documentation against the accepted product behavior:
+supported tasks and limits, API/private MCP contracts, the Edge consumer boundary,
+evidence meanings and missing states, deployment/rollback, privacy and capture
+exclusions, recovery, retention and backup restoration. Verify examples against
+the delivered versions and link the actual acceptance receipts. Working progress
+and validation records continue during implementation.
+
+## After documentation: refactor for best practices and lower complexity
+
+Refactor the core and UI against the documented, verified behavior. Establish the
+complexity and dependency baseline, then address measured hot spots, duplication,
+large methods/components and unclear responsibilities in bounded increments.
+Preserve public contracts, tenant/caller scope, evidence uncertainty, original
+bytes and architecture boundaries. Use the applicable installed .NET skills,
+warnings-as-errors, dependency checks, meaningful tests, actual Chromium and both
+CI platforms to verify behavior. This phase follows product completion and final
+documentation; it is not the current implementation phase.

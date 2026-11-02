@@ -2,6 +2,20 @@
 
 Updated November 1, 2026. The original proposal under `outputs/` remains unchanged. This status document tracks implementation against its acceptance gates.
 
+**Current accepted delivery: core38ba353/HTTP1.16/private MCP21, existing Edge11
+and UIe1d1571.** All9 core CI jobs pass:3,270 per OS/native71/database501/
+operations172; UI passes773 per OS. Exact151-file private delivery, trusted TLS
+and anonymous guards match. The original account sees the specific storage failure
+and conservative next action. Same-original publication recovery dispatches0
+inputs, preserves all115 retained files and verifies5 matching storage originals.
+Actual recovered5.40s and distinct normal5.44s video playback end without errors;
+native0, no live storage denial and126 inactive guard checks are independently
+verified. The first Windows network-buffer failure and earlier observer issue are
+retained. [Receipt](validation/publication-failure-diagnostics-v1.md).
+**Next:** [real hosted access changes in an isolated workspace](completion-plan.md#next-validate-real-hosted-authority-loss).
+After product acceptance, complete documentation, then refactor the core and UI
+for best practices and lower complexity against the verified behavior.
+
 **Protected original-image reads and consumer accepted at core `4381d44`/UI `166746e`.**
 API 1.13 and twenty private MCP tools expose a bounded subset manifest and 64 KiB
 image pages. Current original-user and actual-producer scope is rechecked after
@@ -34,7 +48,7 @@ original images and exact native cleanup; the same worker then completes a disti
 no-input job without a restart. UIc614141/Edge11, source190 exact download,
 keyboard/320px, reconnect and saved sign-in pass in their named scopes.
 [Cancellation receipt](validation/caller-scan-cancellation-v1.md).
-**Next:** [preserve publication causes and safe next actions](validation/publication-failure-diagnostics-v1.md).
+**Accepted:** [publication causes and safe next actions](validation/publication-failure-diagnostics-v1.md).
 The actual [upload-before-metadata fault](validation/hosted-upload-before-metadata-v1.md)
 passes atcore734c761/Edge11/UI916e228: five originals uploaded while database result
 fields stay null; original-account leased/Expired/no-repeat diagnostics; same-attempt
@@ -47,7 +61,8 @@ packets, blocked/no receipt,60 unchanged retained files, same-original zero-inpu
 recovery, actual recovered3.00s and distinct normal3.40s playback,108 settled guard
 checks and independent denial absence. Its observer wrongly required worker exit;
 the raw Unproven/WorkerStopped:false record is retained beside the independent
-facts. Specific durable publication diagnostics are in progress, not delivered.
+facts. Specific durable publication diagnostics are now accepted at38ba353 in the
+named scope documented above.
 Earlier increment records follow.
 The scoped64KiB volume really filled; the original job stays blocked/no archive,
 all retained stage bytes are restored and71 partial source images match. A
