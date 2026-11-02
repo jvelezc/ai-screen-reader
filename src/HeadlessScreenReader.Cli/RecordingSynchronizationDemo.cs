@@ -116,7 +116,8 @@ public static class RecordingSynchronizationDemo
             + recordingLink + " · [Structured receipt, clock samples, reader events and hashes](receipt.json)\n\n"
             + "One actual baseline Tab establishes button focus, then twenty reader ArrowRight commands each verify an exact exposed heading goal. "
             + "A deliberate 80 ms hold between markers is measurement time, not a user-effort metric. "
-            + "Video frame zero is anchored to independently decoded raw-source marker/tick evidence, not fitted to the tested objectives. "
+            + "Video time zero uses the earliest baseline marker independently decoded in both video and raw source, subtracting its video presentation offset. "
+            + "Action markers never select or fit that anchor. "
             + "Conservative errors include anchor ambiguity, clock round trips, reader-origin bracketing and frame quantization.\n\n"
             + "| Objective | Video frame | Measured lag ms | Conservative absolute error ms |\n| --- | --- | --- | --- |\n"
             + string.Join("\n", (analysis?.Markers ?? []).Select(m =>

@@ -1,0 +1,2116 @@
+{
+  "SourceCiRun": 41534998348,
+  "SourceRun": "58607f5e82944bc5948a96c83864c3dc",
+  "Scope": "Unmodified synthetic recording metadata; original media are not included",
+  "ClockSamples": [
+    {
+      "HostBeforeMilliseconds": 2710.1073,
+      "BrowserUnixMilliseconds": 1793658109310.3,
+      "HostAfterMilliseconds": 2712.338
+    },
+    {
+      "HostBeforeMilliseconds": 2712.3391,
+      "BrowserUnixMilliseconds": 1793658109311.7,
+      "HostAfterMilliseconds": 2713.4585
+    },
+    {
+      "HostBeforeMilliseconds": 2713.4594,
+      "BrowserUnixMilliseconds": 1793658109312.7,
+      "HostAfterMilliseconds": 2714.3368
+    },
+    {
+      "HostBeforeMilliseconds": 2714.3373,
+      "BrowserUnixMilliseconds": 1793658109313.6,
+      "HostAfterMilliseconds": 2715.2243
+    },
+    {
+      "HostBeforeMilliseconds": 2715.2251,
+      "BrowserUnixMilliseconds": 1793658109314.5,
+      "HostAfterMilliseconds": 2716.2526
+    },
+    {
+      "HostBeforeMilliseconds": 2716.2531,
+      "BrowserUnixMilliseconds": 1793658109315.4,
+      "HostAfterMilliseconds": 2717.067
+    },
+    {
+      "HostBeforeMilliseconds": 2717.0687,
+      "BrowserUnixMilliseconds": 1793658109316.2,
+      "HostAfterMilliseconds": 2717.9405
+    },
+    {
+      "HostBeforeMilliseconds": 7888.7367,
+      "BrowserUnixMilliseconds": 1793658114488.3,
+      "HostAfterMilliseconds": 7890.0038
+    },
+    {
+      "HostBeforeMilliseconds": 7890.0047,
+      "BrowserUnixMilliseconds": 1793658114489.1,
+      "HostAfterMilliseconds": 7890.7816
+    },
+    {
+      "HostBeforeMilliseconds": 7890.7828,
+      "BrowserUnixMilliseconds": 1793658114489.8,
+      "HostAfterMilliseconds": 7891.4862
+    },
+    {
+      "HostBeforeMilliseconds": 7891.4871,
+      "BrowserUnixMilliseconds": 1793658114490.6,
+      "HostAfterMilliseconds": 7892.2118
+    },
+    {
+      "HostBeforeMilliseconds": 7892.2125,
+      "BrowserUnixMilliseconds": 1793658114491.3,
+      "HostAfterMilliseconds": 7892.8424
+    },
+    {
+      "HostBeforeMilliseconds": 7892.8429,
+      "BrowserUnixMilliseconds": 1793658114492,
+      "HostAfterMilliseconds": 7893.6532
+    },
+    {
+      "HostBeforeMilliseconds": 7893.6536,
+      "BrowserUnixMilliseconds": 1793658114492.8,
+      "HostAfterMilliseconds": 7894.4951
+    }
+  ],
+  "ReaderOriginUncertaintyMilliseconds": 0.001099999999951251,
+  "Actions": [
+    {
+      "Objective": 1,
+      "ReaderInputEventSequence": 22,
+      "HostAttemptMilliseconds": 2751.0887,
+      "HostCompletionMilliseconds": 2752.8044,
+      "BrowserKeydownUnixMilliseconds": 1793658109350.3,
+      "ReaderGoalVerified": true
+    },
+    {
+      "Objective": 2,
+      "ReaderInputEventSequence": 30,
+      "HostAttemptMilliseconds": 2866.0872,
+      "HostCompletionMilliseconds": 2867.9787,
+      "BrowserKeydownUnixMilliseconds": 1793658109465.4,
+      "ReaderGoalVerified": true
+    },
+    {
+      "Objective": 3,
+      "ReaderInputEventSequence": 38,
+      "HostAttemptMilliseconds": 2958.8523999999998,
+      "HostCompletionMilliseconds": 2960.7781999999997,
+      "BrowserKeydownUnixMilliseconds": 1793658109558.1,
+      "ReaderGoalVerified": true
+    },
+    {
+      "Objective": 4,
+      "ReaderInputEventSequence": 46,
+      "HostAttemptMilliseconds": 3055.3532999999998,
+      "HostCompletionMilliseconds": 3056.9458,
+      "BrowserKeydownUnixMilliseconds": 1793658109654.6,
+      "ReaderGoalVerified": true
+    },
+    {
+      "Objective": 5,
+      "ReaderInputEventSequence": 54,
+      "HostAttemptMilliseconds": 3148.785,
+      "HostCompletionMilliseconds": 3150.4188,
+      "BrowserKeydownUnixMilliseconds": 1793658109748,
+      "ReaderGoalVerified": true
+    },
+    {
+      "Objective": 6,
+      "ReaderInputEventSequence": 62,
+      "HostAttemptMilliseconds": 3242.1612,
+      "HostCompletionMilliseconds": 3244.2019,
+      "BrowserKeydownUnixMilliseconds": 1793658109841.4,
+      "ReaderGoalVerified": true
+    },
+    {
+      "Objective": 7,
+      "ReaderInputEventSequence": 70,
+      "HostAttemptMilliseconds": 3335.1585,
+      "HostCompletionMilliseconds": 3336.6973,
+      "BrowserKeydownUnixMilliseconds": 1793658109934.3,
+      "ReaderGoalVerified": true
+    },
+    {
+      "Objective": 8,
+      "ReaderInputEventSequence": 78,
+      "HostAttemptMilliseconds": 3426.3001,
+      "HostCompletionMilliseconds": 3428.1679,
+      "BrowserKeydownUnixMilliseconds": 1793658110025.4,
+      "ReaderGoalVerified": true
+    },
+    {
+      "Objective": 9,
+      "ReaderInputEventSequence": 86,
+      "HostAttemptMilliseconds": 3519.4323,
+      "HostCompletionMilliseconds": 3521.1931,
+      "BrowserKeydownUnixMilliseconds": 1793658110118.6,
+      "ReaderGoalVerified": true
+    },
+    {
+      "Objective": 10,
+      "ReaderInputEventSequence": 94,
+      "HostAttemptMilliseconds": 3613.3457,
+      "HostCompletionMilliseconds": 3615.0076,
+      "BrowserKeydownUnixMilliseconds": 1793658110212.6,
+      "ReaderGoalVerified": true
+    },
+    {
+      "Objective": 11,
+      "ReaderInputEventSequence": 102,
+      "HostAttemptMilliseconds": 3707.2793,
+      "HostCompletionMilliseconds": 3709.0116,
+      "BrowserKeydownUnixMilliseconds": 1793658110306.5,
+      "ReaderGoalVerified": true
+    },
+    {
+      "Objective": 12,
+      "ReaderInputEventSequence": 110,
+      "HostAttemptMilliseconds": 3800.3993,
+      "HostCompletionMilliseconds": 3801.9138000000003,
+      "BrowserKeydownUnixMilliseconds": 1793658110399.6,
+      "ReaderGoalVerified": true
+    },
+    {
+      "Objective": 13,
+      "ReaderInputEventSequence": 118,
+      "HostAttemptMilliseconds": 4781.2462,
+      "HostCompletionMilliseconds": 4782.8103,
+      "BrowserKeydownUnixMilliseconds": 1793658111380.4,
+      "ReaderGoalVerified": true
+    },
+    {
+      "Objective": 14,
+      "ReaderInputEventSequence": 126,
+      "HostAttemptMilliseconds": 4872.6014,
+      "HostCompletionMilliseconds": 4873.9294,
+      "BrowserKeydownUnixMilliseconds": 1793658111471.7,
+      "ReaderGoalVerified": true
+    },
+    {
+      "Objective": 15,
+      "ReaderInputEventSequence": 134,
+      "HostAttemptMilliseconds": 4967.7248,
+      "HostCompletionMilliseconds": 4968.9851,
+      "BrowserKeydownUnixMilliseconds": 1793658111566.8,
+      "ReaderGoalVerified": true
+    },
+    {
+      "Objective": 16,
+      "ReaderInputEventSequence": 142,
+      "HostAttemptMilliseconds": 5059.0205000000005,
+      "HostCompletionMilliseconds": 5060.6361,
+      "BrowserKeydownUnixMilliseconds": 1793658111658.1,
+      "ReaderGoalVerified": true
+    },
+    {
+      "Objective": 17,
+      "ReaderInputEventSequence": 150,
+      "HostAttemptMilliseconds": 6650.8516,
+      "HostCompletionMilliseconds": 6652.2574,
+      "BrowserKeydownUnixMilliseconds": 1793658113250,
+      "ReaderGoalVerified": true
+    },
+    {
+      "Objective": 18,
+      "ReaderInputEventSequence": 158,
+      "HostAttemptMilliseconds": 6742.3161,
+      "HostCompletionMilliseconds": 6743.8701,
+      "BrowserKeydownUnixMilliseconds": 1793658113341.5,
+      "ReaderGoalVerified": true
+    },
+    {
+      "Objective": 19,
+      "ReaderInputEventSequence": 166,
+      "HostAttemptMilliseconds": 6833.965,
+      "HostCompletionMilliseconds": 6835.518,
+      "BrowserKeydownUnixMilliseconds": 1793658113433.1,
+      "ReaderGoalVerified": true
+    },
+    {
+      "Objective": 20,
+      "ReaderInputEventSequence": 174,
+      "HostAttemptMilliseconds": 7782.8844,
+      "HostCompletionMilliseconds": 7784.246,
+      "BrowserKeydownUnixMilliseconds": 1793658114382,
+      "ReaderGoalVerified": true
+    }
+  ],
+  "Source": [
+    {
+      "File": "source-0001.jpg",
+      "PresentationUnixMilliseconds": 1793658108300.725,
+      "Marker": {
+        "Objective": 0,
+        "Tick": 33
+      }
+    },
+    {
+      "File": "source-0002.jpg",
+      "PresentationUnixMilliseconds": 1793658108322.343,
+      "Marker": {
+        "Objective": 0,
+        "Tick": 34
+      }
+    },
+    {
+      "File": "source-0003.jpg",
+      "PresentationUnixMilliseconds": 1793658108363.333,
+      "Marker": {
+        "Objective": 0,
+        "Tick": 35
+      }
+    },
+    {
+      "File": "source-0004.jpg",
+      "PresentationUnixMilliseconds": 1793658108408.7861,
+      "Marker": {
+        "Objective": 0,
+        "Tick": 36
+      }
+    },
+    {
+      "File": "source-0005.jpg",
+      "PresentationUnixMilliseconds": 1793658109324.989,
+      "Marker": {
+        "Objective": 0,
+        "Tick": 59
+      }
+    },
+    {
+      "File": "source-0006.jpg",
+      "PresentationUnixMilliseconds": 1793658109341.834,
+      "Marker": {
+        "Objective": 0,
+        "Tick": 59
+      }
+    },
+    {
+      "File": "source-0007.jpg",
+      "PresentationUnixMilliseconds": 1793658109367.334,
+      "Marker": {
+        "Objective": 1,
+        "Tick": 59
+      }
+    },
+    {
+      "File": "source-0008.jpg",
+      "PresentationUnixMilliseconds": 1793658109374.476,
+      "Marker": {
+        "Objective": 1,
+        "Tick": 60
+      }
+    },
+    {
+      "File": "source-0009.jpg",
+      "PresentationUnixMilliseconds": 1793658109401.511,
+      "Marker": {
+        "Objective": 1,
+        "Tick": 61
+      }
+    },
+    {
+      "File": "source-0010.jpg",
+      "PresentationUnixMilliseconds": 1793658109441.865,
+      "Marker": {
+        "Objective": 1,
+        "Tick": 62
+      }
+    },
+    {
+      "File": "source-0011.jpg",
+      "PresentationUnixMilliseconds": 1793658109467.318,
+      "Marker": {
+        "Objective": 2,
+        "Tick": 62
+      }
+    },
+    {
+      "File": "source-0012.jpg",
+      "PresentationUnixMilliseconds": 1793658109482.25,
+      "Marker": {
+        "Objective": 2,
+        "Tick": 63
+      }
+    },
+    {
+      "File": "source-0013.jpg",
+      "PresentationUnixMilliseconds": 1793658109521.915,
+      "Marker": {
+        "Objective": 2,
+        "Tick": 64
+      }
+    },
+    {
+      "File": "source-0014.jpg",
+      "PresentationUnixMilliseconds": 1793658109560.102,
+      "Marker": {
+        "Objective": 3,
+        "Tick": 64
+      }
+    },
+    {
+      "File": "source-0015.jpg",
+      "PresentationUnixMilliseconds": 1793658109576.167,
+      "Marker": {
+        "Objective": 3,
+        "Tick": 65
+      }
+    },
+    {
+      "File": "source-0016.jpg",
+      "PresentationUnixMilliseconds": 1793658109602.4128,
+      "Marker": {
+        "Objective": 3,
+        "Tick": 66
+      }
+    },
+    {
+      "File": "source-0017.jpg",
+      "PresentationUnixMilliseconds": 1793658109649.3188,
+      "Marker": {
+        "Objective": 3,
+        "Tick": 67
+      }
+    },
+    {
+      "File": "source-0018.jpg",
+      "PresentationUnixMilliseconds": 1793658109658.3381,
+      "Marker": {
+        "Objective": 4,
+        "Tick": 67
+      }
+    },
+    {
+      "File": "source-0019.jpg",
+      "PresentationUnixMilliseconds": 1793658109682.419,
+      "Marker": {
+        "Objective": 4,
+        "Tick": 68
+      }
+    },
+    {
+      "File": "source-0020.jpg",
+      "PresentationUnixMilliseconds": 1793658109722.1711,
+      "Marker": {
+        "Objective": 4,
+        "Tick": 69
+      }
+    },
+    {
+      "File": "source-0021.jpg",
+      "PresentationUnixMilliseconds": 1793658109757.644,
+      "Marker": {
+        "Objective": 5,
+        "Tick": 69
+      }
+    },
+    {
+      "File": "source-0022.jpg",
+      "PresentationUnixMilliseconds": 1793658109774.518,
+      "Marker": {
+        "Objective": 5,
+        "Tick": 70
+      }
+    },
+    {
+      "File": "source-0023.jpg",
+      "PresentationUnixMilliseconds": 1793658109802.626,
+      "Marker": {
+        "Objective": 5,
+        "Tick": 71
+      }
+    },
+    {
+      "File": "source-0024.jpg",
+      "PresentationUnixMilliseconds": 1793658109842.0488,
+      "Marker": {
+        "Objective": 5,
+        "Tick": 72
+      }
+    },
+    {
+      "File": "source-0025.jpg",
+      "PresentationUnixMilliseconds": 1793658109857.808,
+      "Marker": {
+        "Objective": 6,
+        "Tick": 72
+      }
+    },
+    {
+      "File": "source-0026.jpg",
+      "PresentationUnixMilliseconds": 1793658109881.577,
+      "Marker": {
+        "Objective": 6,
+        "Tick": 73
+      }
+    },
+    {
+      "File": "source-0027.jpg",
+      "PresentationUnixMilliseconds": 1793658109925.034,
+      "Marker": {
+        "Objective": 6,
+        "Tick": 74
+      }
+    },
+    {
+      "File": "source-0028.jpg",
+      "PresentationUnixMilliseconds": 1793658109940.9348,
+      "Marker": {
+        "Objective": 7,
+        "Tick": 74
+      }
+    },
+    {
+      "File": "source-0029.jpg",
+      "PresentationUnixMilliseconds": 1793658109961.896,
+      "Marker": {
+        "Objective": 7,
+        "Tick": 75
+      }
+    },
+    {
+      "File": "source-0030.jpg",
+      "PresentationUnixMilliseconds": 1793658110008.228,
+      "Marker": {
+        "Objective": 7,
+        "Tick": 76
+      }
+    },
+    {
+      "File": "source-0031.jpg",
+      "PresentationUnixMilliseconds": 1793658110027.4128,
+      "Marker": {
+        "Objective": 8,
+        "Tick": 76
+      }
+    },
+    {
+      "File": "source-0032.jpg",
+      "PresentationUnixMilliseconds": 1793658110041.2852,
+      "Marker": {
+        "Objective": 8,
+        "Tick": 77
+      }
+    },
+    {
+      "File": "source-0033.jpg",
+      "PresentationUnixMilliseconds": 1793658110091.5552,
+      "Marker": {
+        "Objective": 8,
+        "Tick": 78
+      }
+    },
+    {
+      "File": "source-0034.jpg",
+      "PresentationUnixMilliseconds": 1793658110120.541,
+      "Marker": {
+        "Objective": 9,
+        "Tick": 78
+      }
+    },
+    {
+      "File": "source-0035.jpg",
+      "PresentationUnixMilliseconds": 1793658110124.134,
+      "Marker": {
+        "Objective": 9,
+        "Tick": 79
+      }
+    },
+    {
+      "File": "source-0036.jpg",
+      "PresentationUnixMilliseconds": 1793658110174.8508,
+      "Marker": {
+        "Objective": 9,
+        "Tick": 80
+      }
+    },
+    {
+      "File": "source-0037.jpg",
+      "PresentationUnixMilliseconds": 1793658110201.8188,
+      "Marker": {
+        "Objective": 9,
+        "Tick": 81
+      }
+    },
+    {
+      "File": "source-0038.jpg",
+      "PresentationUnixMilliseconds": 1793658110214.257,
+      "Marker": {
+        "Objective": 10,
+        "Tick": 81
+      }
+    },
+    {
+      "File": "source-0039.jpg",
+      "PresentationUnixMilliseconds": 1793658110257.8198,
+      "Marker": {
+        "Objective": 10,
+        "Tick": 82
+      }
+    },
+    {
+      "File": "source-0040.jpg",
+      "PresentationUnixMilliseconds": 1793658110282.4558,
+      "Marker": {
+        "Objective": 10,
+        "Tick": 83
+      }
+    },
+    {
+      "File": "source-0041.jpg",
+      "PresentationUnixMilliseconds": 1793658110308.356,
+      "Marker": {
+        "Objective": 11,
+        "Tick": 83
+      }
+    },
+    {
+      "File": "source-0042.jpg",
+      "PresentationUnixMilliseconds": 1793658110324.1401,
+      "Marker": {
+        "Objective": 11,
+        "Tick": 84
+      }
+    },
+    {
+      "File": "source-0043.jpg",
+      "PresentationUnixMilliseconds": 1793658110374.271,
+      "Marker": {
+        "Objective": 11,
+        "Tick": 85
+      }
+    },
+    {
+      "File": "source-0044.jpg",
+      "PresentationUnixMilliseconds": 1793658110401.24,
+      "Marker": {
+        "Objective": 12,
+        "Tick": 85
+      }
+    },
+    {
+      "File": "source-0045.jpg",
+      "PresentationUnixMilliseconds": 1793658110407.813,
+      "Marker": {
+        "Objective": 12,
+        "Tick": 86
+      }
+    },
+    {
+      "File": "source-0046.jpg",
+      "PresentationUnixMilliseconds": 1793658110458.028,
+      "Marker": {
+        "Objective": 12,
+        "Tick": 87
+      }
+    },
+    {
+      "File": "source-0047.jpg",
+      "PresentationUnixMilliseconds": 1793658110482.155,
+      "Marker": {
+        "Objective": 12,
+        "Tick": 88
+      }
+    },
+    {
+      "File": "source-0048.jpg",
+      "PresentationUnixMilliseconds": 1793658110524.627,
+      "Marker": {
+        "Objective": 12,
+        "Tick": 89
+      }
+    },
+    {
+      "File": "source-0049.jpg",
+      "PresentationUnixMilliseconds": 1793658111382.039,
+      "Marker": {
+        "Objective": 13,
+        "Tick": 110
+      }
+    },
+    {
+      "File": "source-0050.jpg",
+      "PresentationUnixMilliseconds": 1793658111402.095,
+      "Marker": {
+        "Objective": 13,
+        "Tick": 111
+      }
+    },
+    {
+      "File": "source-0051.jpg",
+      "PresentationUnixMilliseconds": 1793658111457.9438,
+      "Marker": {
+        "Objective": 13,
+        "Tick": 112
+      }
+    },
+    {
+      "File": "source-0052.jpg",
+      "PresentationUnixMilliseconds": 1793658111475.066,
+      "Marker": {
+        "Objective": 14,
+        "Tick": 112
+      }
+    },
+    {
+      "File": "source-0053.jpg",
+      "PresentationUnixMilliseconds": 1793658111490.929,
+      "Marker": {
+        "Objective": 14,
+        "Tick": 113
+      }
+    },
+    {
+      "File": "source-0054.jpg",
+      "PresentationUnixMilliseconds": 1793658111522.2422,
+      "Marker": {
+        "Objective": 14,
+        "Tick": 114
+      }
+    },
+    {
+      "File": "source-0055.jpg",
+      "PresentationUnixMilliseconds": 1793658111562.646,
+      "Marker": {
+        "Objective": 14,
+        "Tick": 115
+      }
+    },
+    {
+      "File": "source-0056.jpg",
+      "PresentationUnixMilliseconds": 1793658111574.6218,
+      "Marker": {
+        "Objective": 15,
+        "Tick": 115
+      }
+    },
+    {
+      "File": "source-0057.jpg",
+      "PresentationUnixMilliseconds": 1793658111601.8,
+      "Marker": {
+        "Objective": 15,
+        "Tick": 116
+      }
+    },
+    {
+      "File": "source-0058.jpg",
+      "PresentationUnixMilliseconds": 1793658111643.679,
+      "Marker": {
+        "Objective": 15,
+        "Tick": 117
+      }
+    },
+    {
+      "File": "source-0059.jpg",
+      "PresentationUnixMilliseconds": 1793658111660.053,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 117
+      }
+    },
+    {
+      "File": "source-0060.jpg",
+      "PresentationUnixMilliseconds": 1793658111683.364,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 118
+      }
+    },
+    {
+      "File": "source-0061.jpg",
+      "PresentationUnixMilliseconds": 1793658111724.938,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 119
+      }
+    },
+    {
+      "File": "source-0062.jpg",
+      "PresentationUnixMilliseconds": 1793658111775.99,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 120
+      }
+    },
+    {
+      "File": "source-0063.jpg",
+      "PresentationUnixMilliseconds": 1793658111802.342,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 121
+      }
+    },
+    {
+      "File": "source-0064.jpg",
+      "PresentationUnixMilliseconds": 1793658111843.909,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 122
+      }
+    },
+    {
+      "File": "source-0065.jpg",
+      "PresentationUnixMilliseconds": 1793658113258.061,
+      "Marker": {
+        "Objective": 17,
+        "Tick": 157
+      }
+    },
+    {
+      "File": "source-0066.jpg",
+      "PresentationUnixMilliseconds": 1793658113282.1592,
+      "Marker": {
+        "Objective": 17,
+        "Tick": 158
+      }
+    },
+    {
+      "File": "source-0067.jpg",
+      "PresentationUnixMilliseconds": 1793658113324.476,
+      "Marker": {
+        "Objective": 17,
+        "Tick": 159
+      }
+    },
+    {
+      "File": "source-0068.jpg",
+      "PresentationUnixMilliseconds": 1793658113343.1448,
+      "Marker": {
+        "Objective": 18,
+        "Tick": 159
+      }
+    },
+    {
+      "File": "source-0069.jpg",
+      "PresentationUnixMilliseconds": 1793658113361.999,
+      "Marker": {
+        "Objective": 18,
+        "Tick": 160
+      }
+    },
+    {
+      "File": "source-0070.jpg",
+      "PresentationUnixMilliseconds": 1793658113407.343,
+      "Marker": {
+        "Objective": 18,
+        "Tick": 161
+      }
+    },
+    {
+      "File": "source-0071.jpg",
+      "PresentationUnixMilliseconds": 1793658113434.8281,
+      "Marker": {
+        "Objective": 19,
+        "Tick": 161
+      }
+    },
+    {
+      "File": "source-0072.jpg",
+      "PresentationUnixMilliseconds": 1793658113441.7551,
+      "Marker": {
+        "Objective": 19,
+        "Tick": 162
+      }
+    },
+    {
+      "File": "source-0073.jpg",
+      "PresentationUnixMilliseconds": 1793658113491.428,
+      "Marker": {
+        "Objective": 19,
+        "Tick": 163
+      }
+    },
+    {
+      "File": "source-0074.jpg",
+      "PresentationUnixMilliseconds": 1793658113522.23,
+      "Marker": {
+        "Objective": 19,
+        "Tick": 164
+      }
+    },
+    {
+      "File": "source-0075.jpg",
+      "PresentationUnixMilliseconds": 1793658113562.0261,
+      "Marker": {
+        "Objective": 19,
+        "Tick": 165
+      }
+    },
+    {
+      "File": "source-0076.jpg",
+      "PresentationUnixMilliseconds": 1793658114392.066,
+      "Marker": {
+        "Objective": 20,
+        "Tick": 185
+      }
+    },
+    {
+      "File": "source-0077.jpg",
+      "PresentationUnixMilliseconds": 1793658114408.481,
+      "Marker": {
+        "Objective": 20,
+        "Tick": 186
+      }
+    },
+    {
+      "File": "source-0078.jpg",
+      "PresentationUnixMilliseconds": 1793658114457.814,
+      "Marker": {
+        "Objective": 20,
+        "Tick": 187
+      }
+    },
+    {
+      "File": "source-0079.jpg",
+      "PresentationUnixMilliseconds": 1793658114482.551,
+      "Marker": {
+        "Objective": 20,
+        "Tick": 188
+      }
+    }
+  ],
+  "Video": [
+    {
+      "Index": 0,
+      "PresentationMilliseconds": 0,
+      "Marker": {
+        "Objective": 0,
+        "Tick": 58
+      }
+    },
+    {
+      "Index": 1,
+      "PresentationMilliseconds": 40,
+      "Marker": {
+        "Objective": 0,
+        "Tick": 59
+      }
+    },
+    {
+      "Index": 2,
+      "PresentationMilliseconds": 80,
+      "Marker": {
+        "Objective": 0,
+        "Tick": 59
+      }
+    },
+    {
+      "Index": 3,
+      "PresentationMilliseconds": 120,
+      "Marker": {
+        "Objective": 1,
+        "Tick": 61
+      }
+    },
+    {
+      "Index": 4,
+      "PresentationMilliseconds": 160,
+      "Marker": {
+        "Objective": 1,
+        "Tick": 62
+      }
+    },
+    {
+      "Index": 5,
+      "PresentationMilliseconds": 200,
+      "Marker": {
+        "Objective": 2,
+        "Tick": 62
+      }
+    },
+    {
+      "Index": 6,
+      "PresentationMilliseconds": 240,
+      "Marker": {
+        "Objective": 2,
+        "Tick": 64
+      }
+    },
+    {
+      "Index": 7,
+      "PresentationMilliseconds": 280,
+      "Marker": {
+        "Objective": 3,
+        "Tick": 64
+      }
+    },
+    {
+      "Index": 8,
+      "PresentationMilliseconds": 320,
+      "Marker": {
+        "Objective": 3,
+        "Tick": 66
+      }
+    },
+    {
+      "Index": 9,
+      "PresentationMilliseconds": 360,
+      "Marker": {
+        "Objective": 3,
+        "Tick": 67
+      }
+    },
+    {
+      "Index": 10,
+      "PresentationMilliseconds": 400,
+      "Marker": {
+        "Objective": 4,
+        "Tick": 67
+      }
+    },
+    {
+      "Index": 11,
+      "PresentationMilliseconds": 440,
+      "Marker": {
+        "Objective": 4,
+        "Tick": 69
+      }
+    },
+    {
+      "Index": 12,
+      "PresentationMilliseconds": 480,
+      "Marker": {
+        "Objective": 5,
+        "Tick": 69
+      }
+    },
+    {
+      "Index": 13,
+      "PresentationMilliseconds": 520,
+      "Marker": {
+        "Objective": 5,
+        "Tick": 71
+      }
+    },
+    {
+      "Index": 14,
+      "PresentationMilliseconds": 560,
+      "Marker": {
+        "Objective": 5,
+        "Tick": 72
+      }
+    },
+    {
+      "Index": 15,
+      "PresentationMilliseconds": 600,
+      "Marker": {
+        "Objective": 6,
+        "Tick": 72
+      }
+    },
+    {
+      "Index": 16,
+      "PresentationMilliseconds": 640,
+      "Marker": {
+        "Objective": 6,
+        "Tick": 74
+      }
+    },
+    {
+      "Index": 17,
+      "PresentationMilliseconds": 680,
+      "Marker": {
+        "Objective": 7,
+        "Tick": 74
+      }
+    },
+    {
+      "Index": 18,
+      "PresentationMilliseconds": 720,
+      "Marker": {
+        "Objective": 7,
+        "Tick": 76
+      }
+    },
+    {
+      "Index": 19,
+      "PresentationMilliseconds": 760,
+      "Marker": {
+        "Objective": 8,
+        "Tick": 76
+      }
+    },
+    {
+      "Index": 20,
+      "PresentationMilliseconds": 800,
+      "Marker": {
+        "Objective": 8,
+        "Tick": 78
+      }
+    },
+    {
+      "Index": 21,
+      "PresentationMilliseconds": 840,
+      "Marker": {
+        "Objective": 9,
+        "Tick": 78
+      }
+    },
+    {
+      "Index": 22,
+      "PresentationMilliseconds": 880,
+      "Marker": {
+        "Objective": 9,
+        "Tick": 80
+      }
+    },
+    {
+      "Index": 23,
+      "PresentationMilliseconds": 920,
+      "Marker": {
+        "Objective": 9,
+        "Tick": 81
+      }
+    },
+    {
+      "Index": 24,
+      "PresentationMilliseconds": 960,
+      "Marker": {
+        "Objective": 10,
+        "Tick": 82
+      }
+    },
+    {
+      "Index": 25,
+      "PresentationMilliseconds": 1000,
+      "Marker": {
+        "Objective": 10,
+        "Tick": 83
+      }
+    },
+    {
+      "Index": 26,
+      "PresentationMilliseconds": 1040,
+      "Marker": {
+        "Objective": 11,
+        "Tick": 83
+      }
+    },
+    {
+      "Index": 27,
+      "PresentationMilliseconds": 1080,
+      "Marker": {
+        "Objective": 11,
+        "Tick": 85
+      }
+    },
+    {
+      "Index": 28,
+      "PresentationMilliseconds": 1120,
+      "Marker": {
+        "Objective": 12,
+        "Tick": 85
+      }
+    },
+    {
+      "Index": 29,
+      "PresentationMilliseconds": 1160,
+      "Marker": {
+        "Objective": 12,
+        "Tick": 87
+      }
+    },
+    {
+      "Index": 30,
+      "PresentationMilliseconds": 1200,
+      "Marker": {
+        "Objective": 12,
+        "Tick": 88
+      }
+    },
+    {
+      "Index": 31,
+      "PresentationMilliseconds": 1240,
+      "Marker": {
+        "Objective": 12,
+        "Tick": 89
+      }
+    },
+    {
+      "Index": 32,
+      "PresentationMilliseconds": 1280,
+      "Marker": {
+        "Objective": 12,
+        "Tick": 90
+      }
+    },
+    {
+      "Index": 33,
+      "PresentationMilliseconds": 1320,
+      "Marker": {
+        "Objective": 12,
+        "Tick": 91
+      }
+    },
+    {
+      "Index": 34,
+      "PresentationMilliseconds": 1360,
+      "Marker": {
+        "Objective": 12,
+        "Tick": 92
+      }
+    },
+    {
+      "Index": 35,
+      "PresentationMilliseconds": 1400,
+      "Marker": {
+        "Objective": 12,
+        "Tick": 93
+      }
+    },
+    {
+      "Index": 36,
+      "PresentationMilliseconds": 1440,
+      "Marker": {
+        "Objective": 12,
+        "Tick": 94
+      }
+    },
+    {
+      "Index": 37,
+      "PresentationMilliseconds": 1480,
+      "Marker": {
+        "Objective": 12,
+        "Tick": 95
+      }
+    },
+    {
+      "Index": 38,
+      "PresentationMilliseconds": 1520,
+      "Marker": {
+        "Objective": 12,
+        "Tick": 96
+      }
+    },
+    {
+      "Index": 39,
+      "PresentationMilliseconds": 1560,
+      "Marker": {
+        "Objective": 12,
+        "Tick": 97
+      }
+    },
+    {
+      "Index": 40,
+      "PresentationMilliseconds": 1600,
+      "Marker": {
+        "Objective": 12,
+        "Tick": 98
+      }
+    },
+    {
+      "Index": 41,
+      "PresentationMilliseconds": 1640,
+      "Marker": {
+        "Objective": 12,
+        "Tick": 99
+      }
+    },
+    {
+      "Index": 42,
+      "PresentationMilliseconds": 1680,
+      "Marker": {
+        "Objective": 12,
+        "Tick": 100
+      }
+    },
+    {
+      "Index": 43,
+      "PresentationMilliseconds": 1720,
+      "Marker": {
+        "Objective": 12,
+        "Tick": 101
+      }
+    },
+    {
+      "Index": 44,
+      "PresentationMilliseconds": 1760,
+      "Marker": {
+        "Objective": 12,
+        "Tick": 102
+      }
+    },
+    {
+      "Index": 45,
+      "PresentationMilliseconds": 1800,
+      "Marker": {
+        "Objective": 12,
+        "Tick": 103
+      }
+    },
+    {
+      "Index": 46,
+      "PresentationMilliseconds": 1840,
+      "Marker": {
+        "Objective": 12,
+        "Tick": 104
+      }
+    },
+    {
+      "Index": 47,
+      "PresentationMilliseconds": 1880,
+      "Marker": {
+        "Objective": 12,
+        "Tick": 105
+      }
+    },
+    {
+      "Index": 48,
+      "PresentationMilliseconds": 1920,
+      "Marker": {
+        "Objective": 12,
+        "Tick": 106
+      }
+    },
+    {
+      "Index": 49,
+      "PresentationMilliseconds": 1960,
+      "Marker": {
+        "Objective": 12,
+        "Tick": 107
+      }
+    },
+    {
+      "Index": 50,
+      "PresentationMilliseconds": 2000,
+      "Marker": {
+        "Objective": 12,
+        "Tick": 108
+      }
+    },
+    {
+      "Index": 51,
+      "PresentationMilliseconds": 2040,
+      "Marker": {
+        "Objective": 12,
+        "Tick": 109
+      }
+    },
+    {
+      "Index": 52,
+      "PresentationMilliseconds": 2080,
+      "Marker": {
+        "Objective": 12,
+        "Tick": 110
+      }
+    },
+    {
+      "Index": 53,
+      "PresentationMilliseconds": 2120,
+      "Marker": {
+        "Objective": 13,
+        "Tick": 110
+      }
+    },
+    {
+      "Index": 54,
+      "PresentationMilliseconds": 2160,
+      "Marker": {
+        "Objective": 13,
+        "Tick": 112
+      }
+    },
+    {
+      "Index": 55,
+      "PresentationMilliseconds": 2200,
+      "Marker": {
+        "Objective": 14,
+        "Tick": 112
+      }
+    },
+    {
+      "Index": 56,
+      "PresentationMilliseconds": 2240,
+      "Marker": {
+        "Objective": 14,
+        "Tick": 114
+      }
+    },
+    {
+      "Index": 57,
+      "PresentationMilliseconds": 2280,
+      "Marker": {
+        "Objective": 14,
+        "Tick": 115
+      }
+    },
+    {
+      "Index": 58,
+      "PresentationMilliseconds": 2320,
+      "Marker": {
+        "Objective": 15,
+        "Tick": 116
+      }
+    },
+    {
+      "Index": 59,
+      "PresentationMilliseconds": 2360,
+      "Marker": {
+        "Objective": 15,
+        "Tick": 117
+      }
+    },
+    {
+      "Index": 60,
+      "PresentationMilliseconds": 2400,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 117
+      }
+    },
+    {
+      "Index": 61,
+      "PresentationMilliseconds": 2440,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 119
+      }
+    },
+    {
+      "Index": 62,
+      "PresentationMilliseconds": 2480,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 120
+      }
+    },
+    {
+      "Index": 63,
+      "PresentationMilliseconds": 2520,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 121
+      }
+    },
+    {
+      "Index": 64,
+      "PresentationMilliseconds": 2560,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 122
+      }
+    },
+    {
+      "Index": 65,
+      "PresentationMilliseconds": 2600,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 123
+      }
+    },
+    {
+      "Index": 66,
+      "PresentationMilliseconds": 2640,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 124
+      }
+    },
+    {
+      "Index": 67,
+      "PresentationMilliseconds": 2680,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 125
+      }
+    },
+    {
+      "Index": 68,
+      "PresentationMilliseconds": 2720,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 126
+      }
+    },
+    {
+      "Index": 69,
+      "PresentationMilliseconds": 2760,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 127
+      }
+    },
+    {
+      "Index": 70,
+      "PresentationMilliseconds": 2800,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 128
+      }
+    },
+    {
+      "Index": 71,
+      "PresentationMilliseconds": 2840,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 129
+      }
+    },
+    {
+      "Index": 72,
+      "PresentationMilliseconds": 2880,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 130
+      }
+    },
+    {
+      "Index": 73,
+      "PresentationMilliseconds": 2920,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 131
+      }
+    },
+    {
+      "Index": 74,
+      "PresentationMilliseconds": 2960,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 132
+      }
+    },
+    {
+      "Index": 75,
+      "PresentationMilliseconds": 3000,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 133
+      }
+    },
+    {
+      "Index": 76,
+      "PresentationMilliseconds": 3040,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 134
+      }
+    },
+    {
+      "Index": 77,
+      "PresentationMilliseconds": 3080,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 135
+      }
+    },
+    {
+      "Index": 78,
+      "PresentationMilliseconds": 3120,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 136
+      }
+    },
+    {
+      "Index": 79,
+      "PresentationMilliseconds": 3160,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 137
+      }
+    },
+    {
+      "Index": 80,
+      "PresentationMilliseconds": 3200,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 138
+      }
+    },
+    {
+      "Index": 81,
+      "PresentationMilliseconds": 3240,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 139
+      }
+    },
+    {
+      "Index": 82,
+      "PresentationMilliseconds": 3280,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 140
+      }
+    },
+    {
+      "Index": 83,
+      "PresentationMilliseconds": 3320,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 141
+      }
+    },
+    {
+      "Index": 84,
+      "PresentationMilliseconds": 3360,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 142
+      }
+    },
+    {
+      "Index": 85,
+      "PresentationMilliseconds": 3400,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 143
+      }
+    },
+    {
+      "Index": 86,
+      "PresentationMilliseconds": 3440,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 144
+      }
+    },
+    {
+      "Index": 87,
+      "PresentationMilliseconds": 3480,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 145
+      }
+    },
+    {
+      "Index": 88,
+      "PresentationMilliseconds": 3520,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 146
+      }
+    },
+    {
+      "Index": 89,
+      "PresentationMilliseconds": 3560,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 147
+      }
+    },
+    {
+      "Index": 90,
+      "PresentationMilliseconds": 3600,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 148
+      }
+    },
+    {
+      "Index": 91,
+      "PresentationMilliseconds": 3640,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 149
+      }
+    },
+    {
+      "Index": 92,
+      "PresentationMilliseconds": 3680,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 150
+      }
+    },
+    {
+      "Index": 93,
+      "PresentationMilliseconds": 3720,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 151
+      }
+    },
+    {
+      "Index": 94,
+      "PresentationMilliseconds": 3760,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 152
+      }
+    },
+    {
+      "Index": 95,
+      "PresentationMilliseconds": 3800,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 153
+      }
+    },
+    {
+      "Index": 96,
+      "PresentationMilliseconds": 3840,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 154
+      }
+    },
+    {
+      "Index": 97,
+      "PresentationMilliseconds": 3880,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 155
+      }
+    },
+    {
+      "Index": 98,
+      "PresentationMilliseconds": 3920,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 156
+      }
+    },
+    {
+      "Index": 99,
+      "PresentationMilliseconds": 3960,
+      "Marker": {
+        "Objective": 16,
+        "Tick": 157
+      }
+    },
+    {
+      "Index": 100,
+      "PresentationMilliseconds": 4000,
+      "Marker": {
+        "Objective": 17,
+        "Tick": 157
+      }
+    },
+    {
+      "Index": 101,
+      "PresentationMilliseconds": 4040,
+      "Marker": {
+        "Objective": 17,
+        "Tick": 159
+      }
+    },
+    {
+      "Index": 102,
+      "PresentationMilliseconds": 4080,
+      "Marker": {
+        "Objective": 18,
+        "Tick": 159
+      }
+    },
+    {
+      "Index": 103,
+      "PresentationMilliseconds": 4120,
+      "Marker": {
+        "Objective": 18,
+        "Tick": 161
+      }
+    },
+    {
+      "Index": 104,
+      "PresentationMilliseconds": 4160,
+      "Marker": {
+        "Objective": 19,
+        "Tick": 161
+      }
+    },
+    {
+      "Index": 105,
+      "PresentationMilliseconds": 4200,
+      "Marker": {
+        "Objective": 19,
+        "Tick": 163
+      }
+    },
+    {
+      "Index": 106,
+      "PresentationMilliseconds": 4240,
+      "Marker": {
+        "Objective": 19,
+        "Tick": 164
+      }
+    },
+    {
+      "Index": 107,
+      "PresentationMilliseconds": 4280,
+      "Marker": {
+        "Objective": 19,
+        "Tick": 165
+      }
+    },
+    {
+      "Index": 108,
+      "PresentationMilliseconds": 4320,
+      "Marker": {
+        "Objective": 19,
+        "Tick": 166
+      }
+    },
+    {
+      "Index": 109,
+      "PresentationMilliseconds": 4360,
+      "Marker": {
+        "Objective": 19,
+        "Tick": 167
+      }
+    },
+    {
+      "Index": 110,
+      "PresentationMilliseconds": 4400,
+      "Marker": {
+        "Objective": 19,
+        "Tick": 168
+      }
+    },
+    {
+      "Index": 111,
+      "PresentationMilliseconds": 4440,
+      "Marker": {
+        "Objective": 19,
+        "Tick": 169
+      }
+    },
+    {
+      "Index": 112,
+      "PresentationMilliseconds": 4480,
+      "Marker": {
+        "Objective": 19,
+        "Tick": 170
+      }
+    },
+    {
+      "Index": 113,
+      "PresentationMilliseconds": 4520,
+      "Marker": {
+        "Objective": 19,
+        "Tick": 171
+      }
+    },
+    {
+      "Index": 114,
+      "PresentationMilliseconds": 4560,
+      "Marker": {
+        "Objective": 19,
+        "Tick": 172
+      }
+    },
+    {
+      "Index": 115,
+      "PresentationMilliseconds": 4600,
+      "Marker": {
+        "Objective": 19,
+        "Tick": 173
+      }
+    },
+    {
+      "Index": 116,
+      "PresentationMilliseconds": 4640,
+      "Marker": {
+        "Objective": 19,
+        "Tick": 174
+      }
+    },
+    {
+      "Index": 117,
+      "PresentationMilliseconds": 4680,
+      "Marker": {
+        "Objective": 19,
+        "Tick": 175
+      }
+    },
+    {
+      "Index": 118,
+      "PresentationMilliseconds": 4720,
+      "Marker": {
+        "Objective": 19,
+        "Tick": 176
+      }
+    },
+    {
+      "Index": 119,
+      "PresentationMilliseconds": 4760,
+      "Marker": {
+        "Objective": 19,
+        "Tick": 177
+      }
+    },
+    {
+      "Index": 120,
+      "PresentationMilliseconds": 4800,
+      "Marker": {
+        "Objective": 19,
+        "Tick": 178
+      }
+    },
+    {
+      "Index": 121,
+      "PresentationMilliseconds": 4840,
+      "Marker": {
+        "Objective": 19,
+        "Tick": 179
+      }
+    },
+    {
+      "Index": 122,
+      "PresentationMilliseconds": 4880,
+      "Marker": {
+        "Objective": 19,
+        "Tick": 180
+      }
+    },
+    {
+      "Index": 123,
+      "PresentationMilliseconds": 4920,
+      "Marker": {
+        "Objective": 19,
+        "Tick": 181
+      }
+    },
+    {
+      "Index": 124,
+      "PresentationMilliseconds": 4960,
+      "Marker": {
+        "Objective": 19,
+        "Tick": 182
+      }
+    },
+    {
+      "Index": 125,
+      "PresentationMilliseconds": 5000,
+      "Marker": {
+        "Objective": 19,
+        "Tick": 183
+      }
+    },
+    {
+      "Index": 126,
+      "PresentationMilliseconds": 5040,
+      "Marker": {
+        "Objective": 19,
+        "Tick": 184
+      }
+    },
+    {
+      "Index": 127,
+      "PresentationMilliseconds": 5080,
+      "Marker": {
+        "Objective": 19,
+        "Tick": 185
+      }
+    },
+    {
+      "Index": 128,
+      "PresentationMilliseconds": 5120,
+      "Marker": {
+        "Objective": 20,
+        "Tick": 185
+      }
+    },
+    {
+      "Index": 129,
+      "PresentationMilliseconds": 5160,
+      "Marker": {
+        "Objective": 20,
+        "Tick": 187
+      }
+    },
+    {
+      "Index": 130,
+      "PresentationMilliseconds": 5200,
+      "Marker": {
+        "Objective": 20,
+        "Tick": 188
+      }
+    },
+    {
+      "Index": 131,
+      "PresentationMilliseconds": 5240,
+      "Marker": {
+        "Objective": 20,
+        "Tick": 188
+      }
+    },
+    {
+      "Index": 132,
+      "PresentationMilliseconds": 5280,
+      "Marker": {
+        "Objective": 20,
+        "Tick": 188
+      }
+    },
+    {
+      "Index": 133,
+      "PresentationMilliseconds": 5320,
+      "Marker": {
+        "Objective": 20,
+        "Tick": 188
+      }
+    },
+    {
+      "Index": 134,
+      "PresentationMilliseconds": 5360,
+      "Marker": {
+        "Objective": 20,
+        "Tick": 188
+      }
+    },
+    {
+      "Index": 135,
+      "PresentationMilliseconds": 5400,
+      "Marker": {
+        "Objective": 20,
+        "Tick": 188
+      }
+    },
+    {
+      "Index": 136,
+      "PresentationMilliseconds": 5440,
+      "Marker": {
+        "Objective": 20,
+        "Tick": 188
+      }
+    },
+    {
+      "Index": 137,
+      "PresentationMilliseconds": 5480,
+      "Marker": {
+        "Objective": 20,
+        "Tick": 188
+      }
+    },
+    {
+      "Index": 138,
+      "PresentationMilliseconds": 5520,
+      "Marker": {
+        "Objective": 20,
+        "Tick": 188
+      }
+    },
+    {
+      "Index": 139,
+      "PresentationMilliseconds": 5560,
+      "Marker": {
+        "Objective": 20,
+        "Tick": 188
+      }
+    },
+    {
+      "Index": 140,
+      "PresentationMilliseconds": 5600,
+      "Marker": {
+        "Objective": 20,
+        "Tick": 188
+      }
+    },
+    {
+      "Index": 141,
+      "PresentationMilliseconds": 5640,
+      "Marker": {
+        "Objective": 20,
+        "Tick": 188
+      }
+    },
+    {
+      "Index": 142,
+      "PresentationMilliseconds": 5680,
+      "Marker": {
+        "Objective": 20,
+        "Tick": 188
+      }
+    },
+    {
+      "Index": 143,
+      "PresentationMilliseconds": 5720,
+      "Marker": {
+        "Objective": 20,
+        "Tick": 188
+      }
+    },
+    {
+      "Index": 144,
+      "PresentationMilliseconds": 5760,
+      "Marker": {
+        "Objective": 20,
+        "Tick": 188
+      }
+    },
+    {
+      "Index": 145,
+      "PresentationMilliseconds": 5800,
+      "Marker": {
+        "Objective": 20,
+        "Tick": 188
+      }
+    },
+    {
+      "Index": 146,
+      "PresentationMilliseconds": 5840,
+      "Marker": {
+        "Objective": 20,
+        "Tick": 188
+      }
+    },
+    {
+      "Index": 147,
+      "PresentationMilliseconds": 5880,
+      "Marker": {
+        "Objective": 20,
+        "Tick": 188
+      }
+    },
+    {
+      "Index": 148,
+      "PresentationMilliseconds": 5920,
+      "Marker": {
+        "Objective": 20,
+        "Tick": 188
+      }
+    },
+    {
+      "Index": 149,
+      "PresentationMilliseconds": 5960,
+      "Marker": {
+        "Objective": 20,
+        "Tick": 188
+      }
+    },
+    {
+      "Index": 150,
+      "PresentationMilliseconds": 6000,
+      "Marker": {
+        "Objective": 20,
+        "Tick": 188
+      }
+    },
+    {
+      "Index": 151,
+      "PresentationMilliseconds": 6040,
+      "Marker": {
+        "Objective": 20,
+        "Tick": 188
+      }
+    },
+    {
+      "Index": 152,
+      "PresentationMilliseconds": 6080,
+      "Marker": {
+        "Objective": 20,
+        "Tick": 188
+      }
+    },
+    {
+      "Index": 153,
+      "PresentationMilliseconds": 6120,
+      "Marker": {
+        "Objective": 20,
+        "Tick": 188
+      }
+    },
+    {
+      "Index": 154,
+      "PresentationMilliseconds": 6160,
+      "Marker": {
+        "Objective": 20,
+        "Tick": 188
+      }
+    }
+  ]
+}

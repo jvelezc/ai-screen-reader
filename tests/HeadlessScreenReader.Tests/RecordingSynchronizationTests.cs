@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Text.Json;
 using HeadlessScreenReader.Domain;
 using HeadlessScreenReader.Exploration;
 
@@ -7,6 +8,61 @@ namespace HeadlessScreenReader.Tests;
 public sealed class RecordingSynchronizationTests
 {
     private const double Epoch = 1_800_000_000_000;
+
+    [Fact]
+    public void LaterSharedBaselineAnchorsFrameZeroWithoutFittingActionMarkers()
+    {
+        var input = Inputs(20);
+        var source = ImmutableArray.Create(new SourceMarkerFrame("later-baseline.jpg", Epoch + 40, new(0, 1)));
+        var result = RecordingSynchronization.Analyze(new(Epoch, 0), 0, input.Actions, source, input.Video);
+        Assert.Equal(SynchronizationVerification.Verified, result.Verification);
+        Assert.Equal(Epoch, result.AnchorUnixMilliseconds); Assert.Equal(41, result.UncertaintyMilliseconds);
+        Assert.Equal(20, result.Markers.Length);
+        Assert.All(result.Markers, marker => Assert.Equal(61, marker.ConservativeAbsoluteErrorMilliseconds));
+    }
+
+    [Fact]
+    public void ActionMarkerMatchesCannotReplaceAMissingSharedBaseline()
+    {
+        var input = Inputs(20);
+        var result = RecordingSynchronization.Analyze(new(Epoch, 0), 0, input.Actions,
+            [new("action-only.jpg", Epoch + 440, new(1, 11))], input.Video);
+        Assert.Equal(SynchronizationVerification.Unknown, result.Verification);
+        Assert.Equal("RECORDING_ANCHOR_NOT_OBSERVED", result.ReasonCode);
+        Assert.Null(result.AnchorUnixMilliseconds); Assert.Empty(result.Markers);
+    }
+
+    [Fact]
+    public void EarliestSharedBaselinePreservesAmbiguityInsteadOfChoosingASharperLaterMatch()
+    {
+        var input = Inputs(20);
+        var result = RecordingSynchronization.Analyze(new(Epoch, 0), 0, input.Actions,
+            [new("first.jpg", Epoch + 40, new(0, 1)), new("sharper.jpg", Epoch + 80, new(0, 2)),
+                new("ambiguous.jpg", Epoch + 440, new(0, 1))], input.Video);
+        Assert.Equal(SynchronizationVerification.Unknown, result.Verification);
+        Assert.Equal(Epoch + 200, result.AnchorUnixMilliseconds); Assert.Equal(241, result.UncertaintyMilliseconds);
+        Assert.Equal(250, result.TargetMilliseconds);
+    }
+
+    [Fact]
+    public void FailedWindowsCiMetadataUsesItsIndependentLaterBaselineWithinTheUnchangedTarget()
+    {
+        var assembly = typeof(RecordingSynchronizationTests).Assembly;
+        using var stream = assembly.GetManifestResourceStream("HeadlessScreenReader.Tests.Fixtures.recording-baseline-windows-ci-41534998348.json")!;
+        using var json = JsonDocument.Parse(stream);
+        var root = json.RootElement;
+        var source = root.GetProperty("Source").Deserialize<ImmutableArray<SourceMarkerFrame>>();
+        var video = root.GetProperty("Video").Deserialize<ImmutableArray<VideoMarkerFrame>>();
+        Assert.Equal(new VisualMarker(0, 58), video[0].Marker); Assert.Equal(new VisualMarker(0, 59), video[1].Marker);
+        Assert.DoesNotContain(source, frame => frame.Marker == video[0].Marker);
+        var result = RecordingSynchronization.Analyze(
+            RecordingSynchronization.Calibrate(root.GetProperty("ClockSamples").Deserialize<ImmutableArray<ClockRoundTrip>>()),
+            root.GetProperty("ReaderOriginUncertaintyMilliseconds").GetDouble(),
+            root.GetProperty("Actions").Deserialize<ImmutableArray<RecordedActionMarker>>(), source, video);
+        Assert.Equal(SynchronizationVerification.Verified, result.Verification);
+        Assert.Equal(20, result.Markers.Length); Assert.Equal(250, result.TargetMilliseconds);
+        Assert.All(result.Markers, marker => Assert.InRange(marker.ConservativeAbsoluteErrorMilliseconds!.Value, 0, 250));
+    }
 
     [Theory]
     [InlineData(251)]

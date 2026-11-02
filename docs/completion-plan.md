@@ -5,10 +5,11 @@ of the original plan, not a claim that all milestones are complete. The original
 proposal under `outputs/` is unchanged. Read [current delivery evidence](validation/recorded-evidence-claims-v1.md)
 for the accepted recorded-claim slice and its controlled-fixture limits.
 
-**Current private deployment:** fdb867c, CI41506870871 and private promotion
-41510425776. All nine CI jobs pass:3519 per OS, native71, database509 and
-operations174, plus the actual Docker managed-public normal/crash/recovery proof.
-All156 installed files/4004213350 bytes independently match their manifest,
+**Current private deployment:** a5817a5, CI41527404570 and private promotion
+41534173325 after the missing VPS DNS-helper repair. All nine source CI jobs pass:
+3613 per OS, native73, database631 and operations180, plus the actual Docker
+managed-public normal/crash/recovery and durable-collection proofs.
+All165 installed files/4009372006 bytes independently match their manifest,
 the immutable rootless image matches and owned containers/networks are0;
 PowerShell is installed. The last original-account acceptance remains
 core9455013/HTTP1.17/private MCP21, existing Edge12 and UI00bc2bb.
@@ -33,11 +34,14 @@ retained original observation bytes and actual owned retirement now pass locally
 There are3613 full Windows tests,631 database and180 Linux operational checks;
 strict nonincremental Release build/format pass. All9 collection CI41521635045
 jobs now pass, including3613 per OS/native72/database631/operations180. All nine
-root-owned operator module hashes match that tested source and existing fdb867c
-readiness passes without service/listener changes. A shared-pool correction
-preserves the actual four-connection worker budget; corrected full Windows3613
-and actual collection pass, while its new Linux pool case awaits corrected CI.
-The new migration is not hosted and automatic promotion remains deliberately held.
+root-owned operator module hashes match that tested source. A shared-pool correction
+preserves the actual four-connection worker budget and passes the Linux native
+case. The tested basic migration is hosted and the private a5817a5 release passes
+fixture/public/control readiness. Automatic promotion remains deliberately held.
+Follow-up main7784c56 passes eight CI jobs but fails one Windows synchronization
+test: source capture misses the first video baseline marker. The
+[independent later-baseline repair](validation/recording-baseline-v1.md) retains
+the exact failed metadata and unchanged250ms bound; its full checks/CI are pending.
 **Next:** expose that collection through authenticated independent core API/MCP,
 then existing Edge and the customer form. Deliver the
 [sign-in → URL → automated results journey](product-access.md), using the

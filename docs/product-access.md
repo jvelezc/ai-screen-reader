@@ -26,7 +26,10 @@ scanner data. A URL alone requires real backend scan results; it must not fabric
 findings. The approved-public read-only worker base now has real source and native
 cleanup proof. Its managed ownership and actual abrupt-exit recovery pass in
 CI41506870871 on Windows and Ubuntu with3519 tests each; all nine jobs pass.
-Private deployment41510425776 promotes fdb867c. This is operational deployment,
+Private deployment41534173325 now promotes a5817a5 after the missing VPS DNS-helper
+repair. All165 installed files/4009372006 bytes independently match the manifest;
+the normalized rootless image digest matches and owned native resources are0.
+This is operational deployment,
 separate from the last original-account HTTP1.17/private MCP21 acceptance.
 
 The next local increment now connects canonical public URLs to scoped queue jobs,
@@ -35,8 +38,12 @@ an actual isolated worker and two retained same-document captures. Its actual
 checks and180 Linux operational checks pass. Core API/MCP admission and result
 retrieval, existing Edge consumption and the customer form remain to be connected.
 Read-only observations leave task outcomes and evidence sufficiency unassessed.
-This increment is not hosted; automatic promotion is temporarily held until the
-tested schema and operational readiness are installed together.
+The tested basic public-collection schema is now hosted, and its exact worker is
+privately promoted. Automatic promotion remains held. The follow-up main CI7784c56
+passes eight jobs but exposes a Windows recording-baseline failure; see the
+[repair and exact failing metadata](validation/recording-baseline-v1.md).
+The public-website API routes/client/service and permission snapshot are under
+local development, not published or admitted through the customer UI.
 Existing signup requires confirmed email; a new account must
 receive its own authorized workspace or an explicitly granted membership.
 

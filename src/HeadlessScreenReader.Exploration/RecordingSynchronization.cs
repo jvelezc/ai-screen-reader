@@ -48,10 +48,17 @@ public static class RecordingSynchronization
             return Unknown("RECORDING_FRAME_EVIDENCE_INVALID");
         var first = video[0];
         if (first.Marker!.Objective != 0) return Unknown("RECORDING_BASELINE_NOT_OBSERVED");
-        var anchorSources = source.Where(s => s.Marker == first.Marker).ToArray();
-        if (anchorSources.Length == 0) return Unknown("RECORDING_ANCHOR_NOT_OBSERVED");
-        var low = anchorSources.Min(s => s.PresentationUnixMilliseconds);
-        var high = anchorSources.Max(s => s.PresentationUnixMilliseconds);
+        var baselineSources = source.Where(frame => frame.Marker!.Objective == 0).GroupBy(frame => frame.Marker!)
+            .ToDictionary(group => group.Key, group => (Low: group.Min(frame => frame.PresentationUnixMilliseconds),
+                High: group.Max(frame => frame.PresentationUnixMilliseconds)));
+        // Independent capture streams can miss each other's first paint. Use the
+        // earliest shared baseline, never an action or a conveniently fitted match.
+        var reference = video.TakeWhile(frame => frame.Marker!.Objective == 0)
+            .FirstOrDefault(frame => baselineSources.ContainsKey(frame.Marker!));
+        if (reference is null) return Unknown("RECORDING_ANCHOR_NOT_OBSERVED");
+        var range = baselineSources[reference.Marker!];
+        var low = range.Low - reference.PresentationMilliseconds;
+        var high = range.High - reference.PresentationMilliseconds;
         var anchor = (low + high) / 2;
         // Includes source ambiguity, one full CFR frame interval, host calibration,
         // reader-origin bracketing and a millisecond of browser timestamp resolution.
