@@ -22,6 +22,12 @@ if (args.Length > 0 && args[0] == "--public-reader-worker")
 if (args.Length == 3 && args[0] == "--check-public-reader-worker")
     return await PublicReaderWorkerProof.RunAsync(args[1], args[2], Console.Out);
 
+if (args.Length == 3 && args[0] == "--check-public-reader-supervisor")
+    return await PublicReaderSupervisorProof.RunAsync(args[1], args[2], Console.Out);
+
+if (args.Length == 5 && args[0] is "--public-reader-supervisor-crash-child" or "--recover-public-reader-supervisor")
+    return await PublicReaderSupervisorProof.RecoveryDriverAsync(args[1], args[2], args[3], args[4], args[0] == "--public-reader-supervisor-crash-child", Console.Out);
+
 if (args.SequenceEqual(["--hosted-control"]))
     return await HeadlessScreenReader.Cli.HostedControl.HostedControlDemo.RunAsync();
 

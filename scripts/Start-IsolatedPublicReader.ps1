@@ -1,9 +1,10 @@
 param([ValidateSet('podman','docker')][string]$Runtime='podman',
     [string]$AllowedHost='screenreader.privensic.com',
-    [string]$TargetUrl='https://screenreader.privensic.com/ci/v1/source')
+    [string]$TargetUrl='https://screenreader.privensic.com/ci/v1/source',
+    [string]$OwnerToken, [string]$Image='localhost/headless-screen-reader-prototype:local')
 $ErrorActionPreference='Stop'
 Import-Module (Join-Path $PSScriptRoot 'ReaderIsolation.psm1') -Force -DisableNameChecking
-$ctx=Start-ReaderIsolation -Runtime $Runtime -AllowedHosts $AllowedHost
+$ctx=Start-ReaderIsolation -Runtime $Runtime -AllowedHosts $AllowedHost -OwnerToken $OwnerToken -Image $Image
 $exitCode=3
 try {
     $workerArgs=(Get-ReaderWorkerArguments $ctx)+@('--entrypoint','dotnet','--interactive',$ctx.Image,

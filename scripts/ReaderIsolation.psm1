@@ -65,22 +65,29 @@ function Get-ReaderWorkerArguments {
 }
 
 function Start-ReaderIsolation {
-    param([ValidateSet('podman', 'docker')][string]$Runtime = 'podman', [string]$AllowedHosts = 'screenreader.privensic.com')
-    $owner = [Guid]::NewGuid().ToString('N')
+    param([ValidateSet('podman', 'docker')][string]$Runtime = 'podman', [string]$AllowedHosts = 'screenreader.privensic.com',
+        [string]$OwnerToken, [string]$Image = 'localhost/headless-screen-reader-prototype:local')
+    $managed = -not [string]::IsNullOrEmpty($OwnerToken)
+    $parsedOwner = [Guid]::Empty
+    if($managed -and (-not [Guid]::TryParseExact($OwnerToken,'N',[ref]$parsedOwner) -or $parsedOwner -eq [Guid]::Empty -or
+        $parsedOwner.ToString('N') -cne $OwnerToken -or $Image -cnotmatch '^sha256:[a-f0-9]{64}$')){
+        throw 'PUBLIC_READER_OWNERSHIP_CONFIGURATION_INVALID'
+    }
+    $owner = if($managed){$OwnerToken}else{[Guid]::NewGuid().ToString('N')}
     $acceptanceLabels = @()
     if ($env:HSR_ACCEPTANCE_RUN_ID -match '^[0-9a-f]{32}$') {
         $acceptanceLabels = @('--label', "hsr.prototype.acceptance=$env:HSR_ACCEPTANCE_RUN_ID")
     }
-    $prefix = 'hsr-proto-' + $owner
+    $prefix = if($managed){'hsr-public-' + $owner}else{'hsr-proto-' + $owner}
     $ctx = [pscustomobject]@{
-        Owner = $owner; Runtime = $Runtime; Image = 'localhost/headless-screen-reader-prototype:local';
+        Owner = $owner; Runtime = $Runtime; Image = $Image;
         InternalNetwork = "$prefix-private"; EgressNetwork = "$prefix-egress";
         Proxy = "$prefix-proxy"; Fence = "$prefix-fence"; Worker = "$prefix-worker";
         AllowedHosts = $AllowedHosts; ProxyIp = $null; Control = $null; KernelPolicies = $null; AcceptanceLabels = $acceptanceLabels
     }
     try {
         # Reap only unused networks created by this launcher after abrupt client termination.
-        $old = Invoke-ReaderRuntime $Runtime @('network', 'ls', '--filter', 'label=hsr.prototype.owner', '--format', '{{.Name}}')
+        $old = if($managed){[pscustomobject]@{Text=''}}else{Invoke-ReaderRuntime $Runtime @('network', 'ls', '--filter', 'label=hsr.prototype.owner', '--format', '{{.Name}}')}
         foreach ($name in @($old.Text -split "`n" | Where-Object { $_ -match '^hsr-proto-[0-9a-f]{32}-(private|egress)$' })) {
             $network = ((Invoke-ReaderRuntime $Runtime @('network', 'inspect', $name)).Text | ConvertFrom-Json)[0]
             $networkOwner = $network.Labels.'hsr.prototype.owner'

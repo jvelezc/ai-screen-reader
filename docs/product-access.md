@@ -24,7 +24,9 @@ not the customer application.
 The current UI can use recorded controlled-fixture results and explicitly imported
 scanner data. A URL alone requires real backend scan results; it must not fabricate
 findings. The approved-public read-only worker base now has real source and native
-cleanup proof, but hosted URL admission, collection and report integration remain
+cleanup proof. Its managed ownership and actual abrupt-exit recovery now pass
+locally, with3519 full Windows tests and clean strict build/format; this increment's
+CI is still required. Hosted URL admission, collection and report integration remain
 to be connected. Existing signup requires confirmed email; a new account must
 receive its own authorized workspace or an explicitly granted membership.
 

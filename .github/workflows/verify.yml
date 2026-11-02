@@ -134,6 +134,10 @@ jobs:
         run: |
           pwsh -NoProfile -File scripts/Test-PublicReaderWorker.ps1 -Runtime docker | Set-Content artifacts/isolated/public-reader-worker.json
           if ($LASTEXITCODE -ne 0) { throw 'PUBLIC_READER_WORKER_ACCEPTANCE_FAILED' }
+        - name: Exercise managed public reader, abrupt parent exit and scoped recovery
+          run: |
+            pwsh -NoProfile -File scripts/Test-PublicReaderSupervisor.ps1 -Runtime docker | Set-Content artifacts/isolated/public-reader-supervisor.json
+            if ($LASTEXITCODE -ne 0) { throw 'PUBLIC_READER_SUPERVISOR_ACCEPTANCE_FAILED' }
       - name: Retain acceptance receipts
         if: always()
         uses: actions/upload-artifact@v7
@@ -144,6 +148,7 @@ jobs:
             artifacts/isolated/public-smoke.json
             artifacts/isolated/public-*-observation.json
             artifacts/isolated/public-reader-worker.json
+              artifacts/isolated/public-reader-supervisor.json
           retention-days: 7
   verify:
     name: Build and test (${{ matrix.os }})

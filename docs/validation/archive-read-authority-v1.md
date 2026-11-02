@@ -80,8 +80,10 @@ pre-correction outage receipts. No failed or missed window is relabeled passed.
 
 Local-journal mid-I/O, later original-file pages and real provider expiry remain
 separate scopes. A normal original-account provider/Edge expiry check has a200
-baseline; its post-expiry browser readback awaits the required Chrome extension
-update. It uses its own memory-only, non-refreshing session and does not replace
+baseline. That tab was lost during extension replacement; its expired readback is
+inconclusive. Chrome is now reconnected and a fresh normal original-account
+provider/Edge check has a200 baseline18:11:45.565Z and actual expiry19:11:44Z.
+Its post-expiry result is pending. It uses its own memory-only, non-refreshing session and does not replace
 the notebook's saved session. No provider/core expiry result is inferred from RLS.
 This does not complete website collection, human/AT, custody/legal acceptance or
 the product. Product acceptance precedes complete documentation, then full

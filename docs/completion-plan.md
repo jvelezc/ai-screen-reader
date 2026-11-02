@@ -15,18 +15,22 @@ the initial original-file operation denial are accepted in their named scopes.
 Only the isolated test membership is restored; working50/sign-in are preserved.
 [Authority receipt](validation/archive-read-authority-v1.md).
 
-**In progress:** an explicit approved-public read-only worker contract, separate
-from Foundation fixture provenance. Real local Linux VM capture/observe/close
-and independent container/network removal pass. Strict build has0 warnings/errors,
-full Windows3464 pass and all110 focused final cases pass. CI remains a separate
-gate; this does not expose public-target admission through hosted
-HTTP, Edge or the notebook. [Worker scope](validation/public-reader-worker-v1.md).
-**Next:** finish that increment's CI, then deliver the
+**Accepted worker base:** explicit approved-public read-only contract, separate
+from Foundation provenance. Commit8d6a3a7/CI41495426459 passes all nine jobs,
+Windows/Ubuntu3464 each and actual Docker capture/close/owned cleanup.
+[Worker scope](validation/public-reader-worker-v1.md).
+**In progress:** [managed public ownership and recovery](validation/public-reader-runtime-v1.md).
+Actual source capture, normal retirement, abrupt-parent-exit recovery and preserving
+an unrelated owner pass locally;165 focused and3519 full Windows tests pass.
+Strict build/format are clean. The new CI gate remains pending. Hosted public-target admission is not enabled.
+**Next:** complete that runtime gate, then connect trusted tenant-scoped URL jobs
+and retained results through core API/MCP and existing Edge. Deliver the
 [sign-in → URL → automated results journey](product-access.md), using the
 [versioned mock sites](test-site-scenarios.md) within the existing test website
 for feature-specific MCP/API validation. Real provider
 expiry readback and local-journal mid-I/O authority remain explicit separate
-acceptance checks; the browser tool currently requires an extension update.
+acceptance checks. Chrome is reconnected; the renewed original-account,
+non-refreshing provider/Edge expiry check is running and awaits actual expiry.
 
 ## Accepted: verify assessment claims against recorded originals
 

@@ -1,5 +1,5 @@
 using System.Text;
-using HeadlessScreenReader.Cli;
+using HeadlessScreenReader.Worker;
 
 namespace HeadlessScreenReader.Tests;
 
@@ -12,7 +12,7 @@ public sealed class PublicReaderWorkerProofDiagnosticsTests
     [InlineData("known-podman", "podman", 1)]
     public void OnlyNamedRuntimeEofWarningIsRetained(string scenario, string runtime, int expected)
     {
-        Assert.Equal(expected, PublicReaderWorkerProof.ClassifyDiagnostics(Encoding.UTF8.GetBytes(scenario == "known-podman" ? Known : ""), runtime));
+        Assert.Equal(expected, PublicReaderDiagnostics.ClassifyAfterConfirmedClose(Encoding.UTF8.GetBytes(scenario == "known-podman" ? Known : ""), runtime));
     }
 
     [Theory]
@@ -33,6 +33,6 @@ public sealed class PublicReaderWorkerProofDiagnosticsTests
             "oversized" => Encoding.UTF8.GetBytes(Known.Replace("2026-11-02", new string('2', 16384), StringComparison.Ordinal)),
             _ => Encoding.UTF8.GetBytes(Known)
         };
-        Assert.Equal("PUBLIC_READER_DIAGNOSTICS_UNCONFIRMED", Assert.Throws<InvalidDataException>(() => PublicReaderWorkerProof.ClassifyDiagnostics(bytes, scenario == "wrong-runtime" ? "docker" : "podman")).Message);
+        Assert.Equal("PUBLIC_READER_DIAGNOSTICS_UNCONFIRMED", Assert.Throws<InvalidDataException>(() => PublicReaderDiagnostics.ClassifyAfterConfirmedClose(bytes, scenario == "wrong-runtime" ? "docker" : "podman")).Message);
     }
 }

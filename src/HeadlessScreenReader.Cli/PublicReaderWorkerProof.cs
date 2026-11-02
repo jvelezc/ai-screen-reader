@@ -1,7 +1,5 @@
 using System.Diagnostics;
 using System.Text.Json;
-using System.Text;
-using System.Text.RegularExpressions;
 using HeadlessScreenReader.Domain;
 using HeadlessScreenReader.Worker;
 
@@ -68,7 +66,7 @@ internal static class PublicReaderWorkerProof
             trailingBytes = await child.StandardOutput.BaseStream.ReadAsync(trailing, stop.Token).ConfigureAwait(false);
             var diagnostics = await errors.ConfigureAwait(false); stderrBytes = diagnostics.Length;
             if (launcherExitCode != 0 || trailingBytes != 0) throw new InvalidDataException();
-            var stdinWarnings = ClassifyDiagnostics(diagnostics, runtime);
+            var stdinWarnings = PublicReaderDiagnostics.ClassifyAfterConfirmedClose(diagnostics, runtime);
             await output.WriteLineAsync(JsonSerializer.Serialize(new
             {
                 Schema = "hsr-approved-public-worker-proof-v1",
@@ -121,21 +119,6 @@ internal static class PublicReaderWorkerProof
                 child.Dispose();
             }
         }
-    }
-
-    internal static int ClassifyDiagnostics(byte[] bytes, string runtime)
-    {
-        if (bytes.Length == 0) return 0;
-        if (bytes.Length > 16384 || runtime != "podman") throw new InvalidDataException("PUBLIC_READER_DIAGNOSTICS_UNCONFIRMED");
-        string text;
-        try { text = new UTF8Encoding(false, true).GetString(bytes); }
-        catch (DecoderFallbackException) { throw new InvalidDataException("PUBLIC_READER_DIAGNOSTICS_UNCONFIRMED"); }
-        // A confirmed native Closed frame, zero exit and exact stdout EOF precede
-        // this classification. Retain the one known Podman EOF warning explicitly;
-        // any other diagnostic still fails acceptance.
-        if (!Regex.IsMatch(text, "\\Atime=\"[0-9T:.+\\-]+\" level=warning msg=\"Failed to close STDIN for writing: EOF\"\\r?\\n\\z", RegexOptions.NonBacktracking))
-            throw new InvalidDataException("PUBLIC_READER_DIAGNOSTICS_UNCONFIRMED");
-        return 1;
     }
 
     private static async Task<byte[]> DrainAsync(Stream stream, CancellationTokenSource stop)

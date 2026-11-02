@@ -2,8 +2,10 @@
 
 November2,2026. Strict build passes with0 warnings/errors, full Windows3464 pass
 with0 failed/skipped, all110 focused final cases pass and required format is
-clean. The actual Linux VM proof passes. CI is a separate required gate before
-the next increment. This is a worker base, not hosted public-target
+clean. The actual Linux VM proof passes. Commit8d6a3a7 and all nine
+[CI41495426459 jobs](https://github.com/jvelezc/ai-screen-reader/actions/runs/41495426459)
+pass: Windows and Ubuntu each3464, native71/database509/operations174, with the
+actual Docker public-source worker proof retained. This is a worker base, not hosted public-target
 admission, a website goal assessment, original-account acceptance or a public
 MCP/plugin release. Hosted HTTP1.17/private MCP21/Edge12/UI remain unchanged.
 
@@ -33,7 +35,9 @@ and launcher exit are confirmed; parent checks find no owned container/network.
 The one known Podman stdin-already-closed warning is retained explicitly only
 after valid native Closed, zero exit and exact stdout EOF. Other diagnostics,
 extra frames/bytes, malformed data and incomplete shutdown still fail acceptance.
-The Docker/Linux CI path must independently pass; local VM proof is not CI proof.
+The independent Docker/Linux CI run66d44743dcef465fa54bb1dff4678028
+also captures9 nodes twice, confirms native close and all owned cleanup, and has
+zero runtime warnings. Local VM and CI are separately recorded proofs.
 
 With stdin held open and zero request bytes, a separate native idle check ends
 unsuccessfully after131.423s including provisioning/relay cleanup. It observes
@@ -70,8 +74,9 @@ database migration, UI proxy or broadened permission is introduced.
 | Safe configuration and diagnostics | `BadConfigurationCannotReadInputOrRevealValues`, `ProofRejectsUnsafeRuntimeOrMissingLauncherWithoutClaimingAcceptance`, `OnlyNamedRuntimeEofWarningIsRetained`, `UnknownOrUnboundedDiagnosticsCannotBecomeAcceptance` |
 | Actual public source and owner removal | `PublicReaderWorkerProof` plus `Test-PublicReaderWorker.ps1`; independent idle receipt |
 
-Next: complete CI, build the [mock-site catalogue](../test-site-scenarios.md), then
-connect approved public collection to trusted hosted admission/ownership and the
+The next [managed-runtime increment](public-reader-runtime-v1.md) adds durable
+five-resource ownership, tenant/session-bound retirement and restart recovery.
+Then connect approved public collection to trusted hosted admission and the
 independent API/MCP. Preserve original caller scope and source provenance through
 the existing Edge consumer. Do not enable arbitrary public URLs in the notebook
 or turn observations into unsupported task/barrier/evidence-sufficiency claims.
