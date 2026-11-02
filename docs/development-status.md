@@ -2,29 +2,38 @@
 
 Updated November 2, 2026. The original proposal under `outputs/` remains unchanged. This status document tracks implementation against its acceptance gates.
 
-**Current accepted delivery: core5d8aec9/HTTP1.17/private MCP21, existing Edge12
-and UI00bc2bb.** All nine core CI41432120262 jobs pass:3348 per OS/database509/
-native71/operations174; UI CI41439156245 passes821 per OS. Exact151-file private
-deployment41435030064, runtime image, trusted TLS and negative guards match.
-Original-account choice/reconnect and actual capture-time RLS revocation pass:
-only the isolated membership is removed while its exact native owner remains
-paused; release denies the late result and clears reader views. Independent normal
-removal is recorded before expiry, with native0, unchanged healthy/unfrozen
-services and all owned guards inactive. Only the test membership is restored;
-the working workspace retains50 runs and saved sign-in. Three missed timing
-windows remain inconclusive. Real provider expiry and evidence-load lifecycles
-remain separate gates.
+**Current accepted hosted delivery: core9455013/HTTP1.17/private MCP21, existing
+Edge12 and UI00bc2bb.** All nine core CI41454031773 jobs pass:3354 per OS,
+database509/native71/operations174; UI CI41439156245 passes821 per OS. Private
+deployment41456833152 independently matches all151 files and the rootless image,
+with trusted TLS and negative guards. Original-account choice/reconnect,
+capture-time RLS revocation, cached-path clearing, failed storage reauthorization
+and initial original-file operation denial pass in their named scopes. The
+storage holds are independently confirmed still active after each accepted UI
+denial, before release. Only the isolated test membership is restored:
+test1/working1/sentinel0; the working workspace retains50 runs and saved sign-in.
+All owned guards are inactive and exact native absence is verified. Earlier
+outages and timing misses remain unaccepted. Later file pages, local-journal
+mid-I/O and provider expiry remain separate scopes.
 [Catalogue receipt](validation/workspace-catalog-v1.md);
 [consumer chooser receipt](https://github.com/jvelezc/ai-screen-reader-ui/blob/main/docs/validation/workspace-choice-v1.md).
 
-**In progress:** archive read errors must still recheck the original caller.
-Six real HTTP regressions fail on baseline and pass after correction;136 related
-checks pass. Strict build passes with0 warnings/errors, full Windows3354 with0
-failed/skipped and clean required format. CI and private promotion are pending.
-The original account has one observed controlled
-recording in its isolated scope; five originals and4.08s video verify. Its first
-storage-held reauthorization returns unavailable and remains unaccepted timing/
-outage evidence, with exact test membership and network restored.
+**Current increment:** approved-public read-only worker wire. Actual local Linux
+VM Open/Observe/Close and independent container/network cleanup pass against the
+approved HTTPS source, with two9-node captures, no fabricated heading,0 inputs
+and no goal claim. A separate zero-request native idle check also reaches the
+existing deadline and cleans up. Public source/profile metadata is separate from
+Foundation fixture hashes. Strict build has0 warnings/errors; full Windows3464
+and all110 focused final cases pass. CI remains a separate gate. This does
+not enable public-target hosted admission or change HTTP1.17/Edge12/private MCP21.
+[Worker receipt](validation/public-reader-worker-v1.md).
+
+**Next implementation:** [one application link → sign-in → URL → actual results](product-access.md),
+with the requested [mock-site catalogue](test-site-scenarios.md) providing working
+references, intentional barriers and feature-specific MCP/API checks. Finish the
+current increment's CI first. A
+normal original-account provider/Edge expiry check has a200 baseline; reading
+its expired result is blocked by the Chrome tool's required extension update.
 [Native boundary receipt](validation/reader-authority-v1.md);
 [archive correction](validation/archive-read-authority-v1.md).
 
@@ -38,7 +47,7 @@ Actual recovered5.40s and distinct normal5.44s video playback end without errors
 native0, no live storage denial and126 inactive guard checks are independently
 verified. The first Windows network-buffer failure and earlier observer issue are
 retained. [Receipt](validation/publication-failure-diagnostics-v1.md).
-**Next:** [real hosted access changes in an isolated workspace](completion-plan.md#next-validate-real-hosted-authority-loss).
+**Remaining acceptance:** [real hosted access changes](completion-plan.md#remaining-acceptance-real-hosted-authority-loss).
 After product acceptance, complete documentation, then refactor the core and UI
 for best practices and lower complexity against the verified behavior.
 

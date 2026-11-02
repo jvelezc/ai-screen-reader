@@ -1,22 +1,32 @@
 # Remaining product completion gates
 
-October 31, 2026. Product: Privensic Screen Reader. This is the ordered remainder
+November 2, 2026. Product: Privensic Screen Reader. This is the ordered remainder
 of the original plan, not a claim that all milestones are complete. The original
 proposal under `outputs/` is unchanged. Read [current delivery evidence](validation/recorded-evidence-claims-v1.md)
 for the accepted recorded-claim slice and its controlled-fixture limits.
 
-**Current protocol delivery:** core d604eca/HTTP1.17/private MCP21, Edge12 and
-UI adapter e196c47. All nine core CI jobs pass,3309 per OS/native71/database509/
-operations172; the route follow-up passes174 local Linux operations checks.
-UI passes800 per OS. Exact151-file private delivery and trusted HTTPS catalogue
-guards pass; chooser and original-account catalogue acceptance remain open.
-[Catalogue receipt](validation/workspace-catalog-v1.md). Earlier actual
-publication diagnostics/recovery pass in their named scopes. The original account
-sees the specific unavailable-storage cause, then verifies the same-original
-zero-input recovery and a distinct normal run. All115 retained files are unchanged;
-actual recovered5.40s and normal5.44s playback end without errors.
-[Publication diagnostics receipt](validation/publication-failure-diagnostics-v1.md).
-**Next:** [validate real hosted authority loss](#next-validate-real-hosted-authority-loss).
+**Current hosted delivery:** core9455013/HTTP1.17/private MCP21, existing Edge12
+and UI00bc2bb. All nine core CI41454031773 jobs pass:3354 per OS, native71,
+database509 and operations174. UI CI41439156245 passes821 per OS. Private
+deployment41456833152 independently matches all151 files and the rootless image;
+trusted TLS and access guards pass. Original-account choice, saved sign-in,
+capture-time RLS denial, cached-path clearing, failed storage reauthorization and
+the initial original-file operation denial are accepted in their named scopes.
+Only the isolated test membership is restored; working50/sign-in are preserved.
+[Authority receipt](validation/archive-read-authority-v1.md).
+
+**In progress:** an explicit approved-public read-only worker contract, separate
+from Foundation fixture provenance. Real local Linux VM capture/observe/close
+and independent container/network removal pass. Strict build has0 warnings/errors,
+full Windows3464 pass and all110 focused final cases pass. CI remains a separate
+gate; this does not expose public-target admission through hosted
+HTTP, Edge or the notebook. [Worker scope](validation/public-reader-worker-v1.md).
+**Next:** finish that increment's CI, then deliver the
+[sign-in → URL → automated results journey](product-access.md), using the
+[versioned mock sites](test-site-scenarios.md) within the existing test website
+for feature-specific MCP/API validation. Real provider
+expiry readback and local-journal mid-I/O authority remain explicit separate
+acceptance checks; the browser tool currently requires an extension update.
 
 ## Accepted: verify assessment claims against recorded originals
 
@@ -252,28 +262,28 @@ replace a completed receipt, cannot report a successful goal from uncertain
 input, and recover bounded capacity after restart. Keep actual native recovery,
 storage reconstruction and database fencing receipts separately.
 
-## Next: validate real hosted authority loss
+## Remaining acceptance: real hosted authority loss
 
-Caller-owned discovery/selection and post-native original-authority checks are
-delivered through core5d8aec9/HTTP1.17, existing Edge12 and UI00bc2bb. All9 core
-CI jobs pass3348 per OS with exact151-file private delivery; the UI passes821 per
-OS. Actual original-account capture-time RLS loss clears protected views and
-independently retires the exact owner before expiry. Working50 runs/sign-in remain,
-test membership is restored and the foreign sentinel stays unassigned. Three
-missed timing windows remain inconclusive. Do not substitute a service/replacement
-identity or expose another caller's membership.
-
-First close the identified archive failure path: failed manifest/file work must
-still recheck the original caller before returning its mapped storage error.
-Six regressions fail on baseline and pass after correction;136 related checks,
-strict build/full Windows3354 and required format pass, failed/skipped0.
-Remote CI/private delivery remain pending.
+Caller-owned discovery/selection and post-native checks are delivered through
+the versions above. Actual capture-time RLS loss clears protected views and
+independently retires its exact owner before expiry. The archive correction is
+also delivered: six regressions fail on baseline and pass after correction,
+3354 pass on Windows and Ubuntu, and exact private promotion is independently
+verified. Under the original account, membership is removed while actual S3
+reads remain blocked; both reauthorization and the initial original-file
+operation deny access and clear protected views before manual release of the
+still-active hold. Cached saved-path refresh clears stale graph/video as well.
+The initial file attempt is not proof of a later page or successful file-byte
+delivery. Three native timing misses, an earlier storage outage and missed
+storage/file windows remain inconclusive; retain those receipts.
 [Archive correction](validation/archive-read-authority-v1.md);
 [accepted native boundary](validation/reader-authority-v1.md).
 
-Use isolated test workspaces under the intended application identity. Test real
-provider-token expiry and remaining membership-revocation graph/file/playback
-lifecycles. Reuse the one controlled admitted recording in the isolated scope;
+Use isolated test workspaces under the intended application identity. Finish
+real provider-token expiry and local-journal mid-I/O coverage. A normal original-
+account provider/Edge expiry check has a verified200 baseline and its own
+memory-only, non-refreshing credential; browser readback is pending. It does not
+replace the notebook's saved session. Reuse the one admitted recording;
 no new fixture input is needed for its protected-read checks. Confirm API/Edge deny current
 access, the notebook clears results and media, and native reader ownership is
 retired or remains explicitly unresolved. Do not revoke unrelated memberships or
@@ -283,7 +293,15 @@ substitute a privileged service identity for application-user acceptance.
 for each tested lifecycle. Synthetic-provider tests and a merely expired local
 reader are not evidence that provider membership revocation was exercised.
 
-## Then: bounded website goal collection
+## Next implementation: versioned mock sites and bounded website goal collection
+
+Build the user's requested [mock-site catalogue](test-site-scenarios.md) inside
+the existing website, with working references and deliberately broken variants.
+Map each case to an explicit feature, task, expected observations/outcomes and
+MCP/API checks. Label all outputs as synthetic. Run only commands supported by
+the chosen profile; unknown or unsupported behavior remains explicit. Fixtures
+provide reproducible feature validation and do not complete real-user or real-
+assistive-technology acceptance.
 
 Extend the proven exact-host policy and independent egress isolation to one
 declared unauthenticated target/task at a time. State supported controls, initial

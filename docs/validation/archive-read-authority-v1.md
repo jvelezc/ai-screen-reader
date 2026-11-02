@@ -1,12 +1,14 @@
 # Archive read-error authorization boundary
 
-Status November2,2026: source correction in progress. Six new real local HTTP
-cases fail on baseline and pass after correction;136 related archive/progress/
-hosted-consumer checks pass with0 failed/skipped. Strict Release build passes
-with0 warnings/errors. Full Windows3354 and required format verification pass,
-failed/skipped0. Remote CI, exact promotion and original-account hosted acceptance
-are separate remaining checks. Installed core
-remains5d8aec9/HTTP1.17, Edge12 and UI00bc2bb/821 per OS.
+Status November2,2026: delivered at9455013/HTTP1.17, existing Edge12 and UI00bc2bb.
+Six real HTTP cases fail on baseline and pass after correction;136 related checks
+pass. Strict Release build has0 warnings/errors; Windows/Ubuntu CI each discover
+and pass3354, failed/skipped0, with clean required format. All nine
+[CI41454031773 jobs](https://github.com/jvelezc/ai-screen-reader/actions/runs/41454031773)
+pass, including native71/database509/operations174. Private
+[deployment41456833152](https://github.com/jvelezc/ai-screen-reader/actions/runs/41456833152)
+is Ready; all151 installed files, the independently downloaded CI manifest and
+rootless image match. Trusted default TLS and anonymous/query/route guards pass.
 
 ## Problem and resulting behavior
 
@@ -51,10 +53,36 @@ proved by the6 HTTP regressions. Strict restoration returns test1/working1/
 sentinel0. Keep rejected dry runs, peer-notation diagnostics, timing/failure and
 cleanup receipts under the private `.git/testagent/` directories.
 
-After green CI/exact private promotion, retry protected reads of the same producer
-under the original account. Accept only observed current denial and clearing;
-an unavailable error alone cannot establish known lost access. Keep actual file
-page, playback-loading, local-journal graph timing and provider expiry distinct.
+### Accepted original-account cases after promotion
+
+The same recording is reused without replaying input or admitting another scan.
+
+| Operation | Actual observation and limit |
+| --- | --- |
+| Cached saved-path refresh | Revoke the isolated membership after loading graph/video/path; Refresh saved path returns CONTROL_WORKSPACE_NOT_FOUND and clears workspace, graph, media and reader views. This is current-denial clearing, not local-journal mid-I/O. |
+| Failed storage reauthorization | Actual S3 packets are blocked before and after membership removal. The UI returns CONTROL_WORKSPACE_NOT_FOUND and clears graph/media while the hold is still active; only then does manual release confirm9 packets/6111 bytes and an unchanged control-process epoch. This reaches the manifest read within video/graph reauthorization. |
+| Initial original-file operation | A fresh authorized inventory lists5 originals. Download traversal.json begins at0/140553 bytes; the established S3 connection remains blocked through exact revocation and the UI's denial. The archive inputs/download buttons and protected views clear; Open workspace receives focus and Sign out remains. Manual release after denial again confirms the still-active hold9/6111 and unchanged process epoch. This proves the initial file-endpoint/page operation; it does not prove a later page or successful delivery of file bytes. |
+
+Accepted reauthorization revocation/restoration:14:10:19.408426Z /
+14:10:50.975771Z. Accepted file revocation/restoration:14:40:25.263204Z /
+14:40:58.563349Z. Both use disjoint Auth/S3 addresses, an exact control-cgroup
+S3-only hold, request-relative expiry and an independent backstop. Product HTTP
+deadlines, worker, storage originals and Auth traffic are unchanged. The hold is
+independently confirmed active after the UI outcome, before manual release.
+Only the isolated original-user membership is restored: test1/working1/sentinel0.
+Working50/saved sign-in are recovered. Native0, all eight owned timer/watcher
+units inactive, no hold table, unchanged healthy/unfrozen control/observation
+processes and exact release/image are independently checked after cleanup.
+
+An earlier28s storage window and a cold initial-file attempt remain unaccepted;
+the latter returns CONTROL_ARCHIVE_UNAVAILABLE. Keep those and the earlier
+pre-correction outage receipts. No failed or missed window is relabeled passed.
+
+Local-journal mid-I/O, later original-file pages and real provider expiry remain
+separate scopes. A normal original-account provider/Edge expiry check has a200
+baseline; its post-expiry browser readback awaits the required Chrome extension
+update. It uses its own memory-only, non-refreshing session and does not replace
+the notebook's saved session. No provider/core expiry result is inferred from RLS.
 This does not complete website collection, human/AT, custody/legal acceptance or
 the product. Product acceptance precedes complete documentation, then full
 best-practice/complexity refactoring. Public MCP/plugins stay deferred.

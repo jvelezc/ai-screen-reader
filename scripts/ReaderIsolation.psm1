@@ -90,8 +90,8 @@ function Start-ReaderIsolation {
                 $null = Invoke-ReaderRuntime $Runtime @('network', 'rm', $name) -AllowFailure
             }
         }
-        $null = Invoke-ReaderRuntime $Runtime @('network', 'create', '--internal', '--label', "hsr.prototype.owner=$owner", $ctx.InternalNetwork)
-        $null = Invoke-ReaderRuntime $Runtime @('network', 'create', '--label', "hsr.prototype.owner=$owner", $ctx.EgressNetwork)
+        $null = Invoke-ReaderRuntime $Runtime (@('network', 'create', '--internal', '--label', "hsr.prototype.owner=$owner") + $acceptanceLabels + @($ctx.InternalNetwork))
+        $null = Invoke-ReaderRuntime $Runtime (@('network', 'create', '--label', "hsr.prototype.owner=$owner") + $acceptanceLabels + @($ctx.EgressNetwork))
         $null = Invoke-ReaderRuntime $Runtime (@('run', '--rm', '--detach') + $acceptanceLabels + @('--name', $ctx.Proxy, '--network', $ctx.EgressNetwork,
             '--user', '1001:1001', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--read-only',
             '--memory', '128m', '--cpus', '0.5', '--pids-limit', '64', '--tmpfs', '/tmp:rw,nosuid,size=32m',
