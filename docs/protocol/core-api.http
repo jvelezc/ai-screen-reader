@@ -1,5 +1,5 @@
 # Core-side requests. Lovable application traffic must instead invoke Supabase Edge Functions.
-# These examples describe source contract 1.17.0; inspect live OpenAPI before use.
+# These examples describe source contract 1.18.0; inspect live OpenAPI before use.
 # Closed WORKER_PUBLICATION causes on a blocked report mean Unavailable or Invalid.
 # Inspect the SAME scan's retained output if available; no code guarantees recovery or permits replay.
 # Set accessToken only in your HTTP client's private local environment; never commit a real JWT.
@@ -10,6 +10,38 @@
 # Copy exact values from source-images; never infer them from command diagnostics.
 @sourcePrefixSha256 = replace-with-source-prefix-sha256
 @sourceImageSha256 = replace-with-original-image-sha256
+@websiteScan = replace-with-public-scan-uuid
+@websiteOriginalSha256 = replace-with-original-sha256-from-public-status
+
+### Admit an approved public website;202 is durable admission, never task/evidence completion
+# Retain requestId BEFORE sending; explicit reconciliation reuses the same UUID and URL.
+# This profile collects two passive observations, with zero input and no verified task.
+POST {{baseUrl}}/api/workspaces/{{organization}}/website-scans
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"requestId":"33333333-3333-4333-8333-333333333333","url":"https://screenreader.privensic.com/ci/v1/source"}
+
+### Recent public-source metadata only; at most20 /128KiB, hasMore means omitted rows
+GET {{baseUrl}}/api/workspaces/{{organization}}/website-scans
+Authorization: Bearer {{accessToken}}
+
+### Current job and clock-bound permission metadata; never loads original payload
+GET {{baseUrl}}/api/workspaces/{{organization}}/website-scans/{{websiteScan}}
+Authorization: Bearer {{accessToken}}
+
+### First public capture1 node page; actual source semantics, not a task or speech recording
+GET {{baseUrl}}/api/workspaces/{{organization}}/website-scans/{{websiteScan}}/observations/1/0/100
+Authorization: Bearer {{accessToken}}
+
+### Pin the returned original SHA for any continuation; replace0 with the exact returned nextOffset
+GET {{baseUrl}}/api/workspaces/{{organization}}/website-scans/{{websiteScan}}/observations/1/0/100/{{websiteOriginalSha256}}
+Authorization: Bearer {{accessToken}}
+
+### At most64KiB original JSON bytes; base64, exact page/whole hashes, boundary or EOF only
+# Reconstruct all pages and compare whole SHA; make a fresh exact-EOF read before delivery.
+GET {{baseUrl}}/api/workspaces/{{organization}}/website-scans/{{websiteScan}}/original/0/{{websiteOriginalSha256}}
+Authorization: Bearer {{accessToken}}
 
 # Replace with the sessionId returned by the reader session admission.
 @readerSession = 44444444-4444-4444-8444-444444444444

@@ -1,5 +1,10 @@
 # Private MCP durable scan workflow validation
 
+This receipt records the original fixture-scan increment. The newer private
+public-website tools consume the separate HTTP1.18 resource; see
+[Decision0084](../decisions/0084-public-website-api-and-private-mcp.md) and its
+[current validation gate](public-website-api-v1.md). Public MCP remains deferred.
+
 [Decision 0052](../decisions/0052-private-mcp-durable-scans.md) consumes the
 existing core API; it adds no storage, queue or identity-provider implementation.
 

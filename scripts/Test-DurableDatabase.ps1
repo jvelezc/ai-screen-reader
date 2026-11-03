@@ -11,7 +11,7 @@ New-Item -ItemType Directory -Path $folder | Out-Null
 $created = $false; $removed = $false; $ready = $false; $stage = 'create'; $errorCode = $null
 $cases = [Collections.Generic.List[string]]::new()
 $script:discovered = 0; $script:executed = 0; $script:failed = 0
-$expectedCases = 631
+$expectedCases = 660
 $oldPassword = $env:POSTGRES_PASSWORD
 
 function Wait-DatabaseReady {
@@ -38,6 +38,7 @@ function Invoke-DatabaseFile {
     if ($Atomic) { $sqlArgs += '--single-transaction' }
     $result = Invoke-ReaderRuntime $Runtime ($sqlArgs + @('-f', '/tmp/hsr-test.sql')) -AllowFailure
     $result.Text | Set-Content (Join-Path $folder "$LogName.log") -Encoding utf8NoBOM
+    $result.StandardError | Set-Content (Join-Path $folder "$LogName.stderr.log") -Encoding utf8NoBOM
     if ($Expected -eq 0) {
         if ($result.Code -ne 0) { throw "DATABASE_SQL_FAILED_$LogName" }
         return
@@ -120,6 +121,8 @@ try {
     Invoke-DatabaseFile 'tests/database/public-website-boundaries.sql' 'public-website-boundaries' -Expected 29 -User 'supabase_admin'
     $stage = 'concurrent-public-website'
     Invoke-DatabaseFile 'tests/database/concurrent-public-website.sql' 'concurrent-public-website' -Expected 24 -User 'supabase_admin'
+    $stage = 'public-website-status'
+    Invoke-DatabaseFile 'tests/database/public-website-status.sql' 'public-website-status' -Expected 29 -User 'supabase_admin'
     $stage = 'concurrent-cancellation'
     Invoke-DatabaseFile 'tests/database/concurrent-scan-cancellation.sql' 'concurrent-cancellation' -Expected 15 -User 'supabase_admin'
     $stage = 'concurrent-publication'

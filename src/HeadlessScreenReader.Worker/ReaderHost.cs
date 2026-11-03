@@ -13,6 +13,7 @@ public sealed class ReaderHost : IAsyncDisposable
     private readonly string _descriptor;
     private readonly TcpListener _listener;
     private readonly ReaderHostEndpoint _endpoint;
+    private readonly bool _publicJobsReady;
     private readonly CancellationTokenSource _stop = new();
     private readonly SemaphoreSlim _gate = new(1, 1), _slots = new(16, 16);
     private readonly Dictionary<Guid, Owner> _owners = [];
@@ -22,9 +23,10 @@ public sealed class ReaderHost : IAsyncDisposable
     private bool _disposed;
     private bool _published;
 
-    private ReaderHost(IsolatedReaderSupervisor supervisor, string root, string image)
+    private ReaderHost(IsolatedReaderSupervisor supervisor, string root, string image, bool publicJobsReady)
     {
         _supervisor = supervisor;
+        _publicJobsReady = publicJobsReady;
         _descriptor = ReaderHostEndpoint.DescriptorPath(root);
         _listener = new(IPAddress.Loopback, 0);
         _listener.Start(16);
@@ -32,13 +34,16 @@ public sealed class ReaderHost : IAsyncDisposable
             image, Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)));
     }
 
-    public static async Task<ReaderHost> StartAsync(string root, string runtime, string image, string? seccomp = null)
+    public static Task<ReaderHost> StartAsync(string root, string runtime, string image, string? seccomp = null) =>
+        StartAsync(root, runtime, image, seccomp, publicJobsReady: false);
+
+    internal static async Task<ReaderHost> StartAsync(string root, string runtime, string image, string? seccomp, bool publicJobsReady)
     {
         var supervisor = await IsolatedReaderSupervisor.StartAsync(root, runtime, image, seccomp).ConfigureAwait(false);
         ReaderHost? host = null;
         try
         {
-            host = new(supervisor, root, image);
+            host = new(supervisor, root, image, publicJobsReady);
             if (File.Exists(host._descriptor))
             {
                 // This reserved file must have our protocol shape; never overwrite unrelated data or a symlink.
@@ -128,6 +133,8 @@ public sealed class ReaderHost : IAsyncDisposable
         if (_stop.IsCancellationRequested || _maintenance.IsFaulted)
             throw new BrowserOperationException("READER_HOST_UNAVAILABLE");
         if (request.Operation == ReaderHostOperation.Ready) return Reply(request);
+        if (request.Operation == ReaderHostOperation.PublicWebsiteReady)
+            return Reply(request, error: _publicJobsReady ? null : "READER_HOST_PUBLIC_JOBS_UNAVAILABLE");
         await _gate.WaitAsync(_stop.Token).ConfigureAwait(false);
         try
         {

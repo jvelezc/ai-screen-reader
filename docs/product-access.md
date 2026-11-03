@@ -26,8 +26,9 @@ scanner data. A URL alone requires real backend scan results; it must not fabric
 findings. The approved-public read-only worker base now has real source and native
 cleanup proof. Its managed ownership and actual abrupt-exit recovery pass in
 CI41506870871 on Windows and Ubuntu with3519 tests each; all nine jobs pass.
-Private deployment41534173325 now promotes a5817a5 after the missing VPS DNS-helper
-repair. All165 installed files/4009372006 bytes independently match the manifest;
+Private deployment41545751253 now promotes366e9c5 after the missing VPS DNS-helper
+and independent baseline repairs. All9 source CI41543636420 jobs pass3617 per OS.
+All165 installed files/4009378300 bytes independently match the manifest;
 the normalized rootless image digest matches and owned native resources are0.
 This is operational deployment,
 separate from the last original-account HTTP1.17/private MCP21 acceptance.
@@ -39,11 +40,12 @@ checks and180 Linux operational checks pass. Core API/MCP admission and result
 retrieval, existing Edge consumption and the customer form remain to be connected.
 Read-only observations leave task outcomes and evidence sufficiency unassessed.
 The tested basic public-collection schema is now hosted, and its exact worker is
-privately promoted. Automatic promotion remains held. The follow-up main CI7784c56
-passes eight jobs but exposes a Windows recording-baseline failure; see the
-[repair and exact failing metadata](validation/recording-baseline-v1.md).
-The public-website API routes/client/service and permission snapshot are under
-local development, not published or admitted through the customer UI.
+privately promoted. Automatic promotion remains held. The
+[recording-baseline repair](validation/recording-baseline-v1.md) now passes its
+fresh full CI, preserving earlier failures and the existing250ms target.
+The [public-website API/private MCP](validation/public-website-api-v1.md) and
+permission snapshot are implemented in source and under final release validation,
+not published or admitted through the customer UI.
 Existing signup requires confirmed email; a new account must
 receive its own authorized workspace or an explicitly granted membership.
 

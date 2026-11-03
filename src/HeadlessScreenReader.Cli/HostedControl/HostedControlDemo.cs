@@ -57,7 +57,8 @@ internal static class HostedControlDemo
             await using var readers = new PortalReaderSessions(project, TimeProvider.System,
                 (subject, organization, session) => new PortalHostedReaderBrowser(readerHost, subject, organization, session));
             await using var server = await HostedControlServer.StartAsync(options, project, new PortalObservationReader(evidence, archive),
-                stop.Token, readers, readerHost.ReadyAsync, traversalStore is null ? null : new TraversalArchive(traversalStore)).ConfigureAwait(false);
+                stop.Token, readers, readerHost.ReadyAsync, traversalStore is null ? null : new TraversalArchive(traversalStore),
+                publicWebsiteRuntimeReady: readerHost.PublicJobsReadyAsync).ConfigureAwait(false);
             Console.WriteLine(JsonSerializer.Serialize(new
             {
                 Schema = "hsr-control-readiness-v1",

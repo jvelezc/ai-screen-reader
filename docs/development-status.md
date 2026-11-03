@@ -2,7 +2,19 @@
 
 Updated November 2, 2026. The original proposal under `outputs/` remains unchanged. This status document tracks implementation against its acceptance gates.
 
-**Current accepted hosted delivery: core9455013/HTTP1.17/private MCP21, existing
+**Current private release:**366e9c5, all9 CI41543636420 jobs/3617 tests per OS,
+native73/database631/operations180 and Ready promotion41545751253. All165 files,
+4009378300 bytes, immutable image and owned native absence independently match.
+The hosted basic public-collection schema and worker are installed. Automatic
+promotion is held. [Recording repair receipt](validation/recording-baseline-v1.md).
+
+**Current source increment:** [HTTP1.18/private MCP0.3/26 tools](validation/public-website-api-v1.md)
+exposes real public-URL admission, fresh metadata, bounded observations and
+verified original bytes. Focused protocol and660 actual database cases pass;
+full release validation, hosted status migration and exact promotion are open.
+Existing Edge/form integration and a published customer UI follow that core gate.
+
+**Last original-account accepted consumer: core9455013/HTTP1.17/private MCP21, existing
 Edge12 and UI00bc2bb.** All nine core CI41454031773 jobs pass:3354 per OS,
 database509/native71/operations174; UI CI41439156245 passes821 per OS. Private
 deployment41456833152 independently matches all151 files and the rootless image,
@@ -18,7 +30,7 @@ mid-I/O and provider expiry remain separate scopes.
 [Catalogue receipt](validation/workspace-catalog-v1.md);
 [consumer chooser receipt](https://github.com/jvelezc/ai-screen-reader-ui/blob/main/docs/validation/workspace-choice-v1.md).
 
-**Current increment:** approved-public read-only worker wire. Actual local Linux
+**Earlier worker-wire checkpoint:** approved-public read-only worker wire. Actual local Linux
 VM Open/Observe/Close and independent container/network cleanup pass against the
 approved HTTPS source, with two9-node captures, no fabricated heading,0 inputs
 and no goal claim. A separate zero-request native idle check also reaches the

@@ -5,7 +5,7 @@ using HeadlessScreenReader.Domain;
 
 namespace HeadlessScreenReader.Worker;
 
-public enum ReaderHostOperation { Ready, Open, Observe, Retire }
+public enum ReaderHostOperation { Ready, Open, Observe, Retire, PublicWebsiteReady }
 
 /// <summary>Private, process-lifetime loopback authority. Never return this descriptor through HTTP or diagnostics.</summary>
 public sealed record ReaderHostEndpoint(string Schema, Guid Instance, int Port, string Image, string Capability)
@@ -44,11 +44,12 @@ public sealed record ReaderHostRequest(string Schema, Guid Instance, Guid Reques
 {
     public void Validate(ReaderHostEndpoint endpoint)
     {
+        var readiness = Operation is ReaderHostOperation.Ready or ReaderHostOperation.PublicWebsiteReady;
         if (Schema != ReaderHostEndpoint.CurrentSchema || Instance != endpoint.Instance || RequestId == Guid.Empty
             || !Enum.IsDefined(Operation) || !ReaderHostEndpoint.ValidCapability(Capability)
             || !CryptographicOperations.FixedTimeEquals(Convert.FromBase64String(Capability), Convert.FromBase64String(endpoint.Capability))
-            || Operation != ReaderHostOperation.Ready && (Subject == Guid.Empty || Organization == Guid.Empty || Session == Guid.Empty)
-            || Operation == ReaderHostOperation.Ready && (Subject != Guid.Empty || Organization != Guid.Empty || Session != Guid.Empty))
+            || !readiness && (Subject == Guid.Empty || Organization == Guid.Empty || Session == Guid.Empty)
+            || readiness && (Subject != Guid.Empty || Organization != Guid.Empty || Session != Guid.Empty))
             throw new BrowserOperationException("READER_HOST_REQUEST_DENIED");
     }
     public override string ToString() => "ReaderHostRequest(private authority redacted)";
@@ -81,7 +82,7 @@ public sealed record ReaderHostResponse(string Schema, Guid Instance, Guid Reque
                 throw new BrowserOperationException("READER_HOST_RESPONSE_UNCONFIRMED");
         }
         else if (DocumentId is not null || Snapshot is not null
-            || Operation == ReaderHostOperation.Ready && Retirement is not null
+            || (Operation is ReaderHostOperation.Ready or ReaderHostOperation.PublicWebsiteReady) && Retirement is not null
             || Operation == ReaderHostOperation.Retire && Retirement is not { ContainerAbsenceConfirmed: true })
             throw new BrowserOperationException("READER_HOST_RESPONSE_UNCONFIRMED");
     }

@@ -5,11 +5,12 @@ of the original plan, not a claim that all milestones are complete. The original
 proposal under `outputs/` is unchanged. Read [current delivery evidence](validation/recorded-evidence-claims-v1.md)
 for the accepted recorded-claim slice and its controlled-fixture limits.
 
-**Current private deployment:** a5817a5, CI41527404570 and private promotion
-41534173325 after the missing VPS DNS-helper repair. All nine source CI jobs pass:
-3613 per OS, native73, database631 and operations180, plus the actual Docker
+**Current private deployment:**366e9c5, CI41543636420 and private promotion
+41545751253 after the missing VPS DNS-helper and independent recording-baseline
+repairs. All nine source CI jobs pass:
+3617 per OS, native73, database631 and operations180, plus the actual Docker
 managed-public normal/crash/recovery and durable-collection proofs.
-All165 installed files/4009372006 bytes independently match their manifest,
+All165 installed files/4009378300 bytes independently match their manifest,
 the immutable rootless image matches and owned containers/networks are0;
 PowerShell is installed. The last original-account acceptance remains
 core9455013/HTTP1.17/private MCP21, existing Edge12 and UI00bc2bb.
@@ -38,12 +39,16 @@ root-owned operator module hashes match that tested source. A shared-pool correc
 preserves the actual four-connection worker budget and passes the Linux native
 case. The tested basic migration is hosted and the private a5817a5 release passes
 fixture/public/control readiness. Automatic promotion remains deliberately held.
-Follow-up main7784c56 passes eight CI jobs but fails one Windows synchronization
-test: source capture misses the first video baseline marker. The
-[independent later-baseline repair](validation/recording-baseline-v1.md) retains
-the exact failed metadata and unchanged250ms bound; its full checks/CI are pending.
-**Next:** expose that collection through authenticated independent core API/MCP,
-then existing Edge and the customer form. Deliver the
+The [independent later-baseline repair](validation/recording-baseline-v1.md)
+retains the exact failed metadata and unchanged250ms bound. A fresh unchanged-source
+CI run passes3617 per OS; the earlier Windows startup failures remain recorded.
+**Current source increment:** [HTTP1.18/private MCP0.3/26 tools](validation/public-website-api-v1.md).
+It adds scoped public-URL admission, current status, bounded observation and
+original-byte reads, plus the required permission-snapshot migration. Focused
+protocol tests and660 real disposable database checks pass; final full checks,
+feature CI, hosted migration and exact promotion remain separate gates.
+**Next:** finish that core release, then connect existing Edge and the customer
+form and publish a real HTTPS UI origin. Deliver the
 [sign-in → URL → automated results journey](product-access.md), using the
 [versioned mock sites](test-site-scenarios.md) within the existing test website
 for feature-specific MCP/API validation. The real original-account provider/Edge

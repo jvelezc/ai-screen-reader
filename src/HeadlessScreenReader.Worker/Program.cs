@@ -185,7 +185,7 @@ try
         ? new PublicWebsiteCoordinator(publicLeases, new IsolatedPublicWebsiteExecutor(publicSupervisor!)) : null;
     // The trusted coordinator owns native execution. The separate read-only HTTP service uses the protected loopback broker.
     await using var readerHost = args[0] == "--poll" ? await ReaderHost.StartAsync(evidence, runtime, image,
-        Environment.GetEnvironmentVariable("HSR_WORKER_SECCOMP")) : null;
+        Environment.GetEnvironmentVariable("HSR_WORKER_SECCOMP"), publicJobsReady: true) : null;
     var worker = Guid.NewGuid();
     string? previousState = null;
     string? previousPublicState = null;

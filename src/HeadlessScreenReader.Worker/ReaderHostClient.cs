@@ -46,4 +46,15 @@ public sealed class ReaderHostClient(string root, string image)
         }
         catch { throw new BrowserOperationException("READER_HOST_EXCHANGE_UNCONFIRMED"); }
     }
+
+    public async Task<bool> PublicJobsReadyAsync()
+    {
+        try
+        {
+            var response = await ExchangeAsync(Endpoint(), ReaderHostOperation.PublicWebsiteReady,
+                Guid.Empty, Guid.Empty, Guid.Empty, timeout: TimeSpan.FromSeconds(2)).ConfigureAwait(false);
+            return response.ErrorCode is null;
+        }
+        catch { return false; }
+    }
 }

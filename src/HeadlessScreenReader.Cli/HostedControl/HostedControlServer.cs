@@ -29,7 +29,8 @@ internal sealed class HostedControlServer : IAsyncDisposable
         IPortalObservationReader observations, CancellationToken token = default, PortalReaderSessions? readerSessions = null,
         Func<Task<bool>>? readerRuntimeReady = null, HeadlessScreenReader.Worker.TraversalArchive? traversalArchive = null,
         IPortalProgressReader? progressReader = null, IPortalProgressSnapshotReader? progressSnapshotReader = null,
-        IPortalRecordedOutputReader? recordedOutputReader = null, IPortalSourceImagesReader? sourceImagesReader = null)
+        IPortalRecordedOutputReader? recordedOutputReader = null, IPortalSourceImagesReader? sourceImagesReader = null,
+        Func<Task<bool>>? publicWebsiteRuntimeReady = null)
     {
         options.Validate();
         var builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions
@@ -58,6 +59,8 @@ internal sealed class HostedControlServer : IAsyncDisposable
             recordedOutputReader ?? new PortalRecordedOutputReader(options.EvidenceRoot), sourceImagesReader ?? new PortalSourceImagesReader(options.EvidenceRoot)));
         builder.Services.AddSingleton(_ => readerSessions ?? new PortalReaderSessions(project, TimeProvider.System));
         builder.Services.AddProblemDetails();
+        builder.Services.AddSingleton<IPortalPublicWebsites>(_ => new PortalPublicWebsiteService(project,
+            project as IPortalPublicWebsiteProjectClient, publicWebsiteRuntimeReady));
         var app = builder.Build();
         Uri? bound = null;
         app.Use(async (context, next) =>
@@ -102,6 +105,7 @@ internal sealed class HostedControlServer : IAsyncDisposable
         app.MapRecordedOutput();
         app.MapSourceImages();
         app.MapScanCancellation();
+        app.MapPublicWebsites();
         try
         {
             await app.StartAsync(token).ConfigureAwait(false);

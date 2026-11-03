@@ -2,6 +2,16 @@
 
 Local .NET screen-reader foundation for the architecture in [the development plan](outputs/HeadlessScreenReader-Architecture-Review-and-Development-Plan.md).
 
+**Customer release gate: [sign in → website URL → saved results](docs/product-access.md).**
+There is no published customer UI yet. The approved-public read-only worker and
+basic collection schema are privately installed. [HTTP1.18 and private MCP0.3/26
+tools](docs/decisions/0084-public-website-api-and-private-mcp.md) now expose scoped
+admission, status and verified saved observations in source. Local Windows passes
+3703 tests and the disposable database passes660. Finish this increment's CI,
+hosted status migration and exact private promotion, then connect the existing
+Supabase Edge gateway and separate Lovable UI. Passive page data does not prove
+a blocked task or complete an evidence package. Public MCP/plugins remain deferred.
+
 The [leased observation worker](docs/decisions/0037-isolated-observation-worker.md) connects tenant-authorized admission to isolated synthetic-shop observation, private saved bytes and fenced queue completion. Its private VPS deployment and rollback are accepted. A real signed-in tenant fixture completed and its report matched independently verified private S3 evidence. Private MCP supports durable fixture scans, saved reports and explicit archive reads alongside live reading. The [real application-user reader](docs/validation/private-tenant-reader-v1.md) also passes authentication/RLS, navigation, matching graph evidence and independent native close. The [authenticated core API](docs/validation/core-api-ingress-v1.md) is live at [https://89.117.17.81](https://89.117.17.81/openapi/v1.json). The notebook's live reader and operator-imported archive reconnect/graph/video workflows are accepted within their named scopes. **Next: [validate real hosted access changes](docs/completion-plan.md#next-validate-real-hosted-authority-loss).** [Current status](docs/development-status.md) separates local, CI, exact deployment and real-account acceptance.
 
 Privensic Screen Reader now [checks assessment claims against admitted originals](docs/decisions/0062-recorded-evidence-claims.md); imports and file hashes alone cannot verify a barrier. Current admitted routes are explicitly controlled fixtures. It has an [automated website-evidence assessment](docs/decisions/0057-automated-website-evidence-readiness.md): supplied results â†’ eight requirements â†’ Ready, Insufficient evidence, or No blocking barrier documented. Unknown URLs require scanner results; no findings are fabricated and no human-review task is inserted. [Admitted provenance](docs/decisions/0058-admitted-observation-provenance.md) binds originals to the actual workspace, scan, job, generation and worker through atomic completion. [Explicit passive recording](docs/decisions/0059-admitted-passive-recording.md) adds original video and one capture state with zero input edges on the sanitized fixture. [Admitted keyboard recordings](docs/decisions/0060-admitted-keyboard-recordings.md) now retain actual route graphs, keys, timing and five originals; full delivery acceptance is tracked separately.

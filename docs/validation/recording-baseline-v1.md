@@ -32,8 +32,8 @@ synchronization cases pass, including actual Chromium. The full Windows workspac
 discovers/executes/passes3656, failed/not-executed0, in8m48s. This includes39
 uncommitted public-website API cases; the correction itself adds four cases to
 the3613 main baseline. The nonincremental Release build has0 warnings/errors and
-required format verification is clean. Corrected main CI remains pending;
-uncommitted public-website API work is separate.
+required format verification is clean. Public-website API work remains a
+separate source increment; current correction delivery receipts follow below.
 
 | Requirement | Evidence |
 | --- | --- |
@@ -44,6 +44,17 @@ uncommitted public-website API work is separate.
 | Exact target passes and immediately greater error remains Unknown | `ConservativeBound_AtTargetPassesAndImmediatelyAboveRemainsUnknown` |
 | Actual native reader/video behavior retains all20 objectives and original hashes | `TwentyActualReaderActions_AlignOriginalVideoWithinTargetIncludingUncertainty` |
 
-Private a5817a5 remains active and independently verified. Automatic promotion is
-held. This repair does not establish a new original-account hosted acceptance,
+Corrected source366e9c5 first runs in CI41539963824: Ubuntu passes3617/3617,
+while Windows records two text-fixture startup timeouts; the recording cases
+pass. Focused text cases pass4/4 locally. An unchanged-source full dispatch,
+CI41543636420, then passes all9 jobs and3617/3617 on each OS. No deadline,
+assertion or source is changed between those CI runs. The startup cause remains
+unproven and the failed receipts remain retained.
+
+Private promotion41545751253 is Ready for366e9c5. All165 files/4009378300 bytes
+independently match manifest4c7f79c78f5eafffa1c772246b2fe6d38cbe6302a859a6610dea0ad9bacc6935.
+The immutable rootless image, current release and both active services match;
+owned containers/networks are0. Fixture/public/control readiness passes without
+database persistence or original-account acceptance. Automatic promotion is held.
+This repair does not establish a new original-account hosted acceptance,
 general-site recording alignment or actual assistive-technology acceptance.

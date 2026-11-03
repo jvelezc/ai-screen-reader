@@ -38,7 +38,13 @@ public sealed class PostgresPublicWebsiteLeases : IPublicWebsiteLeases, IAsyncDi
 
     public async Task VerifySchemaAsync(CancellationToken token)
     {
-        await using var command = _source.CreateCommand("select to_regprocedure('hsr.claim_public_scan(uuid)') is not null and to_regprocedure('hsr.renew_public_scan(uuid,uuid,bigint,uuid,uuid)') is not null and to_regprocedure('hsr.finish_public_scan(uuid,uuid,bigint,uuid,uuid,text,text)') is not null and to_regprocedure('hsr.block_public_scan(uuid,uuid,bigint,uuid,uuid,text)') is not null");
+        await using var command = _source.CreateCommand("""
+            select to_regprocedure('hsr.claim_public_scan(uuid)') is not null
+              and to_regprocedure('hsr.renew_public_scan(uuid,uuid,bigint,uuid,uuid)') is not null
+              and to_regprocedure('hsr.finish_public_scan(uuid,uuid,bigint,uuid,uuid,text,text)') is not null
+              and to_regprocedure('hsr.block_public_scan(uuid,uuid,bigint,uuid,uuid,text)') is not null
+              and to_regprocedure('hsr.read_public_scan_status(uuid,uuid)') is not null
+            """);
         if (await command.ExecuteScalarAsync(token).ConfigureAwait(false) is not true) throw new InvalidDataException("PUBLIC_WEBSITE_SCHEMA_REQUIRED");
     }
 

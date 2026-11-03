@@ -8,11 +8,11 @@ using HeadlessScreenReader.Domain;
 namespace HeadlessScreenReader.Cli.HostedControl;
 
 /// <summary>Executable serialization shapes for consumers of the bounded core HTTP protocol.</summary>
-internal static class PortalOpenApi
+internal static partial class PortalOpenApi
 {
     private static readonly Lazy<string> Cached = new(Build);
     public static string Document => Cached.Value;
-    public const string ContractVersion = "1.17.0";
+    public const string ContractVersion = "1.18.0";
 
     private static string Build()
     {
@@ -66,6 +66,7 @@ internal static class PortalOpenApi
                  "supportReference":{"type":"string","pattern":"^[a-f0-9]{32}$"}}}
                 """)
         };
+        AddPublicWebsiteSchemas(schemas);
         var paths = new JsonObject
         {
             ["/api/workspaces/{organization}/archives/{archive}/manifest"] = Path("post", Operation("ReadArchiveManifest", "Read32 entries at most; indexSha256 is caller-retained authority for content identity, not tenant access. Original user/workspace RLS checked before and after storage. Metadata does not establish original availability, scan admission, custody or a goal", "ArchiveManifest", true, "ArchiveManifestRequest", organization: true, archive: true)),
@@ -119,6 +120,7 @@ internal static class PortalOpenApi
         paths["/api/workspaces/{organization}/scans/{scan}/cancellation"] = Path("post", Operation("RequestScanCancellation",
             "Idempotently request cancellation of the original caller's admitted run. Revokes job and publication authority; physical stop, native cleanup and input outcome remain unassessed. AlreadyCompleted preserves the existing receipt. No replay or new admission.",
             "ScanCancellation", true, "EmptyRequest", 202, organization: true, scan: true));
+        AddPublicWebsitePaths(paths);
         return new JsonObject
         {
             ["openapi"] = "3.1.0",
@@ -127,7 +129,7 @@ internal static class PortalOpenApi
             {
                 ["title"] = "HeadlessScreenReader core HTTP API",
                 ["version"] = ContractVersion,
-                ["description"] = "Private, fixed-fixture protocol consumed server-side by Supabase Edge Functions. Authenticated tenant scope is enforced by the core. This contract does not enable public hosting, browser input, goal verification or remote MCP. Legacy portal assets remain compatibility surfaces."
+                ["description"] = "Authenticated core protocol consumed server-side by Supabase Edge Functions and independent API/private MCP consumers. Fixed-fixture evidence and approved public read-only observations have separate provenance. Tenant scope is enforced by the core. Public snapshots do not establish a task outcome, blocking barrier or sufficient evidence. This contract does not publish remote MCP. Legacy portal assets remain compatibility surfaces."
             },
             ["servers"] = new JsonArray(new JsonObject { ["url"] = "/", ["description"] = "Use the separately configured authenticated core origin; not a browser API proxy" }),
             ["paths"] = paths,
@@ -170,6 +172,7 @@ internal static class PortalOpenApi
                     && context.TypeInfo.Type != typeof(PortalSourceImageRequest)
                     && context.TypeInfo.Type != typeof(EvidenceReadinessRequest))
                     value["required"] = Strings(properties.Select(property => property.Key).ToArray());
+                ApplyPublicWebsiteSchema(context.TypeInfo.Type, value, properties);
                 if (context.TypeInfo.Type == typeof(PortalWorkspacePageResponse))
                 {
                     properties["workspaces"]!["maxItems"] = 50;

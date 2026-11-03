@@ -28,7 +28,7 @@ internal interface IPortalProjectClient
 }
 
 /// <summary>Fixed-project Auth verification and RLS requests using the same original user bearer.</summary>
-internal sealed class SupabasePortalClient(HttpClient http, string publishableKey) : IPortalProjectClient
+internal sealed partial class SupabasePortalClient(HttpClient http, string publishableKey) : IPortalProjectClient, IPortalPublicWebsiteProjectClient
 {
     public async Task<PortalScanCancellationResponse> RequestScanCancellationAsync(PortalIdentity actor, Guid organization, Guid scan, CancellationToken token)
     {
@@ -270,7 +270,8 @@ internal sealed class SupabasePortalClient(HttpClient http, string publishableKe
         return request;
     }
 
-    private async Task<JsonDocument> SendAsync(HttpRequestMessage request, bool authentication, CancellationToken token)
+    private async Task<JsonDocument> SendAsync(HttpRequestMessage request, bool authentication, CancellationToken token,
+        int maximum = 131072, bool publicAdmission = false)
     {
         try
         {
@@ -283,16 +284,19 @@ internal sealed class SupabasePortalClient(HttpClient http, string publishableKe
             if (!response.IsSuccessStatusCode)
             {
                 // Classify only an allowlisted SQL code; never reflect provider messages/hints.
-                if (!authentication && response.StatusCode == HttpStatusCode.BadRequest)
+                if (!authentication && (response.StatusCode == HttpStatusCode.BadRequest || publicAdmission))
                 {
                     using var error = await ReadAsync(response, token).ConfigureAwait(false);
                     if (error.RootElement.ValueKind == JsonValueKind.Object && error.RootElement.TryGetProperty("code", out var code)
-                        && code.ValueKind == JsonValueKind.String && code.GetString() == "22023")
-                        throw new PortalFault(409, "CONTROL_REQUEST_CONFLICT");
+                        && code.ValueKind == JsonValueKind.String)
+                    {
+                        if (code.GetString() == "22023") throw new PortalFault(409, "CONTROL_REQUEST_CONFLICT");
+                        if (publicAdmission && code.GetString() == "54000") throw new PortalFault(429, "CONTROL_PUBLIC_WEBSITE_QUEUE_FULL");
+                    }
                 }
                 throw new PortalFault(503, authentication ? "CONTROL_AUTH_PROVIDER_UNAVAILABLE" : "CONTROL_DATABASE_UNAVAILABLE");
             }
-            return await ReadAsync(response, token).ConfigureAwait(false);
+            return await ReadAsync(response, token, authentication ? 131072 : maximum).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
         catch (PortalFault) { throw; }
@@ -300,10 +304,9 @@ internal sealed class SupabasePortalClient(HttpClient http, string publishableKe
         { throw new PortalFault(503, authentication ? "CONTROL_AUTH_PROVIDER_UNAVAILABLE" : "CONTROL_DATABASE_UNAVAILABLE"); }
     }
 
-    private static async Task<JsonDocument> ReadAsync(HttpResponseMessage response, CancellationToken token)
+    private static async Task<JsonDocument> ReadAsync(HttpResponseMessage response, CancellationToken token, int maximum = 131072)
     {
-        const int maximum = 131072;
-        if (response.Content.Headers.ContentLength is > maximum) throw InvalidResponse();
+        if (response.Content.Headers.ContentLength is { } length && length > maximum) throw InvalidResponse();
         await using var stream = await response.Content.ReadAsStreamAsync(token).ConfigureAwait(false);
         using var bytes = new MemoryStream();
         var buffer = new byte[8192];
