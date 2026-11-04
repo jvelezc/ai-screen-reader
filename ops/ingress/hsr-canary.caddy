@@ -28,6 +28,8 @@ screenreader.privensic.com {
 			<body><h1>Reader CI destination v1</h1><p>This is the fixed destination for the isolated reader acceptance task. Reaching it demonstrates only the tested route under the named reader profile.</p></body></html>
 			HTML 200
 		}
+		# Optional independently deployed consumer UI; fixed fixtures stay above it.
+		import /etc/caddy/hsr-ui/*.caddy
 		handle {
 			respond 404
 		}
