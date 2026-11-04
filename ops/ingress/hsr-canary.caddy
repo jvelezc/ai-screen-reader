@@ -1,12 +1,12 @@
-# Fixed public reader acceptance pages only. No API, MCP, worker or file server.
+# Fixed reader acceptance pages and an optional separate customer UI. No core API, MCP or worker.
 screenreader.privensic.com {
+	header -Server
 	header {
-		-Server
 		Cache-Control "no-store"
 		X-Content-Type-Options "nosniff"
 		Referrer-Policy "no-referrer"
-		Content-Security-Policy "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
 	}
+	header ?Content-Security-Policy "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
 	@read method GET HEAD
 	handle @read {
 		handle /ci/v1/source {
