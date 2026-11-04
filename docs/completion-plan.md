@@ -1,11 +1,49 @@
 # Remaining product completion gates
 
-November 2, 2026. Product: Privensic Screen Reader. This is the ordered remainder
-of the original plan, not a claim that all milestones are complete. The original
-proposal under `outputs/` is unchanged. Read [current delivery evidence](validation/recorded-evidence-claims-v1.md)
-for the accepted recorded-claim slice and its controlled-fixture limits.
+Updated November 4, 2026. Product: Privensic Screen Reader. The original proposal
+under `outputs/` is unchanged. The full product remains incomplete.
 
-**Current private deployment:**366e9c5, CI41543636420 and private promotion
+**Current accepted engine:** private237d309, HTTP1.18, private MCP0.3/26 tools,
+hosted permission schema and the tenant-scoped public observation worker. Source
+CI41550063896 passes all nine jobs:3703 per OS, native73, database660, operations180.
+Promotion41552936476 independently matches165 files/4009566888 bytes and its
+rootless image. Original-account local URL/results/download/reload acceptance is
+delivered. Those public reviews send0 target inputs; task/evidence outcomes stay
+unassessed. Earlier failures and their narrower scopes remain in their receipts.
+
+**New customer delivery:** https://screenreader.privensic.com/ . Existing Edge v14
+supports its exact origin. Production email callbacks are saved. Separate static
+CI/deployment verifies source-bound files, HTTPS and route/security policies;
+original-account production acceptance is its own gate. See the
+[current publication receipt](validation/customer-https-publication-v1.md).
+The core worker's automatic-promotion hold is unchanged.
+
+**NEXT — customer access and website task testing:** finish the real published
+sign-in → URL → saved results/reload journey, then implement versioned mock sites
+and bounded task collection. The remaining work is ordered:
+
+1. Published original-account acceptance and explicit unsupported/failed targets.
+2. Working/broken mock-site catalogue with real core API/private MCP receipts;
+   actual website tasks with source-bound graph/video and required repeat/pointer
+   comparison evidence. Passive collection alone cannot satisfy this gate.
+3. Hosted intervention/capture exclusion, remaining authority-loss checks, and
+   independently identified human/real-assistive-technology acceptance.
+4. Quotas/cancellation, retention/restore, failure recovery, exact rollback and a
+   declared supported release profile.
+5. After accepted product scope: complete user/operator/integration documentation.
+6. After documentation: behavior-preserving refactoring for best practices and
+   lower complexity. The specific UI-language refactor is already delivered.
+
+No human-review task is inserted into the automated assessment. Disability,
+injury, standing, liability and admissibility remain outside a website scan.
+Public MCP hosting and official plugins remain deferred.
+
+## Historical delivery snapshot — November 2
+
+The following snapshot retains its original evidence. Its then-current versions
+and next steps are historical; the current accepted state and sequence are above.
+
+**November 2 deployment snapshot:**366e9c5, CI41543636420 and private promotion
 41545751253 after the missing VPS DNS-helper and independent recording-baseline
 repairs. All nine source CI jobs pass:
 3617 per OS, native73, database631 and operations180, plus the actual Docker
@@ -42,12 +80,12 @@ fixture/public/control readiness. Automatic promotion remains deliberately held.
 The [independent later-baseline repair](validation/recording-baseline-v1.md)
 retains the exact failed metadata and unchanged250ms bound. A fresh unchanged-source
 CI run passes3617 per OS; the earlier Windows startup failures remain recorded.
-**Current source increment:** [HTTP1.18/private MCP0.3/26 tools](validation/public-website-api-v1.md).
+**At that checkpoint, source increment:** [HTTP1.18/private MCP0.3/26 tools](validation/public-website-api-v1.md).
 It adds scoped public-URL admission, current status, bounded observation and
 original-byte reads, plus the required permission-snapshot migration. Focused
 protocol tests and660 real disposable database checks pass; final full checks,
 feature CI, hosted migration and exact promotion remain separate gates.
-**Next:** finish that core release, then connect existing Edge and the customer
+**The next step at that checkpoint:** finish that core release, then connect existing Edge and the customer
 form and publish a real HTTPS UI origin. Deliver the
 [sign-in → URL → automated results journey](product-access.md), using the
 [versioned mock sites](test-site-scenarios.md) within the existing test website
@@ -312,9 +350,10 @@ storage/file windows remain inconclusive; retain those receipts.
 
 Use isolated test workspaces under the intended application identity. Finish
 real provider-token expiry and local-journal mid-I/O coverage. A normal original-
-account provider/Edge expiry check has a verified200 baseline and its own
-memory-only, non-refreshing credential; browser readback is pending. It does not
-replace the notebook's saved session. Reuse the one admitted recording;
+account provider/Edge expiry check now passes its own baseline and expired-token
+reads. That proves provider/Edge expiry only; core expiry, notebook clearing and
+local-journal mid-I/O authority remain separate checks. It does not replace the
+notebook's saved session. Reuse the one admitted recording;
 no new fixture input is needed for its protected-read checks. Confirm API/Edge deny current
 access, the notebook clears results and media, and native reader ownership is
 retired or remains explicitly unresolved. Do not revoke unrelated memberships or

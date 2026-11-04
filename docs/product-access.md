@@ -1,7 +1,9 @@
 # Product access: sign in, enter a URL, see results
 
-Requested November2,2026. This is the required customer journey and release gate.
-It is not a claim that a shareable application is ready today.
+Updated November 4, 2026. Customer prototype: https://screenreader.privensic.com/ .
+The product journey is sign in, enter a website URL, then see saved results.
+Publication, original-account acceptance and complete task-evidence collection
+are separate gates. The full product is not complete.
 
 ## What a person receives
 
@@ -12,63 +14,48 @@ accounts. The customer does not need source-repository, Supabase dashboard, VPS,
 API-key or MCP setup access. Never share the owner's password or infrastructure
 credentials as the product access package.
 
-## Current verified limits
+## Current delivery and limits
 
-The notebook has been accepted at `http://localhost:6087/` on the developer's
-computer. That address cannot be sent as an application link for another person.
-No published UI origin is recorded in the repo; the Edge gateway defaults to the
-two exact local origins. The authenticated core API is independently reachable,
-but its API URL is not the customer application. The public test website is also
-not the customer application.
+The separate Lovable-compatible application now has an HTTPS deployment path.
+It uses the existing Supabase project and Edge Function, never a browser-to-core
+proxy. Production Auth's site URL and exact callback are configured; existing
+local callbacks are preserved. Edge v14 accepts the exact production origin and
+retains caller/workspace authorization. Confirmed email remains required.
 
-The current UI can use recorded controlled-fixture results and explicitly imported
-scanner data. A URL alone requires real backend scan results; it must not fabricate
-findings. The approved-public read-only worker base now has real source and native
-cleanup proof. Its managed ownership and actual abrupt-exit recovery pass in
-CI41506870871 on Windows and Ubuntu with3519 tests each; all nine jobs pass.
-Private deployment41545751253 now promotes366e9c5 after the missing VPS DNS-helper
-and independent baseline repairs. All9 source CI41543636420 jobs pass3617 per OS.
-All165 installed files/4009378300 bytes independently match the manifest;
-the normalized rootless image digest matches and owned native resources are0.
-This is operational deployment,
-separate from the last original-account HTTP1.17/private MCP21 acceptance.
+The [publication receipt](validation/customer-https-publication-v1.md) separates
+source CI, verified HTTPS files and original-account browser acceptance. The
+first sign-in on this new origin cannot inherit localhost's browser storage.
+Once signed in, the existing SDK-managed persistent session remains in use.
+No administrator or fabricated session can replace customer acceptance.
 
-The next local increment now connects canonical public URLs to scoped queue jobs,
-an actual isolated worker and two retained same-document captures. Its actual
-[collection receipt](validation/public-website-collection-v1.md),631 database
-checks and180 Linux operational checks pass. Core API/MCP admission and result
-retrieval, existing Edge consumption and the customer form remain to be connected.
-Read-only observations leave task outcomes and evidence sufficiency unassessed.
-The tested basic public-collection schema is now hosted, and its exact worker is
-privately promoted. Automatic promotion remains held. The
-[recording-baseline repair](validation/recording-baseline-v1.md) now passes its
-fresh full CI, preserving earlier failures and the existing250ms target.
-The [public-website API/private MCP](validation/public-website-api-v1.md) and
-permission snapshot are implemented in source and under final release validation,
-not published or admitted through the customer UI.
-Existing signup requires confirmed email; a new account must
-receive its own authorized workspace or an explicitly granted membership.
+Core237d309 is privately deployed with HTTP1.18 and private MCP0.3/26 tools.
+Original-account local acceptance already covers URL admission through Edge,
+isolated execution, saved page results, original-byte download and restoration.
+The current public-URL profile sends **zero target inputs** and makes **no task
+attempt or evidence-readiness decision**. It retains actual page information;
+it does not prove a blocked checkout, repeat failure or successful comparison.
+Controlled fixture assessments and imported scanner results remain distinct.
+
+Existing source and native checks preserve target/egress policy, current tenant
+authority, original-byte integrity and cleanup uncertainty. A policy denial or
+engine failure is not an accessibility barrier. Automatic core worker promotion
+remains held; the separate static UI pipeline does not lift that hold.
 
 ## Required implementation and acceptance
 
-1. Connect the approved public-source worker to trusted tenant-scoped admission,
-   isolated execution and retained results through the independent core API/MCP.
-   Preserve target policy, actual source URL, partial/unsupported/error states and
-   cleanup uncertainty. Do not relabel a fixture report as a submitted website.
-2. Connect the URL form through the existing Supabase Edge gateway to that API.
-   Show queued/running/complete/failed states and persisted actual results.
-   Keep proven barriers, suspected issues and missing supporting evidence distinct.
-3. Publish the separate Lovable-compatible UI to a real HTTPS application origin,
-   configure that exact Edge origin and appropriate email callbacks, and verify
-   normal signup/sign-in and caller-owned workspace onboarding.
-4. Verify the complete journey through the intended original account, refresh and
-   reconnect, plus cross-account isolation, denied/unsupported targets and genuine
-   failed work. Use the [mock sites](test-site-scenarios.md) as reproducible working
-   and broken feature cases, with actual MCP/API receipts. Keep human/AT validation
-   separate from automated and agent-operated acceptance.
+1. Complete the original account's published HTTPS journey: sign in, submit a
+   permitted URL, retrieve the same saved results after reload/reconnect, and
+   verify workspace isolation and explicit failed/unsupported outcomes. Local
+   acceptance alone does not establish this new-origin gate.
+2. Add versioned working/broken [mock sites](test-site-scenarios.md), then one
+   bounded website task at a time through core API/private MCP. Retain actual
+   nodes/edges, input outcomes, goal checks, video and required repeat/pointer
+   comparison records. Preserve missing or unsupported evidence.
+3. Complete hosted intervention/capture-exclusion, human/real-AT, operational
+   recovery and supported-profile acceptance in their own scopes.
 
-Only after those checks may an owner send the customer the live application URL
-and invite/signup instructions. The report assesses predefined website-side
+The prototype link may be shared with its documented limits. A supported product
+release requires the remaining gates; never share infrastructure credentials. The report assesses predefined website-side
 evidence requirements; it does not establish disability, personal injury, standing,
 liability or admissibility. No human-review task is added to the automated result.
 

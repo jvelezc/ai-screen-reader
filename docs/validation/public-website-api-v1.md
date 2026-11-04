@@ -3,8 +3,15 @@
 [Decision0084](../decisions/0084-public-website-api-and-private-mcp.md) exposes the
 existing isolated public observation worker without fixture substitution or
 invented task/evidence claims. HTTP contract1.18 and private MCP0.3/26 tools are
-source work until their own CI, schema installation and exact promotion pass.
-Existing Edge12/UI00bc2bb have not yet adopted this resource.
+delivered in private engine237d309. Source CI41550063896 passes all nine jobs,
+including3703 tests per OS, native73, database660 and operations180. Hosted
+permissions and exact promotion41552936476 pass:165 independently matching files,
+4009566888 bytes and the rootless image. Existing Edge13 and original-account
+local UI acceptance cover URL admission, saved observations/original download
+and restoration. Edge14 adds the exact separate customer HTTPS origin; its
+[publication and browser gate](customer-https-publication-v1.md) remain distinct.
+Public reviews retain page information with0 target inputs and no task attempt
+or evidence-readiness verdict. These checks do not publish public MCP/plugins.
 
 | Requirement | Evidence |
 | --- | --- |
@@ -29,9 +36,9 @@ run `c5fafa1985234dc58406e46dac1bc215` retains two9-node captures and22390 origi
 bytes with matching scope/producer/digest, native shutdown and resource absence,
 queue/lease counts0 and owned database removal. It performs0 inputs and does not
 verify a goal. The actual pinned disposable PostgreSQL suite passes660/660,
-including29 new permission-status checks. Hosted schema is not inferred from
-those disposable checks. Final full local checks, remote CI and promotion receipts
-are recorded when complete; original-account Edge/UI acceptance remains open.
+including29 new permission-status checks. The delivery summary above records
+subsequent hosted schema, CI, promotion and local original-account acceptance
+independently of these disposable checks. Production UI acceptance is separate.
 
 Full local Windows discovers, executes and passes3703 tests, failed/not-executed0,
 in8m59s. This includes86 new cases. The strict nonincremental Release build has

@@ -1,5 +1,12 @@
 # HeadlessScreenReader
 
+Customer prototype: **https://screenreader.privensic.com/**. Sign in, enter a
+website URL and review saved page information. The current public profile sends
+zero target inputs and does not assess task barriers or evidence sufficiency.
+See [access and acceptance](docs/product-access.md) and the
+[remaining product gates](docs/completion-plan.md).
+
+
 Local .NET screen-reader foundation for the architecture in [the development plan](outputs/HeadlessScreenReader-Architecture-Review-and-Development-Plan.md).
 
 **Customer release gate: [sign in → website URL → saved results](docs/product-access.md).**
