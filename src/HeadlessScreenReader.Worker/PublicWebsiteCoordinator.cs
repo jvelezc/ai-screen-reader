@@ -40,15 +40,39 @@ public sealed class IsolatedPublicWebsiteExecutor(IsolatedPublicReaderSupervisor
     }
 }
 
-public sealed record PublicWebsiteRunResult(string State, Guid? JobId = null, string? ErrorCode = null);
+public sealed record PublicWebsiteRunResult(string State, Guid? JobId = null, string? ErrorCode = null)
+{
+    public PublicReaderFailureDiagnostic? FailureDiagnostic { get; init; }
+}
+
+public sealed record PublicWebsiteOperationalEvent(string Schema, string Stage, Guid OrganizationId, Guid ScanId,
+    Guid JobId, long Generation, Guid WorkerId, double ElapsedMilliseconds, string? State,
+    string? ErrorCode, int? ObservedNodes, bool? NativeShutdownConfirmed, bool? ResourcesAbsenceConfirmed,
+    PublicReaderFailureDiagnostic? FailureDiagnostic);
 
 /// <summary>The database owns publication authority; this coordinator supplies only actually collected passive facts.</summary>
 public sealed class PublicWebsiteCoordinator(IPublicWebsiteLeases leases, IPublicWebsiteExecutor executor)
 {
+    public Action<PublicWebsiteOperationalEvent>? Diagnostic { get; init; }
+
     public async Task<PublicWebsiteRunResult> RunOnceAsync(Guid worker, CancellationToken token)
     {
         var claim = await leases.ClaimAsync(worker, token).ConfigureAwait(false);
         if (claim.Lease is not { } lease) return new(claim.Status);
+        var started = System.Diagnostics.Stopwatch.GetTimestamp();
+        void Log(string stage, PublicWebsiteRunResult? result = null, PublicWebsiteObservation? observed = null)
+        {
+            try
+            {
+                Diagnostic?.Invoke(new("hsr-public-website-operation-v1", stage, lease.Job.OrganizationId,
+                    lease.Job.ScanId, lease.Job.JobId, lease.Job.Generation, lease.WorkerId,
+                    System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds, result?.State,
+                    result?.ErrorCode, observed?.Captures.Sum(capture => capture.Nodes.Length),
+                    observed?.NativeShutdownConfirmed, observed?.ResourcesAbsenceConfirmed, result?.FailureDiagnostic));
+            }
+            catch (Exception) { /* Logging cannot change publication or cleanup authority. */ }
+        }
+        Log("Claimed");
         using var execution = CancellationTokenSource.CreateLinkedTokenSource(token);
         using var heartbeatStop = new CancellationTokenSource();
         var permissionLost = 0;
@@ -68,9 +92,12 @@ public sealed class PublicWebsiteCoordinator(IPublicWebsiteLeases leases, IPubli
             execution.Token.ThrowIfCancellationRequested();
             if (!await Authorize(execution.Token).ConfigureAwait(false)) throw new BrowserOperationException("PUBLIC_WEBSITE_AUTHORITY_LOST");
             observed.Validate(lease.Job, lease.WorkerId);
+            Log("Collected", observed: observed);
             publishing = true;
-            if (await leases.CompleteAsync(lease, observed, execution.Token).ConfigureAwait(false)) return new("Observed", lease.Job.JobId);
-            return await BlockAsync(lease, "PUBLIC_WEBSITE_PUBLICATION_UNCONFIRMED").ConfigureAwait(false);
+            var result = await leases.CompleteAsync(lease, observed, execution.Token).ConfigureAwait(false)
+                ? new PublicWebsiteRunResult("Observed", lease.Job.JobId)
+                : await BlockAsync(lease, "PUBLIC_WEBSITE_PUBLICATION_UNCONFIRMED").ConfigureAwait(false);
+            Log("Finished", result, observed); return result;
         }
         catch (Exception error)
         {
@@ -81,7 +108,9 @@ public sealed class PublicWebsiteCoordinator(IPublicWebsiteLeases leases, IPubli
                     : token.IsCancellationRequested ? "PUBLIC_WEBSITE_EXECUTION_CANCELLED"
                     : publishing ? "PUBLIC_WEBSITE_PUBLICATION_UNCONFIRMED"
                     : "PUBLIC_WEBSITE_SOURCE_UNCONFIRMED";
-            return await BlockAsync(lease, code).ConfigureAwait(false);
+            var result = await BlockAsync(lease, code).ConfigureAwait(false);
+            result = result with { FailureDiagnostic = PublicReaderFailureDiagnostic.From(error, lease.Job.JobId) };
+            Log("Finished", result); return result;
         }
         finally
         {

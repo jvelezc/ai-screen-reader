@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -17,6 +18,10 @@ namespace HeadlessScreenReader.Cli.HostedControl;
 
 /// <summary>JSON object with no caller-selected identity or tenant bootstrap fields.</summary>
 internal sealed record PortalEmptyRequest;
+
+internal sealed record PortalRequestDiagnostic(string Schema, string SupportReference, string ReleaseCommit,
+    string Operation, string Method, int Status, string? ErrorCode, double ElapsedMilliseconds,
+    Guid? OrganizationId, Guid? ScanId);
 
 /// <summary>Private control plane. All tenant operations revalidate identity and use RLS.</summary>
 internal sealed class HostedControlServer : IAsyncDisposable
@@ -30,7 +35,7 @@ internal sealed class HostedControlServer : IAsyncDisposable
         Func<Task<bool>>? readerRuntimeReady = null, HeadlessScreenReader.Worker.TraversalArchive? traversalArchive = null,
         IPortalProgressReader? progressReader = null, IPortalProgressSnapshotReader? progressSnapshotReader = null,
         IPortalRecordedOutputReader? recordedOutputReader = null, IPortalSourceImagesReader? sourceImagesReader = null,
-        Func<Task<bool>>? publicWebsiteRuntimeReady = null)
+        Func<Task<bool>>? publicWebsiteRuntimeReady = null, Action<PortalRequestDiagnostic>? diagnostic = null)
     {
         options.Validate();
         var builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions
@@ -66,6 +71,11 @@ internal sealed class HostedControlServer : IAsyncDisposable
         app.Use(async (context, next) =>
         {
             Headers(context.Response);
+            var started = System.Diagnostics.Stopwatch.GetTimestamp();
+            var reference = Guid.NewGuid().ToString("N");
+            context.Items[typeof(PortalRequestDiagnostic)] = reference;
+            context.Response.Headers["X-HSR-Request-Id"] = reference;
+            string? errorCode = null;
             try
             {
                 var publicOrigin = new Uri(options.PublicOrigin).GetLeftPart(UriPartial.Authority);
@@ -88,12 +98,31 @@ internal sealed class HostedControlServer : IAsyncDisposable
                 }
                 await next(context).ConfigureAwait(false);
             }
-            catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested) { context.Abort(); }
-            catch (PortalFault fault) { await FailAsync(context, fault.Status, fault.Code).ConfigureAwait(false); }
+            catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested) { errorCode = "CANCELLED"; context.Abort(); }
+            catch (PortalFault fault) { errorCode = SafeCode(fault.Code); await FailAsync(context, fault.Status, fault.Code).ConfigureAwait(false); }
             catch (BadHttpRequestException exception)
-            { await FailAsync(context, exception.StatusCode is 413 or 415 ? exception.StatusCode : 400, "CONTROL_REQUEST_INVALID").ConfigureAwait(false); }
-            catch (JsonException) { await FailAsync(context, 400, "CONTROL_REQUEST_INVALID").ConfigureAwait(false); }
-            catch { await FailAsync(context, 503, "CONTROL_OPERATION_UNCONFIRMED").ConfigureAwait(false); }
+            { errorCode = "CONTROL_REQUEST_INVALID"; await FailAsync(context, exception.StatusCode is 413 or 415 ? exception.StatusCode : 400, errorCode).ConfigureAwait(false); }
+            catch (JsonException) { errorCode = "CONTROL_REQUEST_INVALID"; await FailAsync(context, 400, errorCode).ConfigureAwait(false); }
+            catch { errorCode = "CONTROL_OPERATION_UNCONFIRMED"; await FailAsync(context, 503, errorCode).ConfigureAwait(false); }
+            finally
+            {
+                var operation = context.GetEndpoint()?.Metadata.GetMetadata<IEndpointNameMetadata>()?.EndpointName;
+                operation = operation is "AdmitPublicWebsite" or "ListPublicWebsites" or "ReadPublicWebsiteStatus"
+                    or "ReadPublicWebsiteFirstNodes" or "ReadPublicWebsitePinnedNodes" or "ReadPublicWebsiteOriginal"
+                    or "PortalSession" or "EnsurePersonalWorkspace" or "GetPortalWorkspace" ? operation : "Other";
+                Guid? Id(string key) => context.Items.ContainsKey(typeof(PortalIdentity))
+                    && Guid.TryParse(context.Request.RouteValues[key]?.ToString(), out var id) ? id : null;
+                var value = new PortalRequestDiagnostic("hsr-control-request-v1", reference, options.ReleaseCommit,
+                    operation, context.Request.Method is "GET" or "POST" or "OPTIONS" ? context.Request.Method : "Other",
+                    errorCode == "CANCELLED" ? 499 : context.Response.StatusCode, errorCode,
+                    System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds, Id("organization"), Id("scan"));
+                try
+                {
+                    if (diagnostic is not null) diagnostic(value);
+                    else Console.Error.WriteLine(JsonSerializer.Serialize(value));
+                }
+                catch (Exception) { /* Logging does not affect the request result. */ }
+            }
         });
         app.MapPortal(options, readerRuntimeReady);
         app.MapWorkspaceCatalog();
@@ -117,6 +146,9 @@ internal sealed class HostedControlServer : IAsyncDisposable
 
     internal static PortalIdentity Actor(HttpContext context) => context.Items[typeof(PortalIdentity)] as PortalIdentity
         ?? throw new PortalFault(401, "CONTROL_AUTHENTICATION_REQUIRED");
+    private static string SafeCode(string code) => code is "CONTROL_AUTHENTICATION_REQUIRED" or "CONTROL_HOST_DENIED"
+        or "CONTROL_ORIGIN_DENIED" or "CONTROL_QUERY_DENIED" or "CONTROL_REQUEST_INVALID" or "CONTROL_JSON_REQUIRED"
+        or "CONTROL_OPERATION_UNCONFIRMED" ? code : "CONTROL_REQUEST_FAILED";
     internal static void NoQuery(HttpContext context)
     {
         if (context.Request.QueryString.HasValue) throw new PortalFault(400, "CONTROL_QUERY_DENIED");
@@ -144,7 +176,7 @@ internal sealed class HostedControlServer : IAsyncDisposable
         context.Response.ContentLength = null;
         if (status == 401) context.Response.Headers.WWWAuthenticate = "Bearer";
         return TypedResults.Problem(statusCode: status, title: code, detail: code,
-            extensions: new Dictionary<string, object?> { ["supportReference"] = Guid.NewGuid().ToString("N") }).ExecuteAsync(context);
+            extensions: new Dictionary<string, object?> { ["supportReference"] = context.Items[typeof(PortalRequestDiagnostic)] }).ExecuteAsync(context);
     }
     public async ValueTask DisposeAsync()
     {

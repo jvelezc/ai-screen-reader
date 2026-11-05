@@ -11,7 +11,7 @@ New-Item -ItemType Directory -Path $folder | Out-Null
 $created = $false; $removed = $false; $ready = $false; $stage = 'create'; $errorCode = $null
 $cases = [Collections.Generic.List[string]]::new()
 $script:discovered = 0; $script:executed = 0; $script:failed = 0
-$expectedCases = 660
+$expectedCases = 663
 $oldPassword = $env:POSTGRES_PASSWORD
 
 function Wait-DatabaseReady {
@@ -116,7 +116,7 @@ try {
     $stage = 'workspace-catalog'
     Invoke-DatabaseFile 'tests/database/workspace-catalog.sql' 'workspace-catalog' -Expected 8 -User 'supabase_admin'
     $stage = 'public-website-observation'
-    Invoke-DatabaseFile 'tests/database/public-website-observation.sql' 'public-website-observation' -Expected 69 -User 'supabase_admin'
+    Invoke-DatabaseFile 'tests/database/public-website-observation.sql' 'public-website-observation' -Expected 72 -User 'supabase_admin'
     $stage = 'public-website-boundaries'
     Invoke-DatabaseFile 'tests/database/public-website-boundaries.sql' 'public-website-boundaries' -Expected 29 -User 'supabase_admin'
     $stage = 'concurrent-public-website'

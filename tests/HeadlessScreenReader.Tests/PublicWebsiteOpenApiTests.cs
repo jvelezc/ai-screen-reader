@@ -44,7 +44,7 @@ public sealed class PublicWebsiteOpenApiTests
         Assert.Equal(2, nodes.GetProperty("captures").GetProperty("const").GetInt32());
         Assert.Equal(100, nodes.GetProperty("nodes").GetProperty("maxItems").GetInt32());
         var original = schemas.GetProperty("PublicWebsiteOriginal").GetProperty("properties");
-        Assert.Equal(PublicWebsiteObservation.MaximumBytes, original.GetProperty("totalBytes").GetProperty("maximum").GetInt32());
+        Assert.Equal(PublicWebsiteObservation.MaximumSupportedBytes, original.GetProperty("totalBytes").GetProperty("maximum").GetInt32());
         Assert.Equal(87384, original.GetProperty("data").GetProperty("maxLength").GetInt32());
         Assert.Equal("base64", original.GetProperty("data").GetProperty("contentEncoding").GetString());
         var status = schemas.GetProperty("PublicWebsiteStatus").GetProperty("properties");

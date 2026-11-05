@@ -196,6 +196,24 @@ public sealed class PublicWebsiteApiTests
     }
 
     [Theory]
+    [InlineData(2_097_169)]
+    [InlineData(4_194_304)]
+    public async Task LargeProviderOriginalRetainsBoundedPagesAndFreshAuthorizationAtExactEof(int size)
+    {
+        using var rig = new Rig(); rig.SetText(rig.Text.PadRight(size, ' '));
+        var offset = ((size - 1) / 65536) * 65536;
+        var page = await rig.Service.OriginalAsync(rig.Actor, rig.Job.OrganizationId, rig.Job.ScanId, offset, rig.Digest, default);
+        Assert.Equal(size, page.TotalBytes); Assert.Equal(offset, page.Offset);
+        Assert.Equal(Encoding.UTF8.GetBytes(rig.Text[offset..]), page.Data);
+        Assert.Equal(Convert.ToHexStringLower(SHA256.HashData(page.Data)), page.PageSha256);
+        Assert.Null(page.NextOffset); Assert.Equal(rig.Digest, page.OriginalSha256);
+        Assert.InRange(JsonSerializer.SerializeToUtf8Bytes(page, PortalJson.Options).Length, 1, 131072);
+        var eof = await rig.Service.OriginalAsync(rig.Actor, rig.Job.OrganizationId, rig.Job.ScanId, size, rig.Digest, default);
+        Assert.Empty(eof.Data); Assert.Null(eof.NextOffset); Assert.Equal(size, eof.TotalBytes);
+        Assert.Equal(4, rig.Memberships); Assert.Equal(4, rig.StatusReads); Assert.Equal(2, rig.OriginalReads);
+    }
+
+    [Theory]
     [InlineData("hash")]
     [InlineData("producer")]
     [InlineData("goal")]

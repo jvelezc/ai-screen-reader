@@ -43,7 +43,8 @@ public static class ReaderWorkerWire
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumBytes);
         if (payload.Length == 0 || payload.Length > maximumBytes)
-            throw new BrowserOperationException("READER_WORKER_FRAME_INVALID");
+            throw new BrowserOperationException("READER_WORKER_FRAME_INVALID")
+            { Data = { ["PayloadBytes"] = payload.Length, ["MaximumBytes"] = maximumBytes } };
         var header = new byte[4];
         BinaryPrimitives.WriteInt32BigEndian(header, payload.Length);
         await output.WriteAsync(header, token).ConfigureAwait(false);

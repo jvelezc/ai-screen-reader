@@ -26,6 +26,10 @@ internal static class PublicReaderWorker
         catch (Exception) { await diagnostics.WriteLineAsync("PUBLIC_READER_WORKER_CONFIGURATION_REQUIRED"); return 2; }
         if (!OperatingSystem.IsLinux()) { await diagnostics.WriteLineAsync("PUBLIC_READER_ISOLATION_REQUIRED"); return 2; }
         time ??= TimeProvider.System;
+        var started = time.GetTimestamp();
+        var stage = "Request"; var currentSession = Guid.Empty; var currentSequence = 0;
+        int? observedNodes = null;
+        PublicReaderFailureDiagnostic? failure = null;
         using var expiry = new CancellationTokenSource(ReaderWorkerRequest.Lifetime, time);
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(token, expiry.Token);
         using var heartbeatStop = CancellationTokenSource.CreateLinkedTokenSource(stop.Token);
@@ -36,8 +40,10 @@ internal static class PublicReaderWorker
             // Console pipe reads may ignore cancellation once a native read starts.
             // Abandon this one-use transport on expiry; process exit settles it.
             var request = await PublicReaderWorkerWire.ReadRequestAsync(input, stop.Token).WaitAsync(stop.Token).ConfigureAwait(false);
+            currentSession = request.SessionId; currentSequence = request.Sequence;
             if (request.Operation != ReaderWorkerOperation.Open) throw new BrowserOperationException("PUBLIC_READER_WORKER_REQUEST_INVALID");
             var policy = new PublicTargetPolicy([source.AllowedHost]);
+            stage = "Isolation";
             using (var proofDeadline = CancellationTokenSource.CreateLinkedTokenSource(stop.Token))
             {
                 proofDeadline.CancelAfter(TimeSpan.FromSeconds(20));
@@ -46,19 +52,25 @@ internal static class PublicReaderWorker
             }
             await PulseAsync(proxy, args[2], false, stop.Token).ConfigureAwait(false); lease = true;
             heartbeat = RenewAsync(proxy, args[2], stop, heartbeatStop.Token, time);
+            stage = "Navigation";
             browser = await ChromiumFixtureBrowser.LaunchPublicPageAsync(source.TargetUrl, proxy, policy, stop.Token).ConfigureAwait(false);
+            stage = "Capture";
             var snapshot = await browser.CaptureAsync(stop.Token).ConfigureAwait(false);
+            observedNodes = snapshot.Nodes.Length;
             var document = snapshot.DocumentId; var session = request.SessionId; var sequence = 1; var captures = 1;
             var response = Response(request, ReaderWorkerState.Open, snapshot, null);
+            stage = "Response";
             response.Validate(request, source); stop.Token.ThrowIfCancellationRequested();
             await PublicReaderWorkerWire.WriteResponseAsync(output, response, stop.Token).ConfigureAwait(false);
             while (true)
             {
                 request = await PublicReaderWorkerWire.ReadRequestAsync(input, stop.Token).WaitAsync(stop.Token).ConfigureAwait(false);
+                currentSession = request.SessionId; currentSequence = request.Sequence;
                 if (request.SessionId != session || request.Sequence != ++sequence)
                     throw new BrowserOperationException("PUBLIC_READER_WORKER_REQUEST_INVALID");
                 if (request.Operation == ReaderWorkerOperation.Close)
                 {
+                    stage = "Shutdown";
                     await browser.DisposeAsync().ConfigureAwait(false);
                     response = Response(request, ReaderWorkerState.Closed, null, browser.ShutdownStatus);
                     response.Validate(request, source, document);
@@ -70,8 +82,11 @@ internal static class PublicReaderWorker
                 }
                 if (request.Operation != ReaderWorkerOperation.Observe || ++captures > ReaderWorkerRequest.MaximumCaptures)
                     throw new BrowserOperationException("PUBLIC_READER_WORKER_REQUEST_INVALID");
+                stage = "Observation";
                 snapshot = await browser.CaptureAsync(stop.Token).ConfigureAwait(false);
+                observedNodes = snapshot.Nodes.Length;
                 response = Response(request, ReaderWorkerState.Observed, snapshot, null);
+                stage = "Response";
                 response.Validate(request, source, document); stop.Token.ThrowIfCancellationRequested();
                 await PublicReaderWorkerWire.WriteResponseAsync(output, response, stop.Token).ConfigureAwait(false);
             }
@@ -80,7 +95,12 @@ internal static class PublicReaderWorker
                 AccessibilitySnapshot? captured, BrowserShutdownStatus? shutdown) =>
                 new(request.Schema, request.SessionId, request.Sequence, state, source, document, captured, shutdown, 0, false);
         }
-        catch (Exception) { exit = 3; }
+        catch (Exception error)
+        {
+            failure = PublicReaderFailureDiagnostic.Create(stage, error, currentSession, currentSequence,
+                observedNodes, time.GetElapsedTime(started).TotalMilliseconds);
+            exit = 3;
+        }
         finally
         {
             if (browser is not null) { try { await browser.DisposeAsync().ConfigureAwait(false); } catch (Exception) { exit = 3; } }
@@ -88,7 +108,11 @@ internal static class PublicReaderWorker
             if (heartbeat is not null) { try { await heartbeat.ConfigureAwait(false); } catch (Exception) { exit = 3; } }
             if (lease) { try { await PulseAsync(proxy, args[2], true, CancellationToken.None).ConfigureAwait(false); } catch (Exception) { exit = 3; } }
         }
-        if (exit != 0) await diagnostics.WriteLineAsync("PUBLIC_READER_WORKER_UNCONFIRMED").ConfigureAwait(false);
+        if (exit != 0)
+        {
+            if (failure is not null) await failure.WriteAsync(diagnostics).ConfigureAwait(false);
+            await diagnostics.WriteLineAsync("PUBLIC_READER_WORKER_UNCONFIRMED").ConfigureAwait(false);
+        }
         return exit;
     }
 

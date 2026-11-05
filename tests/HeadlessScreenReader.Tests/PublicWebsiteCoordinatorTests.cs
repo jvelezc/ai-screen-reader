@@ -5,6 +5,48 @@ namespace HeadlessScreenReader.Tests;
 
 public sealed class PublicWebsiteCoordinatorTests
 {
+    [Fact]
+    public async Task LifecycleRecordsJoinScopeAndConfirmedCollectionWithoutSerializingSourceOrLease()
+    {
+        var leases = new Leases(); var events = new List<PublicWebsiteOperationalEvent>();
+        var result = await new PublicWebsiteCoordinator(leases, new Executor()) { Diagnostic = events.Add }
+            .RunOnceAsync(PublicWebsiteObservationTests.Worker, CancellationToken.None);
+        Assert.Equal("Observed", result.State);
+        Assert.Equal(new[] { "Claimed", "Collected", "Finished" }, events.Select(value => value.Stage));
+        Assert.All(events, value => { Assert.Equal(leases.Lease.Job.JobId, value.JobId); Assert.Equal(leases.Lease.Job.ScanId, value.ScanId); Assert.Equal(leases.Lease.WorkerId, value.WorkerId); });
+        Assert.True(events[1].NativeShutdownConfirmed); Assert.True(events[1].ResourcesAbsenceConfirmed);
+        Assert.Equal(2, events[1].ObservedNodes); Assert.Equal("Observed", events[2].State);
+        var text = System.Text.Json.JsonSerializer.Serialize(events);
+        Assert.DoesNotContain(leases.Lease.Job.Source.TargetUrl, text); Assert.DoesNotContain("actual-document", text);
+        Assert.DoesNotContain(leases.Lease.Token.ToString("D"), text);
+    }
+
+    [Fact]
+    public async Task LoggingSinkFailureCannotPreventAuthoritativePublication()
+    {
+        var leases = new Leases();
+        var result = await new PublicWebsiteCoordinator(leases, new Executor()) { Diagnostic = _ => throw new IOException("sink unavailable") }
+            .RunOnceAsync(PublicWebsiteObservationTests.Worker, CancellationToken.None);
+        Assert.Equal("Observed", result.State); Assert.NotNull(leases.Completed); Assert.Null(leases.Blocked);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task BoundChildFailureReachesTerminalLogWhileForeignDiagnosticsAreDiscarded(bool foreign)
+    {
+        var leases = new Leases(); var events = new List<PublicWebsiteOperationalEvent>();
+        var diagnostic = PublicReaderFailureDiagnostic.Create("Response", new BrowserOperationException("READER_WORKER_FRAME_INVALID"),
+            foreign ? Guid.NewGuid() : leases.Lease.Job.JobId, 1, 1327, 6150);
+        var failure = PublicReaderFailureDiagnostic.Attach("PUBLIC_READER_OPEN_UNCONFIRMED", diagnostic);
+        var result = await new PublicWebsiteCoordinator(leases, new Executor { Failure = failure }) { Diagnostic = events.Add }
+            .RunOnceAsync(PublicWebsiteObservationTests.Worker, CancellationToken.None);
+        Assert.Equal("Blocked", result.State); Assert.Equal("PUBLIC_WEBSITE_SOURCE_UNCONFIRMED", result.ErrorCode);
+        Assert.Null(leases.Completed); Assert.Equal("Finished", events[^1].Stage);
+        if (foreign) { Assert.Null(result.FailureDiagnostic); Assert.Null(events[^1].FailureDiagnostic); }
+        else { Assert.Equal(diagnostic, result.FailureDiagnostic); Assert.Equal("READER_WORKER_FRAME_INVALID", events[^1].FailureDiagnostic!.Cause); }
+    }
+
     private sealed class Leases : IPublicWebsiteLeases
     {
         public PublicWebsiteLease Lease { get; } = new(PublicWebsiteObservationTests.Job(), PublicWebsiteObservationTests.Worker, Guid.NewGuid());

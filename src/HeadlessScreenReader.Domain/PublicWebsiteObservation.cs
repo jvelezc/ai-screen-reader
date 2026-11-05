@@ -22,7 +22,10 @@ public sealed record PublicWebsiteObservation(string Schema, PublicWebsiteJob Jo
     bool NativeShutdownConfirmed, bool ResourcesAbsenceConfirmed, int DispatchedInputs, bool GoalVerified)
 {
     public const string CurrentSchema = "hsr-public-website-observation-v1";
+    /// <summary>Legacy client ceiling retained for already-compiled callers.</summary>
     public const int MaximumBytes = 1024 * 1024;
+    /// <summary>Current bounded original size for two public-page snapshots; paging stays64KiB.</summary>
+    public const int MaximumSupportedBytes = 4 * 1024 * 1024;
 
     public void Validate(PublicWebsiteJob expected, Guid worker)
     {

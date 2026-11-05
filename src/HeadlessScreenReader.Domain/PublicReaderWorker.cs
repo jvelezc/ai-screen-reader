@@ -56,6 +56,9 @@ public sealed record PublicReaderWorkerResponse(string Schema, Guid SessionId, i
     PublicReaderSource Source, string DocumentId, AccessibilitySnapshot? Snapshot, BrowserShutdownStatus? Shutdown,
     int DispatchedInputs, bool GoalVerified)
 {
+    /// <summary>Public pages have a separate bounded transport; fixed-fixture clients keep their existing256KiB limit.</summary>
+    public const int MaximumResponseBytes = 2 * 1024 * 1024;
+
     public void Validate(PublicReaderWorkerRequest expected, PublicReaderSource expectedSource, string? expectedDocument = null)
     {
         expected.Validate(); expectedSource.Validate();

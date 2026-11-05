@@ -182,7 +182,8 @@ try
     await using var publicSupervisor = publicLeases is not null
         ? await IsolatedPublicReaderSupervisor.StartAsync(evidence, PublicWebsiteRuntime.Scripts, runtime, image) : null;
     var publicCoordinator = publicLeases is not null
-        ? new PublicWebsiteCoordinator(publicLeases, new IsolatedPublicWebsiteExecutor(publicSupervisor!)) : null;
+        ? new PublicWebsiteCoordinator(publicLeases, new IsolatedPublicWebsiteExecutor(publicSupervisor!))
+        { Diagnostic = value => Console.Error.WriteLine(JsonSerializer.Serialize(value)) } : null;
     // The trusted coordinator owns native execution. The separate read-only HTTP service uses the protected loopback broker.
     await using var readerHost = args[0] == "--poll" ? await ReaderHost.StartAsync(evidence, runtime, image,
         Environment.GetEnvironmentVariable("HSR_WORKER_SECCOMP"), publicJobsReady: true) : null;
@@ -195,7 +196,7 @@ try
         {
             var publicResult = await publicCoordinator.RunOnceAsync(worker, stop.Token);
             if (args[0] == "--once-public" || publicResult.State != "Empty" || previousPublicState != publicResult.State)
-                Console.WriteLine(JsonSerializer.Serialize(new { Schema = "hsr-public-website-run-v1", publicResult.State, publicResult.JobId, publicResult.ErrorCode }));
+                Console.WriteLine(JsonSerializer.Serialize(new { Schema = "hsr-public-website-run-v1", publicResult.State, publicResult.JobId, publicResult.ErrorCode, publicResult.FailureDiagnostic }));
             previousPublicState = publicResult.State;
             if (publicResult.State == "Unconfirmed" || publicResult.ErrorCode == "PUBLIC_WEBSITE_CLEANUP_UNCONFIRMED") return 3;
             if (args[0] == "--once-public") return publicResult.State == "Blocked" ? 3 : 0;

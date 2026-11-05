@@ -32,6 +32,9 @@ fresh expiry after actual row/membership/queue locks. Missing queue records deny
 renewal, completion and retirement. Known locked jobs defer without archiving.
 Cleanup uncertainty halts polling and retains ownership/capacity.
 
+The November 5 [capacity repair and logging record](public-review-size-and-logging-v1.md)
+supersedes the initial 1 MiB capacity below with a bounded 4 MiB passive original.
+
 Original UTF-8 observation JSON, its SHA-256 and producer are atomically retained
 in PostgreSQL with job completion and queue-capability retirement. The new
 observation profile has a1MiB JSON ceiling; this does not change the private

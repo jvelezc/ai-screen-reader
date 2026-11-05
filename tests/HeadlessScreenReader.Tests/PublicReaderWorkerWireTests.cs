@@ -7,6 +7,27 @@ namespace HeadlessScreenReader.Tests;
 
 public sealed class PublicReaderWorkerWireTests
 {
+    [Fact]
+    public async Task PublicResponseAcceptsTwoMiBButFoundationBudgetAndOversizedHeaderRemainBounded()
+    {
+        var request = PublicReaderWorkerContractTests.Request();
+        var response = PublicReaderWorkerContractTests.Response();
+        var json = JsonSerializer.Serialize(response, ReaderWorkerWire.Json);
+        using var exact = new MemoryStream();
+        await ReaderWorkerWire.WriteAsync(exact, Encoding.UTF8.GetBytes(json.PadRight(2 * 1024 * 1024)), PublicReaderWorkerResponse.MaximumResponseBytes);
+        exact.Position = 0;
+        var restored = await PublicReaderWorkerWire.ReadResponseAsync(exact, request, PublicReaderWorkerContractTests.Source());
+        Assert.Equal("public-document", restored.DocumentId); Assert.False(restored.GoalVerified); Assert.Equal(0, restored.DispatchedInputs);
+        using var beyond = new MemoryStream([0, 32, 0, 1]);
+        Assert.Equal("READER_WORKER_FRAME_INVALID", (await Assert.ThrowsAsync<BrowserOperationException>(() =>
+            PublicReaderWorkerWire.ReadResponseAsync(beyond, request, PublicReaderWorkerContractTests.Source()))).Code);
+        using var foundation = new MemoryStream();
+        Assert.Equal(262144, ReaderWorkerRequest.MaximumResponseBytes);
+        Assert.Equal("READER_WORKER_FRAME_INVALID", (await Assert.ThrowsAsync<BrowserOperationException>(() =>
+            ReaderWorkerWire.WriteAsync(foundation, new byte[262145], ReaderWorkerRequest.MaximumResponseBytes))).Code);
+        Assert.Equal(0, foundation.Length);
+    }
+
     private static async Task<MemoryStream> Frame(string text)
     {
         var stream = new MemoryStream(); await ReaderWorkerWire.WriteAsync(stream, Encoding.UTF8.GetBytes(text), ReaderWorkerRequest.MaximumResponseBytes);

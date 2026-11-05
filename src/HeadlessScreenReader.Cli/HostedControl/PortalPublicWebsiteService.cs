@@ -99,7 +99,7 @@ internal sealed class PortalPublicWebsiteService(IPortalProjectClient project, I
     public async Task<PortalPublicWebsiteOriginalPageResponse> OriginalAsync(PortalIdentity actor, Guid organization, Guid scan,
         int offset, string digest, CancellationToken token)
     {
-        if (!PortalPublicWebsiteContract.Digest(digest) || offset is < 0 or > PublicWebsiteObservation.MaximumBytes)
+        if (!PortalPublicWebsiteContract.Digest(digest) || offset is < 0 or > PublicWebsiteObservation.MaximumSupportedBytes)
             throw new PortalFault(400, "CONTROL_PUBLIC_WEBSITE_PAGE_INVALID");
         var value = await OriginalContextAsync(actor, organization, scan, digest, token).ConfigureAwait(false);
         if (offset > value.Bytes.Length || offset != value.Bytes.Length && offset % PortalPublicWebsiteContract.OriginalPageBytes != 0)
@@ -126,7 +126,7 @@ internal sealed class PortalPublicWebsiteService(IPortalProjectClient project, I
                     ?? throw new PortalFault(404, "CONTROL_PUBLIC_WEBSITE_ORIGINAL_NOT_AVAILABLE");
                 if (stored.OrganizationId != organization || stored.ScanId != scan || stored.JobId != before.JobId
                     || stored.Generation != before.Generation || stored.ProducerId != before.ProducerId || stored.Sha256 != before.OriginalSha256
-                    || stored.Text.Length > PublicWebsiteObservation.MaximumBytes)
+                    || stored.Text.Length > PublicWebsiteObservation.MaximumSupportedBytes)
                     throw new PortalFault(409, "CONTROL_PUBLIC_WEBSITE_ORIGINAL_CHANGED");
                 bytes = Encoding.UTF8.GetBytes(stored.Text);
                 observation = PublicWebsiteObservationCodec.Decode(bytes, stored.Sha256, before.Job, stored.ProducerId);

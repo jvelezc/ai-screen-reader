@@ -87,7 +87,7 @@ internal sealed partial class SupabasePortalClient
             + "&id=eq." + expected.JobId.ToString("D") + "&limit=2", actor.Token);
         // Only this exact original read has a larger success budget. Auth and
         // error bodies retain the existing128KiB ceiling.
-        using var json = await SendAsync(request, false, token, maximum: 4 * 1048576).ConfigureAwait(false);
+        using var json = await SendAsync(request, false, token, maximum: 3 * PublicWebsiteObservation.MaximumSupportedBytes + 131072).ConfigureAwait(false);
         var rows = PublicRows(json.RootElement, 1);
         if (rows.Length > 1) throw PortalPublicWebsiteContract.Invalid();
         if (rows.Length == 0) return null;
@@ -95,7 +95,7 @@ internal sealed partial class SupabasePortalClient
         PublicFields(row, ["organization_id", "scan_id", "id", "generation", "state", "result_worker_id", "result_digest", "result_text"]);
         if (Text(row, "state", 16) != "completed") throw new PortalFault(409, "CONTROL_PUBLIC_WEBSITE_ORIGINAL_CHANGED");
         var value = new PortalPublicWebsiteStoredResult(Id(row, "organization_id"), Id(row, "scan_id"), Id(row, "id"), PublicGeneration(row),
-            Id(row, "result_worker_id"), Text(row, "result_digest", 64), Text(row, "result_text", PublicWebsiteObservation.MaximumBytes));
+            Id(row, "result_worker_id"), Text(row, "result_digest", 64), Text(row, "result_text", PublicWebsiteObservation.MaximumSupportedBytes));
         if (value.OrganizationId != expected.OrganizationId || value.ScanId != expected.Id || value.JobId != expected.JobId
             || value.Generation != expected.Generation || value.ProducerId != expected.ProducerId || value.Sha256 != expected.OriginalSha256)
             throw new PortalFault(409, "CONTROL_PUBLIC_WEBSITE_ORIGINAL_CHANGED");

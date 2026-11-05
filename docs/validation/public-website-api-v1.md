@@ -1,5 +1,9 @@
 # Public website API and private MCP validation
 
+The November 5 [large-review repair](public-review-size-and-logging-v1.md) expands
+passive originals to 4 MiB with the existing small-page authorization gates and
+adds safe request/worker/Edge correlation. Earlier counts below remain historical.
+
 [Decision0084](../decisions/0084-public-website-api-and-private-mcp.md) exposes the
 existing isolated public observation worker without fixture substitution or
 invented task/evidence claims. HTTP contract1.18 and private MCP0.3/26 tools are

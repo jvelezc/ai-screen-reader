@@ -22,6 +22,7 @@ public sealed class IsolatedPublicReaderSession : IAsyncDisposable
     public bool ResourcesAbsenceConfirmed { get; private set; }
     public bool NativeShutdownConfirmed { get; private set; }
     public int RuntimeStdinAlreadyClosedWarnings { get; private set; }
+    private PublicReaderFailureDiagnostic? FailureDiagnostic { get; set; }
     internal bool Expired => _time.GetElapsedTime(_openedAt) >= ReaderWorkerRequest.Lifetime;
 
     internal IsolatedPublicReaderSession(ProcessStartInfo start, PublicReaderOwnership intent, Func<Task> remove, TimeProvider? time = null)
@@ -48,7 +49,7 @@ public sealed class IsolatedPublicReaderSession : IAsyncDisposable
         catch
         {
             _failed = true; await StopAndRemoveAsync().ConfigureAwait(false);
-            throw new BrowserOperationException("PUBLIC_READER_OPEN_UNCONFIRMED");
+            throw PublicReaderFailureDiagnostic.Attach("PUBLIC_READER_OPEN_UNCONFIRMED", FailureDiagnostic);
         }
         finally { _gate.Release(); }
     }
@@ -68,7 +69,7 @@ public sealed class IsolatedPublicReaderSession : IAsyncDisposable
             catch
             {
                 _failed = true; await StopAndRemoveAsync().ConfigureAwait(false);
-                throw new BrowserOperationException("PUBLIC_READER_OBSERVATION_UNCONFIRMED");
+                throw PublicReaderFailureDiagnostic.Attach("PUBLIC_READER_OBSERVATION_UNCONFIRMED", FailureDiagnostic);
             }
         }
         finally { _gate.Release(); }
@@ -127,7 +128,9 @@ public sealed class IsolatedPublicReaderSession : IAsyncDisposable
                     try { await _client.WaitForExitAsync(stopped.Token).ConfigureAwait(false); }
                     catch { throw new BrowserOperationException("PUBLIC_READER_CLIENT_EXIT_UNCONFIRMED"); }
                     if (_errors is not null)
-                        try { await _errors.WaitAsync(stopped.Token).ConfigureAwait(false); } catch (IOException) { } catch (OperationCanceledException) { }
+                        try { FailureDiagnostic = PublicReaderFailureDiagnostic.Read(await _errors.WaitAsync(stopped.Token).ConfigureAwait(false), SessionId); }
+                        catch (IOException) { }
+                        catch (OperationCanceledException) { }
                 }
                 _clientStopped = true; _client.Dispose(); _lifetime.Dispose();
             }
@@ -159,7 +162,7 @@ public sealed class IsolatedPublicReaderSession : IAsyncDisposable
             catch
             {
                 _failed = true; await StopAndRemoveAsync().ConfigureAwait(false);
-                throw new BrowserOperationException("PUBLIC_READER_CLOSE_UNCONFIRMED");
+                throw PublicReaderFailureDiagnostic.Attach("PUBLIC_READER_CLOSE_UNCONFIRMED", FailureDiagnostic);
             }
             await StopAndRemoveAsync().ConfigureAwait(false);
         }

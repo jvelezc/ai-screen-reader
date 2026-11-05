@@ -25,13 +25,13 @@ public static class PublicReaderWorkerWire
 
     public static Task WriteResponseAsync(Stream output, PublicReaderWorkerResponse response, CancellationToken token = default) =>
         ReaderWorkerWire.WriteAsync(output, JsonSerializer.SerializeToUtf8Bytes(response, ReaderWorkerWire.Json),
-            ReaderWorkerRequest.MaximumResponseBytes, token);
+            PublicReaderWorkerResponse.MaximumResponseBytes, token);
 
     public static async Task<PublicReaderWorkerResponse> ReadResponseAsync(Stream input, PublicReaderWorkerRequest expected,
         PublicReaderSource source, string? expectedDocument = null, CancellationToken token = default)
     {
         expected.Validate(); source.Validate();
-        var bytes = await ReaderWorkerWire.ReadAsync(input, ReaderWorkerRequest.MaximumResponseBytes, token).ConfigureAwait(false)
+        var bytes = await ReaderWorkerWire.ReadAsync(input, PublicReaderWorkerResponse.MaximumResponseBytes, token).ConfigureAwait(false)
             ?? throw new BrowserOperationException("PUBLIC_READER_WORKER_DISCONNECTED");
         var response = JsonSerializer.Deserialize<PublicReaderWorkerResponse>(bytes, ReaderWorkerWire.Json)
             ?? throw new BrowserOperationException("PUBLIC_READER_WORKER_RESPONSE_INVALID");

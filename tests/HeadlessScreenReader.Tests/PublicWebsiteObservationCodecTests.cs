@@ -19,10 +19,10 @@ public sealed class PublicWebsiteObservationCodecTests
     public void StoredOriginalBytesRetainEscapedNamesProducerSourceAndUnverifiedOutcome()
     {
         var value = PublicWebsiteObservationTests.Observation();
-        var snapshot = value.Captures[1] with { Nodes = [value.Captures[1].Nodes[0] with { Name = "A \"quoted\" café <control>" }] };
+        var snapshot = value.Captures[1] with { Nodes = [value.Captures[1].Nodes[0] with { Name = "A \"quoted\" cafÃ© <control>" }] };
         var encoded = PublicWebsiteObservationCodec.Encode(value with { Captures = [value.Captures[0], snapshot] }, value.Job, value.WorkerId);
         var bytes = Encoding.UTF8.GetBytes(encoded.Text); var restored = Read(bytes, encoded.Sha256);
-        Assert.Equal(Digest(bytes), encoded.Sha256); Assert.Equal("A \"quoted\" café <control>", restored.Captures[1].Nodes[0].Name);
+        Assert.Equal(Digest(bytes), encoded.Sha256); Assert.Equal("A \"quoted\" cafÃ© <control>", restored.Captures[1].Nodes[0].Name);
         Assert.Equal("https://screenreader.privensic.com/ci/v1/source", restored.Job.Source.TargetUrl);
         Assert.Equal(PublicWebsiteObservationTests.Worker, restored.WorkerId); Assert.Equal(0, restored.DispatchedInputs); Assert.False(restored.GoalVerified);
         Assert.DoesNotContain("quoted", encoded.ToString());
@@ -30,18 +30,33 @@ public sealed class PublicWebsiteObservationCodecTests
 
     [Theory]
     [InlineData(0)]
-    [InlineData(PublicWebsiteObservation.MaximumBytes + 1)]
+    [InlineData(PublicWebsiteObservation.MaximumSupportedBytes + 1)]
     public void DecoderRejectsMissingAndOversizedBytesBeforeParsing(int length)
     {
         Assert.Equal("PUBLIC_WEBSITE_OBSERVATION_SIZE_INVALID", Assert.Throws<InvalidDataException>(() => Read(new byte[length])).Message);
     }
 
     [Fact]
+    public void LargeCapturedContentRoundTripsAboveLegacyLimitWithExactDigestAndProducer()
+    {
+        var value = PublicWebsiteObservationTests.Observation();
+        var name = new string('x', 1_048_577);
+        var capture = value.Captures[1] with { Nodes = [value.Captures[1].Nodes[0] with { Name = name }] };
+        var stored = PublicWebsiteObservationCodec.Encode(value with { Captures = [value.Captures[0], capture] }, value.Job, value.WorkerId);
+        var bytes = Encoding.UTF8.GetBytes(stored.Text);
+        Assert.Equal(1_048_576, PublicWebsiteObservation.MaximumBytes);
+        Assert.InRange(bytes.Length, 1_048_577, 4_194_304);
+        var restored = Read(bytes, stored.Sha256);
+        Assert.Equal(name, restored.Captures[1].Nodes[0].Name); Assert.Equal(value.WorkerId, restored.WorkerId);
+        Assert.Equal(Digest(bytes), stored.Sha256); Assert.False(restored.GoalVerified); Assert.Equal(0, restored.DispatchedInputs);
+    }
+
+    [Fact]
     public void DecoderAcceptsExactByteCeilingWithAValidOriginalDocument()
     {
-        var raw = Stored().Text.PadRight(PublicWebsiteObservation.MaximumBytes, ' '); var bytes = Encoding.UTF8.GetBytes(raw);
+        var raw = Stored().Text.PadRight(PublicWebsiteObservation.MaximumSupportedBytes, ' '); var bytes = Encoding.UTF8.GetBytes(raw);
         var decoded = Read(bytes);
-        Assert.Equal(PublicWebsiteObservation.MaximumBytes, bytes.Length); Assert.Equal(2, decoded.Captures.Length);
+        Assert.Equal(PublicWebsiteObservation.MaximumSupportedBytes, bytes.Length); Assert.Equal(2, decoded.Captures.Length);
         Assert.Equal("actual-document", decoded.Captures[1].DocumentId);
     }
 
@@ -108,7 +123,7 @@ public sealed class PublicWebsiteObservationCodecTests
     public void EncoderRejectsAValidatedShapeThatExceedsTheActualByteBudget()
     {
         var value = PublicWebsiteObservationTests.Observation();
-        var capture = value.Captures[1] with { Nodes = [value.Captures[1].Nodes[0] with { Name = new string('a', PublicWebsiteObservation.MaximumBytes) }] };
+        var capture = value.Captures[1] with { Nodes = [value.Captures[1].Nodes[0] with { Name = new string('a', PublicWebsiteObservation.MaximumSupportedBytes) }] };
         Assert.Equal("PUBLIC_WEBSITE_OBSERVATION_SIZE_INVALID", Assert.Throws<InvalidDataException>(() =>
             PublicWebsiteObservationCodec.Encode(value with { Captures = [value.Captures[0], capture] }, value.Job, value.WorkerId)).Message);
     }

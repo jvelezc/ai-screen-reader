@@ -91,6 +91,17 @@ language plpgsql as $$ declare r record;c jsonb;begin
  return hsr.finish_public_scan(r.organization_id,r.job_id,1,p_worker,coalesce(p_token,(c->>'token')::uuid),p_value,encode(sha256(convert_to(p_value,'UTF8')),'hex'));
 end $$;
 grant execute on function pg_temp.try_public_payload(text,uuid,uuid) to hsr_worker;
+-- Publication is rolled back so every boundary tests the same live capability.
+create function pg_temp.probe_public_payload(p_value text) returns boolean language plpgsql as $$
+declare accepted boolean;
+begin
+ begin
+  accepted:=pg_temp.try_public_payload(p_value);
+  raise exception using errcode='PZ001';
+ exception when sqlstate 'PZ001' then return accepted;
+ end;
+end $$;
+grant execute on function pg_temp.probe_public_payload(text) to hsr_worker;
 set local role hsr_worker;
 select ok(not pg_temp.try_public_payload('[]'),'PublicArrayCannotBecomeObservation');
 select ok(not pg_temp.try_public_payload('{'),'PublicMalformedJsonCannotBecomeObservation');
@@ -109,6 +120,9 @@ select ok(not pg_temp.try_public_payload((select jsonb_set(body::jsonb,'{Capture
 select ok(not pg_temp.try_public_payload((select jsonb_set(body::jsonb,'{Captures,1,Nodes}','[]')::text from public_payload)),'PublicEmptySnapshotCannotComplete');
 select ok(not pg_temp.try_public_payload((select body from public_payload),'83300000-0000-0000-0000-000000000002'),'PublicWrongWorkerCannotComplete');
 select ok(not pg_temp.try_public_payload((select body from public_payload),'83300000-0000-0000-0000-000000000001',gen_random_uuid()),'PublicWrongTokenCannotComplete');
+select ok(pg_temp.probe_public_payload((select rpad(body,1048577,' ') from public_payload)),'PublicOriginalBeyondLegacyMiBCanComplete');
+select ok(pg_temp.probe_public_payload((select rpad(body,4194304,' ') from public_payload)),'PublicExactFourMiBOriginalCanComplete');
+select ok(not pg_temp.probe_public_payload((select rpad(body,4194305,' ') from public_payload)),'PublicOriginalAboveFourMiBCannotComplete');
 select ok(pg_temp.try_public_payload((select body from public_payload)),'PublicExactBoundPassiveObservationCompletes');
 select ok(not pg_temp.try_public_payload((select body from public_payload)),'PublicRetiredCapabilityCannotCompleteAgain');
 reset role;

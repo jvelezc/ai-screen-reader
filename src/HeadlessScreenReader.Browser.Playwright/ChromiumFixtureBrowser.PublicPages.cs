@@ -57,7 +57,8 @@ public sealed partial class ChromiumFixtureBrowser
             };
             page.SetDefaultTimeout(5000);
             var response = await page.GotoAsync(url, new() { WaitUntil = WaitUntilState.Load, Timeout = 15_000 }).ConfigureAwait(false);
-            if (response?.Status >= 400) throw new BrowserOperationException("TARGET_HTTP_ERROR");
+            if (response?.Status >= 400) throw new BrowserOperationException("TARGET_HTTP_ERROR")
+            { Data = { ["HttpStatusCode"] = response.Status } };
             if (!policy.AssessUrl(page.Url).Allowed) throw new BrowserOperationException("TARGET_REDIRECT_DENIED");
             var cdp = await context.NewCDPSessionAsync(page).ConfigureAwait(false);
             await cdp.SendAsync("Accessibility.enable").ConfigureAwait(false);

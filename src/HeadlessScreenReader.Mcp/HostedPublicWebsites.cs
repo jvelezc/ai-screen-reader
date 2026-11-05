@@ -121,14 +121,14 @@ public sealed partial class HostedScanClient
     public Task<ToolReply> PublicWebsiteOriginalAsync(string scanId, string originalSha256, int offset = 0, CancellationToken token = default)
     {
         if (!Guid.TryParse(scanId, out var scan) || scan == Guid.Empty) return Task.FromResult(PublicError("PUBLIC_WEBSITE_SCAN_ID_REQUIRED"));
-        if (originalSha256 is null || !Digest(originalSha256) || offset is < 0 or > PublicWebsiteObservation.MaximumBytes)
+        if (originalSha256 is null || !Digest(originalSha256) || offset is < 0 or > PublicWebsiteObservation.MaximumSupportedBytes)
             return Task.FromResult(PublicError("PUBLIC_WEBSITE_PAGE_INVALID"));
         return PublicLockedAsync(async () =>
         {
             using var json = await _transport.SendAsync(HttpMethod.Get, PublicCollection + $"/{scan:D}/original/{offset}/{originalSha256}").ConfigureAwait(false);
             var value = Parse<HostedPublicWebsiteOriginal>(json); ValidatePublicStatus(value.Scan, scan);
             Require(value.Scan.State == "completed" && value.Scan.OriginalSha256 == originalSha256 && value.OriginalSha256 == originalSha256
-                && value.TotalBytes is >= 1 and <= PublicWebsiteObservation.MaximumBytes && value.Offset == offset && offset <= value.TotalBytes
+                && value.TotalBytes is >= 1 and <= PublicWebsiteObservation.MaximumSupportedBytes && value.Offset == offset && offset <= value.TotalBytes
                 && (offset == value.TotalBytes || offset % 65536 == 0) && value.Data is not null
                 && value.Data.Length == Math.Min(65536, value.TotalBytes - offset)
                 && value.PageSha256 == Convert.ToHexStringLower(SHA256.HashData(value.Data))

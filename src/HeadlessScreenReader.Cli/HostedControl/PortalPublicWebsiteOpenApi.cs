@@ -42,7 +42,7 @@ internal static partial class PortalOpenApi
         var original = Operation("ReadPublicWebsiteOriginal", "Read at most64KiB of verified original observation JSON. Exact64KiB boundary or EOF; pin original SHA-256, verify page/whole hashes and reauthorize EOF. No signed URL, native path or private lease is returned.",
             "PublicWebsiteOriginal", true, organization: true, scan: true);
         var parameters = (JsonArray)original["parameters"]!;
-        parameters.Add(PublicParameter("offset", 0, PublicWebsiteObservation.MaximumBytes));
+        parameters.Add(PublicParameter("offset", 0, PublicWebsiteObservation.MaximumSupportedBytes));
         parameters.Add(PublicDigestParameter());
         paths[root + "/{scan}/original/{offset}/{digest}"] = Path("get", original);
 
@@ -119,8 +119,8 @@ internal static partial class PortalOpenApi
         if (type == typeof(PortalPublicWebsiteOriginalPageResponse))
         {
             properties["originalSha256"]!["pattern"] = "^[a-f0-9]{64}$"; properties["pageSha256"]!["pattern"] = "^[a-f0-9]{64}$";
-            properties["totalBytes"]!["minimum"] = 1; properties["totalBytes"]!["maximum"] = PublicWebsiteObservation.MaximumBytes;
-            properties["offset"]!["minimum"] = 0; properties["offset"]!["maximum"] = PublicWebsiteObservation.MaximumBytes;
+            properties["totalBytes"]!["minimum"] = 1; properties["totalBytes"]!["maximum"] = PublicWebsiteObservation.MaximumSupportedBytes;
+            properties["offset"]!["minimum"] = 0; properties["offset"]!["maximum"] = PublicWebsiteObservation.MaximumSupportedBytes;
             properties["data"]!["maxLength"] = 87384; properties["data"]!["contentEncoding"] = "base64";
             value["description"] = "At most65536 original bytes per page, with exact source and page SHA-256. Follow nextOffset, compare the whole digest and reauthorize EOF before claiming a complete saved copy.";
         }

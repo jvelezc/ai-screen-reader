@@ -76,7 +76,7 @@ public sealed class IsolatedPublicReaderSupervisor : IAsyncDisposable
                 reservation.Reader = reader;
                 await reader.OpenAsync(token).ConfigureAwait(false); return reader;
             }
-            catch
+            catch (Exception error)
             {
                 try
                 {
@@ -84,7 +84,7 @@ public sealed class IsolatedPublicReaderSupervisor : IAsyncDisposable
                         _sessions.Remove(session);
                 }
                 catch (Exception) { /* Corrupt or uncertain durable ownership retains capacity. */ }
-                throw new BrowserOperationException("PUBLIC_READER_OPEN_UNCONFIRMED");
+                throw PublicReaderFailureDiagnostic.Attach("PUBLIC_READER_OPEN_UNCONFIRMED", PublicReaderFailureDiagnostic.From(error, session));
             }
         }
         finally { _gate.Release(); }
