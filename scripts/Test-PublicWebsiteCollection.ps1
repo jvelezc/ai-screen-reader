@@ -46,7 +46,8 @@ try {
     $env:HSR_WORKER_SECCOMP=Join-Path $repoRoot 'ops/prototype/playwright-seccomp.json'
     $env:HSR_EVIDENCE_S3_ACCESS_KEY=$null;$env:HSR_EVIDENCE_S3_SECRET=$null
     $stage='collection'
-    $lines=@(& $DotNet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --once-public 2>&1)
+    # Operational JSON lines are stderr, never part of the single stdout result.
+    $lines=@(& $DotNet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --once-public 2> (Join-Path $folder 'worker.stderr.jsonl'))
     $workerExit=$LASTEXITCODE
     $lines|Set-Content (Join-Path $folder 'worker.json') -Encoding utf8NoBOM
     $workerResult=($lines -join "`n")|ConvertFrom-Json

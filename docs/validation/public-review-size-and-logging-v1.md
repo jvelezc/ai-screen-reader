@@ -88,6 +88,12 @@ stderr events. The existing actual-publication case
 `PublishedControlRuntimeChecksHttpGuardAndJoinsStopWithoutTenantClaim` enforces
 this boundary. The failed CI artifact is not a deployment candidate.
 
+The following CI run also exposed a merged-stream assumption in the public
+collection acceptance script. That script now retains operational stderr JSON
+lines separately and parses only the single stdout result. It does not disable
+worker tracing or treat diagnostics as completion authority. Fresh native and
+both-OS gates are required after this harness correction.
+
 Supabase pre-change health advisories are empty. Existing security notices include
 intentional worker-table default-deny RLS and checked authenticated definer RPCs;
 the unrelated public `rls_auto_enable` grant and disabled leaked-password check
