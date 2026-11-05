@@ -28,6 +28,17 @@ screenreader.privensic.com {
 			<body><h1>Reader CI destination v1</h1><p>This is the fixed destination for the isolated reader acceptance task. Reaching it demonstrates only the tested route under the named reader profile.</p></body></html>
 			HTML 200
 		}
+		# Fixed data-only lab; no wildcard script or upstream/API access.
+		@lab path /lab/v1/ /lab/v1/index.html /lab/v1/manifest.json /lab/v1/checkout-working.html /lab/v1/checkout-keyboard-blocked.html /lab/v1/control-named.html /lab/v1/control-unnamed.html
+		handle @lab {
+			header Content-Security-Policy "default-src 'none'; script-src 'sha256-W9U9ixXrD8fI+ON8H9J8y+u7ayMyG2834+8dXQyKt7Q='; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+			uri strip_prefix /lab/v1
+			root * /srv/hsr-test-sites/current
+			file_server
+		}
+		handle /lab/* {
+			respond 404
+		}
 		# Optional independently deployed consumer UI; fixed fixtures stay above it.
 		import /etc/caddy/hsr-ui/*.caddy
 		handle {

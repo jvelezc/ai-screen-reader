@@ -1,8 +1,8 @@
 # Customer HTTPS application publication
 
 November 4, 2026. Prototype: **https://screenreader.privensic.com/**.
-This receipt establishes publication and startup, not full product completion
-or the original account's signed-in production journey.
+Publication was verified November 4. The original account's signed-in production
+journey was accepted November 5, as recorded below. This is not full product completion.
 
 ## Source, CI and actual deployment
 
@@ -85,14 +85,45 @@ This is agent-operated browser evidence, separate from human or real-AT acceptan
 | Retain active data on collisions and rebuilds | `test_rejects_asset_collision_and_keeps_active_original`, `test_supports_a_rebuilt_same_commit_without_overwriting_an_earlier_build` |
 | Prove actual public file/policy delivery | CI41890575912 verifies all47 HTTPS file hashes, root CSP/no-store,404 reserved paths and405 POST; original-account acceptance is explicitly separate |
 
-## Still open
+## Original-account production acceptance — November 5
 
-The public browser offers no saved original-account login. Its first HTTPS
-sign-in has been requested through the normal application form; it is not
-replaced by an administrator or fabricated session. URL admission, saved-result
-reads, download, refresh/reconnect and scope isolation through that production
-account remain pending. Earlier original-account local acceptance stays valid
-only in its documented local/hosted-Edge/core scope.
+The owner signed in through the normal application form at the HTTPS origin.
+No administrator session, fabricated user, extracted token or password replaced
+that account. The actual UI → existing Supabase Edge → private core journey then:
+
+1. Submitted `https://screenreader.privensic.com/ci/v1/source` and retrieved a
+   completed, saved observation with the expected page content and link.
+2. Downloaded the original; the UI verified its original-byte integrity.
+3. Reloaded the whole tab. The persistent session restored automatically, and
+   the same saved review recovered. A second download matched the first exactly.
+4. Reconnected with Restore your session. The workspace opened normally. This
+   successful reconnect does not establish authority-loss or cache-clearing proof.
+5. Rejected `https://127.0.0.1/` in the editable URL form before sending a request;
+   the UI explained the address restriction without calling it a website barrier.
+6. Reopened today's review from Saved website reviews and recovered the same
+   source, reference, original digest and 9/9 observed nodes. Captured browser
+   error logs were empty.
+
+Exact receipt: scan `42314dca-8e3a-4f07-acfb-2d716a7693b3`, job
+`9ffe4f92-1ff7-42f9-8f9b-81478446fc89`, generation1, producer
+`00103603-29fa-43cd-abf4-4c1f42817c57`, profile
+`hsr-approved-public-readonly-v1`. Original `hsr-public-website-observation-v1`
+JSON: **22,390 bytes**, SHA-256
+`1bb87aeefc69e0d1ced523143119de3f0075660ba7c04387aaddafd2cabea5bc`.
+An independent provider metadata read matched job/scan/generation/producer and
+completed state, then recomputed the same SHA-256 from stored original text.
+Both browser downloads matched it. Two actual captures retained nine nodes each.
+
+The original records `DispatchedInputs=0` and `GoalVerified=false`. Its native
+shutdown/resource-absence fields are worker acknowledgments, not a fresh
+independent OS absence inspection. The UI correctly reported task testing as
+not performed and did not infer a blocking barrier or sufficient package.
+
+Cross-account revocation, authority loss, expiry, a failed worker run and real
+assistive-technology acceptance were not exercised by this normal account flow.
+Earlier narrower acceptance receipts retain their own scope.
+
+## Still open
 
 Public URL reviews collect saved page information with **zero target inputs**,
 no task attempt and no evidence-readiness verdict. Versioned mock scenarios,

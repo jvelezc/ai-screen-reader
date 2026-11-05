@@ -216,6 +216,41 @@ public sealed class ChromiumMcpTests
         await CallAsync(client, "reader_close", new() { ["sessionId"] = id });
     }
 
+    [Theory]
+    [InlineData("MockCheckoutWorkingV1", "Place sample order", "Sample order placed", true)]
+    [InlineData("MockCheckoutKeyboardBlockedV1", "Place sample order", "Sample order placed", false)]
+    [InlineData("MockNamedControlV1", "Open sample details", "Sample details opened", true)]
+    [InlineData("MockUnnamedControlV1", "", "Sample details opened", true)]
+    public async Task StdioMockSitesKeepSourceNamesInputAndGoalOutcomesSeparate(string fixture, string name, string goal, bool goalSatisfied)
+    {
+        await using var client = await ConnectAsync();
+        var available = (await CallAsync(client, "reader_status")).GetProperty("data").GetProperty("fixtures");
+        Assert.Contains(fixture, available.EnumerateArray().Select(f => f.GetString()));
+        var open = await CallAsync(client, "reader_open_fixture", new() { ["fixture"] = fixture });
+        var id = open.GetProperty("sessionId").GetString()!;
+        var source = open.GetProperty("data").GetProperty("environment").GetProperty("content");
+        Assert.Equal(HeadlessScreenReader.Browser.Playwright.BundledFixtureCatalog.Describe(
+            Enum.Parse<HeadlessScreenReader.Browser.Playwright.BundledFixture>(fixture)).ContentSha256,
+            source.GetProperty("contentSha256").GetString());
+        var snapshot = (await CallAsync(client, "reader_snapshot", new() { ["sessionId"] = id })).GetProperty("data");
+        var document = snapshot.GetProperty("documentId").GetString()!;
+        Assert.Equal(name, snapshot.GetProperty("nodes").EnumerateArray().First(n => n.GetProperty("role").GetString() == "button").GetProperty("name").GetString());
+        await Execute(client, id, document, "Tab");
+        var step = (await CallAsync(client, "reader_execute", new()
+        {
+            ["sessionId"] = id,
+            ["documentId"] = document,
+            ["command"] = "Activate",
+            ["goal"] = new { role = "heading", name = goal, mustBeFocused = true }
+        })).GetProperty("data");
+        Assert.Equal(1, step.GetProperty("browserKeystrokes").GetInt32());
+        Assert.Equal(goalSatisfied ? "Satisfied" : "TimedOut", step.GetProperty("verification").GetString());
+        var timeline = (await CallAsync(client, "reader_timeline", new() { ["sessionId"] = id })).GetProperty("data").GetProperty("events").EnumerateArray().ToArray();
+        Assert.Equal(new[] { "Tab", "Enter" }, timeline.Where(e => e.GetProperty("kind").GetString() == "InputCompleted").Select(e => e.GetProperty("detail").GetString()));
+        Assert.Equal(goalSatisfied, timeline.Any(e => e.GetProperty("kind").GetString() == "GoalVerified"));
+        Assert.Equal("closed", (await CallAsync(client, "reader_close", new() { ["sessionId"] = id })).GetProperty("status").GetString());
+    }
+
     private static Task<McpClient> ConnectAsync()
     {
         var server = typeof(ChromiumMcpTests).Assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyMetadataAttribute), false)

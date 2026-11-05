@@ -1,6 +1,6 @@
 # Product access: sign in, enter a URL, see results
 
-Updated November 4, 2026. Customer prototype: https://screenreader.privensic.com/ .
+Updated November 5, 2026. Customer prototype: https://screenreader.privensic.com/ .
 The product journey is sign in, enter a website URL, then see saved results.
 Publication, original-account acceptance and complete task-evidence collection
 are separate gates. The full product is not complete.
@@ -26,7 +26,10 @@ The [publication receipt](validation/customer-https-publication-v1.md) separates
 source CI, verified HTTPS files and original-account browser acceptance. The
 first sign-in on this new origin cannot inherit localhost's browser storage.
 Once signed in, the existing SDK-managed persistent session remains in use.
-No administrator or fabricated session can replace customer acceptance.
+The original account's production acceptance now passes URL submission, completed
+saved results, identical original downloads, automatic restoration after reload,
+normal reconnect, local-address validation and saved-list recovery. No
+administrator or fabricated session replaced that account.
 
 Core237d309 is privately deployed with HTTP1.18 and private MCP0.3/26 tools.
 Original-account local acceptance already covers URL admission through Edge,
@@ -43,10 +46,9 @@ remains held; the separate static UI pipeline does not lift that hold.
 
 ## Required implementation and acceptance
 
-1. Complete the original account's published HTTPS journey: sign in, submit a
-   permitted URL, retrieve the same saved results after reload/reconnect, and
-   verify workspace isolation and explicit failed/unsupported outcomes. Local
-   acceptance alone does not establish this new-origin gate.
+1. Preserve the now-accepted production journey and complete remaining workspace
+   isolation, expiry and failed/unsupported worker cases separately. Normal
+   reconnect and local-address validation do not establish those other cases.
 2. Add versioned working/broken [mock sites](test-site-scenarios.md), then one
    bounded website task at a time through core API/private MCP. Retain actual
    nodes/edges, input outcomes, goal checks, video and required repeat/pointer

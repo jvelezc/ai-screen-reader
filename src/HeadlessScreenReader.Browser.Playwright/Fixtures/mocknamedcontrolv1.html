@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Named details control — reader lab v1</title>
+<style>
+:root{color-scheme:light}body{font:1.125rem/1.65 Georgia,serif;max-width:48rem;margin:3rem auto;padding:0 1.5rem;background:#faf9f5;color:#202820}h1{line-height:1.15}small{display:block;color:#455745}button{font:inherit;padding:.7rem 1rem;margin:.5rem .5rem .5rem 0;background:#234739;color:white;border:2px solid #234739;border-radius:.25rem}button:focus-visible,[tabindex]:focus-visible{outline:3px solid #bd481d;outline-offset:4px}section{margin:1.5rem 0;border-top:1px solid #b8c5b8}
+</style>
+</head>
+<body data-scenario="control-named" data-version="1" data-keyboard-blocked="false">
+<main>
+<small>Privensic Screen Reader · Synthetic test site · Version 1</small>
+<h1>Named details control</h1>
+<p>Use the keyboard to open the sample details. No real order, payment or account is involved.</p>
+<button id="action" data-screen-reader-feature="sample-details" type="button">Open sample details</button>
+<button id="reset" type="button">Reset scenario</button>
+<section id="result" hidden><h2 id="goal" tabindex="-1">Sample details opened</h2><p>This is a local simulation. Nothing was sent to a business.</p></section>
+<p>A failed attempt documents only the tested action and state. It does not establish global unreachability or a legal conclusion.</p>
+</main>
+<script>const action = document.getElementById('action');
+const result = document.getElementById('result');
+action.addEventListener('click', event => {
+  if (document.body.dataset.keyboardBlocked === 'true' && event.detail === 0) return;
+  result.hidden = false;
+  document.getElementById('goal').focus();
+});
+document.getElementById('reset').addEventListener('click', () => {
+  result.hidden = true;
+  action.focus();
+});</script>
+</body>
+</html>
+

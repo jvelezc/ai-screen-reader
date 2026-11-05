@@ -39,6 +39,10 @@ public sealed class ChromiumSyntheticInputTests
     [InlineData(BundledFixture.Foundation)]
     [InlineData(BundledFixture.CapturePrivacy)]
     [InlineData(BundledFixture.Traversal)]
+    [InlineData(BundledFixture.MockCheckoutWorkingV1)]
+    [InlineData(BundledFixture.MockCheckoutKeyboardBlockedV1)]
+    [InlineData(BundledFixture.MockNamedControlV1)]
+    [InlineData(BundledFixture.MockUnnamedControlV1)]
     public async Task OtherFixtures_CannotGrantTheSyntheticInputChannel(BundledFixture fixture)
     {
         await using var browser = await ChromiumFixtureBrowser.LaunchAsync(fixture: fixture);

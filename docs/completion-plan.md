@@ -1,6 +1,6 @@
 # Remaining product completion gates
 
-Updated November 4, 2026. Product: Privensic Screen Reader. The original proposal
+Updated November 5, 2026. Product: Privensic Screen Reader. The original proposal
 under `outputs/` is unchanged. The full product remains incomplete.
 
 **Current accepted engine:** private237d309, HTTP1.18, private MCP0.3/26 tools,
@@ -14,15 +14,21 @@ unassessed. Earlier failures and their narrower scopes remain in their receipts.
 **New customer delivery:** https://screenreader.privensic.com/ . Existing Edge v14
 supports its exact origin. Production email callbacks are saved. Separate static
 CI/deployment verifies source-bound files, HTTPS and route/security policies;
-original-account production acceptance is its own gate. See the
+original-account production acceptance now passes sign-in, permitted URL, saved
+results, identical original downloads, automatic reload restoration, normal
+reconnect, local-address denial and saved-list recovery. See the
 [current publication receipt](validation/customer-https-publication-v1.md).
 The core worker's automatic-promotion hold is unchanged.
 
-**NEXT — customer access and website task testing:** finish the real published
-sign-in → URL → saved results/reload journey, then implement versioned mock sites
-and bounded task collection. The remaining work is ordered:
+**NEXT — bounded website task evidence:** the first four working/broken checkout
+and named/unnamed [mock scenarios](test-site-scenarios.md) are implemented with
+actual local Chromium/MCP checks and fixed source fingerprints. Connect approved
+lab tasks to the hosted task collector and retain the required evidence. The published account journey
+passes; it does not establish task testing or all authority-loss cases. The
+remaining work is ordered:
 
-1. Published original-account acceptance and explicit unsupported/failed targets.
+1. Retain published original-account acceptance; complete remaining cross-account,
+   expiry and failed/unsupported worker cases in their exact scopes.
 2. Working/broken mock-site catalogue with real core API/private MCP receipts;
    actual website tasks with source-bound graph/video and required repeat/pointer
    comparison evidence. Passive collection alone cannot satisfy this gate.

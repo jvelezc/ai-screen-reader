@@ -18,6 +18,7 @@
   <ItemGroup><Using Include="Xunit" /></ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Fixtures/recording-baseline-windows-ci-41534998348.json" />
+    <EmbeddedResource Include="../../ops/test-sites/v1/manifest.json" LogicalName="MockSitesV1.Manifest.json" />
   </ItemGroup>
   <ItemGroup>
     <!-- Launch the MCP application's own dependency closure. ASP.NET framework pruning in the

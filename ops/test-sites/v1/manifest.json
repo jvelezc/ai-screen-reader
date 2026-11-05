@@ -1,0 +1,144 @@
+{
+  "schema": "hsr-mock-sites-v1",
+  "version": 1,
+  "synthetic": true,
+  "scope": "Authored expectations, not scanner findings or legal determinations. Local fixture acceptance and hosted task acceptance are separate.",
+  "scenarios": [
+    {
+      "id": "checkout-working",
+      "fixture": "MockCheckoutWorkingV1",
+      "path": "/lab/v1/checkout-working.html",
+      "contentSha256": "70f779f8bb6ffeac7734677b05e3c5e13df28fa7aff6c095db7dcda2b10695bf",
+      "task": "Place the sample order using the keyboard.",
+      "initialState": "Fresh page; goal heading hidden; no browser focus on the action.",
+      "localProfile": "trusted bundled fixtures; noneditable control input only",
+      "hostedProfile": "hsr-approved-public-readonly-v1; observations only; no task inputs",
+      "commands": [
+        "Tab",
+        "Activate",
+        "EnterFocusMode",
+        "PressKey:Space"
+      ],
+      "expected": {
+        "actionRole": "button",
+        "actionName": "Place sample order",
+        "keyboardGoal": "Observed focused goal heading",
+        "goalRole": "heading",
+        "goalName": "Sample order placed",
+        "pointerGoal": "Observed focused goal heading",
+        "barrierVerdict": "Not assessed by this catalogue"
+      },
+      "evidenceRequired": [
+        "Original source and content SHA-256",
+        "Actual input attempts and completions",
+        "Before/after accessibility snapshots",
+        "Source-bound graph nodes and edges",
+        "Separate fresh pointer comparator when required",
+        "Repeat attempts and source-bound video before sufficient-package assessment"
+      ],
+      "reset": "Activate Reset scenario; result hidden and action focused, or open a fresh page."
+    },
+    {
+      "id": "checkout-keyboard-blocked",
+      "fixture": "MockCheckoutKeyboardBlockedV1",
+      "path": "/lab/v1/checkout-keyboard-blocked.html",
+      "contentSha256": "7729a19422eff5e111d16d2c4394724b6732cebde3f195dc6cbd9ce00785ad39",
+      "task": "Place the sample order using the keyboard.",
+      "initialState": "Fresh page; goal heading hidden; no browser focus on the action.",
+      "localProfile": "trusted bundled fixtures; noneditable control input only",
+      "hostedProfile": "hsr-approved-public-readonly-v1; observations only; no task inputs",
+      "commands": [
+        "Tab",
+        "Activate",
+        "EnterFocusMode",
+        "PressKey:Space"
+      ],
+      "expected": {
+        "actionRole": "button",
+        "actionName": "Place sample order",
+        "keyboardGoal": "Not observed after Enter or Space",
+        "goalRole": "heading",
+        "goalName": "Sample order placed",
+        "pointerGoal": "Observed focused goal heading",
+        "barrierVerdict": "Not assessed by this catalogue"
+      },
+      "evidenceRequired": [
+        "Original source and content SHA-256",
+        "Actual input attempts and completions",
+        "Before/after accessibility snapshots",
+        "Source-bound graph nodes and edges",
+        "Separate fresh pointer comparator when required",
+        "Repeat attempts and source-bound video before sufficient-package assessment"
+      ],
+      "reset": "Activate Reset scenario; result hidden and action focused, or open a fresh page."
+    },
+    {
+      "id": "control-named",
+      "fixture": "MockNamedControlV1",
+      "path": "/lab/v1/control-named.html",
+      "contentSha256": "8cb47651cf45f562dd0da7ef465fadc0f248e9ab27a420a7e3a1f6301f396bbc",
+      "task": "Open the sample details using the keyboard.",
+      "initialState": "Fresh page; goal heading hidden; no browser focus on the action.",
+      "localProfile": "trusted bundled fixtures; noneditable control input only",
+      "hostedProfile": "hsr-approved-public-readonly-v1; observations only; no task inputs",
+      "commands": [
+        "Tab",
+        "Activate",
+        "EnterFocusMode",
+        "PressKey:Space"
+      ],
+      "expected": {
+        "actionRole": "button",
+        "actionName": "Open sample details",
+        "keyboardGoal": "Observed focused goal heading",
+        "goalRole": "heading",
+        "goalName": "Sample details opened",
+        "pointerGoal": "Observed focused goal heading",
+        "barrierVerdict": "Not assessed by this catalogue"
+      },
+      "evidenceRequired": [
+        "Original source and content SHA-256",
+        "Actual input attempts and completions",
+        "Before/after accessibility snapshots",
+        "Source-bound graph nodes and edges",
+        "Separate fresh pointer comparator when required",
+        "Repeat attempts and source-bound video before sufficient-package assessment"
+      ],
+      "reset": "Activate Reset scenario; result hidden and action focused, or open a fresh page."
+    },
+    {
+      "id": "control-unnamed",
+      "fixture": "MockUnnamedControlV1",
+      "path": "/lab/v1/control-unnamed.html",
+      "contentSha256": "711e83f678990642c42a5e1b267c1abecad3804af7a1b7007de2fe551d7bc4bb",
+      "task": "Open the sample details using the keyboard.",
+      "initialState": "Fresh page; goal heading hidden; no browser focus on the action.",
+      "localProfile": "trusted bundled fixtures; noneditable control input only",
+      "hostedProfile": "hsr-approved-public-readonly-v1; observations only; no task inputs",
+      "commands": [
+        "Tab",
+        "Activate",
+        "EnterFocusMode",
+        "PressKey:Space"
+      ],
+      "expected": {
+        "actionRole": "button",
+        "actionName": "",
+        "keyboardGoal": "Observed focused goal heading",
+        "goalRole": "heading",
+        "goalName": "Sample details opened",
+        "pointerGoal": "Observed focused goal heading",
+        "barrierVerdict": "Not assessed by this catalogue"
+      },
+      "evidenceRequired": [
+        "Original source and content SHA-256",
+        "Actual input attempts and completions",
+        "Before/after accessibility snapshots",
+        "Source-bound graph nodes and edges",
+        "Separate fresh pointer comparator when required",
+        "Repeat attempts and source-bound video before sufficient-package assessment"
+      ],
+      "reset": "Activate Reset scenario; result hidden and action focused, or open a fresh page."
+    }
+  ]
+}

@@ -1,10 +1,57 @@
 # Versioned mock-site validation plan
 
-Requested November2,2026. Status: planned after the current approved-public worker
-increment passes CI. Add the catalogue to the existing test website; no new DNS,
-public MCP service, plugin or Supabase project is needed. Proposed `/lab/v1/`
-paths are not yet deployed. Product acceptance still precedes final documentation,
-then full best-practice/complexity refactoring.
+Requested November2,2026; first implementation November5. Four fixed v1 scenarios
+now have embedded source, an authored machine-readable contract and actual local
+Chromium/stdio MCP coverage. The remaining scenarios below are planned. The
+catalogue uses the existing test website; no new DNS, public MCP, plugin or
+Supabase project. Product acceptance still precedes final documentation, then
+full best-practice/complexity refactoring.
+
+## First catalogue
+
+Source: [authored manifest](../ops/test-sites/v1/manifest.json). Public route prefix:
+`https://screenreader.privensic.com/lab/v1/`. All scenarios are synthetic; none
+submits a real order, payment or account credential.
+
+| Path | Local bundled-fixture identity | Authored expectation |
+| --- | --- | --- |
+| `checkout-working.html` | `MockCheckoutWorkingV1` | Native Enter, Space and independent pointer click reveal/focus Sample order placed. |
+| `checkout-keyboard-blocked.html` | `MockCheckoutKeyboardBlockedV1` | Enter/Space complete as inputs but do not reveal the goal. A fresh pointer click does. |
+| `control-named.html` | `MockNamedControlV1` | The button exposes Open sample details; native activation succeeds. |
+| `control-unnamed.html` | `MockUnnamedControlV1` | Visual text stays absent from its exposed name; native activation can still succeed. |
+
+Local `reader_status` lists these identities; `reader_open_fixture` opens their
+exact embedded source. A fresh `reader_snapshot` supplies the document fence.
+Use Tab then Activate for native Enter, or Tab → EnterFocusMode → PressKey Space.
+Inspect actual `reader_execute` results and `reader_timeline`; do not infer a goal
+from a completed input. Reset scenario hides the result and focuses the action;
+opening a fresh fixture starts a new independent experiment.
+
+The graph test retains one node per actual observation and one edge per command,
+including focus-mode changes that send no key. Failed keyboard attempts stay
+Unknown/TimedOut with no automatic barrier verdict. Pointer comparisons use a
+separate fresh actual Chromium mouse experiment; they are not MCP keyboard events.
+New mock identities cannot obtain the synthetic credential-entry channel.
+
+`python ops/test-sites/export.py <new-output-directory>` creates six data-only
+assets. It checks authored source fingerprints, fixed identities/paths and the
+exact inline-script CSP hash before creating output, and refuses an existing
+destination. The root-owned Caddy lab handler precedes the consumer UI fallback,
+allows only the six files (plus the index directory alias), denies unknown lab
+paths, and adds no upstream or core endpoint. Preserve the current CI pages and
+full site configuration validation before reload. Retain/verify the preceding
+site configuration and release for rollback. Worker automatic promotion remains
+held; serving static fixtures does not promote the worker.
+
+These local fixtures use Chromium SetContent with all network requests blocked.
+Published copies have separately checked HTTP bytes and script policy. Their
+matching hashes do **not** establish an interactive public API/MCP run. The hosted
+public profile still sends zero inputs and collects page observations only. Its
+task graph/video, repeated attempts, separately scoped comparator and assessment
+mapping remain the next implementation gate. Exact checks and receipts belong in
+[mock-site validation](validation/mock-sites-v1.md).
+
+## Wider scenario plan
 
 Each scenario needs a stable ID/version, explicit task and initial state, supported
 profile/commands, expected reader observations, expected attempted-input and goal
