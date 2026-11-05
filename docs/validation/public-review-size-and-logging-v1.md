@@ -80,6 +80,14 @@ zero errors and six existing component-export warnings. Edge publication, exact
 private release promotion, static publication and the original signed-in
 GentleBirth retry remain separate until their actual receipts are appended.
 
+CI at `7361f66` rejected the published `--check-control` probe because default
+request diagnostics polluted its deliberately single-JSON merged output. Request
+logging is now explicitly composed only by the production host. Readiness probes
+and test hosts without a sink remain quiet; the real service keeps structured
+stderr events. The existing actual-publication case
+`PublishedControlRuntimeChecksHttpGuardAndJoinsStopWithoutTenantClaim` enforces
+this boundary. The failed CI artifact is not a deployment candidate.
+
 Supabase pre-change health advisories are empty. Existing security notices include
 intentional worker-table default-deny RLS and checked authenticated definer RPCs;
 the unrelated public `rls_auto_enable` grant and disabled leaked-password check

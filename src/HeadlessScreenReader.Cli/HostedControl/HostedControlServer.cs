@@ -118,8 +118,7 @@ internal sealed class HostedControlServer : IAsyncDisposable
                     System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds, Id("organization"), Id("scan"));
                 try
                 {
-                    if (diagnostic is not null) diagnostic(value);
-                    else Console.Error.WriteLine(JsonSerializer.Serialize(value));
+                    diagnostic?.Invoke(value);
                 }
                 catch (Exception) { /* Logging does not affect the request result. */ }
             }
