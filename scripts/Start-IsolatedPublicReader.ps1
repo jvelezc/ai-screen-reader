@@ -32,9 +32,10 @@ try {
                 $inputClosed=$true
             }
         }
-        # The caller closes stdin after Close (or abandonment). Do not acknowledge
-        # a successful launcher exit while an input transfer remains unsettled.
-        if(-not $toWorker.Wait(2000)){throw 'PUBLIC_READER_INPUT_TRANSFER_UNCONFIRMED'}
+        # Successful Close must settle input. A failed reader cannot send that
+        # acknowledgement: preserve its nonzero exit and drain its diagnostics
+        # instead of replacing them with an unrelated input-transfer exception.
+        if($child.ExitCode -eq 0 -and -not $toWorker.Wait(2000)){throw 'PUBLIC_READER_INPUT_TRANSFER_UNCONFIRMED'}
         $null=$fromWorker.GetAwaiter().GetResult()
         $null=$errors.GetAwaiter().GetResult()
         $exitCode=$child.ExitCode

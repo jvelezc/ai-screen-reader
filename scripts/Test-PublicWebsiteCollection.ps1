@@ -7,7 +7,7 @@ $owner=[Guid]::NewGuid().ToString('N');$name='hsr-public-db-'+$owner
 $folder=Join-Path $repoRoot ('artifacts/public-collection/'+$owner)
 $evidence=Join-Path $folder 'evidence'
 $null=New-Item -ItemType Directory -Path $folder
-$created=$false;$removed=$false;$ready=$false;$stage='database';$facts=$null;$workerResult=$null;$nativeAbsent=$false
+$created=$false;$removed=$false;$ready=$false;$stage='database';$facts=$null;$failureFacts=$null;$workerResult=$null;$nativeAbsent=$false
 $names=@('POSTGRES_PASSWORD','HSR_WORKER_DATABASE','HSR_WORKER_IMAGE','HSR_WORKER_RUNTIME','HSR_WORKER_EVIDENCE','HSR_WORKER_SECCOMP','HSR_EVIDENCE_S3_ACCESS_KEY','HSR_EVIDENCE_S3_SECRET')
 $prior=@{};foreach($key in $names){$prior[$key]=[Environment]::GetEnvironmentVariable($key)}
 function Invoke-PublicProofSql([string]$query){
@@ -69,6 +69,34 @@ try {
     $nativeAbsent=@($containers|Where-Object {$_.Trim().StartsWith($prefix,[StringComparison]::Ordinal)}).Count -eq 0 -and
         @($networks|Where-Object {$_.Trim().StartsWith($prefix,[StringComparison]::Ordinal)}).Count -eq 0
     if(-not $nativeAbsent){throw 'PUBLIC_COLLECTION_NATIVE_ABSENCE_UNCONFIRMED'}
+    # A real failed navigation must retain its bound cause with stdin still open.
+    # It must neither publish an original nor disguise the engine failure as a barrier.
+    $stage='failed-source-diagnostics'
+    $failedRequest=[Guid]::NewGuid()
+    $admission=Invoke-PublicProofSql "begin;set local role authenticated;select set_config('request.jwt.claim.sub','$user',true);select row_to_json(r) from hsr.create_public_scan('$org','$failedRequest','https://screenreader.privensic.com/assets/not-here.js','screenreader.privensic.com') r;commit;"
+    $failedJob=($admission -split "`n"|Where-Object {$_ -match '^\{'})|ConvertFrom-Json
+    if(-not $failedJob.job_id){throw 'PUBLIC_FAILED_SOURCE_ADMISSION_UNCONFIRMED'}
+    $lines=@(& $DotNet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --once-public 2> (Join-Path $folder 'failed-worker.stderr.jsonl'))
+    $failedExit=$LASTEXITCODE
+    $lines|Set-Content (Join-Path $folder 'failed-worker.json') -Encoding utf8NoBOM
+    $failedResult=($lines -join "`n")|ConvertFrom-Json
+    $diagnostic=$failedResult.FailureDiagnostic
+    if($failedExit -ne 3 -or $failedResult.State -cne 'Blocked' -or $failedResult.JobId -ne $failedJob.job_id -or
+        $failedResult.ErrorCode -cne 'PUBLIC_WEBSITE_SOURCE_UNCONFIRMED' -or $diagnostic.Schema -cne 'hsr-public-reader-failure-v1' -or
+        $diagnostic.SessionId -ne $failedJob.job_id -or $diagnostic.Sequence -ne 1 -or $diagnostic.Stage -cne 'Navigation' -or
+        $diagnostic.Cause -cne 'TARGET_HTTP_ERROR' -or $diagnostic.HttpStatusCode -ne 404){throw 'PUBLIC_FAILED_SOURCE_DIAGNOSTIC_UNCONFIRMED'}
+    $failureFacts=(Invoke-PublicProofSql "select json_build_object('State',state,'NoOriginal',result_text is null and result_digest is null and result_worker_id is null,'Leases',(select count(*) from hsr.public_scan_leases),'Queue',(select count(*) from pgmq.q_hsr_public_scan_jobs)) from hsr.public_scan_jobs where organization_id='$org' and id='$($failedJob.job_id)'")|ConvertFrom-Json
+    if($failureFacts.State -cne 'blocked' -or -not $failureFacts.NoOriginal -or $failureFacts.Leases -ne 0 -or $failureFacts.Queue -ne 0){throw 'PUBLIC_FAILED_SOURCE_RETIREMENT_UNCONFIRMED'}
+    $failedAck=@(Get-ChildItem -LiteralPath (Join-Path $journal 'removed') -Filter '*.json'|ForEach-Object {Get-Content $_.FullName -Raw|ConvertFrom-Json}|Where-Object {$_.Intent.SessionId -eq $failedJob.job_id})
+    if($failedAck.Count -ne 1 -or -not $failedAck[0].ContainersAbsenceConfirmed -or -not $failedAck[0].NetworksAbsenceConfirmed -or
+        @(Get-ChildItem -LiteralPath (Join-Path $journal 'intents')).Count -ne 0){throw 'PUBLIC_FAILED_SOURCE_OWNERSHIP_UNCONFIRMED'}
+    $prefix='hsr-public-'+([Guid]$failedAck[0].Intent.Owner).ToString('N')+'-'
+    $containers=(Invoke-ReaderRuntime $Runtime @('ps','--all','--format','{{.Names}}')).Text -split "`n"
+    $networks=(Invoke-ReaderRuntime $Runtime @('network','ls','--format','{{.Name}}')).Text -split "`n"
+    $nativeAbsent=$nativeAbsent -and @($containers|Where-Object {$_.Trim().StartsWith($prefix,[StringComparison]::Ordinal)}).Count -eq 0 -and
+        @($networks|Where-Object {$_.Trim().StartsWith($prefix,[StringComparison]::Ordinal)}).Count -eq 0
+    if(-not $nativeAbsent){throw 'PUBLIC_FAILED_SOURCE_NATIVE_ABSENCE_UNCONFIRMED'}
+    $failureFacts|Add-Member -NotePropertyName Diagnostic -NotePropertyValue $diagnostic
     $ready=$true;$stage='completed'
 }catch{
     $_.Exception.Message|Set-Content (Join-Path $folder 'failure.log') -Encoding utf8NoBOM
@@ -83,7 +111,7 @@ try {
     }
 }
 $result=[ordered]@{Schema='hsr-public-website-collection-proof-v1';Ready=($ready -and $removed -and $nativeAbsent);Stage=$stage;Run=$owner;Image=$Image;
-    Facts=$facts;DatabaseRemoved=$removed;OwnedNativeAbsent=$nativeAbsent;HostedProjectChanged=$false;OriginalAccountAcceptance=$false;Folder=$folder}
+    Facts=$facts;FailureFacts=$failureFacts;DatabaseRemoved=$removed;OwnedNativeAbsent=$nativeAbsent;HostedProjectChanged=$false;OriginalAccountAcceptance=$false;Folder=$folder}
 $result|ConvertTo-Json -Depth 5|Tee-Object -FilePath (Join-Path $folder 'run.json')
 if(-not $result.Ready){exit 3}
 exit 0

@@ -107,3 +107,39 @@ Regression names: `PublicResponseAcceptsTwoMiBButFoundationBudgetAndOversizedHea
 `BoundChildFailureReachesTerminalLogWhileForeignDiagnosticsAreDiscarded`,
 `LoggingSinkFailureCannotPreventAuthoritativePublication`, and
 `PublicConstructorCannotBypassTheLogAllowlist`.
+
+## First hosted acceptance and remaining failure-path repair
+
+Core `44c1b219a979ab39958c2f2a8f4b0df9acaf67fa` passed all nine jobs in
+[CI42131419973](https://github.com/jvelezc/ai-screen-reader/actions/runs/42131419973).
+Windows and Linux each discovered/executed/passed 3,752 tests, with zero failures
+or skips. The complete local Windows run also passed 3,752/3,752 in 9m38s; the
+strict build and format checks passed. Linux worker acceptance passed 73/73 and
+confirmed public native absence and owned database removal. The exact tested
+archive was promoted: deployment `2d9c88a6f3144e93b3c3fd09f8838928` reports Ready
+at that commit, replacing `237d309`. Automatic private promotion remains held.
+
+UI `caaa2e6a4dc6639be54c5e7b67f5918bfcf9b721` passed both CI platforms
+([42129314640](https://github.com/jvelezc/ai-screen-reader-ui/actions/runs/42129314640))
+and was published by [42129939417](https://github.com/jvelezc/ai-screen-reader-ui/actions/runs/42129939417):
+47 exact files, entry SHA-256 `f8ddc4aac212d6804b1ac689e18f6cc63c42701303ff2f960d778e804c86121b`.
+Edge v15 readback matches all three committed files and retains its existing
+in-function identity checks. The 4 MiB database bound and worker-only completion
+grant are confirmed by readback; existing security advisories are unchanged.
+
+The original application account remained signed in after reload. Its old failed
+GentleBirth attempt displays the matching job reference. A fresh GentleBirth
+review completed and the actual UI reported that the original download was
+verified and sent. This is passive page-review acceptance, not a completed task
+or a barrier/evidence-sufficiency conclusion.
+
+A separate real HTTP 404 review (job `98bba754-e161-40fb-99ed-fc1422f66215`)
+retained its blocked state/reference and coarse worker lifecycle, but exposed a
+remaining detailed-cause gap: after child failure, the launcher waited for a
+successful-Close input handoff and added `PUBLIC_READER_INPUT_TRANSFER_UNCONFIRMED`.
+The strict diagnostic parser correctly rejected that mixed stderr. The launcher
+now requires settled input for successful exit only; failed readers keep their
+nonzero exit, drained typed diagnostics and independent native cleanup. The
+actual Linux collection acceptance adds a second, controlled 404 job and checks
+bound Navigation/TARGET_HTTP_ERROR/404 metadata, no original, retired queue/lease
+and actual native absence. Its fresh CI and promotion are a separate gate.
