@@ -11,6 +11,7 @@ public sealed record PreciseCaptureFrame(int Sequence, string File, double Prese
 /// <summary>Raw JSON retains CDP's double timestamp; the SDK's Single frame model is never used.</summary>
 internal sealed class PreciseScreencastSource(ICDPSession session, string folder)
 {
+    internal int RequiredStartupFrames { get; init; } = 3;
     private readonly object _sync = new();
     private readonly CaptureFrameDrain _writes = new(0);
     private readonly List<PreciseCaptureFrame> _frames = [];
@@ -27,6 +28,7 @@ internal sealed class PreciseScreencastSource(ICDPSession session, string folder
 
     public async Task StartAsync()
     {
+        if (RequiredStartupFrames is < 1 or > 3) throw new BrowserOperationException("PRECISE_CAPTURE_START_DENIED");
         lock (_sync)
         {
             if (_started || _closed) throw new BrowserOperationException("PRECISE_CAPTURE_START_DENIED");
@@ -70,7 +72,7 @@ internal sealed class PreciseScreencastSource(ICDPSession session, string folder
                     lock (_sync)
                     {
                         _frames.Add(new(sequence, file, timestamp, Convert.ToHexStringLower(SHA256.HashData(bytes))));
-                        if (_frames.Count >= 3) _ready.TrySetResult();
+                        if (_frames.Count >= RequiredStartupFrames) _ready.TrySetResult();
                     }
                 }
                 finally

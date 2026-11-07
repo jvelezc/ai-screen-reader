@@ -48,6 +48,10 @@ public sealed class ChromiumRecordingProbe : IAsyncDisposable
     /// <summary>Closed collector cause retained during stop; neither a stop acknowledgement nor recording completion.</summary>
     public string? CollectorFailureCode => Volatile.Read(ref _collectorFailure);
 
+    /// <summary>Independent pointer comparison on an embedded mock source; never a reader keyboard event.</summary>
+    public Task<PointerTaskReceipt> ObserveMockPointerAsync(CancellationToken token = default) =>
+        _browser.ObserveMockPointerAsync(token);
+
     public Task CopyCompletedSourcesAsync(Func<ImmutableArray<CompletedCaptureSource>, CancellationToken, Task> sink,
         CancellationToken token = default) => CopyCompletedSourcesCoreAsync(sink, CapturePhase.Permitted, token);
 
@@ -228,6 +232,14 @@ public sealed partial class ChromiumFixtureBrowser
     public static async Task<ChromiumRecordingProbe> LaunchTraversalRecordingAsync(string folder, CancellationToken cancellationToken = default)
         => await LaunchControlledRecordingAsync(folder, BundledFixture.TraversalRecording, cancellationToken).ConfigureAwait(false);
 
+    /// <summary>Only the four embedded v1 lab scenarios; no URL, credentials or caller-supplied page content.</summary>
+    public static Task<ChromiumRecordingProbe> LaunchMockRecordingAsync(string folder, BundledFixture fixture,
+        CancellationToken cancellationToken = default)
+    {
+        _ = MockSiteTasks.Describe(fixture);
+        return LaunchControlledRecordingAsync(folder, fixture, cancellationToken);
+    }
+
     private static async Task<ChromiumRecordingProbe> LaunchControlledRecordingAsync(string folder, BundledFixture fixture,
         CancellationToken cancellationToken)
     {
@@ -240,7 +252,13 @@ public sealed partial class ChromiumFixtureBrowser
         try
         {
             var session = await browser._context.NewCDPSessionAsync(browser._page).ConfigureAwait(false);
-            var probe = new ChromiumRecordingProbe(browser, new(session, folder), folder);
+            var source = new PreciseScreencastSource(session, folder)
+            {
+                // Static mock pages can supply one genuine initial frame. The older
+                // calibration fixtures keep their three-frame readiness requirement.
+                RequiredStartupFrames = MockSiteTasks.Fixtures.Contains(fixture) ? 1 : 3
+            };
+            var probe = new ChromiumRecordingProbe(browser, source, folder);
             browser._stopProbeCollector = probe.StopCollectorsAsync;
             browser._restartProbeCollector = () => Task.FromException(new BrowserOperationException("RECORDING_PROBE_RESUME_UNAVAILABLE"));
             await probe.StartAsync().ConfigureAwait(false);

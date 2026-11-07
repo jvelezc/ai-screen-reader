@@ -189,7 +189,7 @@ public static class TraversalEvidencePackage
         }
     }
 
-    private static async Task<ImmutableArray<TraversalPackageFile>> InventoryAsync(string folder)
+    internal static async Task<ImmutableArray<TraversalPackageFile>> InventoryAsync(string folder)
     {
         var files = ImmutableArray.CreateBuilder<TraversalPackageFile>();
         long total = 0;
@@ -247,7 +247,7 @@ public static class TraversalEvidencePackage
     {
         if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0) throw new InvalidDataException("EVIDENCE_LINK_NOT_ALLOWED");
     }
-    private static string Resolve(string folder, string relative)
+    internal static string Resolve(string folder, string relative)
     {
         if (!SafePath(relative)) throw new InvalidDataException("EVIDENCE_PATH_INVALID");
         var path = folder;
@@ -272,7 +272,7 @@ public static class TraversalEvidencePackage
         if (await input.ReadAsync(new byte[1]).ConfigureAwait(false) != 0) throw new InvalidDataException("EVIDENCE_LIMIT_EXCEEDED");
         return bytes;
     }
-    private static async Task<TraversalPackageFile> CopyAndHashAsync(string path, Stream destination)
+    internal static async Task<TraversalPackageFile> CopyAndHashAsync(string path, Stream destination)
     {
         RejectLink(path);
         await using var input = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 65536, FileOptions.Asynchronous);

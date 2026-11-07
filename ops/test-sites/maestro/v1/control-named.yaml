@@ -1,0 +1,13 @@
+url: https://screenreader.privensic.com/lab/v1/control-named.html
+---
+- launchApp
+- assertVisible:
+    id: action
+- assertNotVisible:
+    id: goal
+- takeScreenshot: control-named-before
+- tapOn:
+    id: action
+- assertVisible:
+    id: goal
+- takeScreenshot: control-named-pointer-result

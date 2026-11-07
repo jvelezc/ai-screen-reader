@@ -24,9 +24,26 @@ public sealed record RecordedTraversalResult(TraversalReceipt? Receipt, Traversa
 /// <summary>Four fixed synthetic routes. No arbitrary recording, user fields, replay or human input.</summary>
 public static class TraversalRecordingDemo
 {
-    public static async Task<RecordedTraversalResult> RunRouteAsync(string mediaFolder, TraversalPlan plan,
+    public static Task<RecordedTraversalResult> RunRouteAsync(string mediaFolder, TraversalPlan plan,
         CancellationToken cancellationToken = default, Func<TraversalCheckpoint, CancellationToken, Task>? checkpoint = null,
-        Func<ImmutableArray<CompletedCaptureSource>, CancellationToken, Task>? sources = null)
+        Func<ImmutableArray<CompletedCaptureSource>, CancellationToken, Task>? sources = null) =>
+        RunRecordedRouteAsync(mediaFolder, plan, ChromiumFixtureBrowser.LaunchTraversalRecordingAsync,
+            cancellationToken, checkpoint, sources);
+
+    /// <summary>Record an authored v1 mock task. Source identity and missing marker alignment remain explicit.</summary>
+    public static Task<RecordedTraversalResult> RunMockRouteAsync(string mediaFolder, BundledFixture fixture, string key,
+        CancellationToken cancellationToken = default)
+    {
+        var task = MockSiteTasks.Describe(fixture);
+        return RunRecordedRouteAsync(mediaFolder, task.KeyboardPlan(key),
+            (folder, token) => ChromiumFixtureBrowser.LaunchMockRecordingAsync(folder, fixture, token),
+            cancellationToken, null, null);
+    }
+
+    private static async Task<RecordedTraversalResult> RunRecordedRouteAsync(string mediaFolder, TraversalPlan plan,
+        Func<string, CancellationToken, Task<ChromiumRecordingProbe>> launch,
+        CancellationToken cancellationToken, Func<TraversalCheckpoint, CancellationToken, Task>? checkpoint,
+        Func<ImmutableArray<CompletedCaptureSource>, CancellationToken, Task>? sources)
     {
         var time = TimeProvider.System;
         var started = time.GetTimestamp();
@@ -42,7 +59,7 @@ public static class TraversalRecordingDemo
         double? runnerOriginHostMilliseconds = null;
         try
         {
-            await using var probe = await ChromiumFixtureBrowser.LaunchTraversalRecordingAsync(mediaFolder, cancellationToken).ConfigureAwait(false);
+            await using var probe = await launch(mediaFolder, cancellationToken).ConfigureAwait(false);
             ownedProbe = probe; environment = probe.Environment;
             // Keep the full baseline uncertainty window inside the clip, outside route duration.
             await Task.Delay(120, cancellationToken).ConfigureAwait(false);

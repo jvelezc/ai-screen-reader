@@ -28,10 +28,20 @@ Every suggestion is untested; no task barrier, recording, sufficient evidence or
 legal case is inferred. Local/CI evidence, private promotion and separate Edge/UI
 delivery are reported independently in that receipt.
 
+**New local core capability — recorded mock task experiments:**
+[independent repeated keyboard/pointer recordings](validation/recorded-mock-tasks-v1.md)
+retain actual goals, graph/events, native video, source screenshots and file
+fingerprints for the four fixed v1 mock pages. Whole clips play locally; missing
+event/video synchronization remains explicit. Separate Maestro flows pass four
+served-page pointer checks and retain eight screenshots. These are local/native
+and independent Maestro receipts, not a tenant-hosted task or real-site case.
+
 **NEXT — bounded website task evidence:** the first four working/broken checkout
 and named/unnamed [mock scenarios](test-site-scenarios.md) are implemented with
 actual local Chromium/MCP checks and fixed source fingerprints. Connect approved
-lab tasks to the hosted task collector and retain the required evidence. Prove
+lab recording package to tenant-scoped admission and an isolated hosted task
+collector, with its own source/job/producer contracts, HTTP/private MCP resource
+and artifact validation. Then connect through existing Edge to the Lovable UI. Prove
 the separate task-input/capture/authority profile before using it on a public
 service journey. For GentleBirth, prioritize observed service/course access,
 pricing/enrollment and support; only actual attempts can establish their outcomes.

@@ -7,6 +7,9 @@ using HeadlessScreenReader.Domain;
 using HeadlessScreenReader.ScreenReader;
 using Microsoft.Playwright;
 
+if (args.Length > 0 && args[0] is "--record-mock-tasks" or "--verify-mock-tasks")
+    return await MockTaskCommands.RunAsync(args, Console.Out);
+
 if (args.SequenceEqual(["--worker-fixture"]))
     return await FixtureWorker.RunAsync(Console.OpenStandardInput(), Console.OpenStandardOutput());
 
@@ -48,6 +51,8 @@ if (args.Length > 0 && args[0] is "--archive-evidence-local" or "--archive-evide
 
 if (args.Contains("--help", StringComparer.Ordinal))
 {
+    Console.WriteLine("  --record-mock-tasks <scenario> <new-directory>: three fresh recorded keyboard runs and an independent recorded pointer comparison");
+    Console.WriteLine("  --verify-mock-tasks <directory> <trusted-manifest-sha256>: bounded read-only mock package integrity check");
     Console.WriteLine("HeadlessScreenReader. Usage: --hosted-control | --check-control | --check-s3-local <port> <ownerN> | --view-fixture | --private-client | --headed-private-client | --private-pixels | --headed-private-pixels | --private-viewer | --synthetic-handoff | --headed-synthetic-handoff | --headed-session | --controller | --owned-scan | --replay | --features | --traversal-recording | --recording-sync | --capture-probe | [--traversal | --widgets | --observe-live | --text | --frames | --ranges | --composites | --tables | --paragraphs | --multiselect | --typeahead] [--headed] | --reference-template | --reference-case <id> | --assess-reference <file>");
     Console.WriteLine("  --verify-evidence <extracted-directory> <trusted-manifest-sha256>: read-only recorded package integrity check");
     Console.WriteLine("  --archive-evidence-local <directory> <trusted-manifest-sha256> <organization-guid> <archive-guid> <owned-store-directory>");

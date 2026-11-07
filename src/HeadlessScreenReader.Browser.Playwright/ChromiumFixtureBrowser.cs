@@ -83,7 +83,7 @@ public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, ICapt
             {
                 AcceptDownloads = false,
                 ServiceWorkers = ServiceWorkerPolicy.Block,
-                ViewportSize = fixture is BundledFixture.CapturePrivacy or BundledFixture.RecordingMarkers or BundledFixture.TraversalRecording or BundledFixture.SyntheticHandoff
+                ViewportSize = artifactsDirectory is not null || fixture is BundledFixture.CapturePrivacy or BundledFixture.RecordingMarkers or BundledFixture.TraversalRecording or BundledFixture.SyntheticHandoff
                     ? new() { Width = 320, Height = 240 } : new() { Width = 1280, Height = 720 }
             }).ConfigureAwait(false);
             await context.RouteAsync("**/*", route => route.AbortAsync()).ConfigureAwait(false);

@@ -1,0 +1,13 @@
+url: https://screenreader.privensic.com/lab/v1/checkout-working.html
+---
+- launchApp
+- assertVisible:
+    id: action
+- assertNotVisible:
+    id: goal
+- takeScreenshot: checkout-working-before
+- tapOn:
+    id: action
+- assertVisible:
+    id: goal
+- takeScreenshot: checkout-working-pointer-result

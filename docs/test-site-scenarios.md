@@ -1,5 +1,13 @@
 # Versioned mock-site validation plan
 
+The [recorded local task suite](validation/recorded-mock-tasks-v1.md) now adds
+three fresh keyboard experiments and an independent recorded mouse comparison
+for each v1 scenario. Whole-clip playback, source JPEGs, graph/event reports and
+integrity verification are available locally. Event-to-video synchronization is
+explicitly unverified on these markerless pages. The hosted admission/HTTP/MCP
+and consumer connection remain the next gate. Independent Maestro flows under
+`ops/test-sites/maestro/v1/` verify the served pointer behaviors and save screenshots.
+
 Requested November2,2026; first implementation November5. Four fixed v1 scenarios
 now have embedded source, an authored machine-readable contract and actual local
 Chromium/stdio MCP coverage. The remaining scenarios below are planned. The
@@ -47,8 +55,9 @@ These local fixtures use Chromium SetContent with all network requests blocked.
 Published copies have separately checked HTTP bytes and script policy. Their
 matching hashes do **not** establish an interactive public API/MCP run. The hosted
 public profile still sends zero inputs and collects page observations only. Its
-task graph/video, repeated attempts, separately scoped comparator and assessment
-mapping remain the next implementation gate. Exact checks and receipts belong in
+hosted task graph/video, repeated attempts, separately scoped comparator and assessment
+mapping remain the next implementation gate. Local collection now exists separately.
+Exact checks and receipts belong in
 [mock-site validation](validation/mock-sites-v1.md).
 
 ## Wider scenario plan

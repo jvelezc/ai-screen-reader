@@ -35,6 +35,22 @@ OpenAPI version before using a source-only capability. Copyable agent request:
 See [HTTP requests](docs/protocol/core-api.http) and
 [validation and delivery scope](docs/validation/website-screening-v1.md).
 
+The [local recorded mock-task suite](docs/validation/recorded-mock-tasks-v1.md)
+now collects repeated Enter, Space and an independent pointer comparison with
+original video, screenshots, actual goals, graphs and file fingerprints:
+
+```powershell
+dotnet run --project src/HeadlessScreenReader.Cli -c Release -- --record-mock-tasks checkout-keyboard-blocked artifacts/my-new-mock-run
+dotnet run --project src/HeadlessScreenReader.Cli -c Release -- --verify-mock-tasks artifacts/my-new-mock-run <printed-manifest-sha256>
+```
+
+Choose `checkout-working`, `checkout-keyboard-blocked`, `control-named` or
+`control-unnamed` and a new output directory. Open the exported `index.html` to
+watch complete clips and inspect the graphs. Preserve the printed digest
+separately. These are fixed synthetic experiments; event/video synchronization,
+hosted task admission, public-site tasks and website evidence readiness remain
+unverified or unimplemented in their named scopes.
+
 ## Earlier delivery milestones
 
 The following receipts retain their versions and original acceptance scope. Use
