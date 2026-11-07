@@ -8,6 +8,29 @@ namespace HeadlessScreenReader.Tests;
 
 public sealed class PublicWebsiteHttpTests
 {
+    [Theory]
+    [InlineData(false, false, 401)]
+    [InlineData(true, true, 400)]
+    [InlineData(true, false, 200)]
+    public async Task HttpScreeningUsesExistingAuthorizationAndRejectsQueryScope(bool authenticated, bool forgedQuery, int expected)
+    {
+        using var rig = new PublicWebsiteApiTests.Rig();
+        WebsiteScreeningApiTests.Seed(rig, [new("action", "button", ""), new("catalog", "link", "View Course Catalog")]);
+        await using var server = await Start(rig); using var client = Client(server, authenticated);
+        var path = Collection(rig) + $"/{rig.Job.ScanId:D}/screening/{rig.Digest}" + (forgedQuery ? "?actor=forged" : "");
+        using var response = await client.GetAsync(path);
+        Assert.Equal(expected, (int)response.StatusCode);
+        var text = await response.Content.ReadAsStringAsync();
+        if (expected == 200)
+        {
+            using var json = JsonDocument.Parse(text); var report = json.RootElement.GetProperty("screening");
+            Assert.Equal("PotentialIssue", report.GetProperty("issues")[0].GetProperty("classification").GetString());
+            Assert.Equal("DiscoverServices", report.GetProperty("suggestedTasks")[0].GetProperty("purpose").GetString());
+            Assert.Equal("NotStarted", report.GetProperty("taskExecution").GetString()); Assert.False(report.GetProperty("legalCaseDetermined").GetBoolean());
+        }
+        else { Assert.Equal(0, rig.OriginalReads); Assert.DoesNotContain("catalog", text); }
+    }
+
     private static Task<HostedControlServer> Start(PublicWebsiteApiTests.Rig rig) => HostedControlServer.StartAsync(
         new(PortalProjectClientTests.Key, Path.GetFullPath("artifacts/public-website-http"), new string('a', 40), 0),
         rig.Project, new PortalObservationStub(), publicWebsiteRuntimeReady: () => Task.FromResult(rig.ProcessorReady));

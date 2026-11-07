@@ -1,6 +1,6 @@
 # Remaining product completion gates
 
-Updated November 5, 2026. Product: Privensic Screen Reader. The original proposal
+Updated November 6, 2026. Product: Privensic Screen Reader. The original proposal
 under `outputs/` is unchanged. The full product remains incomplete.
 
 **Current accepted engine:** private237d309, HTTP1.18, private MCP0.3/26 tools,
@@ -20,10 +20,22 @@ reconnect, local-address denial and saved-list recovery. See the
 [current publication receipt](validation/customer-https-publication-v1.md).
 The core worker's automatic-promotion hold is unchanged.
 
+**Current source increment — potential issues and task selection:**
+[HTTP1.19/private MCP27-tool screening](validation/website-screening-v1.md)
+inspects the complete saved final capture, preserving source names/digests and
+suggesting service discovery, pricing/enrollment, account and support journeys.
+Every suggestion is untested; no task barrier, recording, sufficient evidence or
+legal case is inferred. Local/CI evidence, private promotion and separate Edge/UI
+delivery are reported independently in that receipt.
+
 **NEXT — bounded website task evidence:** the first four working/broken checkout
 and named/unnamed [mock scenarios](test-site-scenarios.md) are implemented with
 actual local Chromium/MCP checks and fixed source fingerprints. Connect approved
-lab tasks to the hosted task collector and retain the required evidence. The published account journey
+lab tasks to the hosted task collector and retain the required evidence. Prove
+the separate task-input/capture/authority profile before using it on a public
+service journey. For GentleBirth, prioritize observed service/course access,
+pricing/enrollment and support; only actual attempts can establish their outcomes.
+The published account journey
 passes; it does not establish task testing or all authority-loss cases. The
 remaining work is ordered:
 

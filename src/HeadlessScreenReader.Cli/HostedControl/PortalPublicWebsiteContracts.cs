@@ -89,6 +89,7 @@ internal interface IPortalPublicWebsiteProjectClient
 
 internal interface IPortalPublicWebsites
 {
+    Task<PortalWebsiteScreeningResponse> ScreeningAsync(PortalIdentity actor, Guid organization, Guid scan, string digest, CancellationToken token);
     Task<PortalPublicWebsiteCreatedResponse> AdmitAsync(PortalIdentity actor, Guid organization, PortalCreatePublicWebsiteRequest request, CancellationToken token);
     Task<PortalPublicWebsiteListResponse> ListAsync(PortalIdentity actor, Guid organization, CancellationToken token);
     Task<PortalPublicWebsiteStatusResponse> StatusAsync(PortalIdentity actor, Guid organization, Guid scan, CancellationToken token);

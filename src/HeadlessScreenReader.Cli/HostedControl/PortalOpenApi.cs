@@ -12,7 +12,7 @@ internal static partial class PortalOpenApi
 {
     private static readonly Lazy<string> Cached = new(Build);
     public static string Document => Cached.Value;
-    public const string ContractVersion = "1.18.0";
+    public const string ContractVersion = "1.19.0";
 
     private static string Build()
     {

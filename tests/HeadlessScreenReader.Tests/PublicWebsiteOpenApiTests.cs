@@ -10,14 +10,19 @@ public sealed class PublicWebsiteOpenApiTests
     public void PublicContractDocumentsEveryActualRouteWithPathOnlySelectorsAndAcceptedAdmission()
     {
         using var json = JsonDocument.Parse(PortalOpenApi.Document); var root = json.RootElement;
-        Assert.Equal("1.18.0", root.GetProperty("info").GetProperty("version").GetString());
+        Assert.Equal("1.19.0", root.GetProperty("info").GetProperty("version").GetString());
         var paths = root.GetProperty("paths"); const string prefix = "/api/workspaces/{organization}/website-scans";
+        var screening = paths.GetProperty(prefix + "/{scan}/screening/{digest}").GetProperty("get");
+        Assert.Equal("ReadPublicWebsiteScreening", screening.GetProperty("operationId").GetString());
+        var digest = screening.GetProperty("parameters").EnumerateArray().Single(p => p.GetProperty("name").GetString() == "digest");
+        Assert.True(digest.GetProperty("required").GetBoolean());
+        Assert.Equal("^[a-f0-9]{64}$", digest.GetProperty("schema").GetProperty("pattern").GetString());
         var post = paths.GetProperty(prefix).GetProperty("post");
         Assert.True(post.GetProperty("responses").GetProperty("202").GetProperty("headers").TryGetProperty("Location", out _));
         Assert.True(post.GetProperty("responses").TryGetProperty("429", out _));
         Assert.False(post.GetProperty("responses").TryGetProperty("201", out _));
         foreach (var suffix in new[] { "", "/{scan}", "/{scan}/observations/{capture}/{offset}/{limit}",
-            "/{scan}/observations/{capture}/{offset}/{limit}/{digest}", "/{scan}/original/{offset}/{digest}" })
+            "/{scan}/observations/{capture}/{offset}/{limit}/{digest}", "/{scan}/original/{offset}/{digest}", "/{scan}/screening/{digest}" })
         {
             var operation = paths.GetProperty(prefix + suffix).GetProperty("get");
             Assert.True(operation.GetProperty("security")[0].TryGetProperty("bearerAuth", out _));
@@ -49,5 +54,25 @@ public sealed class PublicWebsiteOpenApiTests
         Assert.Equal("base64", original.GetProperty("data").GetProperty("contentEncoding").GetString());
         var status = schemas.GetProperty("PublicWebsiteStatus").GetProperty("properties");
         Assert.DoesNotContain(status.EnumerateObject(), property => property.Name is "leaseToken" or "resultText" or "nativePath");
+    }
+
+    [Fact]
+    public void ScreeningContractPreservesPotentialClassificationUntestedTasksAndStringPurpose()
+    {
+        using var json = JsonDocument.Parse(PortalOpenApi.Document);
+        var wrapper = json.RootElement.GetProperty("components").GetProperty("schemas").GetProperty("PublicWebsiteScreening").GetProperty("properties");
+        Assert.Equal(1, wrapper.GetProperty("captureIndex").GetProperty("const").GetInt32());
+        var report = wrapper.GetProperty("screening").GetProperty("properties");
+        Assert.Equal("NotAssessed", report.GetProperty("taskBarrier").GetProperty("const").GetString());
+        Assert.False(report.GetProperty("legalCaseDetermined").GetProperty("const").GetBoolean());
+        Assert.Equal("InsufficientTaskEvidence", report.GetProperty("evidenceReadiness").GetProperty("const").GetString());
+        Assert.Equal(40, report.GetProperty("issues").GetProperty("maxItems").GetInt32());
+        var issue = report.GetProperty("issues").GetProperty("items").GetProperty("properties");
+        Assert.Equal("PotentialIssue", issue.GetProperty("classification").GetProperty("const").GetString());
+        var task = report.GetProperty("suggestedTasks").GetProperty("items").GetProperty("properties");
+        Assert.Equal("string", task.GetProperty("purpose").GetProperty("type").GetString());
+        Assert.Contains("DiscoverServices", task.GetProperty("purpose").GetProperty("enum").EnumerateArray().Select(v => v.GetString()));
+        Assert.Equal("NotTested", task.GetProperty("state").GetProperty("const").GetString());
+        Assert.False(task.GetProperty("executionAuthorized").GetProperty("const").GetBoolean());
     }
 }

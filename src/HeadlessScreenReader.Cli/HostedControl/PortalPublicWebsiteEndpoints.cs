@@ -8,6 +8,12 @@ internal static class PortalPublicWebsiteEndpoints
     internal static void MapPublicWebsites(this WebApplication app)
     {
         const string root = "/api/workspaces/{organization:guid}/website-scans";
+        app.MapGet(root + "/{scan:guid}/screening/{digest}", async (HttpContext context, IPortalPublicWebsites service,
+            Guid organization, Guid scan, string digest, CancellationToken token) =>
+            TypedResults.Json(await service.ScreeningAsync(HostedControlServer.Actor(context), organization, scan, digest, token).ConfigureAwait(false), PortalPublicWebsiteService.ScreeningJson))
+            .WithName("ReadPublicWebsiteScreening").WithSummary("Inspect verified captured control names and suggest untested service journeys")
+            .WithDescription("A digest-pinned diagnostic screen, not task execution, a legal case decision or complete accessibility evaluation. Current tenant and original checks remain required; omitted items are explicit.")
+            .Produces<PortalWebsiteScreeningResponse>().ProducesProblem(400).ProducesProblem(401).ProducesProblem(404).ProducesProblem(409).ProducesProblem(503);
         app.MapPost(root, async (HttpContext context, IPortalPublicWebsites service, Guid organization, CancellationToken token) =>
         {
             var request = await HostedControlServer.BodyAsync<PortalCreatePublicWebsiteRequest>(context, token).ConfigureAwait(false);

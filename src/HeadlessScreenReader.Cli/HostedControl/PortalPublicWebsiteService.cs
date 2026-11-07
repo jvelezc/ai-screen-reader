@@ -5,7 +5,7 @@ using HeadlessScreenReader.Worker;
 
 namespace HeadlessScreenReader.Cli.HostedControl;
 
-internal sealed class PortalPublicWebsiteService(IPortalProjectClient project, IPortalPublicWebsiteProjectClient? publicProject,
+internal sealed partial class PortalPublicWebsiteService(IPortalProjectClient project, IPortalPublicWebsiteProjectClient? publicProject,
     Func<Task<bool>>? processorReady = null) : IPortalPublicWebsites
 {
     private IPortalPublicWebsiteProjectClient Client => publicProject ?? throw new PortalFault(503, "CONTROL_PUBLIC_WEBSITE_UNAVAILABLE");

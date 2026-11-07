@@ -1,5 +1,5 @@
 # Core-side requests. Lovable application traffic must instead invoke Supabase Edge Functions.
-# These examples describe source contract 1.18.0; inspect live OpenAPI before use.
+# These examples describe source contract 1.19.0; inspect live OpenAPI before use.
 # Closed WORKER_PUBLICATION causes on a blocked report mean Unavailable or Invalid.
 # Inspect the SAME scan's retained output if available; no code guarantees recovery or permits replay.
 # Set accessToken only in your HTTP client's private local environment; never commit a real JWT.
@@ -41,6 +41,12 @@ Authorization: Bearer {{accessToken}}
 ### At most64KiB original JSON bytes; base64, exact page/whole hashes, boundary or EOF only
 # Reconstruct all pages and compare whole SHA; make a fresh exact-EOF read before delivery.
 GET {{baseUrl}}/api/workspaces/{{organization}}/website-scans/{{websiteScan}}/original/0/{{websiteOriginalSha256}}
+Authorization: Bearer {{accessToken}}
+
+### Screen the complete saved final capture for potential name issues and untested service journeys
+# Pin the exact completed original SHA. Counts/truncation describe omitted results.
+# This GET sends no target input, collects no task recording and determines no legal case.
+GET {{baseUrl}}/api/workspaces/{{organization}}/website-scans/{{websiteScan}}/screening/{{websiteOriginalSha256}}
 Authorization: Bearer {{accessToken}}
 
 # Replace with the sessionId returned by the reader session admission.

@@ -1,6 +1,20 @@
 # Original development goals and next step
 
-Updated November 2, 2026. The original proposal under `outputs/` remains unchanged. This status document tracks implementation against its acceptance gates.
+Updated November 6, 2026. The original proposal under `outputs/` remains unchanged.
+The [completion plan](completion-plan.md) records the current accepted deployment
+and ordered gates. The full product remains incomplete.
+
+**Current source work:** [captured-page screening](validation/website-screening-v1.md)
+adds HTTP1.19/private MCP27-tool diagnostics and untested service-journey
+suggestions. The existing public worker still sends zero inputs. **Next:**
+source-bound task attempts with graph/video and the supporting evidence required
+by the automated assessment. Prove the new profile on the existing mock catalogue
+before public task input, then integrate through the existing Edge gateway/UI.
+Source, CI, deployment and original-account acceptance are separate gates.
+
+## Historical checkpoint — November 2
+
+The following snapshot retains its then-current versions, receipts and open work.
 
 **Current private release:**366e9c5, all9 CI41543636420 jobs/3617 tests per OS,
 native73/database631/operations180 and Ready promotion41545751253. All165 files,

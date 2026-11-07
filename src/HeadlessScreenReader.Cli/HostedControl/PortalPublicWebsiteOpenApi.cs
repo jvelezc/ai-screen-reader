@@ -14,11 +14,15 @@ internal static partial class PortalOpenApi
         schemas["PublicWebsiteStatus"] = Schema<PortalPublicWebsiteStatusResponse>("PublicWebsiteStatus");
         schemas["PublicWebsiteNodes"] = Schema<PortalPublicWebsiteNodePageResponse>("PublicWebsiteNodes");
         schemas["PublicWebsiteOriginal"] = Schema<PortalPublicWebsiteOriginalPageResponse>("PublicWebsiteOriginal");
+        schemas["PublicWebsiteScreening"] = Schema<PortalWebsiteScreeningResponse>("PublicWebsiteScreening");
     }
 
     private static void AddPublicWebsitePaths(JsonObject paths)
     {
         const string root = "/api/workspaces/{organization}/website-scans";
+        var screening = Operation("ReadPublicWebsiteScreening", "Inspect a verified complete captured tree for potential control-name issues and suggest untested service journeys. No task, recording, legal case or conformance claim. Counts include omitted items.", "PublicWebsiteScreening", true, organization: true, scan: true);
+        ((JsonArray)screening["parameters"]!).Add(PublicDigestParameter());
+        paths[root + "/{scan}/screening/{digest}"] = Path("get", screening);
         var admission = Operation("AdmitPublicWebsite", "Queue one approved public HTTPS source. Reuse the same request UUID/source for explicit reconciliation; admission never acknowledges execution or evidence sufficiency.",
             "PublicWebsiteCreated", true, "CreatePublicWebsite", 202, organization: true);
         admission["responses"]!["202"]!["headers"] = new JsonObject
@@ -75,6 +79,36 @@ internal static partial class PortalOpenApi
 
     private static void ApplyPublicWebsiteSchema(Type type, JsonObject value, JsonObject properties)
     {
+        if (type == typeof(PortalWebsiteScreeningResponse))
+        {
+            properties["originalSha256"]!["pattern"] = "^[a-f0-9]{64}$";
+            properties["captureIndex"]!["const"] = 1; properties["captures"]!["const"] = 2;
+            properties["totalIssues"]!["minimum"] = 0; properties["totalIssues"]!["maximum"] = 2048;
+            properties["totalSuggestedTasks"]!["minimum"] = 0; properties["totalSuggestedTasks"]!["maximum"] = 2048;
+            value["description"] = "Computed from the complete verified final capture. At most40 issues/20 suggestions and128KiB; explicit totals/truncation preserve omitted results. Not a task or legal determination.";
+        }
+        if (type == typeof(WebsitePageScreening))
+        {
+            properties["schema"]!["const"] = WebsitePageScreening.CurrentSchema;
+            properties["policy"]!["const"] = WebsitePageScreening.CurrentPolicy;
+            properties["scope"]!["const"] = "CapturedPageOnly"; properties["taskExecution"]!["const"] = "NotStarted";
+            properties["taskBarrier"]!["const"] = "NotAssessed"; properties["evidenceReadiness"]!["const"] = "InsufficientTaskEvidence";
+            properties["legalCaseDetermined"]!["const"] = false;
+            properties["inspectedNodes"]!["minimum"] = 1; properties["inspectedNodes"]!["maximum"] = 2048;
+            properties["interactiveControls"]!["minimum"] = 0; properties["interactiveControls"]!["maximum"] = 2048;
+            properties["captureEpoch"]!["minimum"] = 1;
+            properties["issues"]!["maxItems"] = 40; properties["suggestedTasks"]!["maxItems"] = 20;
+        }
+        if (type == typeof(WebsiteScreeningIssue))
+        {
+            properties["rule"]!["const"] = "ExposedInteractiveControlNameMissing";
+            properties["classification"]!["const"] = "PotentialIssue"; properties["taskImpact"]!["const"] = "NotAssessed";
+        }
+        if (type == typeof(WebsiteTaskCandidate))
+        {
+            properties["purpose"] = new JsonObject { ["type"] = "string", ["enum"] = Strings(Enum.GetNames<WebsiteTaskPurpose>()) };
+            properties["state"]!["const"] = "NotTested"; properties["executionAuthorized"]!["const"] = false;
+        }
         if (type == typeof(PortalCreatePublicWebsiteRequest))
         {
             properties["url"]!["minLength"] = 1; properties["url"]!["maxLength"] = 2048;

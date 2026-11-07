@@ -9,6 +9,25 @@ namespace HeadlessScreenReader.Tests;
 [Trait("Category", "Browser")]
 public sealed class ChromiumMockSiteTests
 {
+    [Theory]
+    [InlineData(BundledFixture.MockNamedControlV1, false)]
+    [InlineData(BundledFixture.MockUnnamedControlV1, true)]
+    public async Task ActualChromiumScreeningPreservesNamedAndUnnamedControlsWithoutTaskClaims(BundledFixture fixture, bool potentialIssue)
+    {
+        await using var browser = await ChromiumFixtureBrowser.LaunchAsync(fixture: fixture);
+        var snapshot = await browser.CaptureAsync();
+        var report = WebsiteScreening.Inspect(snapshot);
+        Assert.Equal(potentialIssue ? 1 : 0, report.Issues.Length);
+        if (potentialIssue)
+        {
+            var issue = Assert.Single(report.Issues);
+            Assert.Equal("button", issue.Role); Assert.Equal("", issue.ExposedName);
+            Assert.Contains(snapshot.Nodes, n => n.Id == issue.NodeId && n.Name == "");
+        }
+        Assert.Equal("NotStarted", report.TaskExecution); Assert.Equal("NotAssessed", report.TaskBarrier);
+        Assert.False(report.LegalCaseDetermined); Assert.Equal("InsufficientTaskEvidence", report.EvidenceReadiness);
+    }
+
     [Fact]
     public void CatalogueBindsFourAuthoredScenariosToExactEmbeddedSource()
     {
