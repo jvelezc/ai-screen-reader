@@ -11,7 +11,7 @@ $created=$false; $built=$false; $removed=$false; $imageRemoved=$false; $ready=$f
 $cases=[Collections.Generic.List[string]]::new()
 $releaseCreated=$false
 $script:executed=0; $script:failed=0
-$expected=if($IsLinux){73}else{70}; $linuxSignalPerformed=$false
+$expected=if($IsLinux){74}else{71}; $linuxSignalPerformed=$false
 $crashStarted=$false; $crashEvidence=$null
 $recoveryResources=[Collections.Generic.List[string]]::new()
 $names=@('POSTGRES_PASSWORD','HSR_WORKER_DATABASE','HSR_WORKER_IMAGE','HSR_WORKER_EVIDENCE','HSR_WORKER_RUNTIME','HSR_WORKER_SECCOMP',
@@ -54,6 +54,18 @@ try {
     $env:HSR_WORKER_EVIDENCE=Join-Path $folder 'reader-state'
     $env:HSR_WORKER_SECCOMP=Join-Path $repoRoot 'ops/prototype/playwright-seccomp.json'
     $env:HSR_WORKER_DATABASE='deliberately invalid database configuration'
+    $stage='isolated-mock-tasks'
+    $mockText=@(& dotnet (Join-Path $testedControl 'HeadlessScreenReader.Cli.dll') --check-isolated-mock-tasks 2>&1)
+    if($LASTEXITCODE -ne 0){throw 'ISOLATED_MOCK_TASK_PROOF_FAILED'}
+    $mockProof=($mockText -join "`n") | ConvertFrom-Json
+    $mockProof | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $folder 'mock-task-runtime.json') -Encoding utf8NoBOM
+    Assert-Proof ($mockProof.Schema -eq 'hsr-isolated-mock-task-proof-v1' -and $mockProof.State -eq 'IsolatedMockTasksVerified' -and
+        $mockProof.Image -eq $imageId -and $mockProof.CollectedScenarios -eq 4 -and $mockProof.AuthorityLossesDenied -eq 2 -and
+        $mockProof.ReplayAttemptsDenied -eq 3 -and $mockProof.NativeRemovals -eq 9 -and $mockProof.PendingNativeIntents -eq 0 -and
+        $mockProof.OriginalsRetainedAndReadbackVerified -and @($mockProof.Collections | Where-Object {-not $_.OriginalReadbackVerified}).Count -eq 0 -and
+        -not $mockProof.DatabaseAccessed -and -not $mockProof.QueueAdmissionImplemented -and -not $mockProof.AppJwtValidated -and
+        -not $mockProof.PublicWebsiteInputEnabled -and -not $mockProof.LegalCaseDetermined) 'IsolatedMockTasksBindFourSourcesOriginalsAndInputAuthorityAndDenyReplayAfterLossWithOwnedRemoval'
+    $stage='persistent-reader'
     $queueRoot=Join-Path $env:HSR_WORKER_EVIDENCE '.runtime'
     New-Item -ItemType Directory -Force $queueRoot | Out-Null
     $queueLock=[IO.FileStream]::new((Join-Path $queueRoot 'worker.lock'),[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)

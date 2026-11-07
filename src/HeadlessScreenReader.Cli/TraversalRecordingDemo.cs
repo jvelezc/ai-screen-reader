@@ -32,12 +32,15 @@ public static class TraversalRecordingDemo
 
     /// <summary>Record an authored v1 mock task. Source identity and missing marker alignment remain explicit.</summary>
     public static Task<RecordedTraversalResult> RunMockRouteAsync(string mediaFolder, BundledFixture fixture, string key,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) => RunMockRouteAuthorizedAsync(mediaFolder, fixture, key, null, cancellationToken);
+
+    internal static Task<RecordedTraversalResult> RunMockRouteAuthorizedAsync(string mediaFolder, BundledFixture fixture, string key,
+        Func<TraversalCheckpoint, CancellationToken, Task>? checkpoint, CancellationToken cancellationToken)
     {
         var task = MockSiteTasks.Describe(fixture);
         return RunRecordedRouteAsync(mediaFolder, task.KeyboardPlan(key),
             (folder, token) => ChromiumFixtureBrowser.LaunchMockRecordingAsync(folder, fixture, token),
-            cancellationToken, null, null);
+            cancellationToken, checkpoint, null);
     }
 
     private static async Task<RecordedTraversalResult> RunRecordedRouteAsync(string mediaFolder, TraversalPlan plan,

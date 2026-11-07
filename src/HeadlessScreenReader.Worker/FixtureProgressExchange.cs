@@ -5,7 +5,7 @@ namespace HeadlessScreenReader.Worker;
 
 /// <summary>The child cannot advance until current authority and the retained checkpoint write are confirmed.</summary>
 public sealed class FixtureProgressExchange(FixtureProgressStart start, CommandProgressJournal journal,
-    Func<CancellationToken, Task<bool>> authorize, RecordedSourceJournal? sources = null)
+    Func<CancellationToken, Task<bool>> authorize, RecordedSourceJournal? sources = null) : IWorkerProgressExchange
 {
     private readonly List<FixtureProgressMessage> _messages = [];
     private int _sourceSequence;

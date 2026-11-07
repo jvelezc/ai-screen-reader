@@ -3,13 +3,13 @@
 Updated November 6, 2026. Product: Privensic Screen Reader. The original proposal
 under `outputs/` is unchanged. The full product remains incomplete.
 
-**Current accepted engine:** private237d309, HTTP1.18, private MCP0.3/26 tools,
-hosted permission schema and the tenant-scoped public observation worker. Source
-CI41550063896 passes all nine jobs:3703 per OS, native73, database660, operations180.
-Promotion41552936476 independently matches165 files/4009566888 bytes and its
-rootless image. Original-account local URL/results/download/reload acceptance is
-delivered. Those public reviews send0 target inputs; task/evidence outcomes stay
-unassessed. Earlier failures and their narrower scopes remain in their receipts.
+**Current private core:**2b1f3cb, HTTP1.19 and the independently usable private
+MCP27-tool source. CI42330894939 passed all nine jobs,3850 tests per OS. Exact CI
+artifact13558130151 was manually promoted with Ready run9ae5cf39722f47acbb227ecdfa850cb8;
+installed inventory, image, HTTP release readiness and unauthenticated401 match.
+Automatic promotion remains held. Original-account acceptance belongs to its
+separate prior receipts; it was not inferred from this promotion. Public page
+reviews send0 target inputs; task/evidence outcomes remain unassessed.
 
 **New customer delivery:** https://screenreader.privensic.com/ . Existing Edge v14
 supports its exact origin. Production email callbacks are saved. Separate static
@@ -36,12 +36,22 @@ event/video synchronization remains explicit. Separate Maestro flows pass four
 served-page pointer checks and retain eight screenshots. These are local/native
 and independent Maestro receipts, not a tenant-hosted task or real-site case.
 
+**New execution gate — isolated mock task worker:**
+[source-bound native collection](validation/isolated-mock-task-collection-v1.md)
+adds independent job/profile identity, thirteen fresh control boundaries, durable
+input intents and a one-shot replay fence. The actual local Podman proof passes
+four collections, two authority losses, three denied replays and nine native
+absence receipts, including replay-denied names that never created containers.
+Parent validation binds original source, plans, events, graphs and media. Final
+source CI remains separate from that local native receipt. No tenant job is yet
+admitted by this increment.
+
 **NEXT — bounded website task evidence:** the first four working/broken checkout
 and named/unnamed [mock scenarios](test-site-scenarios.md) are implemented with
 actual local Chromium/MCP checks and fixed source fingerprints. Connect approved
-lab recording package to tenant-scoped admission and an isolated hosted task
-collector, with its own source/job/producer contracts, HTTP/private MCP resource
-and artifact validation. Then connect through existing Edge to the Lovable UI. Prove
+lab recording package and the isolated collector to tenant-scoped admission,
+no-replay leases, verified original publication, HTTP/private MCP resources and
+current-caller result reads. Then connect through existing Edge to the Lovable UI. Prove
 the separate task-input/capture/authority profile before using it on a public
 service journey. For GentleBirth, prioritize observed service/course access,
 pricing/enrollment and support; only actual attempts can establish their outcomes.

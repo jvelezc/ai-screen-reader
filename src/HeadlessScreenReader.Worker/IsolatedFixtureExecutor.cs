@@ -107,7 +107,7 @@ public sealed partial class IsolatedFixtureExecutor : IFixtureExecutor
         }
     }
 
-    private async Task CreateAndInspectAsync(NativeOwnership intent, CancellationToken token, bool reader = false, bool journaled = false)
+    private async Task CreateAndInspectAsync(NativeOwnership intent, CancellationToken token, bool reader = false, bool journaled = false, bool mockTask = false)
     {
         var owner = intent.Owner.ToString("N");
         var name = intent.ContainerName;
@@ -122,10 +122,11 @@ public sealed partial class IsolatedFixtureExecutor : IFixtureExecutor
             "--label", "hsr.observation.job=" + job.JobId.ToString("N"),
             "--label", "hsr.observation.generation=" + job.Generation.ToString(System.Globalization.CultureInfo.InvariantCulture)];
         if (_runtime == "docker") create.AddRange(["--security-opt", "seccomp=" + _seccomp]);
-        if (reader || journaled) create.AddRange(["--entrypoint", "dotnet"]);
+        if (reader || journaled || mockTask) create.AddRange(["--entrypoint", "dotnet"]);
         create.Add(_image);
         if (reader) create.AddRange(["/app/cli/HeadlessScreenReader.Cli.dll", "--reader-fixture"]);
         if (journaled) create.AddRange(["/app/cli/HeadlessScreenReader.Cli.dll", "--worker-fixture-progress"]);
+        if (mockTask) create.AddRange(["/app/cli/HeadlessScreenReader.Cli.dll", "--worker-mock-tasks"]);
         if ((await InvokeAsync(create, null, token)).Code != 0) throw new InvalidDataException("WORKER_CONTAINER_CREATE_UNCONFIRMED");
         var inspect = await InvokeAsync(["inspect", name], null, token);
         if (inspect.Code != 0) throw new InvalidDataException("WORKER_CONTAINER_INSPECTION_UNCONFIRMED");
@@ -142,6 +143,7 @@ public sealed partial class IsolatedFixtureExecutor : IFixtureExecutor
                 || item.GetProperty("Mounts").EnumerateArray().Any(m => m.GetProperty("Type").GetString() is "bind" or "volume"))
                 throw new InvalidDataException("WORKER_CONTAINER_ISOLATION_UNCONFIRMED");
             if (reader) ValidateReaderContainer(item, intent);
+            if (mockTask) ValidateMockContainer(item, intent);
         }
     }
 
@@ -267,7 +269,7 @@ public sealed partial class IsolatedFixtureExecutor : IFixtureExecutor
     }
 
     private async Task<(int Code, byte[] Bytes)> InvokeAsync(IEnumerable<string> args, byte[]? input,
-        CancellationToken token, TimeSpan? budget = null, int maximumOutputBytes = FixtureObservation.MaximumBytes, FixtureProgressExchange? progress = null)
+        CancellationToken token, TimeSpan? budget = null, int maximumOutputBytes = FixtureObservation.MaximumBytes, IWorkerProgressExchange? progress = null)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
         timeout.CancelAfter(budget ?? TimeSpan.FromSeconds(20));
@@ -305,7 +307,8 @@ public sealed partial class IsolatedFixtureExecutor : IFixtureExecutor
             // Settle actual pipe reads and the owned runtime client, including cancellation/error paths.
             try { await process.WaitForExitAsync(); } catch (InvalidOperationException) { }
             try { await Task.WhenAll(output, errors); } catch (Exception) { }
-            if (failure is BrowserOperationException progressFailure && progressFailure.Code.StartsWith("WORKER_PROGRESS_", StringComparison.Ordinal))
+            if (failure is BrowserOperationException progressFailure && (progressFailure.Code.StartsWith("WORKER_PROGRESS_", StringComparison.Ordinal)
+                || progressFailure.Code.StartsWith("MOCK_TASK_", StringComparison.Ordinal)))
                 throw new BrowserOperationException(progressFailure.Code);
             throw new IOException("WORKER_RUNTIME_UNCONFIRMED");
         }

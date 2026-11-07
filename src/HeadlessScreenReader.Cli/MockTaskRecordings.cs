@@ -41,21 +41,49 @@ public static class MockTaskRecordings
         RespectNullableAnnotations = true
     };
 
-    public static async Task<MockTaskExport> RecordAsync(string folder, BundledFixture fixture, CancellationToken token = default)
+    public static Task<MockTaskExport> RecordAsync(string folder, BundledFixture fixture, CancellationToken token = default) =>
+        RecordCoreAsync(folder, fixture, null, null, token);
+
+    internal static Task<MockTaskExport> RecordAuthorizedAsync(string folder, BundledFixture fixture,
+        MockTaskStart execution, Func<MockTaskBoundary, CancellationToken, Task> authorize, CancellationToken token) => RecordCoreAsync(folder, fixture, execution, authorize, token);
+
+    private static async Task<MockTaskExport> RecordCoreAsync(string folder, BundledFixture fixture,
+        MockTaskStart? execution, Func<MockTaskBoundary, CancellationToken, Task>? authorize, CancellationToken token)
     {
         var task = MockSiteTasks.Describe(fixture);
+        if (execution is not null)
+        {
+            execution.Validate();
+            if (execution.Job.Source != MockTaskSource.FromId(task.Id)) throw new BrowserOperationException("MOCK_TASK_SOURCE_INVALID");
+        }
         folder = Path.GetFullPath(folder);
         token.ThrowIfCancellationRequested();
         if (Directory.Exists(folder) || File.Exists(folder) || File.Exists(folder + ".zip"))
             throw new IOException("MOCK_TASK_OUTPUT_ALREADY_EXISTS");
         Directory.CreateDirectory(folder);
+        if (execution is not null)
+            await TraversalArtifactWriter.WriteNewAsync(Path.Combine(folder, "mock-task-execution.json"), JsonSerializer.Serialize(execution, ReaderWorkerWire.Json)).ConfigureAwait(false);
         var results = new List<RecordedTraversalResult>();
         var runs = ImmutableArray.CreateBuilder<MockTaskRun>();
         foreach (var key in new[] { "Enter", "Enter", "Space" })
         {
             token.ThrowIfCancellationRequested();
             var route = results.Count + 1;
-            var result = await TraversalRecordingDemo.RunMockRouteAsync(Path.Combine(folder, $"route-{route}-media"), fixture, key, token).ConfigureAwait(false);
+            if (authorize is not null) await authorize(new(route, "Open"), token).ConfigureAwait(false);
+            var result = await TraversalRecordingDemo.RunMockRouteAuthorizedAsync(Path.Combine(folder, $"route-{route}-media"), fixture, key,
+                authorize is null ? null : async (checkpoint, cancellation) =>
+                {
+                    if (checkpoint.Phase != TraversalCheckpointPhase.Intent) return;
+                    var action = checkpoint.Instruction?.Command switch
+                    {
+                        ReaderCommand.Tab => "Tab",
+                        ReaderCommand.Activate => "Enter",
+                        ReaderCommand.EnterFocusMode => "FocusMode",
+                        ReaderCommand.PressKey when checkpoint.Instruction.Key == "Space" => "Space",
+                        _ => throw new BrowserOperationException("MOCK_TASK_INPUT_NOT_ADMITTED")
+                    };
+                    await authorize(new(route, action), cancellation).ConfigureAwait(false);
+                }, token).ConfigureAwait(false);
             results.Add(result);
             if (result.Receipt is { } receipt)
                 await TraversalArtifactWriter.WriteAsync(folder, route, receipt, result.Environment, result.Recording).ConfigureAwait(false);
@@ -66,11 +94,13 @@ public static class MockTaskRecordings
                 result.Receipt?.CompletedKeystrokes ?? 0, result.Receipt?.HasRecording == true, result.Recording.ErrorCode));
         }
         token.ThrowIfCancellationRequested();
-        var pointer = await RecordPointerAsync(Path.Combine(folder, "pointer-media"), fixture, token).ConfigureAwait(false);
+        if (authorize is not null) await authorize(new(4, "Open"), token).ConfigureAwait(false);
+        var pointer = await RecordPointerAsync(Path.Combine(folder, "pointer-media"), fixture, authorize, token).ConfigureAwait(false);
         await TraversalArtifactWriter.WriteNewAsync(Path.Combine(folder, "pointer.json"), JsonSerializer.Serialize(pointer, Json)).ConfigureAwait(false);
         token.ThrowIfCancellationRequested();
         await TraversalArtifactWriter.WriteNewAsync(Path.Combine(folder, "fixture-source.txt"), BundledFixtureCatalog.ReadHtml(fixture)).ConfigureAwait(false);
         var observation = DescribeObservation(results, pointer);
+        if (authorize is not null) await authorize(new(0, "Publish"), token).ConfigureAwait(false);
         await TraversalArtifactWriter.WriteNewAsync(Path.Combine(folder, "index.html"), Render(task, runs.ToImmutable(), pointer, observation)).ConfigureAwait(false);
         var assembly = typeof(MockTaskRecordings).Assembly;
         await using var producer = File.OpenRead(assembly.Location);
@@ -139,7 +169,8 @@ public static class MockTaskRecordings
         return incomplete;
     }
 
-    private static async Task<MockPointerRecording> RecordPointerAsync(string folder, BundledFixture fixture, CancellationToken token)
+    private static async Task<MockPointerRecording> RecordPointerAsync(string folder, BundledFixture fixture,
+        Func<MockTaskBoundary, CancellationToken, Task>? authorize, CancellationToken token)
     {
         PointerTaskReceipt? receipt = null; ChromiumRecordingProbe? probe = null; RecordingProbeMedia? media = null;
         string? error = null;
@@ -147,6 +178,7 @@ public static class MockTaskRecordings
         {
             await using var owned = await ChromiumFixtureBrowser.LaunchMockRecordingAsync(folder, fixture, token).ConfigureAwait(false);
             probe = owned;
+            if (authorize is not null) await authorize(new(4, "Pointer"), token).ConfigureAwait(false);
             receipt = await owned.ObserveMockPointerAsync(token).ConfigureAwait(false);
             // Let an actual post-action capture arrive; this hold is not task effort.
             await Task.Delay(120, token).ConfigureAwait(false);

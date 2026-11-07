@@ -159,9 +159,9 @@ jobs:
         os: [ubuntu-24.04, windows-latest]
     runs-on: ${{ matrix.os }}
     # Includes dependency/browser download, the complete suite, demos and artifact publication.
-    # A complete Windows batch took19m26s; slower browser installation exhausted20m
-    # during CLI checks after all3,106 tests passed. Product deadlines are unchanged.
-    timeout-minutes: 25
+    # Run42330894939 took over23 minutes on Windows before this new native mock test batch.
+    # Allow download/test/CLI/artifact orchestration headroom. Product deadlines are unchanged.
+    timeout-minutes: 30
     defaults:
       run:
         shell: pwsh
