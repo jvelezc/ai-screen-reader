@@ -10,6 +10,18 @@ Start with a local reference implementation and controlled websites. Prove the s
 
 # Architecture review
 
+## Operational implementation update — November 8, 2026
+
+The original milestone definitions below remain the architectural baseline.
+Component health monitoring and bounded owned-resource recovery are implemented
+in the private operator. [Checks, recovery limits, incident and acceptance
+evidence](../docs/validation/component-health-and-recovery-v1.md) distinguish
+local tests, real provider probes and installed-host acceptance. The next
+operational step is to pass the exact-release CI gate, install/enable the timer,
+and verify its recorded component states. Independent off-host alerting and
+backup restoration remain separate work; a running local monitor does not prove
+those capabilities or full product completion.
+
 The priority labels below describe dependencies: **Foundation** must be resolved before building the navigation engine; **Hosted gate** must pass before exposing scans to users; **Later** can follow a working pilot.
 
 | Priority | Original area | Gap and consequence | Refinement |

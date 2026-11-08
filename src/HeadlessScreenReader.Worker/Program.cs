@@ -39,7 +39,7 @@ if (recordingRecovery && (!Guid.TryParseExact(args[1], "D", out publicationOrgan
     || !long.TryParse(args[3], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out publicationGeneration)
     || publicationGeneration is < 1 or > 3)) return 2;
 if (!recordingRecovery && (args.Length != 1 || args[0] is not ("--once" or "--poll" or "--recover" or "--check-runtime" or "--check-reader-runtime" or "--recover-reader" or "--host-reader"
-    or "--once-public" or "--check-public-runtime" or "--recover-public-reader")))
+    or "--once-public" or "--check-public-runtime" or "--recover-public-reader" or "--check-health")))
 {
     Console.Error.WriteLine("Usage: HeadlessScreenReader.Worker --once | --once-public | --poll | --recover | --check-runtime | --check-reader-runtime | --recover-reader | --check-public-runtime | --recover-public-reader | --host-reader | --recover-recording <organization> <job> <generation>. Operator configuration is supplied through the private service environment.");
     return 2;
@@ -48,6 +48,7 @@ using var stop = new CancellationTokenSource();
 Console.CancelKeyPress += (_, e) => { e.Cancel = true; stop.Cancel(); };
 using var termination = OperatingSystem.IsWindows() ? null : PosixSignalRegistration.Create(PosixSignal.SIGTERM,
     context => { context.Cancel = true; stop.Cancel(); });
+var stage = "Startup";
 try
 {
     if (recordingRecovery)
@@ -59,6 +60,14 @@ try
     var image = Environment.GetEnvironmentVariable("HSR_WORKER_IMAGE") ?? throw new InvalidOperationException();
     var evidence = Environment.GetEnvironmentVariable("HSR_WORKER_EVIDENCE") ?? throw new InvalidOperationException();
     var runtime = Environment.GetEnvironmentVariable("HSR_WORKER_RUNTIME") ?? "podman";
+    if (args[0] == "--check-health")
+    {
+        var storage = S3EvidenceConfiguration.Optional(Environment.GetEnvironmentVariable("HSR_EVIDENCE_S3_ACCESS_KEY"),
+            Environment.GetEnvironmentVariable("HSR_EVIDENCE_S3_SECRET"));
+        var health = await WorkerHealth.ProbeAsync(evidence, image, Environment.GetEnvironmentVariable("HSR_WORKER_DATABASE"), storage, stop.Token);
+        Console.WriteLine(JsonSerializer.Serialize(health));
+        return 0; // Degraded component states are a valid health receipt, not a missing probe.
+    }
     if (args[0] == "--host-reader")
     {
         // Private operator proof of the same broker used by --poll, without queue/database authority.
@@ -140,6 +149,7 @@ try
     var journal = new OwnershipJournal(Path.Combine(evidence, ".runtime"));
     using var exclusive = journal.AcquireExclusive();
     var executor = new IsolatedFixtureExecutor(runtime, image, Environment.GetEnvironmentVariable("HSR_WORKER_SECCOMP"), journal);
+    stage = "OwnedRecovery";
     var recovered = await executor.RecoverAsync();
     if (args[0] == "--recover")
     {
@@ -167,6 +177,7 @@ try
         }));
         return 0;
     }
+    stage = "DatabaseStartup";
     var connection = Environment.GetEnvironmentVariable("HSR_WORKER_DATABASE") ?? throw new InvalidOperationException();
     var archiveConfiguration = S3EvidenceConfiguration.Optional(Environment.GetEnvironmentVariable("HSR_EVIDENCE_S3_ACCESS_KEY"),
         Environment.GetEnvironmentVariable("HSR_EVIDENCE_S3_SECRET"));
@@ -179,6 +190,7 @@ try
     var coordinator = new ObservationCoordinator(leases, executor, new(evidence, archive, producer));
     await using var publicLeases = args[0] is "--poll" or "--once-public" ? new PostgresPublicWebsiteLeases(database) : null;
     if (publicLeases is not null) await publicLeases.VerifySchemaAsync(stop.Token);
+    stage = "ReaderStartup";
     await using var publicSupervisor = publicLeases is not null
         ? await IsolatedPublicReaderSupervisor.StartAsync(evidence, PublicWebsiteRuntime.Scripts, runtime, image) : null;
     var publicCoordinator = publicLeases is not null
@@ -194,6 +206,7 @@ try
     {
         if (publicCoordinator is not null)
         {
+            stage = "PublicQueueCycle";
             var publicResult = await publicCoordinator.RunOnceAsync(worker, stop.Token);
             if (args[0] == "--once-public" || publicResult.State != "Empty" || previousPublicState != publicResult.State)
                 Console.WriteLine(JsonSerializer.Serialize(new { Schema = "hsr-public-website-run-v1", publicResult.State, publicResult.JobId, publicResult.ErrorCode, publicResult.FailureDiagnostic }));
@@ -201,6 +214,7 @@ try
             if (publicResult.State == "Unconfirmed" || publicResult.ErrorCode == "PUBLIC_WEBSITE_CLEANUP_UNCONFIRMED") return 3;
             if (args[0] == "--once-public") return publicResult.State == "Blocked" ? 3 : 0;
         }
+        stage = "FixtureQueueCycle";
         var result = await coordinator.RunOnceAsync(worker, stop.Token);
         if (args[0] == "--once" || result.State != "Empty" || previousState != result.State)
             Console.WriteLine(JsonSerializer.Serialize(result));
@@ -213,8 +227,8 @@ try
     return 0;
 }
 catch (OperationCanceledException) when (stop.IsCancellationRequested) { return 0; }
-catch (Exception)
+catch (Exception error)
 {
-    Console.Error.WriteLine("WORKER_STOPPED_UNCONFIRMED");
+    Console.Error.WriteLine(JsonSerializer.Serialize(WorkerStopDiagnostic.From(stage, error)));
     return 3;
 }

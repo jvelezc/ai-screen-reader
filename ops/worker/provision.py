@@ -17,7 +17,8 @@ LIB = Path("/usr/local/libexec/headless-screen-reader")
 MARKER = "headless-screen-reader:gpnijaxrgtwzwtrqsbcu:v1"
 CA_SHA = "700723581420dd1ac98fd7e9ac529f0ef210eadcaf87fc868a3ad7d114c2f3b7"
 MODULES = {"activation.py", "deploy.py", "host_runtime.py", "image_archive.py",
-           "release_bundle.py", "worker_start.py", "control_runtime.py", "control_start.py", "recover_publication.py"}
+           "release_bundle.py", "worker_start.py", "control_runtime.py", "control_start.py", "recover_publication.py",
+           "health.py", "health_start.py"}
 
 
 class ProvisionError(Exception):
@@ -135,7 +136,8 @@ def provision(config, sources):
         require(grp.getgrgid(account.pw_gid).gr_name == name)
         accounts[name] = account
     protected = [LIB, Path("/usr/local/libexec/hsr-deploy"), Path("/etc/sudoers.d/hsr-deploy"),
-                 Path("/etc/systemd/system/hsr-observation.service"), Path("/etc/systemd/system/hsr-control.service")]
+                 Path("/etc/systemd/system/hsr-observation.service"), Path("/etc/systemd/system/hsr-control.service"),
+                 Path('/etc/systemd/system/hsr-health.service'), Path('/etc/systemd/system/hsr-health.timer')]
     for path in protected:
         if path.exists() or path.is_symlink():
             require(managed and not path.is_symlink() and path.stat().st_uid == 0
@@ -236,6 +238,11 @@ def provision(config, sources):
         "NoNewPrivileges=yes\nPrivateTmp=yes\nProtectSystem=strict\n"
         "[Install]\nWantedBy=multi-user.target\n")
     install(Path("/etc/systemd/system/hsr-control.service"), control_unit.encode(), 0o644)
+    # Install only. Enable after a release supporting --check-health passes deployment readiness.
+    sys.path.insert(0, str(LIB))
+    from health import SERVICE, TIMER
+    install(Path('/etc/systemd/system/hsr-health.service'), SERVICE.encode(), 0o644)
+    install(Path('/etc/systemd/system/hsr-health.timer'), TIMER.encode(), 0o644)
     command(["/usr/bin/loginctl", "enable-linger", "hsr-worker"])
     command(["/usr/bin/systemctl", "start", "user@" + str(worker.pw_uid) + ".service"])
     command(["/usr/bin/systemctl", "daemon-reload"])

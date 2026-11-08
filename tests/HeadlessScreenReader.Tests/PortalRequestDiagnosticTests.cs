@@ -8,6 +8,27 @@ namespace HeadlessScreenReader.Tests;
 
 public sealed class PortalRequestDiagnosticTests
 {
+    [Theory]
+    [InlineData("CONTROL_PUBLIC_WEBSITE_PROCESSOR_UNAVAILABLE", "CONTROL_PUBLIC_WEBSITE_PROCESSOR_UNAVAILABLE")]
+    [InlineData("DATABASE_UNAVAILABLE", "DATABASE_UNAVAILABLE")]
+    [InlineData("AUTH_PROVIDER_UNAVAILABLE", "AUTH_PROVIDER_UNAVAILABLE")]
+    [InlineData("unknown-private-detail", "CONTROL_REQUEST_FAILED")]
+    public async Task DependencyFailureLogsPreserveSafeCodeAndSupportReference(string fault, string expected)
+    {
+        var events = new ConcurrentQueue<PortalRequestDiagnostic>();
+        var project = new PortalProjectStub { BeforeAuth = _ => throw new PortalFault(503, fault) };
+        await using var server = await HostedControlServer.StartAsync(new(PortalProjectClientTests.Key,
+            Path.GetFullPath("artifacts/portal-validation/evidence"), new string('a', 40), 0), project,
+            new PortalObservationStub(), diagnostic: events.Enqueue);
+        using var http = PortalHttpTests.Authorized(server);
+        using var response = await http.GetAsync("/api/session");
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        var logged = Assert.Single(events);
+        Assert.Equal(expected, logged.ErrorCode);
+        Assert.Equal(response.Headers.GetValues("X-HSR-Request-Id").Single(), logged.SupportReference);
+        Assert.DoesNotContain("unknown-private-detail", JsonSerializer.Serialize(logged));
+    }
+
     [Fact]
     public async Task RequestsAndProblemsShareGeneratedReferencesWithoutLoggingCallerContent()
     {

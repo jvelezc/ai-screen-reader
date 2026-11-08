@@ -147,7 +147,8 @@ internal sealed class HostedControlServer : IAsyncDisposable
         ?? throw new PortalFault(401, "CONTROL_AUTHENTICATION_REQUIRED");
     private static string SafeCode(string code) => code is "CONTROL_AUTHENTICATION_REQUIRED" or "CONTROL_HOST_DENIED"
         or "CONTROL_ORIGIN_DENIED" or "CONTROL_QUERY_DENIED" or "CONTROL_REQUEST_INVALID" or "CONTROL_JSON_REQUIRED"
-        or "CONTROL_OPERATION_UNCONFIRMED" ? code : "CONTROL_REQUEST_FAILED";
+        or "CONTROL_OPERATION_UNCONFIRMED" or "CONTROL_PUBLIC_WEBSITE_PROCESSOR_UNAVAILABLE"
+        or "DATABASE_UNAVAILABLE" or "AUTH_PROVIDER_UNAVAILABLE" ? code : "CONTROL_REQUEST_FAILED";
     internal static void NoQuery(HttpContext context)
     {
         if (context.Request.QueryString.HasValue) throw new PortalFault(400, "CONTROL_QUERY_DENIED");
