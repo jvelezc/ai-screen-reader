@@ -18,6 +18,13 @@ $names=@('POSTGRES_PASSWORD','HSR_WORKER_DATABASE','HSR_WORKER_IMAGE','HSR_WORKE
     'HSR_CONTROL_PUBLISHABLE_KEY','HSR_CONTROL_EVIDENCE','HSR_CONTROL_PORT','HSR_CONTROL_ORIGIN','HSR_RELEASE_COMMIT')
 $prior=@{}; foreach($key in $names){$prior[$key]=[Environment]::GetEnvironmentVariable($key)}
 function Assert-Proof([bool]$condition,[string]$case){$script:executed++;if(-not $condition){$script:failed++;throw "WORKER_CASE_UNCONFIRMED_$case"};$cases.Add($case)}
+function Test-WorkerStopDiagnostic([object[]]$output,[string]$expectedStage){
+    try {$value=($output -join "`n") | ConvertFrom-Json -ErrorAction Stop} catch {return $false}
+    return (($value.PSObject.Properties.Name | Sort-Object) -join ',') -ceq 'Category,Retryable,Schema,SqlState,Stage' -and
+        $value.Schema -ceq 'hsr-worker-stop-v1' -and $value.Stage -ceq $expectedStage -and
+        $value.Category -cin @('DatabaseRejected','DatabaseUnavailable','IoUnavailable','Canceled','Unexpected') -and
+        $null -eq $value.SqlState -and $value.Retryable -is [bool] -and -not $value.Retryable
+}
 function Invoke-ProofSql([string]$query){
     # SQL (including disposable test password) goes through stdin, never command arguments or retained files.
     $text=@($query | & $Runtime exec --interactive $name psql -X -U postgres -d postgres -qAt -v ON_ERROR_STOP=1 2>&1)
@@ -91,7 +98,7 @@ try {
     $env:HSR_WORKER_IMAGE='sha256:'+('f'*64)
     $readerOutput=@(& dotnet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --check-reader-runtime 2>&1)
     $readerExit=$LASTEXITCODE; $env:HSR_WORKER_IMAGE=$imageId
-    Assert-Proof ($readerExit -eq 3 -and ($readerOutput -join "`n").Trim() -eq 'WORKER_STOPPED_UNCONFIRMED' -and
+    Assert-Proof ($readerExit -eq 3 -and (Test-WorkerStopDiagnostic $readerOutput 'Startup') -and
         @(Get-ChildItem (Join-Path $readerJournal 'intents')).Count -eq 0) 'MissingReaderImageCannotReturnReadyAndRetiresIntentOnlyAfterNativeAbsence'
     $readerOwner=[Guid]::NewGuid(); $readerTarget="hsr-observation-$($readerOwner.ToString('N'))"
     $readerDescriptor=@{OrganizationId="$([Guid]::NewGuid())";ScanId="$([Guid]::NewGuid())";JobId="$([Guid]::NewGuid())";Generation=1}
@@ -191,7 +198,7 @@ try {
     $env:HSR_WORKER_IMAGE='sha256:'+('f'*64)
     $probeOutput=@(& dotnet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --check-runtime 2>&1)
     $probeExit=$LASTEXITCODE
-    Assert-Proof ($probeExit -eq 3 -and ($probeOutput -join "`n").Trim() -eq 'WORKER_STOPPED_UNCONFIRMED') 'MissingImmutableRuntimeImageCannotProduceReady'
+    Assert-Proof ($probeExit -eq 3 -and (Test-WorkerStopDiagnostic $probeOutput 'OwnedRecovery')) 'MissingImmutableRuntimeImageCannotProduceReady'
     $env:HSR_WORKER_DATABASE=$realConnection; $env:HSR_WORKER_IMAGE=$imageId
     $output=@(& dotnet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --once 2>&1)
     $workerExit=$LASTEXITCODE
