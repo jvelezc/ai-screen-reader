@@ -29,6 +29,8 @@ try {
         Start-Sleep -Milliseconds 250
     }while($true)
     $stage='migration'
+    $null=Invoke-ReaderRuntime $Runtime @('cp',(Join-Path $repoRoot 'tests/database/task-auth-fixture.sql'),"${name}:/tmp/hsr-auth-fixture.sql")
+    $null=Invoke-ReaderRuntime $Runtime @('exec',$name,'psql','-X','-U','supabase_admin','-d','postgres','-qAt','-v','ON_ERROR_STOP=1','-f','/tmp/hsr-auth-fixture.sql')
     foreach($migration in Get-ChildItem (Join-Path $repoRoot 'supabase/migrations') -Filter '*.sql'|Sort-Object Name){
         $null=Invoke-ReaderRuntime $Runtime @('cp',$migration.FullName,"${name}:/tmp/migration.sql")
         $null=Invoke-ReaderRuntime $Runtime @('exec',$name,'psql','-X','-U','postgres','-d','postgres','-qAt','-v','ON_ERROR_STOP=1','--single-transaction','-f','/tmp/migration.sql')
