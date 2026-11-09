@@ -6,6 +6,20 @@ namespace HeadlessScreenReader.Tests;
 [Trait("Category", "Browser")]
 public sealed class PublicTaskBrowserTests
 {
+    [Theory]
+    [InlineData("$14.99", "/month", true)]
+    [InlineData("£20.00", "Billed yearly", true)]
+    [InlineData("€19.99", "one-time payment", true)]
+    [InlineData("$14.99", "See pricing", false)]
+    [InlineData("See pricing", "Billed monthly", false)]
+    public void PricingGoalUsesObservedAmountAndBillingTerms(string amount, string terms, bool expected)
+    {
+        var goal = new PublicTaskGoal("Pricing", "Reach pricing information", "See pricing", "https://example.com/pricing");
+        var snapshot = new AccessibilitySnapshot("pricing", [new("h", "heading", "Start your journey"),
+            new("amount", "StaticText", amount), new("terms", "StaticText", terms)], []);
+        Assert.Equal(expected, PublicNavigationBrowser.GoalContentObserved(goal, snapshot));
+    }
+
     [Fact]
     public async Task DiscoveryReadsAnActualVisibleAnchorWithoutExecutingIt()
     {

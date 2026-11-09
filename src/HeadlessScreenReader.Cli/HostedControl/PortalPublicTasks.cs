@@ -183,9 +183,9 @@ internal static class PortalPublicTaskEndpoints
             return TypedResults.Accepted($"/api/workspaces/{organization:D}/website-scans/{scan:D}/tasks/{result.Job.JobId:D}", result);
         }).WithName("AdmitPublicTask");
         app.MapGet(root, async (HttpContext context, PortalPublicTasks service, Guid organization, Guid scan, CancellationToken token) =>
-            TypedResults.Json(await service.StatusAsync(HostedControlServer.Actor(context), organization, scan, null, token).ConfigureAwait(false), PortalJson.Options)).WithName("ReadLatestPublicTask");
+            TypedResults.Json(JsonSerializer.SerializeToElement(await service.StatusAsync(HostedControlServer.Actor(context), organization, scan, null, token).ConfigureAwait(false), PortalJson.Options), PortalJson.Options)).WithName("ReadLatestPublicTask");
         app.MapGet(root + "/{job:guid}", async (HttpContext context, PortalPublicTasks service, Guid organization, Guid scan, Guid job, CancellationToken token) =>
-            TypedResults.Json(await service.StatusAsync(HostedControlServer.Actor(context), organization, scan, job, token).ConfigureAwait(false), PortalJson.Options)).WithName("ReadPublicTaskStatus");
+            TypedResults.Json(JsonSerializer.SerializeToElement(await service.StatusAsync(HostedControlServer.Actor(context), organization, scan, job, token).ConfigureAwait(false), PortalJson.Options), PortalJson.Options)).WithName("ReadPublicTaskStatus");
         app.MapPost(root + "/{job:guid}/cancel", async (HttpContext context, PortalPublicTasks service, Guid organization, Guid scan, Guid job, CancellationToken token) =>
             TypedResults.Json(await service.CancelAsync(HostedControlServer.Actor(context), organization, scan, job, token).ConfigureAwait(false), PortalJson.Options)).WithName("CancelPublicTask");
         app.MapGet(root + "/{job:guid}/result", async (HttpContext context, PortalPublicTasks service, Guid organization, Guid scan, Guid job, CancellationToken token) =>

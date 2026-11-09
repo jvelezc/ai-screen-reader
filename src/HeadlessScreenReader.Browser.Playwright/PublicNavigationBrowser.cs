@@ -98,9 +98,19 @@ public sealed class PublicNavigationBrowser : IAsyncDisposable
 
     public async Task<bool> GoalObservedAsync(PublicTaskGoal goal, CancellationToken token)
     {
-        token.ThrowIfCancellationRequested();
-        if (CurrentUrl != goal.DestinationUrl || _browser.TaskHttpStatus is < 200 or >= 400) return false;
-        var snapshot = await CaptureAsync(token).ConfigureAwait(false);
+        var began = System.Diagnostics.Stopwatch.GetTimestamp();
+        do
+        {
+            token.ThrowIfCancellationRequested();
+            if (CurrentUrl != goal.DestinationUrl || _browser.TaskHttpStatus is < 200 or >= 400) return false;
+            if (GoalContentObserved(goal, await CaptureAsync(token).ConfigureAwait(false))) return true;
+            await Task.Delay(250, token).ConfigureAwait(false);
+        } while (System.Diagnostics.Stopwatch.GetElapsedTime(began) < TimeSpan.FromSeconds(8));
+        return false;
+    }
+
+    internal static bool GoalContentObserved(PublicTaskGoal goal, AccessibilitySnapshot snapshot)
+    {
         string[] words = goal.Kind switch
         {
             "Pricing" => ["pric", "plan", "membership", "subscription"],
@@ -108,8 +118,12 @@ public sealed class PublicNavigationBrowser : IAsyncDisposable
             "Contact" => ["contact", "reach", "touch", "support"],
             _ => ["help", "support", "faq", "question"]
         };
-        return snapshot.Nodes.Any(node => node.Role is "heading" or "Heading"
-            && words.Any(word => node.Name.Contains(word, StringComparison.OrdinalIgnoreCase)));
+        if (snapshot.Nodes.Any(node => node.Role is "heading" or "Heading"
+            && words.Any(word => node.Name.Contains(word, StringComparison.OrdinalIgnoreCase)))) return true;
+        if (goal.Kind != "Pricing") return false;
+        var text = string.Join(" ", snapshot.Nodes.Where(n => n.Role is "StaticText" or "text").Select(n => n.Name));
+        return System.Text.RegularExpressions.Regex.IsMatch(text, @"[$€£]\s*\d+(?:[.,]\d{2})?", System.Text.RegularExpressions.RegexOptions.CultureInvariant)
+            && new[] { "/month", "monthly", "/year", "yearly", "one-time" }.Any(word => text.Contains(word, StringComparison.OrdinalIgnoreCase));
     }
 
     private Task StopVideoAsync()

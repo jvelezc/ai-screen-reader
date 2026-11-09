@@ -13,6 +13,20 @@ namespace HeadlessScreenReader.Tests;
 
 public sealed class PublicTaskHttpTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task MissingTaskIsAnExplicitJsonNullForLatestAndExactStatus(bool exact)
+    {
+        using var rig = await Rig.Create(); rig.Missing = true;
+        await using var server = await rig.Server(); using var http = rig.Http(server);
+        using var response = await http.GetAsync(exact ? rig.Path : rig.Collection);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
+        Assert.Equal("null", await response.Content.ReadAsStringAsync());
+        Assert.Equal(0, rig.Creates);
+    }
+
     [Fact]
     public async Task SameReviewResultEventsGraphAndOriginalPagesAreAvailableWithoutRepeatingInput()
     {
@@ -87,7 +101,7 @@ public sealed class PublicTaskHttpTests
         internal readonly PublicTaskEvidenceStore Store;
         internal PublicTaskStatus Status = null!;
         internal ImmutableDictionary<string, byte[]> Files = ImmutableDictionary<string, byte[]>.Empty;
-        internal int Creates, Reads, DenyAfter = int.MaxValue; internal bool Ready = true;
+        internal int Creates, Reads, DenyAfter = int.MaxValue; internal bool Ready = true, Missing;
         private readonly HttpClient _provider;
         private Rig() { _provider = new(this, false); Project = new(_provider, PortalProjectClientTests.Key); Store = new(Root, null); }
         internal string Collection => $"/api/workspaces/{Status.Job.OrganizationId:D}/website-scans/{Status.Job.ParentScanId:D}/tasks";
@@ -128,7 +142,7 @@ public sealed class PublicTaskHttpTests
                 if (request.RequestUri.AbsolutePath.EndsWith("read_public_task", StringComparison.Ordinal))
                 {
                     if (++Reads > DenyAfter) return new(HttpStatusCode.Forbidden) { Content = JsonContent.Create(new { code = "42501" }) };
-                    body = json.RootElement.GetProperty("p_organization_id").GetGuid() != Status.Job.OrganizationId
+                    body = Missing || json.RootElement.GetProperty("p_organization_id").GetGuid() != Status.Job.OrganizationId
                         || json.RootElement.GetProperty("p_parent_scan_id").GetGuid() != Status.Job.ParentScanId ? null : Status;
                 }
                 else { Creates++; body = Status; }

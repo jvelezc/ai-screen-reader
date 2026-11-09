@@ -84,9 +84,9 @@ internal static class PublicTaskWorker
                                 await Input("Enter").ConfigureAwait(false);
                         }
                     }
-                    denials = Math.Min(1000, browser.PolicyDenials - initialDenials);
                     finalUrl = start.Job.Source.AllowsDocument(browser.CurrentUrl) ? browser.CurrentUrl : null;
                     var reached = await browser.GoalObservedAsync(goal, stop.Token).ConfigureAwait(false);
+                    denials = Math.Min(1000, browser.PolicyDenials - initialDenials);
                     outcome = reached ? "Reached" : same && finalUrl == start.Job.Source.TargetUrl ? "NotReached" : "Unconfirmed";
                     if (denials != 0) { error = "PUBLIC_TASK_POLICY_INTERRUPTED"; outcome = "Unconfirmed"; }
                 }

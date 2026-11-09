@@ -11,9 +11,15 @@ internal static class PlaywrightVideoFrames
     public static async Task<ImmutableArray<byte[]>> DecodeAsync(byte[] video)
         => await DecodeCoreAsync(video, countOnly: false).ConfigureAwait(false);
 
-    internal static async Task<int> CountAsync(byte[] video) => (await DecodeCoreAsync(video, countOnly: true).ConfigureAwait(false)).Length;
+    internal static async Task<int> CountAsync(byte[] video)
+    {
+        // Check original dimensions before scaling the disposable counting projection.
+        // Every source frame is still decoded; the saved recording is never resized.
+        _ = await DecodeCoreAsync(video, countOnly: false, firstFrameOnly: true).ConfigureAwait(false);
+        return (await DecodeCoreAsync(video, countOnly: true).ConfigureAwait(false)).Length;
+    }
 
-    private static async Task<ImmutableArray<byte[]>> DecodeCoreAsync(byte[] video, bool countOnly)
+    private static async Task<ImmutableArray<byte[]>> DecodeCoreAsync(byte[] video, bool countOnly, bool firstFrameOnly = false)
     {
         if (video.Length is 0 or > 16 * 1024 * 1024) throw new BrowserOperationException("CAPTURE_MEDIA_SIZE_INVALID");
         var executable = ResolveExecutable();
@@ -28,7 +34,10 @@ internal static class PlaywrightVideoFrames
             var start = new ProcessStartInfo(executable)
             { UseShellExecute = false, CreateNoWindow = true, RedirectStandardError = true, RedirectStandardOutput = true };
             foreach (var argument in new[] { "-v", "error", "-threads", "1", "-i", input, "-vsync", "0",
-                "-frames:v", (PngFrameReader.MaximumFrames + 1).ToString(System.Globalization.CultureInfo.InvariantCulture),
+                "-frames:v", (firstFrameOnly ? 1 : PngFrameReader.MaximumFrames + 1).ToString(System.Globalization.CultureInfo.InvariantCulture) }) start.ArgumentList.Add(argument);
+            if (countOnly)
+                foreach (var argument in new[] { "-vf", "scale=160:90", "-compression_level", "1" }) start.ArgumentList.Add(argument);
+            foreach (var argument in new[] {
                 // The pinned minimal build supplies image2, not the image2pipe output muxer.
                 // Its pipe protocol appends each complete PNG without creating frame files.
                 "-threads", "1", "-f", "image2", "-update", "1", "-c:v", "png", "pipe:1" }) start.ArgumentList.Add(argument);

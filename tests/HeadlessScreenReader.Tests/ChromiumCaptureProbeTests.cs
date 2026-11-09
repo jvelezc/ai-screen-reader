@@ -61,6 +61,7 @@ public sealed class ChromiumCaptureProbeTests
         Assert.True(decoded.FirstFrameCanaryPixels > 320 * 240 / 2, JsonSerializer.Serialize(decoded));
         Assert.Equal(0, decoded.LastFrameCanaryPixels);
         Assert.True(decoded.CanaryPixels >= decoded.FirstFrameCanaryPixels);
+        Assert.Equal(decoded.Frames, await PlaywrightVideoFrames.CountAsync(await File.ReadAllBytesAsync(video)));
     }
 
     [Fact]
@@ -103,6 +104,7 @@ public sealed class ChromiumCaptureProbeTests
         Assert.True(decoded.FirstFrameCanaryPixels > 320 * 240 / 2, JsonSerializer.Serialize(decoded));
         Assert.Equal(0, decoded.LastFrameCanaryPixels);
         Assert.True(decoded.CanaryPixels >= decoded.FirstFrameCanaryPixels);
+        Assert.Equal(decoded.Frames, await PlaywrightVideoFrames.CountAsync(original));
         Assert.Equal(digest, SHA256.HashData(await File.ReadAllBytesAsync(video)));
     }
 
