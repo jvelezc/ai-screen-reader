@@ -10,7 +10,7 @@ public sealed class PublicWebsiteOpenApiTests
     public void PublicContractDocumentsEveryActualRouteWithPathOnlySelectorsAndAcceptedAdmission()
     {
         using var json = JsonDocument.Parse(PortalOpenApi.Document); var root = json.RootElement;
-        Assert.Equal("1.20.0", root.GetProperty("info").GetProperty("version").GetString());
+        Assert.Equal("1.21.0", root.GetProperty("info").GetProperty("version").GetString());
         var paths = root.GetProperty("paths"); const string prefix = "/api/workspaces/{organization}/website-scans";
         var screening = paths.GetProperty(prefix + "/{scan}/screening/{digest}").GetProperty("get");
         Assert.Equal("ReadPublicWebsiteScreening", screening.GetProperty("operationId").GetString());

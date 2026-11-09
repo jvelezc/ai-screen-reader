@@ -64,7 +64,7 @@ public sealed class PublicTaskExecutor : IDisposable
             {
                 try
                 {
-                    while (await ReaderWorkerWire.ReadAsync(process.StandardError.BaseStream, 16 * 1024, deadline.Token).ConfigureAwait(false) is { } bytes)
+                    while (await ReaderWorkerWire.ReadAsync(process.StandardError.BaseStream, PublicTaskDiagnostic.MaximumBytes, deadline.Token).ConfigureAwait(false) is { } bytes)
                     {
                         using var raw = JsonDocument.Parse(bytes);
                         if (raw.RootElement.TryGetProperty("Stage", out _))
@@ -74,6 +74,8 @@ public sealed class PublicTaskExecutor : IDisposable
                                 || diagnostic.Stage is not ("Start" or "Isolation" or "Open" or "Discover" or "Snapshot" or "Input" or "Recording" or "Report")
                                 || diagnostic.Category is not ("Browser" or "Playwright" or "Protocol" or "Timeout" or "Io" or "Canceled" or "Unexpected")
                                 || diagnostic.Code is { } code && (code.Length > 100 || code.Any(c => !char.IsAsciiLetterUpper(c) && c != '_'))) throw new IOException();
+                            diagnostic.Network?.Validate(); diagnostic.Egress?.Validate();
+                            diagnostic.Failure?.Validate(PublicTaskJob.MaximumTabs + 1);
                             var folder = Path.Combine(_root, "diagnostics"); Directory.CreateDirectory(folder);
                             await File.WriteAllBytesAsync(Path.Combine(folder, $"{start.ExecutionId:N}-{Guid.NewGuid():N}.json"), bytes, deadline.Token).ConfigureAwait(false);
                             Console.Error.WriteLine(JsonSerializer.Serialize(new

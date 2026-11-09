@@ -17,7 +17,10 @@ internal sealed record PortalTaskAttemptSummary(int Number, Guid Id, string Meth
 internal sealed record PortalTaskResult(PublicTaskStatus Status, PublicTaskGoal? Goal, PublicTaskAssessment Assessment,
     PortalTaskAttemptSummary[] Attempts, PublicTaskFile[] Files, string Browser, string Playwright, string Platform,
     string Viewport, string Scope, string VideoAlignment, bool LegalCaseDetermined, string AssistiveTechnologyComparison,
-    DateTimeOffset VerifiedAt);
+    DateTimeOffset VerifiedAt)
+{
+    public PublicTaskIssueTable? Diagnostics { get; init; }
+}
 internal sealed record PortalTaskEventPage(PublicTaskStatus Status, string ReportSha256, int Attempt, int Offset,
     int Total, PublicTaskEvent[] Events, int? NextOffset);
 internal sealed record PortalTaskGraphPage(PublicTaskStatus Status, string ReportSha256, int Attempt, int Offset,
@@ -132,7 +135,8 @@ internal sealed class PortalPublicTasks(IPortalPublicTaskProject? client, Public
             a.Outcome, a.ErrorCode, a.FinalUrl, a.Events.Length, a.Events.Count(e => e.InputAttempted), a.Events.Count(e => e.InputCompleted),
             a.TaskTargetMatched, a.PolicyInterruptions, a.Video, report.Files.Any(f => f.Path == a.Video && f.MediaType == "video/webm"), a.DecodedVideoFrames)).ToArray(),
             report.Files.ToArray(), report.BrowserVersion, report.PlaywrightVersion, report.Platform, report.Viewport,
-            report.Scope, report.VideoAlignment, false, report.AssistiveTechnologyComparison, DateTimeOffset.UtcNow);
+            report.Scope, report.VideoAlignment, false, report.AssistiveTechnologyComparison, DateTimeOffset.UtcNow)
+        { Diagnostics = PublicTaskIssueTable.From(report) };
     }
     internal async Task<PortalTaskEventPage> EventsAsync(PortalIdentity actor, Guid organization, Guid parent, Guid job, int attempt, int offset, string digest, CancellationToken token)
     {

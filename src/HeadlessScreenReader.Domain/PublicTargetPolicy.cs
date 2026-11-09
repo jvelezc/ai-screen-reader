@@ -21,13 +21,21 @@ public sealed class PublicTargetPolicy
         "2001::/23", "2001:db8::/32", "2002::/16"
     }.Select(IPNetwork.Parse).ToArray();
 
-    public PublicTargetPolicy(IEnumerable<string> allowedHosts)
+    public PublicTargetPolicy(IEnumerable<string> allowedHosts) : this(allowedHosts, false) { }
+
+    private PublicTargetPolicy(IEnumerable<string> allowedHosts, bool publicDependencies)
     {
         var hosts = allowedHosts.ToImmutableHashSet(StringComparer.OrdinalIgnoreCase);
         if (hosts.IsEmpty || hosts.Count > 32 || hosts.Any(host => !ValidHost(host)))
             throw new ArgumentException("Specify 1..32 exact DNS hosts, with no schemes, wildcards, paths or IP literals.", nameof(allowedHosts));
         _hosts = hosts;
+        PublicDependenciesEnabled = publicDependencies;
     }
+
+    public bool PublicDependenciesEnabled { get; }
+
+    /// <summary>Public dependencies still require independent DNS validation and a pinned public connection.</summary>
+    public static PublicTargetPolicy ForPublicDependencies(IEnumerable<string> allowedHosts) => new(allowedHosts, true);
 
     public ImmutableArray<string> AllowedHosts => _hosts.Select(host => host.ToLowerInvariant()).Order(StringComparer.Ordinal).ToImmutableArray();
 
@@ -45,7 +53,19 @@ public sealed class PublicTargetPolicy
     {
         if (string.IsNullOrWhiteSpace(authority) || !authority.EndsWith(":443", StringComparison.Ordinal) || authority.Count(c => c == ':') != 1
             || !ValidHost(authority[..^4])) return new(null, "CONNECT_AUTHORITY_UNSUPPORTED");
-        return AssessUrl($"https://{authority}/");
+        return PublicDependenciesEnabled ? AssessDependencyUrl($"https://{authority}/") : AssessUrl($"https://{authority}/");
+    }
+
+    public TargetDecision AssessDependencyUrl(string url)
+    {
+        if (!PublicDependenciesEnabled) return AssessUrl(url);
+        if (string.IsNullOrWhiteSpace(url) || url.Length > 16384 || url.Contains('\\')
+            || !Uri.TryCreate(url, UriKind.Absolute, out var uri) || !uri.IsWellFormedOriginalString()
+            || uri.Scheme != "https" || !uri.IsDefaultPort || uri.UserInfo.Length != 0
+            || uri.HostNameType != UriHostNameType.Dns || !ValidHost(uri.IdnHost)
+            || new[] { ".invalid", ".localhost", ".local", ".internal", ".test" }.Any(s => uri.IdnHost.EndsWith(s, StringComparison.OrdinalIgnoreCase)))
+            return new(null, "DEPENDENCY_URL_UNSUPPORTED");
+        return new(uri.IdnHost.ToLowerInvariant(), null);
     }
 
     public static bool IsPublicAddress(IPAddress address)

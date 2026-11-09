@@ -22,13 +22,17 @@ internal static class PublicTaskWorker
         using var heartbeatStop = new CancellationTokenSource();
         Task? heartbeat = null; string? folder = null; var leased = false;
         PublicTaskStart? started = null; var stage = "Start"; var activeAttempt = 0;
+        PublicNavigationBrowser? activeBrowser = null;
+        ImmutableArray<PublicTaskFailure>.Builder? activeFailures = null;
+        ImmutableArray<PublicTaskEvent>.Builder? activeEvents = null;
+        long activeBegan = 0; var omittedFailures = 0;
         try
         {
             var bytes = await ReaderWorkerWire.ReadAsync(input, 16 * 1024, stop.Token).ConfigureAwait(false) ?? throw new IOException();
             var start = JsonSerializer.Deserialize<PublicTaskStart>(bytes, ReaderWorkerWire.Json) ?? throw new IOException(); start.Validate();
             started = start; stage = "Isolation";
             if (start.ExecutionId != owner || start.Job.Source.TargetUrl != args[3] || start.Job.Source.AllowedHost != args[1]) throw new IOException();
-            var policy = new PublicTargetPolicy([args[1]]);
+            var policy = PublicTargetPolicy.ForPublicDependencies([args[1]]);
             using (var deadline = CancellationTokenSource.CreateLinkedTokenSource(stop.Token))
             {
                 deadline.CancelAfter(TimeSpan.FromSeconds(20));
@@ -36,17 +40,27 @@ internal static class PublicTaskWorker
             }
             await PulseAsync(false, stop.Token).ConfigureAwait(false); leased = true;
             heartbeat = KeepAliveAsync();
+            using var probeTraceDeadline = CancellationTokenSource.CreateLinkedTokenSource(stop.Token); probeTraceDeadline.CancelAfter(TimeSpan.FromSeconds(3));
+            var probeTrace = await ProxyProtocol.ReadTraceAsync(proxy, owner.ToString("N"), probeTraceDeadline.Token).ConfigureAwait(false);
+            if (probeTrace.Policy != PublicTaskNetworkTrace.PublicDependencyPolicy)
+                throw new BrowserOperationException("PUBLIC_TASK_EGRESS_PROFILE_MISMATCH");
+            var probeThroughSequence = probeTrace.Events.LastOrDefault()?.Sequence ?? 0;
             folder = Path.Combine(Path.GetTempPath(), "hsr-public-task-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(folder);
             var sequence = 0; PublicTaskGoal? goal = null;
+            PublicTaskNetworkTrace? discoveryNetwork = null;
             var files = ImmutableDictionary.CreateBuilder<string, byte[]>(); var inventory = ImmutableArray.CreateBuilder<PublicTaskFile>();
             var attempts = ImmutableArray.CreateBuilder<PublicTaskAttempt>();
             string browserVersion = "unavailable", playwrightVersion = "unavailable";
             for (var number = 1; number <= 3; number++)
             {
                 activeAttempt = number; stage = "Open";
+                activeBrowser = null;
+                activeFailures = null; activeEvents = null; activeBegan = 0; omittedFailures = 0;
                 await Authorize(number, "Open").ConfigureAwait(false);
                 var events = ImmutableArray.CreateBuilder<PublicTaskEvent>();
                 var now = DateTimeOffset.UtcNow; var began = System.Diagnostics.Stopwatch.GetTimestamp();
+                var failures = ImmutableArray.CreateBuilder<PublicTaskFailure>();
+                activeFailures = failures; activeEvents = events; activeBegan = began;
                 var beforePath = $"attempt-{number}-before.json"; var afterPath = $"attempt-{number}-after.json"; var videoPath = $"attempt-{number}.webm";
                 var method = number < 3 ? "Keyboard" : "Pointer";
                 var outcome = "Unconfirmed"; string? error = null, finalUrl = null; var same = false; var denials = 0;
@@ -55,6 +69,7 @@ internal static class PublicTaskWorker
                 try
                 {
                     browser = await PublicNavigationBrowser.OpenAsync(start.Job, proxy, Path.Combine(folder, $"attempt-{number}"), stop.Token).ConfigureAwait(false);
+                    activeBrowser = browser;
                     stage = "Discover";
                     browserVersion = browser.BrowserVersion; playwrightVersion = browser.PlaywrightVersion;
                     goal ??= await browser.DiscoverAsync(stop.Token).ConfigureAwait(false);
@@ -62,13 +77,14 @@ internal static class PublicTaskWorker
                     {
                         await Authorize(number, "Close").ConfigureAwait(false);
                         closeDeclared = true;
-                        await browser.FinishAsync(stop.Token).ConfigureAwait(false); break;
+                        await browser.FinishAsync(stop.Token).ConfigureAwait(false);
+                        discoveryNetwork = browser.Network;
+                        break;
                     }
                     same = await browser.SameGoalAsync(goal, stop.Token).ConfigureAwait(false);
                     stage = "Snapshot";
                     beforeSnapshot = await browser.CaptureAsync(stop.Token).ConfigureAwait(false);
                     Add(beforePath, JsonSerializer.SerializeToUtf8Bytes(beforeSnapshot, ReaderWorkerWire.Json), "application/json");
-                    var initialDenials = browser.PolicyDenials;
                     if (same)
                     {
                         stage = "Input";
@@ -86,7 +102,7 @@ internal static class PublicTaskWorker
                     }
                     finalUrl = start.Job.Source.AllowsDocument(browser.CurrentUrl) ? browser.CurrentUrl : null;
                     var reached = await browser.GoalObservedAsync(goal, stop.Token).ConfigureAwait(false);
-                    denials = Math.Min(1000, browser.PolicyDenials - initialDenials);
+                    denials = Math.Min(1000, browser.PolicyDenials);
                     outcome = reached ? "Reached" : same && finalUrl == start.Job.Source.TargetUrl ? "NotReached" : "Unconfirmed";
                     if (denials != 0) { error = "PUBLIC_TASK_POLICY_INTERRUPTED"; outcome = "Unconfirmed"; }
                 }
@@ -106,6 +122,7 @@ internal static class PublicTaskWorker
                         finalUrl = start.Job.Source.AllowsDocument(browser.CurrentUrl) ? browser.CurrentUrl : null;
                         try
                         {
+                            stage = "Snapshot";
                             var afterSnapshot = await browser.CaptureAsync(stop.Token).ConfigureAwait(false);
                             Add(afterPath, JsonSerializer.SerializeToUtf8Bytes(afterSnapshot, ReaderWorkerWire.Json), "application/json");
                             if (outcome == "NotReached" && (beforeSnapshot is null || !PublicTaskRules.SameExposedContent(beforeSnapshot, afterSnapshot)))
@@ -127,8 +144,11 @@ internal static class PublicTaskWorker
                     if (browser is not null) await browser.DisposeAsync().ConfigureAwait(false);
                     if (!closeDeclared) await Authorize(number, "Close").ConfigureAwait(false);
                 }
+                denials = Math.Min(1000, browser?.PolicyDenials ?? denials);
+                if (denials != 0) { outcome = "Unconfirmed"; error = "PUBLIC_TASK_POLICY_INTERRUPTED"; }
                 attempts.Add(new(number, Guid.NewGuid(), method, now, outcome, error, finalUrl, same, denials, events.ToImmutable(),
-                    beforePath, afterPath, videoPath, media?.BrowserClosed == true, media?.CaptureStopped == true, media?.DecodedFrames ?? 0));
+                    beforePath, afterPath, videoPath, media?.BrowserClosed == true, media?.CaptureStopped == true, media?.DecodedFrames ?? 0)
+                { Network = browser?.Network, Failures = failures.ToImmutable(), OmittedFailures = omittedFailures });
 
                 async Task Input(string action)
                 {
@@ -153,9 +173,17 @@ internal static class PublicTaskWorker
                 }
             }
             stage = "Report";
+            using var traceDeadline = CancellationTokenSource.CreateLinkedTokenSource(stop.Token); traceDeadline.CancelAfter(TimeSpan.FromSeconds(3));
+            var egressTrace = await ProxyProtocol.ReadTraceAsync(proxy, owner.ToString("N"), traceDeadline.Token).ConfigureAwait(false);
             var report = new PublicTaskReport(PublicTaskReport.CurrentSchema, start, goal, attempts.ToImmutable(), inventory.ToImmutable(),
                 browserVersion, playwrightVersion, System.Runtime.InteropServices.RuntimeInformation.OSDescription, "1280x720",
-                PublicTaskRules.Hash(await File.ReadAllBytesAsync(typeof(PublicTaskWorker).Assembly.Location, stop.Token).ConfigureAwait(false)));
+                PublicTaskRules.Hash(await File.ReadAllBytesAsync(typeof(PublicTaskWorker).Assembly.Location, stop.Token).ConfigureAwait(false)))
+            {
+                NetworkPolicy = PublicTaskNetworkTrace.PublicDependencyPolicy,
+                Egress = egressTrace,
+                EgressIsolationProbeThroughSequence = probeThroughSequence,
+                DiscoveryNetwork = discoveryNetwork
+            };
             report.Validate(start);
             files.Add("report.json", JsonSerializer.SerializeToUtf8Bytes(report, ReaderWorkerWire.Json));
             var bundle = new PublicTaskBundle(report, files.ToImmutable()).Encode();
@@ -194,21 +222,26 @@ internal static class PublicTaskWorker
         async Task Diagnostic(Exception problem)
         {
             if (started is null) return;
-            var category = problem switch
-            {
-                BrowserOperationException => "Browser",
-                Microsoft.Playwright.PlaywrightException => "Playwright",
-                JsonException => "Protocol",
-                TimeoutException => "Timeout",
-                IOException => "Io",
-                OperationCanceledException => "Canceled",
-                _ => "Unexpected"
-            };
-            var code = (problem as BrowserOperationException)?.Code;
-            if (code is not null && (code.Length > 100 || code.Any(c => !char.IsAsciiLetterUpper(c) && c != '_'))) code = null;
             try
             {
-                await ReaderWorkerWire.WriteAsync(control, JsonSerializer.SerializeToUtf8Bytes(new PublicTaskDiagnostic(started, activeAttempt, stage, category, code), ReaderWorkerWire.Json), 16 * 1024, CancellationToken.None).ConfigureAwait(false);
+                var failure = PublicTaskFailureCapture.Create(problem, stage, DateTimeOffset.UtcNow,
+                    activeBegan == 0 ? 0 : System.Diagnostics.Stopwatch.GetElapsedTime(activeBegan).TotalMilliseconds, activeEvents?.Count ?? 0);
+                if (activeFailures is not null)
+                {
+                    if (activeFailures.Count < 4) activeFailures.Add(failure);
+                    else omittedFailures = Math.Min(1000, omittedFailures + 1);
+                }
+                PublicTaskNetworkTrace? egress = null;
+                if (leased)
+                {
+                    using var traceStop = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+                    try { egress = await ProxyProtocol.ReadTraceAsync(proxy, owner.ToString("N"), traceStop.Token).ConfigureAwait(false); }
+                    catch { /* The original failure remains primary; absent diagnostics are never fabricated. */ }
+                }
+                var diagnostic = new PublicTaskDiagnostic(started, activeAttempt, stage, failure.Category, failure.Code)
+                { Network = problem.Data["PublicTaskNetworkTrace"] as PublicTaskNetworkTrace ?? activeBrowser?.Network, Egress = egress, Failure = failure };
+                await ReaderWorkerWire.WriteAsync(control, JsonSerializer.SerializeToUtf8Bytes(diagnostic, ReaderWorkerWire.Json),
+                    PublicTaskDiagnostic.MaximumBytes, CancellationToken.None).ConfigureAwait(false);
             }
             catch { }
         }

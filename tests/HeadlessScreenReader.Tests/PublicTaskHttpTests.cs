@@ -13,6 +13,21 @@ namespace HeadlessScreenReader.Tests;
 
 public sealed class PublicTaskHttpTests
 {
+    [Fact]
+    public async Task VerifiedSameReviewResultIncludesActionableIssueTableAndRevocationStillDeniesIt()
+    {
+        using var rig = await Rig.Create(PublicTaskIssueTableTests.WithNetwork);
+        await using var server = await rig.Server(); using var http = rig.Http(server);
+        using var response = await http.GetAsync(rig.Path + "/result"); Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var result = (await response.Content.ReadFromJsonAsync<PortalTaskResult>(PortalJson.Options))!;
+        var issue = Assert.Single(result.Diagnostics!.Issues);
+        Assert.Equal(rig.Status.Job, result.Status.Job); Assert.Equal("HTTP_ERROR", issue.Code); Assert.Equal(503, issue.Status);
+        Assert.Equal("/Attempts/0/Network/Events/1", issue.EvidencePointer); Assert.Equal(0, rig.Creates);
+        rig.DenyAfter = rig.Reads;
+        using var denied = await http.GetAsync(rig.Path + "/result"); Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
+        Assert.DoesNotContain("api.example.net", await denied.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -106,9 +121,11 @@ public sealed class PublicTaskHttpTests
         private Rig() { _provider = new(this, false); Project = new(_provider, PortalProjectClientTests.Key); Store = new(Root, null); }
         internal string Collection => $"/api/workspaces/{Status.Job.OrganizationId:D}/website-scans/{Status.Job.ParentScanId:D}/tasks";
         internal string Path => Collection + $"/{Status.Job.JobId:D}";
-        internal static async Task<Rig> Create()
+        internal static Task<Rig> Create() => Create(null);
+        internal static async Task<Rig> Create(Func<PublicTaskReport, PublicTaskReport>? transform)
         {
             var rig = new Rig(); var report = PublicTaskTests.Report();
+            if (transform is not null) report = transform(report);
             var files = ImmutableDictionary.CreateBuilder<string, byte[]>(); var inventory = ImmutableArray.CreateBuilder<PublicTaskFile>();
             foreach (var attempt in report.Attempts)
                 foreach (var name in new[] { attempt.BeforeSnapshot, attempt.AfterSnapshot, attempt.Video })

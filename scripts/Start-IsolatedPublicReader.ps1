@@ -4,7 +4,7 @@ param([ValidateSet('podman','docker')][string]$Runtime='podman',
     [string]$OwnerToken, [string]$Image='localhost/headless-screen-reader-prototype:local', [switch]$NavigationTask)
 $ErrorActionPreference='Stop'
 Import-Module (Join-Path $PSScriptRoot 'ReaderIsolation.psm1') -Force -DisableNameChecking
-$ctx=Start-ReaderIsolation -Runtime $Runtime -AllowedHosts $AllowedHost -OwnerToken $OwnerToken -Image $Image
+$ctx=Start-ReaderIsolation -Runtime $Runtime -AllowedHosts $AllowedHost -OwnerToken $OwnerToken -Image $Image -PublicDependencies:$NavigationTask
 $exitCode=3
 try {
     $mode=if($NavigationTask){'--public-task-worker'}else{'--public-reader-worker'}

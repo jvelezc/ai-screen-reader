@@ -22,7 +22,9 @@ internal static class PublicTaskProof
             var report = native.Bundle.Report;
             var assessment = PublicTaskAssessment.Evaluate(report, true, native.ResourcesAbsent);
             var expected = scenario switch { "working" => "NoBlockingBarrierInTestedTask", "keyboard-blocked" => "WebsiteEvidenceReady", _ => "InsufficientEvidence" };
-            var passed = assessment.Outcome == expected && report.Attempts.Length == 3 && report.Attempts.All(a => a.DecodedVideoFrames > 0)
+            var passed = assessment.Outcome == expected && report.NetworkPolicy == PublicTaskNetworkTrace.PublicDependencyPolicy
+                && report.Egress is { Requests: > 0 } && report.EgressIsolationProbeThroughSequence is > 0
+                && report.Attempts.Length == 3 && report.Attempts.All(a => a.DecodedVideoFrames > 0 && a.Network is { Requests: > 0 })
                 && phases.Contains("KeyboardAttempt1") && phases.Contains("KeyboardAttempt2") && phases.Contains("PointerComparison");
             foreach (var file in native.Bundle.Files) await File.WriteAllBytesAsync(Path.Combine(folder, scenario + "-" + file.Key), file.Value).ConfigureAwait(false);
             receipts.Add(new
@@ -31,7 +33,18 @@ internal static class PublicTaskProof
                 Passed = passed,
                 assessment.Outcome,
                 native.ResourcesAbsent,
-                Attempts = report.Attempts.Select(a => new { a.Method, a.Outcome, Events = a.Events.Length, a.DecodedVideoFrames, a.ErrorCode })
+                Attempts = report.Attempts.Select(a => new
+                {
+                    a.Method,
+                    a.Outcome,
+                    Events = a.Events.Length,
+                    a.DecodedVideoFrames,
+                    a.ErrorCode,
+                    NetworkRequests = a.Network!.Requests,
+                    NetworkEvents = a.Network.Events.Length,
+                    a.Network.DroppedEvents
+                }),
+                Diagnostics = PublicTaskIssueTable.From(report)
             });
             ready &= passed;
         }

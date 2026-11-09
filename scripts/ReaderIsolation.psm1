@@ -86,7 +86,7 @@ function Get-ReaderWorkerArguments {
 
 function Start-ReaderIsolation {
     param([ValidateSet('podman', 'docker')][string]$Runtime = 'podman', [string]$AllowedHosts = 'screenreader.privensic.com',
-        [string]$OwnerToken, [string]$Image = 'localhost/headless-screen-reader-prototype:local')
+        [string]$OwnerToken, [string]$Image = 'localhost/headless-screen-reader-prototype:local', [switch]$PublicDependencies)
     $managed = -not [string]::IsNullOrEmpty($OwnerToken)
     $parsedOwner = [Guid]::Empty
     if($managed -and (-not [Guid]::TryParseExact($OwnerToken,'N',[ref]$parsedOwner) -or $parsedOwner -eq [Guid]::Empty -or
@@ -119,11 +119,12 @@ function Start-ReaderIsolation {
         }
         $null = Invoke-ReaderRuntime $Runtime (@('network', 'create', '--internal', '--label', "hsr.prototype.owner=$owner") + $acceptanceLabels + @($ctx.InternalNetwork))
         $null = Invoke-ReaderRuntime $Runtime (@('network', 'create', '--label', "hsr.prototype.owner=$owner") + $acceptanceLabels + @($ctx.EgressNetwork))
+        $proxyMode = if ($PublicDependencies) { 'proxy-public-dependencies' } else { 'proxy' }
         $null = Invoke-ReaderRuntime $Runtime (@('run', '--rm', '--detach') + $acceptanceLabels + @('--name', $ctx.Proxy, '--network', $ctx.EgressNetwork,
             '--user', '1001:1001', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--read-only',
             '--memory', '128m', '--cpus', '0.5', '--pids-limit', '64', '--tmpfs', '/tmp:rw,nosuid,size=32m',
             '--label', "hsr.prototype.owner=$owner", '--entrypoint', 'dotnet', $ctx.Image,
-            '/app/egress/HeadlessScreenReader.Egress.dll', 'proxy', $AllowedHosts, $owner))
+            '/app/egress/HeadlessScreenReader.Egress.dll', $proxyMode, $AllowedHosts, $owner))
         $null = Invoke-ReaderRuntime $Runtime @('network', 'connect', $ctx.InternalNetwork, $ctx.Proxy)
         $inspect = ((Invoke-ReaderRuntime $Runtime @('inspect', $ctx.Proxy)).Text | ConvertFrom-Json)[0]
         $ctx.ProxyIp = $inspect.NetworkSettings.Networks.PSObject.Properties[$ctx.InternalNetwork].Value.IPAddress

@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace HeadlessScreenReader.Domain;
 
@@ -46,7 +47,16 @@ public sealed record PublicTaskStart(string Schema, PublicTaskJob Job, Guid Work
 
 public sealed record PublicTaskIntent(PublicTaskStart Start, int Sequence, int Attempt, string Action, PublicTaskGoal? Goal);
 public sealed record PublicTaskAck(Guid ExecutionId, int Sequence, string IntentSha256);
-public sealed record PublicTaskDiagnostic(PublicTaskStart Start, int Attempt, string Stage, string Category, string? Code);
+public sealed record PublicTaskDiagnostic(PublicTaskStart Start, int Attempt, string Stage, string Category, string? Code)
+{
+    public const int MaximumBytes = 512 * 1024;
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public PublicTaskFailure? Failure { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public PublicTaskNetworkTrace? Network { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public PublicTaskNetworkTrace? Egress { get; init; }
+}
 
 /// <summary>Observed focus semantics and native anchor destination; no editable value is collected.</summary>
 public sealed record PublicTaskFocus(string NodeId, string Role, string Name, string? AnchorUrl);
@@ -58,7 +68,15 @@ public sealed record PublicTaskFile(string Path, string Sha256, int Bytes, strin
 public sealed record PublicTaskAttempt(int Number, Guid Id, string Method, DateTimeOffset StartedAt,
     string Outcome, string? ErrorCode, string? FinalUrl, bool TaskTargetMatched, int PolicyInterruptions,
     ImmutableArray<PublicTaskEvent> Events, string BeforeSnapshot, string AfterSnapshot, string Video,
-    bool BrowserCloseConfirmed, bool CaptureStopConfirmed, int DecodedVideoFrames);
+    bool BrowserCloseConfirmed, bool CaptureStopConfirmed, int DecodedVideoFrames)
+{
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public PublicTaskNetworkTrace? Network { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ImmutableArray<PublicTaskFailure>? Failures { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int OmittedFailures { get; init; }
+}
 
 /// <summary>Original collector facts. Resource removal and archive readback are independently checked by the parent.</summary>
 public sealed record PublicTaskReport(string Schema, PublicTaskStart Start, PublicTaskGoal? Goal,
@@ -73,6 +91,15 @@ public sealed record PublicTaskReport(string Schema, PublicTaskStart Start, Publ
     public bool LegalCaseDetermined => false;
     public string AssistiveTechnologyComparison => "NotPerformed";
 
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? NetworkPolicy { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public PublicTaskNetworkTrace? Egress { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? EgressIsolationProbeThroughSequence { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public PublicTaskNetworkTrace? DiscoveryNetwork { get; init; }
+
     public void Validate(PublicTaskStart expected)
     {
         expected.Validate();
@@ -83,6 +110,15 @@ public sealed record PublicTaskReport(string Schema, PublicTaskStart Start, Publ
             && PublicTaskRules.Text(BrowserVersion, 200) && PublicTaskRules.Text(PlaywrightVersion, 200)
             && PublicTaskRules.Text(Platform, 500) && Viewport == "1280x720" && PublicTaskRules.Digest(CollectorSha256));
         Goal?.Validate(Start.Job.Source);
+        Require(NetworkPolicy is null or PublicTaskNetworkTrace.PublicDependencyPolicy);
+        Egress?.Validate();
+        DiscoveryNetwork?.Validate();
+        Require(Egress is null || NetworkPolicy == Egress.Policy);
+        Require(DiscoveryNetwork is null || Goal is null && NetworkPolicy == DiscoveryNetwork.Policy);
+        Require(NetworkPolicy is null || Egress is not null && EgressIsolationProbeThroughSequence is >= 0
+            && Attempts.All(a => a.Network is not null && a.Failures is not null) && (Goal is not null || DiscoveryNetwork is not null));
+        Require(EgressIsolationProbeThroughSequence is null || Egress is not null
+            && EgressIsolationProbeThroughSequence <= (Egress.Events.LastOrDefault()?.Sequence ?? 0));
         Require(Attempts.Select(a => a.Id).Distinct().Count() == Attempts.Length);
         foreach (var file in Files)
             Require(PublicTaskRules.FileName(file.Path) && PublicTaskRules.Digest(file.Sha256)
@@ -90,6 +126,10 @@ public sealed record PublicTaskReport(string Schema, PublicTaskStart Start, Publ
         for (var i = 0; i < Attempts.Length; i++)
         {
             var attempt = Attempts[i];
+            attempt.Network?.Validate();
+            Require(attempt.OmittedFailures is >= 0 and <= 1000 && (attempt.Failures is null || !attempt.Failures.Value.IsDefault && attempt.Failures.Value.Length <= 4));
+            if (attempt.Failures is { } failures) foreach (var failure in failures) failure.Validate(attempt.Events.IsDefault ? 0 : attempt.Events.Length);
+            Require(attempt.Network is null || NetworkPolicy == attempt.Network.Policy);
             Require(attempt.Number == i + 1 && attempt.Id != Guid.Empty && attempt.Method == (i < 2 ? "Keyboard" : "Pointer")
                 && attempt.StartedAt != default && attempt.Outcome is "Reached" or "NotReached" or "Unconfirmed"
                 && attempt.PolicyInterruptions >= 0 && attempt.PolicyInterruptions <= 1000
@@ -131,6 +171,11 @@ public sealed record PublicTaskAssessment(string Outcome, ImmutableArray<PublicT
         var attempts = report.Attempts;
         bool Complete(PublicTaskAttempt a) => a.Outcome != "Unconfirmed" && a.ErrorCode is null && a.TaskTargetMatched
             && a.PolicyInterruptions == 0 && a.BrowserCloseConfirmed && a.CaptureStopConfirmed && a.DecodedVideoFrames > 0
+            && (a.Failures is null || a.Failures.Value.IsEmpty) && a.OmittedFailures == 0
+            // Reaching the observed goal proves that specific success despite incidental requests.
+            // A failed task with unexplained network errors cannot be promoted to a keyboard barrier.
+            && (a.Network is null || a.Outcome == "Reached" || a.Network.DroppedEvents == 0
+                && !a.Network.Events.Any(e => e.Code is not null and not "ERR_ABORTED" || e.Phase == "WebSocketRequested"))
             && a.Events.All(e => e.InputCompleted)
             && a.Events.LastOrDefault() is { InputCompleted: true } trigger
             && trigger.Action == (a.Method == "Keyboard" ? "Enter" : "Pointer");

@@ -7,9 +7,10 @@ using var shutdown = new CancellationTokenSource(TimeSpan.FromMinutes(30));
 Console.CancelKeyPress += (_, args) => { args.Cancel = true; shutdown.Cancel(); };
 try
 {
-    if (args.Length is 2 or 3 && args[0] == "proxy")
+    if (args.Length is 2 or 3 && args[0] is "proxy" or "proxy-public-dependencies")
     {
-        await new ConnectProxy(new PublicTargetPolicy(args[1].Split(',')), args.Length == 3 ? args[2] : null).RunAsync(shutdown.Token);
+        var policy = args[0] == "proxy-public-dependencies" ? PublicTargetPolicy.ForPublicDependencies(args[1].Split(',')) : new(args[1].Split(','));
+        await new ConnectProxy(policy, args.Length == 3 ? args[2] : null).RunAsync(shutdown.Token);
         return 0;
     }
     if (args.Length == 2 && args[0] == "sentinel")

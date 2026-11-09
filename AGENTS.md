@@ -36,3 +36,9 @@ Run dotnet test HeadlessScreenReader.slnx -c Release and dotnet format HeadlessS
 Do not add arbitrary-site navigation until target policy and external egress isolation are implemented and tested. Do not add credential entry or recordings before the capture exclusion protocol is proven.
 
 Report local Windows checks, Linux checks, CI, deployment, and real assistive-technology validation separately. The first base increment is not completion of the full foundation milestones.
+
+## Issue capture and troubleshooting
+
+- Record every discovered product issue in docs/validation/issue-catalog.md with a stable case ID, reproduction, expected/observed behavior, exact evidence, observed cause versus hypothesis, fix status and named regression checks.
+- Retain enough scoped diagnostics to reconstruct how it happened: review/job/worker/execution/attempt, ordered input and network events, timestamps, request IDs, policy decisions, HTTP/transport/independent proxy reasons, release and original-file fingerprints. Keep truncation and missing diagnostics explicit.
+- Keep credentials, cookies, authorization headers, query values, bodies and raw exception messages out of diagnostic logs. Never rewrite originals, repeat uncertain input automatically, or turn a policy/engine failure into a barrier. Issue tables are feedback for regression cases and AI troubleshooting, not legal findings.

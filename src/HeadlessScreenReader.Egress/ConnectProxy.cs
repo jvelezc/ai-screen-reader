@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Text.Json;
+using System.Diagnostics;
 using HeadlessScreenReader.Domain;
 
 namespace HeadlessScreenReader.Egress;
@@ -8,9 +10,12 @@ namespace HeadlessScreenReader.Egress;
 /// <summary>CONNECT-only TLS passthrough. No credentials, HTTP bodies, page content or request logging.</summary>
 public sealed class ConnectProxy(PublicTargetPolicy policy, string? leaseToken = null)
 {
-    private readonly SemaphoreSlim _slots = new(16, 16);
+    private readonly SemaphoreSlim _slots = new(policy.PublicDependenciesEnabled ? 64 : 16, policy.PublicDependenciesEnabled ? 64 : 16);
     private readonly ProxyLease? _lease = leaseToken is null ? null : new(leaseToken, TimeProvider.System);
     private readonly CancellationTokenSource _stop = new();
+    private readonly long _began = Stopwatch.GetTimestamp();
+    private readonly PublicTaskNetworkLog _diagnostics = new(policy.PublicDependenciesEnabled
+        ? PublicTaskNetworkTrace.PublicDependencyPolicy : "ExactHostLegacy", DateTimeOffset.UtcNow);
     public const string Sentinel = "HSR_ISOLATION_SENTINEL";
 
     public async Task RunAsync(CancellationToken token)
@@ -44,8 +49,10 @@ public sealed class ConnectProxy(PublicTargetPolicy policy, string? leaseToken =
     {
         using (client)
         {
-            if (!await _slots.WaitAsync(0).ConfigureAwait(false)) return;
+            var ownsSlot = false;
             var connected = false;
+            var diagnostic = 0;
+            double Elapsed() => Stopwatch.GetElapsedTime(_began).TotalMilliseconds;
             using var deadline = CancellationTokenSource.CreateLinkedTokenSource(serverToken);
             deadline.CancelAfter(TimeSpan.FromSeconds(5));
             try
@@ -53,32 +60,66 @@ public sealed class ConnectProxy(PublicTargetPolicy policy, string? leaseToken =
                 var downstream = client.GetStream();
                 var header = await ProxyProtocol.ReadHeaderAsync(downstream, deadline.Token).ConfigureAwait(false);
                 var control = header.Split("\r\n", 2)[0].Split(' ');
-                if (control.Length == 3 && control[2] == "HTTP/1.1" && control[0] is "HSR-LEASE" or "HSR-CLOSE")
+                if (control.Length == 3 && control[2] == "HTTP/1.1" && control[0] is "HSR-LEASE" or "HSR-CLOSE" or "HSR-TRACE")
                 {
+                    if (control[0] == "HSR-TRACE")
+                    {
+                        ProxyProtocol.ValidateTraceAuthority(_lease, control[1]);
+                        var bytes = JsonSerializer.SerializeToUtf8Bytes(_diagnostics.Snapshot());
+                        await downstream.WriteAsync(Encoding.ASCII.GetBytes($"HTTP/1.1 200 OK\r\nContent-Length: {bytes.Length}\r\n\r\n"), deadline.Token).ConfigureAwait(false);
+                        await downstream.WriteAsync(bytes, deadline.Token).ConfigureAwait(false);
+                        return;
+                    }
                     if (_lease is null || !_lease.Matches(control[1])) throw new TargetDeniedException("LEASE_DENIED");
                     if (control[0] == "HSR-LEASE" && !_lease.Touch(control[1])) throw new TargetDeniedException("LEASE_EXPIRED");
                     await downstream.WriteAsync("HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n"u8.ToArray(), deadline.Token).ConfigureAwait(false);
                     if (control[0] == "HSR-CLOSE") _stop.Cancel();
                     return;
                 }
-                var address = await ProxyProtocol.ResolveAsync(policy, ProxyProtocol.Authority(header),
+                var authority = ProxyProtocol.Authority(header);
+                diagnostic = _diagnostics.Begin($"https://{authority}/", "CONNECT", "connect", Elapsed());
+                // Lease/diagnostic control is handled before website slots. A busy page cannot starve its own heartbeat.
+                if (!await _slots.WaitAsync(TimeSpan.FromSeconds(3), deadline.Token).ConfigureAwait(false))
+                    throw new IOException("PROXY_CAPACITY");
+                ownsSlot = true;
+                if (policy.PublicDependenciesEnabled) deadline.CancelAfter(TimeSpan.FromSeconds(10));
+                var address = await ProxyProtocol.ResolveAsync(policy, authority,
                     (host, token) => Dns.GetHostAddressesAsync(host, token), deadline.Token).ConfigureAwait(false);
                 using var upstream = new TcpClient(AddressFamily.InterNetwork);
                 // IP address overload prevents a second resolution/rebinding between validation and connection.
                 await upstream.ConnectAsync(address, 443, deadline.Token).ConfigureAwait(false);
                 await downstream.WriteAsync("HTTP/1.1 200 Connection Established\r\n\r\n"u8.ToArray(), deadline.Token).ConfigureAwait(false);
                 connected = true;
-                deadline.CancelAfter(TimeSpan.FromSeconds(30));
+                _diagnostics.Record(diagnostic, "Response", Elapsed(), 200);
+                deadline.CancelAfter(TimeSpan.FromSeconds(policy.PublicDependenciesEnabled ? 180 : 30));
                 var remote = upstream.GetStream();
-                var upload = ProxyProtocol.CopyBoundedAsync(downstream, remote, deadline.Token);
-                var download = ProxyProtocol.CopyBoundedAsync(remote, downstream, deadline.Token);
-                await Task.WhenAny(upload, download).ConfigureAwait(false);
+                var budget = policy.PublicDependenciesEnabled ? 67_108_864 : 10_485_760;
+                var upload = ProxyProtocol.CopyBoundedAsync(downstream, remote, budget, deadline.Token);
+                var download = ProxyProtocol.CopyBoundedAsync(remote, downstream, budget, deadline.Token);
+                var settled = await Task.WhenAny(upload, download).ConfigureAwait(false);
+                var limited = settled.Exception?.InnerExceptions.Any(e => e is IOException { Message: "TUNNEL_BYTE_LIMIT" }) == true;
+                if (limited) _diagnostics.Record(diagnostic, "Failed", Elapsed(), code: "TUNNEL_BYTE_LIMIT");
                 deadline.Cancel();
                 try { await Task.WhenAll(upload, download).ConfigureAwait(false); }
-                catch (Exception exception) when (exception is IOException or OperationCanceledException or SocketException) { }
+                catch (Exception exception) when (exception is IOException or OperationCanceledException or SocketException)
+                {
+                    // Cancellation after the first direction closes is ordinary tunnel teardown.
+                }
+                if (!limited) _diagnostics.Record(diagnostic, "Finished", Elapsed());
             }
             catch (Exception exception) when (exception is TargetDeniedException or IOException or SocketException or OperationCanceledException)
             {
+                if (diagnostic != 0) _diagnostics.Record(diagnostic, exception is TargetDeniedException ? "PolicyDenied" : "Failed", Elapsed(),
+                    code: exception switch
+                    {
+                        TargetDeniedException denied => denied.Code,
+                        SocketException { SocketErrorCode: SocketError.HostNotFound or SocketError.NoData } => "DNS_NOT_FOUND",
+                        SocketException { SocketErrorCode: SocketError.ConnectionRefused } => "CONNECT_REFUSED",
+                        OperationCanceledException => "CONNECT_TIMEOUT",
+                        IOException { Message: "PROXY_CAPACITY" } => "PROXY_CAPACITY",
+                        SocketException => "CONNECT_FAILED",
+                        _ => "CONNECT_IO_FAILED"
+                    });
                 if (!connected && client.Connected)
                 {
                     var status = exception is TargetDeniedException ? "403 Forbidden" : "502 Bad Gateway";
@@ -90,7 +131,7 @@ public sealed class ConnectProxy(PublicTargetPolicy policy, string? leaseToken =
                     catch (Exception writeError) when (writeError is IOException or SocketException or OperationCanceledException) { }
                 }
             }
-            finally { _slots.Release(); }
+            finally { if (ownsSlot) _slots.Release(); }
         }
     }
 

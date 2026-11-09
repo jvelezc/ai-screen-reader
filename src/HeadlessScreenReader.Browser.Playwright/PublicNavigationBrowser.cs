@@ -8,7 +8,7 @@ namespace HeadlessScreenReader.Browser.Playwright;
 
 public sealed record PublicTaskMedia(byte[] Video, int DecodedFrames, bool CaptureStopped, bool BrowserClosed);
 
-/// <summary>Fresh anonymous GET-only task context. The independent network fence must already be proven.</summary>
+/// <summary>Fresh anonymous link-navigation context with public HTTPS dependencies and an independently proven network fence.</summary>
 public sealed class PublicNavigationBrowser : IAsyncDisposable
 {
     private readonly ChromiumFixtureBrowser _browser;
@@ -22,6 +22,7 @@ public sealed class PublicNavigationBrowser : IAsyncDisposable
     public string PlaywrightVersion => _browser.Environment.PlaywrightVersion;
     public int PolicyDenials => _browser.TaskPolicyDenials;
     public string CurrentUrl => _browser.DiagnosticPage.Url;
+    public PublicTaskNetworkTrace? Network => _browser.TaskNetworkTrace;
 
     public static async Task<PublicNavigationBrowser> OpenAsync(PublicTaskJob job, IPAddress proxy, string folder, CancellationToken token)
     {
@@ -29,7 +30,7 @@ public sealed class PublicNavigationBrowser : IAsyncDisposable
         Directory.CreateDirectory(folder);
         if (Directory.EnumerateFileSystemEntries(folder).Any()) throw new BrowserOperationException("PUBLIC_TASK_OUTPUT_NOT_EMPTY");
         var browser = await ChromiumFixtureBrowser.LaunchPublicTaskPageAsync(job.Source.TargetUrl, proxy,
-            new PublicTargetPolicy([job.Source.AllowedHost]), token).ConfigureAwait(false);
+            PublicTargetPolicy.ForPublicDependencies([job.Source.AllowedHost]), token).ConfigureAwait(false);
         var owned = new PublicNavigationBrowser(browser, job, folder);
         browser.AttachPublicTaskCollector(owned.StopVideoAsync);
         try
@@ -45,7 +46,11 @@ public sealed class PublicNavigationBrowser : IAsyncDisposable
             await first.Task.WaitAsync(TimeSpan.FromSeconds(5), token).ConfigureAwait(false);
             return owned;
         }
-        catch { await browser.DisposeAsync().ConfigureAwait(false); throw; }
+        catch (Exception failure)
+        {
+            if (browser.TaskNetworkTrace is { } trace) failure.Data["PublicTaskNetworkTrace"] = trace;
+            await browser.DisposeAsync().ConfigureAwait(false); throw;
+        }
     }
 
     public Task<AccessibilitySnapshot> CaptureAsync(CancellationToken token) => _browser.CaptureAsync(token);
@@ -154,6 +159,7 @@ public sealed partial class ChromiumFixtureBrowser
 {
     internal int TaskPolicyDenials => _taskDenialCount();
     internal int TaskHttpStatus => _taskHttpStatus();
+    internal PublicTaskNetworkTrace? TaskNetworkTrace => _taskNetworkTrace();
     internal void AttachPublicTaskCollector(Func<Task> stop) => _stopProbeCollector = stop;
     internal Task<CaptureExclusionLease> EndPublicTaskCaptureAsync() => _captureAdmission.ExcludeAsync(async () =>
     { await _stopProbeCollector().ConfigureAwait(false); await _cdp.SendAsync("Accessibility.disable").ConfigureAwait(false); });

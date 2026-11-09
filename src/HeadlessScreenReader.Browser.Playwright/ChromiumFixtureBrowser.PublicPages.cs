@@ -15,6 +15,7 @@ public sealed partial class ChromiumFixtureBrowser
 
     private Func<int> _taskDenialCount = () => 0;
     private Func<int> _taskHttpStatus = () => 0;
+    private Func<PublicTaskNetworkTrace?> _taskNetworkTrace = () => null;
 
     private static async Task<ChromiumFixtureBrowser> LaunchPublicCoreAsync(string url, IPAddress proxy,
         PublicTargetPolicy policy, bool navigationTask, CancellationToken token)
@@ -25,6 +26,7 @@ public sealed partial class ChromiumFixtureBrowser
         var playwright = await Microsoft.Playwright.Playwright.CreateAsync().ConfigureAwait(false);
         IBrowser? browser = null;
         OwnedChromiumProcess? nativeProcess = null;
+        PublicTaskNetworkRecorder? network = null;
         try
         {
             browser = await playwright.Chromium.LaunchAsync(new()
@@ -43,23 +45,27 @@ public sealed partial class ChromiumFixtureBrowser
             }).ConfigureAwait(false);
             var blocked = new HashSet<string>(StringComparer.Ordinal);
             var deniedRequests = 0;
+            network = navigationTask ? new PublicTaskNetworkRecorder() : null;
+            network?.Attach(context);
             void Denied(string origin) { Interlocked.Increment(ref deniedRequests); lock (blocked) { if (blocked.Count < 25) blocked.Add(origin); } }
             await context.RouteAsync("**/*", async route =>
             {
-                if (navigationTask && route.Request.Method is not ("GET" or "HEAD"))
-                {
-                    Denied("Non-GET request (navigation task)");
-                    await route.AbortAsync().ConfigureAwait(false);
-                }
-                else if (policy.AssessUrl(route.Request.Url).Allowed) await route.ContinueAsync().ConfigureAwait(false);
+                var request = route.Request;
+                var topDocument = request.IsNavigationRequest && request.Frame.ParentFrame is null;
+                var decision = navigationTask ? PublicTaskRequestPolicy.Assess(policy, request.Url, request.Method, topDocument) : policy.AssessUrl(request.Url);
+                if (decision.Allowed) await route.ContinueAsync().ConfigureAwait(false);
                 else
                 {
-                    Denied(Uri.TryCreate(route.Request.Url, UriKind.Absolute, out var target) ? $"{target.Scheme}://{target.IdnHost}" : "unsupported target");
+                    network?.Denied(request, decision.DenialCode!);
+                    Denied(Uri.TryCreate(request.Url, UriKind.Absolute, out var target) ? $"{target.Scheme}://{target.IdnHost}" : "unsupported target");
                     await route.AbortAsync().ConfigureAwait(false);
                 }
             }).ConfigureAwait(false);
             await context.RouteWebSocketAsync("**/*", async route =>
             {
+                var allowed = navigationTask && PublicTaskRequestPolicy.AssessWebSocket(policy, route.Url).Allowed;
+                network?.WebSocket(route.Url, allowed);
+                if (allowed) { route.ConnectToServer(); return; }
                 Denied("WebSocket (unsupported)");
                 await route.CloseAsync().ConfigureAwait(false);
             }).ConfigureAwait(false);
@@ -83,10 +89,15 @@ public sealed partial class ChromiumFixtureBrowser
             nativeProcess = await OwnedChromiumProcess.AttachAsync(browser).ConfigureAwait(false);
             token.ThrowIfCancellationRequested();
             return new(playwright, browser, context, page, cdp, null, false, new(), nativeProcess, policy, blocked, page.Url)
-            { _taskDenialCount = () => Volatile.Read(ref deniedRequests), _taskHttpStatus = () => Volatile.Read(ref documentStatus) };
+            {
+                _taskDenialCount = () => Volatile.Read(ref deniedRequests),
+                _taskHttpStatus = () => Volatile.Read(ref documentStatus),
+                _taskNetworkTrace = () => network?.Snapshot()
+            };
         }
-        catch
+        catch (Exception failure)
         {
+            if (network is not null) failure.Data["PublicTaskNetworkTrace"] = network.Snapshot();
             try { if (browser is not null) await browser.CloseAsync().ConfigureAwait(false); }
             finally { try { playwright.Dispose(); } finally { nativeProcess?.Dispose(); } }
             throw;
