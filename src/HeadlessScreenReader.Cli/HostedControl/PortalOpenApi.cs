@@ -12,7 +12,7 @@ internal static partial class PortalOpenApi
 {
     private static readonly Lazy<string> Cached = new(Build);
     public static string Document => Cached.Value;
-    public const string ContractVersion = "1.19.0";
+    public const string ContractVersion = "1.20.0";
 
     private static string Build()
     {
@@ -67,6 +67,7 @@ internal static partial class PortalOpenApi
                 """)
         };
         AddPublicWebsiteSchemas(schemas);
+        AddPublicTaskSchemas(schemas);
         var paths = new JsonObject
         {
             ["/api/workspaces/{organization}/archives/{archive}/manifest"] = Path("post", Operation("ReadArchiveManifest", "Read32 entries at most; indexSha256 is caller-retained authority for content identity, not tenant access. Original user/workspace RLS checked before and after storage. Metadata does not establish original availability, scan admission, custody or a goal", "ArchiveManifest", true, "ArchiveManifestRequest", organization: true, archive: true)),
@@ -121,6 +122,7 @@ internal static partial class PortalOpenApi
             "Idempotently request cancellation of the original caller's admitted run. Revokes job and publication authority; physical stop, native cleanup and input outcome remain unassessed. AlreadyCompleted preserves the existing receipt. No replay or new admission.",
             "ScanCancellation", true, "EmptyRequest", 202, organization: true, scan: true));
         AddPublicWebsitePaths(paths);
+        AddPublicTaskPaths(paths);
         return new JsonObject
         {
             ["openapi"] = "3.1.0",

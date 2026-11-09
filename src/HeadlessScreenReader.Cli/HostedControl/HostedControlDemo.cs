@@ -38,6 +38,7 @@ internal static class HostedControlDemo
                 Environment.GetEnvironmentVariable("HSR_EVIDENCE_S3_SECRET"));
             using var archive = archiveConfiguration is null ? null : new S3ObservationArchive(archiveConfiguration);
             using var traversalStore = archiveConfiguration is null ? null : new S3TraversalObjectStore(archiveConfiguration);
+            using var taskEvidence = new PublicTaskEvidenceStore(evidence, archiveConfiguration);
             var image = Environment.GetEnvironmentVariable("HSR_WORKER_IMAGE");
             if (image is null)
             {
@@ -59,7 +60,7 @@ internal static class HostedControlDemo
             await using var server = await HostedControlServer.StartAsync(options, project, new PortalObservationReader(evidence, archive),
                 stop.Token, readers, readerHost.ReadyAsync, traversalStore is null ? null : new TraversalArchive(traversalStore),
                 publicWebsiteRuntimeReady: readerHost.PublicJobsReadyAsync,
-                diagnostic: value => Console.Error.WriteLine(JsonSerializer.Serialize(value))).ConfigureAwait(false);
+                diagnostic: value => Console.Error.WriteLine(JsonSerializer.Serialize(value)), publicTaskEvidence: taskEvidence).ConfigureAwait(false);
             Console.WriteLine(JsonSerializer.Serialize(new
             {
                 Schema = "hsr-control-readiness-v1",

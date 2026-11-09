@@ -35,7 +35,8 @@ internal sealed class HostedControlServer : IAsyncDisposable
         Func<Task<bool>>? readerRuntimeReady = null, HeadlessScreenReader.Worker.TraversalArchive? traversalArchive = null,
         IPortalProgressReader? progressReader = null, IPortalProgressSnapshotReader? progressSnapshotReader = null,
         IPortalRecordedOutputReader? recordedOutputReader = null, IPortalSourceImagesReader? sourceImagesReader = null,
-        Func<Task<bool>>? publicWebsiteRuntimeReady = null, Action<PortalRequestDiagnostic>? diagnostic = null)
+        Func<Task<bool>>? publicWebsiteRuntimeReady = null, Action<PortalRequestDiagnostic>? diagnostic = null,
+        HeadlessScreenReader.Worker.PublicTaskEvidenceStore? publicTaskEvidence = null)
     {
         options.Validate();
         var builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions
@@ -66,6 +67,7 @@ internal sealed class HostedControlServer : IAsyncDisposable
         builder.Services.AddProblemDetails();
         builder.Services.AddSingleton<IPortalPublicWebsites>(_ => new PortalPublicWebsiteService(project,
             project as IPortalPublicWebsiteProjectClient, publicWebsiteRuntimeReady));
+        builder.Services.AddSingleton(new PortalPublicTasks(project as IPortalPublicTaskProject, publicTaskEvidence, publicWebsiteRuntimeReady));
         var app = builder.Build();
         Uri? bound = null;
         app.Use(async (context, next) =>
@@ -109,6 +111,8 @@ internal sealed class HostedControlServer : IAsyncDisposable
                 var operation = context.GetEndpoint()?.Metadata.GetMetadata<IEndpointNameMetadata>()?.EndpointName;
                 operation = operation is "AdmitPublicWebsite" or "ListPublicWebsites" or "ReadPublicWebsiteStatus"
                     or "ReadPublicWebsiteFirstNodes" or "ReadPublicWebsitePinnedNodes" or "ReadPublicWebsiteOriginal"
+                    or "AdmitPublicTask" or "ReadLatestPublicTask" or "ReadPublicTaskStatus" or "CancelPublicTask"
+                    or "ReadPublicTaskResult" or "ReadPublicTaskEvents" or "ReadPublicTaskGraph" or "ReadPublicTaskOriginal"
                     or "PortalSession" or "EnsurePersonalWorkspace" or "GetPortalWorkspace" ? operation : "Other";
                 Guid? Id(string key) => context.Items.ContainsKey(typeof(PortalIdentity))
                     && Guid.TryParse(context.Request.RouteValues[key]?.ToString(), out var id) ? id : null;
@@ -134,6 +138,7 @@ internal sealed class HostedControlServer : IAsyncDisposable
         app.MapSourceImages();
         app.MapScanCancellation();
         app.MapPublicWebsites();
+        PortalPublicTaskEndpoints.Map(app);
         try
         {
             await app.StartAsync(token).ConfigureAwait(false);
@@ -148,7 +153,10 @@ internal sealed class HostedControlServer : IAsyncDisposable
     private static string SafeCode(string code) => code is "CONTROL_AUTHENTICATION_REQUIRED" or "CONTROL_HOST_DENIED"
         or "CONTROL_ORIGIN_DENIED" or "CONTROL_QUERY_DENIED" or "CONTROL_REQUEST_INVALID" or "CONTROL_JSON_REQUIRED"
         or "CONTROL_OPERATION_UNCONFIRMED" or "CONTROL_PUBLIC_WEBSITE_PROCESSOR_UNAVAILABLE"
-        or "DATABASE_UNAVAILABLE" or "AUTH_PROVIDER_UNAVAILABLE" ? code : "CONTROL_REQUEST_FAILED";
+        or "DATABASE_UNAVAILABLE" or "AUTH_PROVIDER_UNAVAILABLE" or "CONTROL_DATABASE_UNAVAILABLE" or "CONTROL_AUTH_PROVIDER_UNAVAILABLE"
+        or "CONTROL_PUBLIC_TASK_RUNTIME_UNAVAILABLE" or "CONTROL_PUBLIC_TASK_ORIGINAL_UNAVAILABLE" or "CONTROL_PUBLIC_TASK_RESPONSE_INVALID"
+        or "CONTROL_PUBLIC_TASK_CHANGED" or "CONTROL_PUBLIC_TASK_NOT_READY" or "CONTROL_PUBLIC_TASK_NOT_FOUND" or "CONTROL_PUBLIC_TASK_UNAVAILABLE"
+        ? code : "CONTROL_REQUEST_FAILED";
     internal static void NoQuery(HttpContext context)
     {
         if (context.Request.QueryString.HasValue) throw new PortalFault(400, "CONTROL_QUERY_DENIED");

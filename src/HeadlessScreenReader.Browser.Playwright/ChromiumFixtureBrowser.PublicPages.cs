@@ -7,8 +7,17 @@ namespace HeadlessScreenReader.Browser.Playwright;
 public sealed partial class ChromiumFixtureBrowser
 {
     /// <summary>The trusted host must verify the independent network fence before calling this API.</summary>
-    public static async Task<ChromiumFixtureBrowser> LaunchPublicPageAsync(string url, IPAddress proxy,
-        PublicTargetPolicy policy, CancellationToken token = default)
+    public static Task<ChromiumFixtureBrowser> LaunchPublicPageAsync(string url, IPAddress proxy,
+        PublicTargetPolicy policy, CancellationToken token = default) => LaunchPublicCoreAsync(url, proxy, policy, false, token);
+
+    internal static Task<ChromiumFixtureBrowser> LaunchPublicTaskPageAsync(string url, IPAddress proxy,
+        PublicTargetPolicy policy, CancellationToken token) => LaunchPublicCoreAsync(url, proxy, policy, true, token);
+
+    private Func<int> _taskDenialCount = () => 0;
+    private Func<int> _taskHttpStatus = () => 0;
+
+    private static async Task<ChromiumFixtureBrowser> LaunchPublicCoreAsync(string url, IPAddress proxy,
+        PublicTargetPolicy policy, bool navigationTask, CancellationToken token)
     {
         if (!OperatingSystem.IsLinux()) throw new BrowserOperationException("ISOLATED_LINUX_REQUIRED");
         if (!policy.AssessUrl(url).Allowed) throw new BrowserOperationException("TARGET_URL_DENIED");
@@ -33,10 +42,16 @@ public sealed partial class ChromiumFixtureBrowser
                 ViewportSize = new() { Width = 1280, Height = 720 }
             }).ConfigureAwait(false);
             var blocked = new HashSet<string>(StringComparer.Ordinal);
-            void Denied(string origin) { lock (blocked) { if (blocked.Count < 25) blocked.Add(origin); } }
+            var deniedRequests = 0;
+            void Denied(string origin) { Interlocked.Increment(ref deniedRequests); lock (blocked) { if (blocked.Count < 25) blocked.Add(origin); } }
             await context.RouteAsync("**/*", async route =>
             {
-                if (policy.AssessUrl(route.Request.Url).Allowed) await route.ContinueAsync().ConfigureAwait(false);
+                if (navigationTask && route.Request.Method is not ("GET" or "HEAD"))
+                {
+                    Denied("Non-GET request (navigation task)");
+                    await route.AbortAsync().ConfigureAwait(false);
+                }
+                else if (policy.AssessUrl(route.Request.Url).Allowed) await route.ContinueAsync().ConfigureAwait(false);
                 else
                 {
                     Denied(Uri.TryCreate(route.Request.Url, UriKind.Absolute, out var target) ? $"{target.Scheme}://{target.IdnHost}" : "unsupported target");
@@ -49,6 +64,8 @@ public sealed partial class ChromiumFixtureBrowser
                 await route.CloseAsync().ConfigureAwait(false);
             }).ConfigureAwait(false);
             var page = await context.NewPageAsync().ConfigureAwait(false);
+            var documentStatus = 0;
+            page.Response += (_, response) => { if (response.Request.IsNavigationRequest && response.Frame == page.MainFrame) Interlocked.Exchange(ref documentStatus, response.Status); };
             context.Page += async (_, popup) =>
             {
                 Denied("Additional page (unsupported)");
@@ -65,7 +82,8 @@ public sealed partial class ChromiumFixtureBrowser
             token.ThrowIfCancellationRequested();
             nativeProcess = await OwnedChromiumProcess.AttachAsync(browser).ConfigureAwait(false);
             token.ThrowIfCancellationRequested();
-            return new(playwright, browser, context, page, cdp, null, false, new(), nativeProcess, policy, blocked, page.Url);
+            return new(playwright, browser, context, page, cdp, null, false, new(), nativeProcess, policy, blocked, page.Url)
+            { _taskDenialCount = () => Volatile.Read(ref deniedRequests), _taskHttpStatus = () => Volatile.Read(ref documentStatus) };
         }
         catch
         {

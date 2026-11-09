@@ -39,7 +39,7 @@ if (recordingRecovery && (!Guid.TryParseExact(args[1], "D", out publicationOrgan
     || !long.TryParse(args[3], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out publicationGeneration)
     || publicationGeneration is < 1 or > 3)) return 2;
 if (!recordingRecovery && (args.Length != 1 || args[0] is not ("--once" or "--poll" or "--recover" or "--check-runtime" or "--check-reader-runtime" or "--recover-reader" or "--host-reader"
-    or "--once-public" or "--check-public-runtime" or "--recover-public-reader" or "--check-health")))
+    or "--once-public" or "--check-public-runtime" or "--recover-public-reader" or "--check-health" or "--once-public-task" or "--recover-public-tasks")))
 {
     Console.Error.WriteLine("Usage: HeadlessScreenReader.Worker --once | --once-public | --poll | --recover | --check-runtime | --check-reader-runtime | --recover-reader | --check-public-runtime | --recover-public-reader | --host-reader | --recover-recording <organization> <job> <generation>. Operator configuration is supplied through the private service environment.");
     return 2;
@@ -60,6 +60,12 @@ try
     var image = Environment.GetEnvironmentVariable("HSR_WORKER_IMAGE") ?? throw new InvalidOperationException();
     var evidence = Environment.GetEnvironmentVariable("HSR_WORKER_EVIDENCE") ?? throw new InvalidOperationException();
     var runtime = Environment.GetEnvironmentVariable("HSR_WORKER_RUNTIME") ?? "podman";
+    if (args[0] == "--recover-public-tasks")
+    {
+        using var tasks = new PublicTaskExecutor(evidence, PublicWebsiteRuntime.Scripts, runtime, image);
+        Console.WriteLine(JsonSerializer.Serialize(new { Schema = "hsr-public-task-recovery-v1", State = "PublicTasksRecovered", Recovered = await tasks.RecoverAsync() }));
+        return 0;
+    }
     if (args[0] == "--check-health")
     {
         var storage = S3EvidenceConfiguration.Optional(Environment.GetEnvironmentVariable("HSR_EVIDENCE_S3_ACCESS_KEY"),
@@ -186,6 +192,19 @@ try
     var producer = new WorkerEvidenceFinalizer(new TraversalArchive(producerObjects is null
         ? new FileTraversalObjectStore(Path.Combine(evidence, "archives")) : producerObjects));
     await using var database = WorkerDatabase.Create(connection);
+    var taskLeases = new PublicTaskLeases(database);
+    var tasksAvailable = args[0] is "--poll" or "--once-public-task" && await taskLeases.AvailableAsync(stop.Token);
+    using var taskExecutor = tasksAvailable ? new PublicTaskExecutor(evidence, PublicWebsiteRuntime.Scripts, runtime, image) : null;
+    if (taskExecutor is not null) await taskExecutor.RecoverAsync();
+    using var taskEvidence = new PublicTaskEvidenceStore(evidence, archiveConfiguration);
+    var taskCoordinator = taskExecutor is null ? null : new PublicTaskCoordinator(taskLeases, taskExecutor, taskEvidence);
+    if (args[0] == "--once-public-task")
+    {
+        if (taskCoordinator is null) throw new InvalidOperationException();
+        var taskResult = await taskCoordinator.RunOnceAsync(Guid.NewGuid(), stop.Token);
+        Console.WriteLine(JsonSerializer.Serialize(new { Schema = "hsr-public-task-run-v1", taskResult.State, taskResult.JobId, taskResult.ErrorCode }));
+        return taskResult.State is "Observed" or "Empty" ? 0 : 3;
+    }
     await using var leases = new PostgresWorkerLeases(database);
     var coordinator = new ObservationCoordinator(leases, executor, new(evidence, archive, producer));
     await using var publicLeases = args[0] is "--poll" or "--once-public" ? new PostgresPublicWebsiteLeases(database) : null;
@@ -202,8 +221,18 @@ try
     var worker = Guid.NewGuid();
     string? previousState = null;
     string? previousPublicState = null;
+    string? previousTaskState = null;
     do
     {
+        if (taskCoordinator is not null)
+        {
+            stage = "PublicTaskCycle";
+            var taskResult = await taskCoordinator.RunOnceAsync(worker, stop.Token);
+            if (taskResult.State != "Empty" || previousTaskState != taskResult.State)
+                Console.WriteLine(JsonSerializer.Serialize(new { Schema = "hsr-public-task-run-v1", taskResult.State, taskResult.JobId, taskResult.ErrorCode }));
+            previousTaskState = taskResult.State;
+            if (taskResult.State == "Unconfirmed") return 3;
+        }
         if (publicCoordinator is not null)
         {
             stage = "PublicQueueCycle";

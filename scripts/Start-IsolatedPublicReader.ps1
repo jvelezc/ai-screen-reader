@@ -1,14 +1,15 @@
 param([ValidateSet('podman','docker')][string]$Runtime='podman',
     [string]$AllowedHost='screenreader.privensic.com',
     [string]$TargetUrl='https://screenreader.privensic.com/ci/v1/source',
-    [string]$OwnerToken, [string]$Image='localhost/headless-screen-reader-prototype:local')
+    [string]$OwnerToken, [string]$Image='localhost/headless-screen-reader-prototype:local', [switch]$NavigationTask)
 $ErrorActionPreference='Stop'
 Import-Module (Join-Path $PSScriptRoot 'ReaderIsolation.psm1') -Force -DisableNameChecking
 $ctx=Start-ReaderIsolation -Runtime $Runtime -AllowedHosts $AllowedHost -OwnerToken $OwnerToken -Image $Image
 $exitCode=3
 try {
+    $mode=if($NavigationTask){'--public-task-worker'}else{'--public-reader-worker'}
     $workerArgs=(Get-ReaderWorkerArguments $ctx)+@('--entrypoint','dotnet','--interactive',$ctx.Image,
-        '/app/cli/HeadlessScreenReader.Cli.dll','--public-reader-worker',$ctx.ProxyIp,$AllowedHost,$ctx.Owner,$TargetUrl)
+        '/app/cli/HeadlessScreenReader.Cli.dll',$mode,$ctx.ProxyIp,$AllowedHost,$ctx.Owner,$TargetUrl)
     # Copy raw OS byte streams; neither implicit handle inheritance on Windows
     # nor PowerShell's text pipeline preserves this binary protocol reliably.
     $start=[Diagnostics.ProcessStartInfo]::new($Runtime)

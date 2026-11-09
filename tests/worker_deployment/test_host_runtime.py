@@ -221,8 +221,32 @@ class HostRuntimeTests(unittest.TestCase):
             self.runtime.recover(COMMIT, "evidence")
         worker.assert_called_once_with(COMMIT, "evidence", "--recover")
 
+
+    def test_public_task_recovery_requires_actual_inventory_retirement(self):
+        pending = self.base / "state" / "evidence" / ".public-task-runtime" / "intents"
+        pending.mkdir(parents=True); intent = pending / "owned.json"; intent.write_text("possible input")
+        calls = []
+        def recover(commit, scope, mode):
+            calls.append(mode)
+            if mode == "--recover": return {"State": "Recovered", "Recovered": 0}
+            self.assertEqual("--recover-public-tasks", mode)
+            intent.unlink()
+            return {"Schema": "hsr-public-task-recovery-v1", "State": "PublicTasksRecovered", "Recovered": 1}
+        with patch.object(self.runtime, "worker", side_effect=recover): self.runtime.recover(COMMIT, "evidence")
+        self.assertEqual(["--recover", "--recover-public-tasks"], calls)
+        self.assertEqual([], list(pending.iterdir()))
+
+    def test_public_task_recovery_cannot_hide_remaining_possible_input(self):
+        pending = self.base / "state" / "evidence" / ".public-task-runtime" / "intents"
+        pending.mkdir(parents=True); intent = pending / "owned.json"; intent.write_text("retain")
+        receipt = {"Schema": "hsr-public-task-recovery-v1", "State": "PublicTasksRecovered", "Recovered": 1}
+        with patch.object(self.runtime, "worker", side_effect=[{"State": "Recovered", "Recovered": 0}, receipt]):
+            with self.assertRaises(ReleaseError) as caught: self.runtime.recover(COMMIT, "evidence")
+            self.assertEqual("DEPLOY_PUBLIC_TASK_RECOVERY_UNCONFIRMED", str(caught.exception))
+        self.assertEqual("retain", intent.read_text())
+
     def test_public_operator_modes_keep_the_closed_credential_environment(self):
-        for mode in ("--check-public-runtime", "--recover-public-reader"):
+        for mode in ("--check-public-runtime", "--recover-public-reader", "--recover-public-tasks"):
             with self.subTest(case=mode), patch.dict(os.environ, {"HSR_WORKER_DATABASE": "private-database-canary"}), \
                     patch("host_runtime.run_checked", return_value='{}') as run:
                 self.runtime.worker(COMMIT, "readiness", mode)

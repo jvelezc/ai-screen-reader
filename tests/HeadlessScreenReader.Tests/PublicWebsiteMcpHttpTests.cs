@@ -21,7 +21,7 @@ public sealed class PublicWebsiteMcpHttpTests
             rig.Project, new PortalObservationStub(), publicWebsiteRuntimeReady: () => Task.FromResult(true));
         await using (var mcp = await Connect(server.BaseAddress, rig.Job.OrganizationId))
         {
-            var tools = await mcp.ListToolsAsync(); Assert.Equal(27, tools.Count);
+            var tools = await mcp.ListToolsAsync(); Assert.Equal(33, tools.Count);
             var screeningTool = tools.Single(tool => tool.Name == "website_screening");
             Assert.Equal(new[] { "originalSha256", "scanId" }, screeningTool.JsonSchema.GetProperty("properties").EnumerateObject().Select(p => p.Name).Order());
             var admission = tools.Single(tool => tool.Name == "website_scan_start").JsonSchema;

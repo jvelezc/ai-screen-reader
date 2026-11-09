@@ -25,11 +25,17 @@ if (args.SequenceEqual(["--worker-fixture-progress"]))
 if (args.SequenceEqual(["--reader-fixture"]))
     return await FixtureReaderWorker.RunAsync(Console.OpenStandardInput(), Console.OpenStandardOutput(), Console.Error);
 
+if (args.Length > 0 && args[0] == "--public-task-worker")
+    return await PublicTaskWorker.RunAsync(args[1..], Console.OpenStandardInput(), Console.OpenStandardOutput(), Console.OpenStandardError());
+
 if (args.Length > 0 && args[0] == "--public-reader-worker")
     return await PublicReaderWorker.RunAsync(args[1..], Console.OpenStandardInput(), Console.OpenStandardOutput(), Console.Error);
 
 if (args.Length == 3 && args[0] == "--check-public-reader-worker")
     return await PublicReaderWorkerProof.RunAsync(args[1], args[2], Console.Out);
+
+if (args.Length == 3 && args[0] == "--check-public-task-worker")
+    return await PublicTaskProof.RunAsync(args[1], args[2], Console.Out);
 
 if (args.Length == 3 && args[0] == "--check-public-reader-supervisor")
     return await PublicReaderSupervisorProof.RunAsync(args[1], args[2], Console.Out);

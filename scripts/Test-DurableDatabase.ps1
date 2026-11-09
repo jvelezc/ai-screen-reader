@@ -11,7 +11,7 @@ New-Item -ItemType Directory -Path $folder | Out-Null
 $created = $false; $removed = $false; $ready = $false; $stage = 'create'; $errorCode = $null
 $cases = [Collections.Generic.List[string]]::new()
 $script:discovered = 0; $script:executed = 0; $script:failed = 0
-$expectedCases = 663
+$expectedCases = 695
 $oldPassword = $env:POSTGRES_PASSWORD
 
 function Wait-DatabaseReady {
@@ -78,6 +78,7 @@ try {
     $stage = 'start'
     $null = Invoke-ReaderRuntime $Runtime @('start', $name)
     Wait-DatabaseReady
+    Invoke-DatabaseFile 'tests/database/task-auth-fixture.sql' 'task-auth-fixture' -User 'supabase_admin' -Atomic
     $stage = 'migration'
     $migrations = @(Get-ChildItem (Join-Path $repoRoot 'supabase/migrations') -Filter '*.sql' | Sort-Object Name)
     if ($migrations.Count -eq 0) { throw 'DATABASE_MIGRATIONS_MISSING' }
@@ -123,6 +124,8 @@ try {
     Invoke-DatabaseFile 'tests/database/concurrent-public-website.sql' 'concurrent-public-website' -Expected 24 -User 'supabase_admin'
     $stage = 'public-website-status'
     Invoke-DatabaseFile 'tests/database/public-website-status.sql' 'public-website-status' -Expected 29 -User 'supabase_admin'
+    $stage = 'public-navigation-tasks'
+    Invoke-DatabaseFile 'tests/database/public-navigation-tasks.sql' 'public-navigation-tasks' -Expected 32 -User 'supabase_admin'
     $stage = 'concurrent-cancellation'
     Invoke-DatabaseFile 'tests/database/concurrent-scan-cancellation.sql' 'concurrent-cancellation' -Expected 15 -User 'supabase_admin'
     $stage = 'concurrent-publication'

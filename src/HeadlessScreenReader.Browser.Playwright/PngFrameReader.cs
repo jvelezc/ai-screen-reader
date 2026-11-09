@@ -14,11 +14,18 @@ internal static class PngFrameReader
 
     internal static async Task<ImmutableArray<byte[]>> ReadAsync(Stream input, CancellationToken token = default,
         int maxFrames = MaximumFrames, int maxFrameBytes = MaximumFrameBytes, int maxBytes = MaximumBytes)
+        => await ReadCoreAsync(input, token, maxFrames, maxFrameBytes, maxBytes, retain: true).ConfigureAwait(false);
+
+    internal static async Task<int> CountAsync(Stream input, CancellationToken token) =>
+        (await ReadCoreAsync(input, token, 4500, MaximumFrameBytes, 1024 * 1024 * 1024, retain: false).ConfigureAwait(false)).Length;
+
+    private static async Task<ImmutableArray<byte[]>> ReadCoreAsync(Stream input, CancellationToken token,
+        int maxFrames, int maxFrameBytes, int maxBytes, bool retain)
     {
         ArgumentNullException.ThrowIfNull(input);
         if (maxFrames is < 1 or > MaximumFrames) throw new ArgumentOutOfRangeException(nameof(maxFrames));
         if (maxFrameBytes is < 8 or > MaximumFrameBytes) throw new ArgumentOutOfRangeException(nameof(maxFrameBytes));
-        if (maxBytes is < 8 or > MaximumBytes) throw new ArgumentOutOfRangeException(nameof(maxBytes));
+        if (maxBytes < 8 || maxBytes > (retain ? MaximumBytes : 1024 * 1024 * 1024)) throw new ArgumentOutOfRangeException(nameof(maxBytes));
         var frames = ImmutableArray.CreateBuilder<byte[]>();
         var signature = new byte[8]; var header = new byte[8]; long total = 0;
         void Admit(long bytes)
@@ -55,7 +62,7 @@ internal static class PngFrameReader
                     if (idat && length > 0) hasData = true;
                     frame.Write(header); frame.Write(body); first = false;
                     if (!iend) continue;
-                    var bytes = frame.ToArray(); total += bytes.Length; frames.Add(bytes); break;
+                    total += frame.Length; frames.Add(retain ? frame.ToArray() : []); break;
                 }
             }
         }

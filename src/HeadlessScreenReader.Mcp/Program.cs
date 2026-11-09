@@ -57,7 +57,7 @@ var mcp = builder.Services.AddMcpServer(options =>
     if (hosted is not null) options.ServerInstructions += " Public website jobs have separate website_scan_start/list/status and website_observation/original tools. Use one request UUID and canonical public HTTPS source; explicit reconciliation reuses both. These are passive, zero-input page observations, with no recording, attempted task, barrier determination or evidence-sufficiency claim. Follow pinned original SHA-256 page cursors and compare source/producer/scope. A clock-bound permission snapshot grants no command or replay authority; Expired/Missing requires fenced recovery. Public MCP/plugin publication remains deferred.";
 }).WithStdioServerTransport();
 if (hosted is null) mcp.WithTools<ReaderTools>();
-else { mcp.WithTools<HostedReaderTools>(); mcp.WithTools<HostedScanTools>(); mcp.WithTools<HostedPublicWebsiteTools>(); mcp.WithTools<HostedArchiveTools>(); mcp.WithTools<HostedEvidenceTools>(); }
+else { mcp.WithTools<HostedReaderTools>(); mcp.WithTools<HostedScanTools>(); mcp.WithTools<HostedPublicWebsiteTools>(); mcp.WithTools<HostedPublicTaskTools>(); mcp.WithTools<HostedArchiveTools>(); mcp.WithTools<HostedEvidenceTools>(); }
 using var hostLease = access is null ? new CancellationTokenSource() : new CancellationTokenSource(TimeSpan.FromMinutes(29));
 try { await builder.Build().RunAsync(hostLease.Token); }
 finally

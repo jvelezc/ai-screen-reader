@@ -28,6 +28,41 @@ screenreader.privensic.com {
 			<body><h1>Reader CI destination v1</h1><p>This is the fixed destination for the isolated reader acceptance task. Reaching it demonstrates only the tested route under the named reader profile.</p></body></html>
 			HTML 200
 		}
+		# Deterministic public task acceptance pages: one working and one keyboard-only barrier.
+		handle /ci/tasks/v1/working {
+			header Content-Type "text/html; charset=utf-8"
+			header Content-Security-Policy "default-src 'none'; script-src 'sha256-seh7Ck07FMYNVyD7UHoX7oCGYyA3yvwKXWJAXLmVLQs='; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+			respond <<HTML
+			<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Public navigation task working</title><style>body{font:24px Georgia;margin:4rem;color:#123}a:focus{outline:4px solid blue}</style></head><body><h1>Service information</h1><p>Fixed task acceptance fixture. No real purchase or account.</p><a href="/ci/tasks/v1/pricing">View pricing</a></body></html>
+			HTML 200
+		}
+		handle /ci/tasks/v1/alternative-content {
+			header Content-Type "text/html; charset=utf-8"
+			header Content-Security-Policy "default-src 'none'; script-src 'sha256-tZ2SOKpQPjylYlO4/+/vEr85V5hgECTlm7qBGIdpdl4='; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+			respond <<HTML
+			<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Public navigation task alternative-content</title><style>body{font:24px Georgia;margin:4rem;color:#123}a:focus{outline:4px solid blue}</style></head><body><h1>Service information</h1><p>Fixed task acceptance fixture. No real purchase or account.</p><a href="/ci/tasks/v1/pricing">View pricing</a><script>document.querySelector('a').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();document.querySelector('h1').textContent='Pricing information inline';}});</script></body></html>
+			HTML 200
+		}
+		handle /ci/tasks/v1/pointer-unconfirmed {
+			header Content-Type "text/html; charset=utf-8"
+			header Content-Security-Policy "default-src 'none'; script-src 'sha256-seh7Ck07FMYNVyD7UHoX7oCGYyA3yvwKXWJAXLmVLQs='; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+			respond <<HTML
+			<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Public navigation task pointer-unconfirmed</title><style>body{font:24px Georgia;margin:4rem;color:#123}a{pointer-events:none}a:focus{outline:4px solid blue}</style></head><body><h1>Service information</h1><p>Fixed task acceptance fixture. No real purchase or account.</p><a href="/ci/tasks/v1/pricing">View pricing</a></body></html>
+			HTML 200
+		}
+		handle /ci/tasks/v1/keyboard-blocked {
+			header Content-Type "text/html; charset=utf-8"
+			header Content-Security-Policy "default-src 'none'; script-src 'sha256-seh7Ck07FMYNVyD7UHoX7oCGYyA3yvwKXWJAXLmVLQs='; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+			respond <<HTML
+			<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Public navigation task keyboard-blocked</title><style>body{font:24px Georgia;margin:4rem;color:#123}a:focus{outline:4px solid blue}</style></head><body><h1>Service information</h1><p>Fixed task acceptance fixture. No real purchase or account.</p><a href="/ci/tasks/v1/pricing">View pricing</a><script>document.querySelector('a').addEventListener('keydown',e=>{if(e.key==='Enter')e.preventDefault();});</script></body></html>
+			HTML 200
+		}
+		handle /ci/tasks/v1/pricing {
+			header Content-Type "text/html; charset=utf-8"
+			respond <<HTML
+			<!doctype html><html lang="en"><title>Pricing</title><h1>Pricing</h1><p>Example service: ten dollars. This is a fixed acceptance fixture.</p></html>
+			HTML 200
+		}
 		# Fixed data-only lab; no wildcard script or upstream/API access.
 		@lab path /lab/v1/ /lab/v1/index.html /lab/v1/manifest.json /lab/v1/checkout-working.html /lab/v1/checkout-keyboard-blocked.html /lab/v1/control-named.html /lab/v1/control-unnamed.html
 		handle @lab {

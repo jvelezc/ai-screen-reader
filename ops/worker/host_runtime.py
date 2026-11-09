@@ -110,7 +110,7 @@ class HostRuntime:
                 "DEPLOY_IMAGE_UNCONFIRMED")
 
     def worker(self, commit, scope, mode):
-        require(scope in ("evidence", "readiness") and mode in ("--recover", "--check-runtime", "--recover-reader", "--check-public-runtime", "--recover-public-reader"),
+        require(scope in ("evidence", "readiness") and mode in ("--recover", "--check-runtime", "--recover-reader", "--check-public-runtime", "--recover-public-reader", "--recover-public-tasks"),
                 "DEPLOY_OPERATION_INVALID")
         env = self.environment() | {"HSR_WORKER_IMAGE": self.manifest(commit)["image"],
                                     "HSR_WORKER_RUNTIME": "podman",
@@ -155,6 +155,20 @@ class HostRuntime:
                         and type(recovered.get("Recovered")) is int and recovered["Recovered"] >= 0,
                         "DEPLOY_PUBLIC_READER_RECOVERY_UNCONFIRMED")
                 require(not any(pending.iterdir()), "DEPLOY_PUBLIC_READER_RECOVERY_UNCONFIRMED")
+
+        task_root = self.base / "state" / scope / ".public-task-runtime"
+        if task_root.exists() or task_root.is_symlink():
+            require(task_root.is_dir() and not task_root.is_symlink(), "DEPLOY_PUBLIC_TASK_JOURNAL_INVALID")
+            pending = task_root / "intents"
+            require(pending.is_dir() and not pending.is_symlink(), "DEPLOY_PUBLIC_TASK_JOURNAL_INVALID")
+            if any(pending.iterdir()):
+                recovered = self.worker(commit, scope, "--recover-public-tasks")
+                require(isinstance(recovered, dict) and set(recovered) == {"Schema", "State", "Recovered"}
+                        and recovered.get("Schema") == "hsr-public-task-recovery-v1"
+                        and recovered.get("State") == "PublicTasksRecovered"
+                        and type(recovered.get("Recovered")) is int and recovered["Recovered"] >= 0,
+                        "DEPLOY_PUBLIC_TASK_RECOVERY_UNCONFIRMED")
+                require(not any(pending.iterdir()), "DEPLOY_PUBLIC_TASK_RECOVERY_UNCONFIRMED")
 
     def probe(self, commit):
         validate_evidence_configuration(self.base)

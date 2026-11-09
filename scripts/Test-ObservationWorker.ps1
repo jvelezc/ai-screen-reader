@@ -11,7 +11,7 @@ $created=$false; $built=$false; $removed=$false; $imageRemoved=$false; $ready=$f
 $cases=[Collections.Generic.List[string]]::new()
 $releaseCreated=$false
 $script:executed=0; $script:failed=0
-$expected=if($IsLinux){74}else{71}; $linuxSignalPerformed=$false
+$expected=if($IsLinux){79}else{76}; $linuxSignalPerformed=$false
 $crashStarted=$false; $crashEvidence=$null
 $recoveryResources=[Collections.Generic.List[string]]::new()
 $names=@('POSTGRES_PASSWORD','HSR_WORKER_DATABASE','HSR_WORKER_IMAGE','HSR_WORKER_EVIDENCE','HSR_WORKER_RUNTIME','HSR_WORKER_SECCOMP',
@@ -56,6 +56,22 @@ try {
     $imageId=(Invoke-ReaderRuntime $Runtime @('image','inspect','--format','{{.Id}}',$image)).Text.Trim()
     if($imageId -match '^[a-f0-9]{64}$'){$imageId='sha256:'+$imageId}
     if($imageId -notmatch '^sha256:[a-f0-9]{64}$'){throw 'WORKER_IMAGE_ID_UNCONFIRMED'}
+    $stage='public-navigation-tasks'
+    $env:HSR_WORKER_IMAGE=$imageId
+    $taskErrorLog=Join-Path $folder 'public-task-native.stderr.jsonl'
+    $taskText=@(& dotnet (Join-Path $testedControl 'HeadlessScreenReader.Cli.dll') --check-public-task-worker $Runtime $repoRoot 2> $taskErrorLog)
+    if($LASTEXITCODE -ne 0){throw 'PUBLIC_TASK_NATIVE_PROOF_UNCONFIRMED'}
+    $task=$taskText -join "`n" | ConvertFrom-Json
+    Assert-Proof ($task.Schema -ceq 'hsr-public-task-native-proof-v1' -and $task.Ready -eq $true -and
+        $task.DatabaseAccessed -eq $false -and $task.TenantAcceptance -eq $false -and $task.Cases.Count -eq 4) 'PublicTaskNativeReceiptPreservesItsIndependentAcceptanceScope'
+    foreach($scenario in @('working','keyboard-blocked','pointer-unconfirmed','alternative-content')){
+        $case=@($task.Cases | Where-Object {$_.Scenario -ceq $scenario})
+        $expectedOutcome=if($scenario -ceq 'working'){'NoBlockingBarrierInTestedTask'}elseif($scenario -ceq 'keyboard-blocked'){'WebsiteEvidenceReady'}else{'InsufficientEvidence'}
+        Assert-Proof ($case.Count -eq 1 -and $case[0].Passed -eq $true -and $case[0].Outcome -ceq $expectedOutcome -and
+            $case[0].ResourcesAbsent -eq $true -and $case[0].Attempts.Count -eq 3 -and
+            @($case[0].Attempts | Where-Object {$_.DecodedVideoFrames -le 0 -or ($scenario -cin @('working','keyboard-blocked') -and $null -ne $_.ErrorCode)}).Count -eq 0) "PublicTaskNative_$($scenario.Replace('-','_'))"
+    }
+    $task | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $folder 'public-task-native.json') -Encoding utf8NoBOM
     $stage='persistent-reader'
     $env:HSR_WORKER_IMAGE=$imageId; $env:HSR_WORKER_RUNTIME=$Runtime
     $env:HSR_WORKER_EVIDENCE=Join-Path $folder 'reader-state'
@@ -170,6 +186,8 @@ try {
         if($clock.Elapsed.TotalSeconds -gt 60){throw 'WORKER_DATABASE_START_TIMEOUT'}
         Start-Sleep -Milliseconds 250
     } while($true)
+    $null=Invoke-ReaderRuntime $Runtime @('cp',(Join-Path $repoRoot 'tests/database/task-auth-fixture.sql'),"${name}:/tmp/hsr-auth-fixture.sql")
+    $null=Invoke-ReaderRuntime $Runtime @('exec',$name,'psql','-X','-U','supabase_admin','-d','postgres','-qAt','-v','ON_ERROR_STOP=1','-f','/tmp/hsr-auth-fixture.sql')
     $stage='migration'
     foreach($migration in Get-ChildItem (Join-Path $repoRoot 'supabase/migrations') -Filter '*.sql' | Sort-Object Name){
         $null=Invoke-ReaderRuntime $Runtime @('cp',$migration.FullName,"${name}:/tmp/migration.sql")

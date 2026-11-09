@@ -10,15 +10,40 @@ Start with a local reference implementation and controlled websites. Prove the s
 
 # Architecture review
 
+## Product implementation update - November 8, 2026
+
+**Current increment:** actual public service-link task testing, recording and same-review evidence assessment. Passive page collection alone does not complete the product. The new task profile attempts two keyboard runs and an independent mouse comparison, keeps original videos/snapshots/events, and exposes a node/edge graph through the independently usable API and private MCP. The UI consumes those resources through the existing Supabase Edge Function. See the [task scope, authority boundaries and acceptance evidence](../docs/validation/public-navigation-tasks-v1.md).
+
+**Next:** finish final Windows/consumer regression checks, pass both CI platforms, promote the exact tested core release, apply the additive task migration, deploy Edge/UI, and verify the original signed-in customer's review -> task -> result -> replay lifecycle. A control-page proof alone does not close that gate.
+
+```mermaid
+flowchart LR
+  URL["Website URL"] --> Review["Verified passive page review"]
+  Review --> Tasks["NEXT: deploy public task lifecycle"]
+  Tasks --> Keyboard["Two real keyboard attempts"]
+  Tasks --> Pointer["Independent mouse comparison"]
+  Keyboard --> Originals["Original video + snapshots + event graph"]
+  Pointer --> Originals
+  Originals --> Decision["Eight website evidence checks"]
+  Decision --> Result["Same-review outcome + verified replay"]
+  Result -.-> Later["Later: forms, checkout, signed-in tasks"]
+  classDef verified fill:#dcfce7,stroke:#166534,color:#14532d;
+  classDef current fill:#fef3c7,stroke:#92400e,color:#78350f;
+  classDef later fill:#f1f5f9,stroke:#64748b,color:#334155;
+  class Review verified;
+  class Tasks,Keyboard,Pointer,Originals,Decision,Result current;
+  class URL,Later later;
+```
+
+Green means verified in production. Amber means this increment has implementation/control evidence but its full release/customer gate is still open. Gray means input context or later coverage. The diagram does not use color alone: the current node names the next deployment step explicitly.
+
 ## Operational implementation update — November 8, 2026
 
 The original milestone definitions below remain the architectural baseline.
 Component health monitoring and bounded owned-resource recovery are implemented
 in the private operator. [Checks, recovery limits, incident and acceptance
 evidence](../docs/validation/component-health-and-recovery-v1.md) distinguish
-local tests, real provider probes and installed-host acceptance. The next
-operational step is to pass the exact-release CI gate, install/enable the timer,
-and verify its recorded component states. Independent off-host alerting and
+local tests, real provider probes and installed-host acceptance. The exact-release CI gate, installed timer and thirteen healthy component states were verified for release b2c74a7. Independent off-host alerting and
 backup restoration remain separate work; a running local monitor does not prove
 those capabilities or full product completion.
 

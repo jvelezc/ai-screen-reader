@@ -9,6 +9,11 @@ namespace HeadlessScreenReader.Browser.Playwright;
 internal static class PlaywrightVideoFrames
 {
     public static async Task<ImmutableArray<byte[]>> DecodeAsync(byte[] video)
+        => await DecodeCoreAsync(video, countOnly: false).ConfigureAwait(false);
+
+    internal static async Task<int> CountAsync(byte[] video) => (await DecodeCoreAsync(video, countOnly: true).ConfigureAwait(false)).Length;
+
+    private static async Task<ImmutableArray<byte[]>> DecodeCoreAsync(byte[] video, bool countOnly)
     {
         if (video.Length is 0 or > 16 * 1024 * 1024) throw new BrowserOperationException("CAPTURE_MEDIA_SIZE_INVALID");
         var executable = ResolveExecutable();
@@ -30,10 +35,11 @@ internal static class PlaywrightVideoFrames
             using var process = new Process { StartInfo = start };
             if (!process.Start()) throw new BrowserOperationException("CAPTURE_DECODER_UNAVAILABLE");
             var errors = DrainErrorsAsync(process.StandardError.BaseStream);
-            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(countOnly ? 30 : 10));
             try
             {
-                var frames = await PngFrameReader.ReadAsync(process.StandardOutput.BaseStream, timeout.Token).ConfigureAwait(false);
+                var frames = countOnly ? Enumerable.Repeat(Array.Empty<byte>(), await PngFrameReader.CountAsync(process.StandardOutput.BaseStream, timeout.Token).ConfigureAwait(false)).ToImmutableArray()
+                    : await PngFrameReader.ReadAsync(process.StandardOutput.BaseStream, timeout.Token).ConfigureAwait(false);
                 await process.WaitForExitAsync(timeout.Token).ConfigureAwait(false);
                 await errors.ConfigureAwait(false);
                 if (process.ExitCode != 0) throw new BrowserOperationException("CAPTURE_DECODE_FAILED");
