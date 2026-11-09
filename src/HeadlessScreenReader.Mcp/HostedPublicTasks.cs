@@ -26,7 +26,7 @@ public sealed partial class HostedScanClient
             path += operation switch
             {
                 "cancel" => "/cancel",
-                "result" => "/result",
+                "result" => "/result/diagnostics",
                 "events" or "graph" => $"/{operation}/{attempt}/{offset}/{digest}",
                 "original" => $"/originals/{file}/{offset}/{digest}",
                 _ => ""

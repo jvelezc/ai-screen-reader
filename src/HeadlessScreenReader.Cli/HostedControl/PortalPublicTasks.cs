@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using HeadlessScreenReader.Domain;
 using HeadlessScreenReader.Worker;
 using Microsoft.AspNetCore.Builder;
@@ -19,6 +20,7 @@ internal sealed record PortalTaskResult(PublicTaskStatus Status, PublicTaskGoal?
     string Viewport, string Scope, string VideoAlignment, bool LegalCaseDetermined, string AssistiveTechnologyComparison,
     DateTimeOffset VerifiedAt)
 {
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public PublicTaskIssueTable? Diagnostics { get; init; }
 }
 internal sealed record PortalTaskEventPage(PublicTaskStatus Status, string ReportSha256, int Attempt, int Offset,
@@ -193,7 +195,9 @@ internal static class PortalPublicTaskEndpoints
         app.MapPost(root + "/{job:guid}/cancel", async (HttpContext context, PortalPublicTasks service, Guid organization, Guid scan, Guid job, CancellationToken token) =>
             TypedResults.Json(await service.CancelAsync(HostedControlServer.Actor(context), organization, scan, job, token).ConfigureAwait(false), PortalJson.Options)).WithName("CancelPublicTask");
         app.MapGet(root + "/{job:guid}/result", async (HttpContext context, PortalPublicTasks service, Guid organization, Guid scan, Guid job, CancellationToken token) =>
-            TypedResults.Json(await service.ResultAsync(HostedControlServer.Actor(context), organization, scan, job, token).ConfigureAwait(false), PortalJson.Options)).WithName("ReadPublicTaskResult");
+            TypedResults.Json((await service.ResultAsync(HostedControlServer.Actor(context), organization, scan, job, token).ConfigureAwait(false)) with { Diagnostics = null }, PortalJson.Options)).WithName("ReadPublicTaskResult");
+        app.MapGet(root + "/{job:guid}/result/diagnostics", async (HttpContext context, PortalPublicTasks service, Guid organization, Guid scan, Guid job, CancellationToken token) =>
+            TypedResults.Json(await service.ResultAsync(HostedControlServer.Actor(context), organization, scan, job, token).ConfigureAwait(false), PortalJson.Options)).WithName("ReadPublicTaskDiagnosticsResult");
         app.MapGet(root + "/{job:guid}/events/{attempt:int}/{offset:int}/{digest}", async (HttpContext context, PortalPublicTasks service, Guid organization, Guid scan,
             Guid job, int attempt, int offset, string digest, CancellationToken token) => TypedResults.Json(await service.EventsAsync(HostedControlServer.Actor(context), organization, scan, job, attempt, offset, digest, token).ConfigureAwait(false), PortalJson.Options)).WithName("ReadPublicTaskEvents");
         app.MapGet(root + "/{job:guid}/graph/{attempt:int}/{offset:int}/{digest}", async (HttpContext context, PortalPublicTasks service, Guid organization, Guid scan,

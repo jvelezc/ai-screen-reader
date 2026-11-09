@@ -14,17 +14,61 @@ namespace HeadlessScreenReader.Tests;
 public sealed class PublicTaskHttpTests
 {
     [Fact]
+    public async Task LegacyTaskResultShapeStaysCompatibleWhileDiagnosticsRequireExplicitRead()
+    {
+        using var rig = await Rig.Create(PublicTaskIssueTableTests.WithNetwork);
+        await using var server = await rig.Server(); using var http = rig.Http(server);
+        using var response = await http.GetAsync(rig.Path + "/result");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var legacy = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal(new[] { "assessment", "assistiveTechnologyComparison", "attempts", "browser", "files", "goal", "legalCaseDetermined",
+            "platform", "playwright", "scope", "status", "verifiedAt", "videoAlignment", "viewport" },
+            legacy.RootElement.EnumerateObject().Select(p => p.Name).Order());
+        using var explicitResponse = await http.GetAsync(rig.Path + "/result/diagnostics");
+        Assert.Equal(HttpStatusCode.OK, explicitResponse.StatusCode);
+        using var expanded = JsonDocument.Parse(await explicitResponse.Content.ReadAsStringAsync());
+        Assert.Equal(503, expanded.RootElement.GetProperty("diagnostics").GetProperty("issues")[0].GetProperty("status").GetInt32());
+        Assert.True(JsonElement.DeepEquals(legacy.RootElement.GetProperty("status"), expanded.RootElement.GetProperty("status")));
+        Assert.True(JsonElement.DeepEquals(legacy.RootElement.GetProperty("assessment"), expanded.RootElement.GetProperty("assessment")));
+        Assert.Equal(0, rig.Creates);
+    }
+
+    [Theory]
+    [InlineData("anonymous", 401)]
+    [InlineData("foreign-review", 404)]
+    [InlineData("query", 400)]
+    public async Task DiagnosticsResultRejectsUnboundAuthority(string scenario, int expected)
+    {
+        using var rig = await Rig.Create(); await using var server = await rig.Server(); using var http = rig.Http(server, scenario != "anonymous");
+        var path = rig.Path + "/result/diagnostics";
+        if (scenario == "foreign-review") path = path.Replace(rig.Status.Job.ParentScanId.ToString("D"), Guid.NewGuid().ToString("D"), StringComparison.Ordinal);
+        if (scenario == "query") path += "?actor=forged";
+        using var response = await http.GetAsync(path); Assert.Equal(expected, (int)response.StatusCode);
+        Assert.DoesNotContain("issues", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal); Assert.Equal(0, rig.Creates);
+    }
+
+    [Fact]
+    public async Task DiagnosticAccessIsRecheckedAfterOriginalVerification()
+    {
+        using var rig = await Rig.Create(PublicTaskIssueTableTests.WithNetwork); rig.DenyAfter = 2;
+        await using var server = await rig.Server(); using var http = rig.Http(server);
+        using var response = await http.GetAsync(rig.Path + "/result/diagnostics");
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode); Assert.Equal(3, rig.Reads);
+        Assert.DoesNotContain("api.example.net", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task VerifiedSameReviewResultIncludesActionableIssueTableAndRevocationStillDeniesIt()
     {
         using var rig = await Rig.Create(PublicTaskIssueTableTests.WithNetwork);
         await using var server = await rig.Server(); using var http = rig.Http(server);
-        using var response = await http.GetAsync(rig.Path + "/result"); Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var response = await http.GetAsync(rig.Path + "/result/diagnostics"); Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var result = (await response.Content.ReadFromJsonAsync<PortalTaskResult>(PortalJson.Options))!;
         var issue = Assert.Single(result.Diagnostics!.Issues);
         Assert.Equal(rig.Status.Job, result.Status.Job); Assert.Equal("HTTP_ERROR", issue.Code); Assert.Equal(503, issue.Status);
         Assert.Equal("/Attempts/0/Network/Events/1", issue.EvidencePointer); Assert.Equal(0, rig.Creates);
         rig.DenyAfter = rig.Reads;
-        using var denied = await http.GetAsync(rig.Path + "/result"); Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
+        using var denied = await http.GetAsync(rig.Path + "/result/diagnostics"); Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
         Assert.DoesNotContain("api.example.net", await denied.Content.ReadAsStringAsync(), StringComparison.Ordinal);
     }
 

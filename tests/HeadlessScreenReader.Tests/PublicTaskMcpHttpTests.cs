@@ -17,6 +17,7 @@ public sealed class PublicTaskMcpHttpTests
         var args = new Dictionary<string, object?> { ["scanId"] = rig.Status.Job.ParentScanId, ["jobId"] = rig.Status.Job.JobId };
         var result = await Call(mcp, "website_task_result", args);
         Assert.Equal("WebsiteEvidenceReady", result.GetProperty("data").GetProperty("assessment").GetProperty("outcome").GetString());
+        Assert.Equal(4, result.GetProperty("data").GetProperty("diagnostics").GetProperty("missingTraces").GetInt32());
         args["reportSha256"] = rig.Status.ReportSha256;
         var trace = await Call(mcp, "website_task_trace", args); Assert.Equal("Enter", trace.GetProperty("data").GetProperty("events")[0].GetProperty("action").GetString());
         args["graph"] = true; var graph = await Call(mcp, "website_task_trace", args); Assert.Single(graph.GetProperty("data").GetProperty("edges").EnumerateArray()); args.Remove("graph");

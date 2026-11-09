@@ -7,6 +7,19 @@ namespace HeadlessScreenReader.Tests;
 public sealed class PublicWebsiteOpenApiTests
 {
     [Fact]
+    public void DiagnosticsResultIsAnExplicitAuthenticatedRepresentation()
+    {
+        using var json = JsonDocument.Parse(PortalOpenApi.Document);
+        const string prefix = "/api/workspaces/{organization}/website-scans/{scan}/tasks/{job}/result";
+        var paths = json.RootElement.GetProperty("paths");
+        Assert.Equal("ReadPublicTaskResult", paths.GetProperty(prefix).GetProperty("get").GetProperty("operationId").GetString());
+        var diagnostic = paths.GetProperty(prefix + "/diagnostics").GetProperty("get");
+        Assert.Equal("ReadPublicTaskDiagnosticsResult", diagnostic.GetProperty("operationId").GetString());
+        Assert.True(diagnostic.GetProperty("security")[0].TryGetProperty("bearerAuth", out _));
+        Assert.All(diagnostic.GetProperty("parameters").EnumerateArray(), p => Assert.Equal("path", p.GetProperty("in").GetString()));
+    }
+
+    [Fact]
     public void PublicContractDocumentsEveryActualRouteWithPathOnlySelectorsAndAcceptedAdmission()
     {
         using var json = JsonDocument.Parse(PortalOpenApi.Document); var root = json.RootElement;

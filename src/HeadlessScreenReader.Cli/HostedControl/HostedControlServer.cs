@@ -112,7 +112,7 @@ internal sealed class HostedControlServer : IAsyncDisposable
                 operation = operation is "AdmitPublicWebsite" or "ListPublicWebsites" or "ReadPublicWebsiteStatus"
                     or "ReadPublicWebsiteFirstNodes" or "ReadPublicWebsitePinnedNodes" or "ReadPublicWebsiteOriginal"
                     or "AdmitPublicTask" or "ReadLatestPublicTask" or "ReadPublicTaskStatus" or "CancelPublicTask"
-                    or "ReadPublicTaskResult" or "ReadPublicTaskEvents" or "ReadPublicTaskGraph" or "ReadPublicTaskOriginal"
+                    or "ReadPublicTaskResult" or "ReadPublicTaskDiagnosticsResult" or "ReadPublicTaskEvents" or "ReadPublicTaskGraph" or "ReadPublicTaskOriginal"
                     or "PortalSession" or "EnsurePersonalWorkspace" or "GetPortalWorkspace" ? operation : "Other";
                 Guid? Id(string key) => context.Items.ContainsKey(typeof(PortalIdentity))
                     && Guid.TryParse(context.Request.RouteValues[key]?.ToString(), out var id) ? id : null;
