@@ -1,23 +1,10 @@
 # HeadlessScreenReader
 
-Customer prototype: **https://screenreader.privensic.com/**. Sign in, enter a
-website URL and review saved page information. The current public profile sends
-zero target inputs and does not assess task barriers or evidence sufficiency.
-See [access and acceptance](docs/product-access.md) and the
-[remaining product gates](docs/completion-plan.md).
+Customer prototype: **https://screenreader.privensic.com/**. Sign in, enter a website URL and read its saved page review. The supported bounded public task can then follow an observed service link twice by keyboard and once by pointer, retaining the same task's graph, original recordings and evidence assessment. A page-only review still sends zero target inputs. The result covers the tested task; it does not determine a legal case or whole-site accessibility. See [access](docs/product-access.md) and the [remaining product gates](docs/completion-plan.md).
 
+Local .NET screen-reader foundation for the architecture in [the original development plan](outputs/HeadlessScreenReader-Architecture-Review-and-Development-Plan.md).
 
-Local .NET screen-reader foundation for the architecture in [the development plan](outputs/HeadlessScreenReader-Architecture-Review-and-Development-Plan.md).
-
-**Next: [bounded website task evidence](docs/completion-plan.md).** The customer
-URL/results journey is published. The approved-public read-only profile retains
-page information and zero target inputs. New source contract HTTP1.19 adds
-[captured-page screening](docs/decisions/0085-service-journey-screening.md):
-potential unnamed interactive controls and suggested service journeys, all
-explicitly untested. Private MCP exposes the same core result through
-`website_screening`. This source increment is separate from private deployment
-and Edge/UI integration. It does not supply a real website task replay or legal
-case decision. Public MCP/plugins remain deferred.
+**Current source: HTTP 1.22 / 33 private MCP tools.** [Versioned transport attribution](docs/decisions/0089-versioned-transport-attribution.md) prevents unresolved browser/proxy failures from becoming a proven keyboard barrier and preserves historical originals. The accepted 1.21 core, Edge17 and separate Lovable UI already collect real bounded public task recordings; release/promotion and original-account acceptance are separately recorded in the living architecture plan. **Next: expand supported task coverage** with source-bound search/contact/cart journeys before any purchase or credential entry. Public MCP/plugins remain deferred.
 
 For an existing private hosted MCP connection, call `website_scan_status` with
 the public `scanId`, then `website_screening` with that same `scanId` and the

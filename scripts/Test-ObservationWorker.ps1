@@ -68,7 +68,8 @@ try {
         $case=@($task.Cases | Where-Object {$_.Scenario -ceq $scenario})
         $expectedOutcome=if($scenario -ceq 'working'){'NoBlockingBarrierInTestedTask'}elseif($scenario -ceq 'keyboard-blocked'){'WebsiteEvidenceReady'}else{'InsufficientEvidence'}
         Assert-Proof ($case.Count -eq 1 -and $case[0].Passed -eq $true -and $case[0].Outcome -ceq $expectedOutcome -and
-            $case[0].ResourcesAbsent -eq $true -and $case[0].Attempts.Count -eq 3 -and
+              $case[0].AssessmentPolicy -ceq 'TransportAttributionV2' -and
+              $case[0].ResourcesAbsent -eq $true -and $case[0].Attempts.Count -eq 3 -and
             @($case[0].Attempts | Where-Object {$_.DecodedVideoFrames -le 0 -or ($scenario -cin @('working','keyboard-blocked') -and $null -ne $_.ErrorCode)}).Count -eq 0) "PublicTaskNative_$($scenario.Replace('-','_'))"
     }
     $task | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $folder 'public-task-native.json') -Encoding utf8NoBOM

@@ -179,6 +179,7 @@ internal static class PublicTaskWorker
                 browserVersion, playwrightVersion, System.Runtime.InteropServices.RuntimeInformation.OSDescription, "1280x720",
                 PublicTaskRules.Hash(await File.ReadAllBytesAsync(typeof(PublicTaskWorker).Assembly.Location, stop.Token).ConfigureAwait(false)))
             {
+                AssessmentPolicy = PublicTaskReport.TransportAttributionPolicy,
                 NetworkPolicy = PublicTaskNetworkTrace.PublicDependencyPolicy,
                 Egress = egressTrace,
                 EgressIsolationProbeThroughSequence = probeThroughSequence,

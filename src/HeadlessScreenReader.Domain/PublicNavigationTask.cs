@@ -84,6 +84,7 @@ public sealed record PublicTaskReport(string Schema, PublicTaskStart Start, Publ
     string BrowserVersion, string PlaywrightVersion, string Platform, string Viewport, string CollectorSha256)
 {
     public const string CurrentSchema = "hsr-public-task-report-v1";
+    public const string TransportAttributionPolicy = "TransportAttributionV2";
     public const int MaximumReportBytes = 768 * 1024;
     public const int MaximumArchiveBytes = 25 * 1024 * 1024;
     public string Scope => "PublicServiceNavigationOnly";
@@ -91,6 +92,9 @@ public sealed record PublicTaskReport(string Schema, PublicTaskStart Start, Publ
     public bool LegalCaseDetermined => false;
     public string AssistiveTechnologyComparison => "NotPerformed";
 
+    // Absent in historical originals: their published assessment must remain reproducible.
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? AssessmentPolicy { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? NetworkPolicy { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -111,6 +115,8 @@ public sealed record PublicTaskReport(string Schema, PublicTaskStart Start, Publ
             && PublicTaskRules.Text(Platform, 500) && Viewport == "1280x720" && PublicTaskRules.Digest(CollectorSha256));
         Goal?.Validate(Start.Job.Source);
         Require(NetworkPolicy is null or PublicTaskNetworkTrace.PublicDependencyPolicy);
+        Require(AssessmentPolicy is null or TransportAttributionPolicy);
+        Require(AssessmentPolicy is null || NetworkPolicy == PublicTaskNetworkTrace.PublicDependencyPolicy);
         Egress?.Validate();
         DiscoveryNetwork?.Validate();
         Require(Egress is null || NetworkPolicy == Egress.Policy);
@@ -169,13 +175,18 @@ public sealed record PublicTaskAssessment(string Outcome, ImmutableArray<PublicT
     {
         report.Validate(report.Start);
         var attempts = report.Attempts;
+        var currentPolicy = report.AssessmentPolicy == PublicTaskReport.TransportAttributionPolicy;
+        var egressConfirmed = !currentPolicy || report.Egress!.DroppedEvents == 0
+            && !report.Egress.Events.Any(e => e.Sequence > report.EgressIsolationProbeThroughSequence && e.Code is not null);
         bool Complete(PublicTaskAttempt a) => a.Outcome != "Unconfirmed" && a.ErrorCode is null && a.TaskTargetMatched
             && a.PolicyInterruptions == 0 && a.BrowserCloseConfirmed && a.CaptureStopConfirmed && a.DecodedVideoFrames > 0
             && (a.Failures is null || a.Failures.Value.IsEmpty) && a.OmittedFailures == 0
             // Reaching the observed goal proves that specific success despite incidental requests.
             // A failed task with unexplained network errors cannot be promoted to a keyboard barrier.
-            && (a.Network is null || a.Outcome == "Reached" || a.Network.DroppedEvents == 0
-                && !a.Network.Events.Any(e => e.Code is not null and not "ERR_ABORTED" || e.Phase == "WebSocketRequested"))
+            // Resource type alone cannot establish that a cancelled request was unrelated to failure.
+            // Apply stronger attribution only to originals explicitly collected under that policy.
+            && (a.Outcome == "Reached" || egressConfirmed && (a.Network is null || a.Network.DroppedEvents == 0
+                && !a.Network.Events.Any(e => e.Code is not null && (currentPolicy || e.Code != "ERR_ABORTED") || e.Phase == "WebSocketRequested")))
             && a.Events.All(e => e.InputCompleted)
             && a.Events.LastOrDefault() is { InputCompleted: true } trigger
             && trigger.Action == (a.Method == "Keyboard" ? "Enter" : "Pointer");

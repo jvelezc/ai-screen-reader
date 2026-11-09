@@ -22,7 +22,8 @@ internal static class PublicTaskProof
             var report = native.Bundle.Report;
             var assessment = PublicTaskAssessment.Evaluate(report, true, native.ResourcesAbsent);
             var expected = scenario switch { "working" => "NoBlockingBarrierInTestedTask", "keyboard-blocked" => "WebsiteEvidenceReady", _ => "InsufficientEvidence" };
-            var passed = assessment.Outcome == expected && report.NetworkPolicy == PublicTaskNetworkTrace.PublicDependencyPolicy
+            var passed = assessment.Outcome == expected && report.AssessmentPolicy == PublicTaskReport.TransportAttributionPolicy
+                && report.NetworkPolicy == PublicTaskNetworkTrace.PublicDependencyPolicy
                 && report.Egress is { Requests: > 0 } && report.EgressIsolationProbeThroughSequence is > 0
                 && report.Attempts.Length == 3 && report.Attempts.All(a => a.DecodedVideoFrames > 0 && a.Network is { Requests: > 0 })
                 && phases.Contains("KeyboardAttempt1") && phases.Contains("KeyboardAttempt2") && phases.Contains("PointerComparison");
@@ -32,6 +33,7 @@ internal static class PublicTaskProof
                 Scenario = scenario,
                 Passed = passed,
                 assessment.Outcome,
+                report.AssessmentPolicy,
                 native.ResourcesAbsent,
                 Attempts = report.Attempts.Select(a => new
                 {

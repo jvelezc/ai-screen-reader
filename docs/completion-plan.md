@@ -1,7 +1,16 @@
 # Remaining product completion gates
 
-Updated November 6, 2026. Product: Privensic Screen Reader. The original proposal
-under `outputs/` is unchanged. The full product remains incomplete.
+Updated November 9, 2026. Product: Privensic Screen Reader. The original proposal under `outputs/` is unchanged. The full product remains incomplete.
+
+**Current implementation:** HTTP1.22 / 33 private MCP tools. The [versioned attribution repair](validation/transport-attribution-v2.md) keeps unresolved browser/proxy failures out of proven-barrier results and retains the original classifier for historical publications. UI/Edge response shapes stay unchanged.
+
+**Accepted baseline:** core eca67aa/HTTP1.21, UI f159bbd and existing Edge17. The live customer flow supports page review followed by the bounded public service-navigation task, with two keyboard attempts, pointer comparison, graph, verified original video and same-review diagnostics. GentleBirth's recorded pricing goal succeeded in all three attempts. A separate owned keyboard-blocked control met the eight website-evidence conditions. These are distinct tasks, not whole-site or legal determinations.
+
+**Next:** expand task coverage beyond following a service link. Each new search/contact/cart journey needs explicit goal selection, safe bounded inputs, independent repeat/pointer evidence and same-task recordings before it is presented as tested. Credential entry, transactions, detailed WebSocket handshake diagnostics, broader real assistive-technology validation and deferred public MCP/plugins are not complete. Product documentation and complexity reduction follow accepted functionality. Every push must pass Windows/Linux CI; exact private promotion and original-account browser acceptance remain independent gates.
+
+## Historical checkpoint — November 6
+
+The following dated source/deployment record is retained as history; its zero-input statement refers to the earlier public page-only profile.
 
 **Current private core:**2b1f3cb, HTTP1.19 and the independently usable private
 MCP27-tool source. CI42330894939 passed all nine jobs,3850 tests per OS. Exact CI

@@ -1,16 +1,12 @@
 # Original development goals and next step
 
-Updated November 6, 2026. The original proposal under `outputs/` remains unchanged.
-The [completion plan](completion-plan.md) records the current accepted deployment
-and ordered gates. The full product remains incomplete.
+Updated November 9, 2026. The original proposal under `outputs/` remains unchanged. The full product remains incomplete.
 
-**Current source work:** [captured-page screening](validation/website-screening-v1.md)
-adds HTTP1.19/private MCP27-tool diagnostics and untested service-journey
-suggestions. The existing public worker still sends zero inputs. **Next:**
-source-bound task attempts with graph/video and the supporting evidence required
-by the automated assessment. Prove the new profile on the existing mock catalogue
-before public task input, then integrate through the existing Edge gateway/UI.
-Source, CI, deployment and original-account acceptance are separate gates.
+**Current source:** HTTP1.22, 33 private MCP tools. The [transport-attribution increment](validation/transport-attribution-v2.md) closes the independent-proxy and cancellation readiness gaps without recomputing historical originals. The [completion plan](completion-plan.md) separates source, CI, exact private promotion and customer acceptance.
+
+**Last accepted deployment before this increment:** core eca67aa/HTTP1.21 (4037 tests per OS, all nine CI jobs), separate Lovable UI f159bbd (1061 tests per OS), existing Supabase Edge17 and 13 healthy components. Real GentleBirth pricing navigation was recorded twice by keyboard and once by pointer; all three goals were observed, all ten originals verified, all three complete videos played, and the same-review graph/diagnostic table was inspected. Its task assessment was NoBlockingBarrierInTestedTask. This result concerns that task only. The prior failed original remains unchanged.
+
+**Next product capability:** expand the supported bounded task catalogue. Search, contact and cart preparation need explicit source-bound goals, safe input authority, repeat attempts, pointer comparison and real same-task originals. Arbitrary credential entry, completed transactions, broader assistive-technology comparisons and public MCP/plugin publication remain separate gates. Documentation and complexity reduction follow product acceptance; the original plan is preserved.
 
 ## Historical checkpoint — November 2
 

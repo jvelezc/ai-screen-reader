@@ -1,0 +1,15 @@
+# Versioned transport attribution for public task evidence
+
+The repeated keyboard/pointer assessment must distinguish an accessibility barrier from an unresolved transport interruption. The prior classifier ignored independent proxy errors and dropped proxy records, and exempted every browser `ERR_ABORTED`. These are two reproducible defects, catalogued as PSR-EVID-002 and PSR-EVID-003.
+
+New originals explicitly record `AssessmentPolicy: TransportAttributionV2`. The existing report constructor/schema remains unchanged; the optional property is omitted when null. It requires the existing public-dependency network policy, independent egress trace, isolation-probe ending sequence and all per-attempt browser/failure traces. Unknown markers are rejected. The producer stamps the marker even when discovery finds no supported goal; no task or barrier is invented.
+
+For this policy, a failed goal cannot establish a keyboard barrier if its browser trace contains any coded error, an unverified WebSocket request, or dropped events. This includes `ERR_ABORTED`: a resource type alone cannot establish that a cancellation is unrelated to the failed goal. Independent egress errors after the recorded isolation-probe ending sequence, or any dropped proxy events, likewise prevent readiness. Preflight denials at or before that marker remain expected isolation evidence. The proxy spans the whole run; this conservative check does not pretend to align a proxy error to a particular keystroke.
+
+A directly observed reached goal remains a success for that specific task despite incidental network errors. Original/artifact verification, input completion, capture stop, browser close and native resource removal are still independently required. Technical observations remain visible in the issue table even when they do not invalidate an observed success.
+
+Historical originals without the marker retain their original classifier, including the legacy cancellation rule. Publication readback recomputes its stored assessment, so silently applying a new classifier to old bytes would make an otherwise valid saved publication unreadable. No original is rewritten or relabelled. A new run is required to obtain an assessment under the new policy. The frozen-publication HTTP regression pins an independently specified old all-eight-conditions result.
+
+HTTP contract version advances to 1.22. The legacy `/result` and opt-in `/result/diagnostics` response shapes are unchanged; the marker belongs to the hashed original report. The separate Lovable consumer, existing Edge function and private MCP tool count are unchanged. Public MCP/plugins remain deferred.
+
+The Linux native worker proof checks the actual worker-produced marker alongside four real Chromium task scenarios. Unit, HTTP and native gates are distinct from original-account hosted acceptance and actual NVDA validation. See the [validation record](../validation/transport-attribution-v2.md) and [issue catalogue](../validation/issue-catalog.md).
