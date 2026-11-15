@@ -124,6 +124,20 @@ public sealed class PublicTaskReaderTests
         Assert.Equal("InsufficientEvidence", PublicTaskAssessment.Evaluate(report, true, true).Outcome);
     }
 
+    [Fact]
+    public void NativeProofAcceptsOnlyTheExplicitIncompletePointerComparisonWithoutInventingReaderOutput()
+    {
+        var report = WithReader(PublicTaskTests.Report()); var pointer = report.Attempts[2];
+        var incomplete = pointer with { Outcome = "Unconfirmed", ErrorCode = "PUBLIC_TASK_ATTEMPT_UNCONFIRMED", Events = [pointer.Events[0] with { Reader = null, InputCompleted = false }] };
+        Assert.True(PublicTaskProof.HasReaderEvidence(pointer, false));
+        Assert.True(PublicTaskProof.HasReaderEvidence(incomplete, true));
+        Assert.False(PublicTaskProof.HasReaderEvidence(incomplete, false));
+        Assert.False(PublicTaskProof.HasReaderEvidence(pointer with { Events = [pointer.Events[0] with { Reader = null }] }, true));
+        Assert.False(PublicTaskProof.HasReaderEvidence(incomplete with { Method = "Keyboard" }, true));
+        Assert.False(PublicTaskProof.HasReaderEvidence(incomplete with { InitialReader = null }, true));
+        Assert.False(PublicTaskProof.HasReaderEvidence(incomplete with { Events = [incomplete.Events[0] with { InputAttempted = false }] }, true));
+    }
+
     [Theory]
     [InlineData("initial-hash")]
     [InlineData("sequence")]

@@ -11,7 +11,7 @@ November15,2026 source increment. HTTP1.23 /34 private MCP tools. See [decision0
 | Missing records cannot support readiness | `ReaderProfileWithoutRecordedCommandsCannotEstablishReaderTaskReadiness` |
 | Historical/strict-client compatibility | `HistoricalTasksDoNotFabricateReaderTranscripts`; `ReaderApiIsOriginalBoundAndLegacyEventsKeepTheirExactShape` |
 | Paging, digest and current authority | `ReaderPagesBoundEscapedTextWithoutSkippingCommands`; `PrivateMcpReadsOnlyPinnedReaderOriginalsAndDeniesRevokedAccess` |
-| Real isolated Linux collector | Four native working/broken scenarios additionally require the reader profile, initial read and reader record for every input. CI/native receipt required. |
+| Real isolated Linux collector | Four native scenarios require the reader profile, initial read and reader records for completed inputs. The explicit timed-out pointer fixture may have no post-click read; its missing record remains visible and its assessment insufficient. `NativeProofAcceptsOnlyTheExplicitIncompletePointerComparisonWithoutInventingReaderOutput` pins that boundary. CI/native receipt required. |
 
 Final pinned-SDK full Windows tests and format verification, Windows/Linux CI, exact artifact promotion, existing Edge/UI deployment and original-account browser acceptance are pending. This source increment is not yet an accepted production release. Fixture setup failures are retained privately; they are not website findings.
 

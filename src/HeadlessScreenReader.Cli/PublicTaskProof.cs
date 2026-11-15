@@ -24,8 +24,7 @@ internal static class PublicTaskProof
             var expected = scenario switch { "working" => "NoBlockingBarrierInTestedTask", "keyboard-blocked" => "WebsiteEvidenceReady", _ => "InsufficientEvidence" };
             var passed = assessment.Outcome == expected && report.AssessmentPolicy == PublicTaskReport.TransportAttributionPolicy
                 && report.ReaderProfile == HeadlessScreenReader.ScreenReader.ScreenReaderSession.Profile
-                && report.Attempts.All(a => a.InitialReader is { Command: "ReadCurrent", Outcome: "Observed" }
-                    && a.Events.All(e => e.Reader is not null))
+                && report.Attempts.All(a => HasReaderEvidence(a, scenario == "pointer-unconfirmed"))
                 && report.NetworkPolicy == PublicTaskNetworkTrace.PublicDependencyPolicy
                 && report.Egress is { Requests: > 0 } && report.EgressIsolationProbeThroughSequence is > 0
                 && report.Attempts.Length == 3 && report.Attempts.All(a => a.DecodedVideoFrames > 0 && a.Network is { Requests: > 0 })
@@ -47,6 +46,7 @@ internal static class PublicTaskProof
                     a.DecodedVideoFrames,
                     a.ErrorCode,
                     ReaderRecords = a.Events.Count(e => e.Reader is not null),
+                    UnconfirmedPointerInputsWithoutReader = a.Events.Count(e => e.Reader is null && e.Action == "Pointer" && e.InputAttempted && !e.InputCompleted),
                     ReaderCommands = a.Events.Select(e => e.Reader?.Command).ToArray(),
                     NetworkRequests = a.Network!.Requests,
                     NetworkEvents = a.Network.Events.Length,
@@ -68,4 +68,10 @@ internal static class PublicTaskProof
         })).ConfigureAwait(false);
         return ready ? 0 : 3;
     }
+
+    internal static bool HasReaderEvidence(PublicTaskAttempt attempt, bool permitUnconfirmedPointer) =>
+        attempt.InitialReader is { Command: "ReadCurrent", Outcome: "Observed" }
+        && attempt.Events.All(e => e.Reader is not null || permitUnconfirmedPointer
+            && attempt.Method == "Pointer" && attempt.Outcome == "Unconfirmed" && attempt.ErrorCode == "PUBLIC_TASK_ATTEMPT_UNCONFIRMED"
+            && e.Action == "Pointer" && e.InputAttempted && !e.InputCompleted);
 }

@@ -54,6 +54,9 @@ jobs:
           path: |
             artifacts/worker-linux/
             artifacts/public-collection/**/run.json
+            artifacts/public-tasks/*/*-report.json
+            artifacts/public-tasks/*/*-attempt-*.json
+            artifacts/public-tasks/*/*-attempt-*.webm
             !artifacts/worker-linux/**/host.json
             !artifacts/worker-linux/**/host.json.*
           retention-days: 7

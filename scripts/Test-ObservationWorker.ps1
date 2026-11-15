@@ -60,7 +60,10 @@ try {
     $env:HSR_WORKER_IMAGE=$imageId
     $taskErrorLog=Join-Path $folder 'public-task-native.stderr.jsonl'
     $taskText=@(& dotnet (Join-Path $testedControl 'HeadlessScreenReader.Cli.dll') --check-public-task-worker $Runtime $repoRoot 2> $taskErrorLog)
-    if($LASTEXITCODE -ne 0){throw 'PUBLIC_TASK_NATIVE_PROOF_UNCONFIRMED'}
+    $taskExit=$LASTEXITCODE
+    # Retain the scoped receipt even when a native assertion fails; no raw exception or tenant credential is emitted by this fixture proof.
+    ($taskText -join "`n") | Set-Content (Join-Path $folder 'public-task-native.json') -Encoding utf8NoBOM
+    if($taskExit -ne 0){throw 'PUBLIC_TASK_NATIVE_PROOF_UNCONFIRMED'}
     $task=$taskText -join "`n" | ConvertFrom-Json
     Assert-Proof ($task.Schema -ceq 'hsr-public-task-native-proof-v1' -and $task.Ready -eq $true -and
         $task.DatabaseAccessed -eq $false -and $task.TenantAcceptance -eq $false -and $task.Cases.Count -eq 4) 'PublicTaskNativeReceiptPreservesItsIndependentAcceptanceScope'
@@ -71,7 +74,7 @@ try {
               $case[0].AssessmentPolicy -ceq 'TransportAttributionV2' -and
               $case[0].ReaderProfile -ceq 'hsr-desktop-reader-v13' -and
               $case[0].ResourcesAbsent -eq $true -and $case[0].Attempts.Count -eq 3 -and
-              @($case[0].Attempts | Where-Object {$_.ReaderRecords -ne $_.Events -or $_.DecodedVideoFrames -le 0 -or ($scenario -cin @('working','keyboard-blocked') -and $null -ne $_.ErrorCode)}).Count -eq 0) "PublicTaskNative_$($scenario.Replace('-','_'))"
+              @($case[0].Attempts | Where-Object {$_.ReaderRecords + $(if($scenario -ceq 'pointer-unconfirmed'){$_.UnconfirmedPointerInputsWithoutReader}else{0}) -ne $_.Events -or $_.DecodedVideoFrames -le 0 -or ($scenario -cin @('working','keyboard-blocked') -and $null -ne $_.ErrorCode)}).Count -eq 0) "PublicTaskNative_$($scenario.Replace('-','_'))"
     }
     $task | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $folder 'public-task-native.json') -Encoding utf8NoBOM
     $stage='persistent-reader'
