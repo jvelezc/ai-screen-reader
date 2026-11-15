@@ -61,7 +61,11 @@ public sealed record PublicTaskDiagnostic(PublicTaskStart Start, int Attempt, st
 /// <summary>Observed focus semantics and native anchor destination; no editable value is collected.</summary>
 public sealed record PublicTaskFocus(string NodeId, string Role, string Name, string? AnchorUrl);
 public sealed record PublicTaskEvent(int Sequence, double ElapsedMilliseconds, string Action,
-    PublicTaskFocus? Before, PublicTaskFocus? After, string DocumentUrl, bool InputAttempted, bool InputCompleted);
+    PublicTaskFocus? Before, PublicTaskFocus? After, string DocumentUrl, bool InputAttempted, bool InputCompleted)
+{
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public PublicTaskReaderRecord? Reader { get; init; }
+}
 public sealed record PublicTaskFile(string Path, string Sha256, int Bytes, string MediaType);
 
 /// <summary>One fresh context. NotReached describes only this bounded attempt, never universal unreachability.</summary>
@@ -70,6 +74,8 @@ public sealed record PublicTaskAttempt(int Number, Guid Id, string Method, DateT
     ImmutableArray<PublicTaskEvent> Events, string BeforeSnapshot, string AfterSnapshot, string Video,
     bool BrowserCloseConfirmed, bool CaptureStopConfirmed, int DecodedVideoFrames)
 {
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public PublicTaskReaderRecord? InitialReader { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public PublicTaskNetworkTrace? Network { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -91,6 +97,8 @@ public sealed record PublicTaskReport(string Schema, PublicTaskStart Start, Publ
     public string VideoAlignment => "EventSeekingNotVerified";
     public bool LegalCaseDetermined => false;
     public string AssistiveTechnologyComparison => "NotPerformed";
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ReaderProfile { get; init; }
 
     // Absent in historical originals: their published assessment must remain reproducible.
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -114,6 +122,7 @@ public sealed record PublicTaskReport(string Schema, PublicTaskStart Start, Publ
             && PublicTaskRules.Text(BrowserVersion, 200) && PublicTaskRules.Text(PlaywrightVersion, 200)
             && PublicTaskRules.Text(Platform, 500) && Viewport == "1280x720" && PublicTaskRules.Digest(CollectorSha256));
         Goal?.Validate(Start.Job.Source);
+        Require(ReaderProfile is null || PublicTaskRules.Text(ReaderProfile, 100));
         Require(NetworkPolicy is null or PublicTaskNetworkTrace.PublicDependencyPolicy);
         Require(AssessmentPolicy is null or TransportAttributionPolicy);
         Require(AssessmentPolicy is null || NetworkPolicy == PublicTaskNetworkTrace.PublicDependencyPolicy);
@@ -132,6 +141,15 @@ public sealed record PublicTaskReport(string Schema, PublicTaskStart Start, Publ
         for (var i = 0; i < Attempts.Length; i++)
         {
             var attempt = Attempts[i];
+            if (attempt.InitialReader is { } initial)
+            {
+                Require(ReaderProfile is not null && initial.Command == "ReadCurrent" && initial.Sequence == 1
+                    && initial.BrowserKeystrokes == 0 && !initial.InputMayHaveOccurred
+                    && (initial.DocumentUrl is null || Start.Job.Source.AllowsDocument(initial.DocumentUrl)));
+                initial.Validate(ReaderProfile!);
+                var before = Files.SingleOrDefault(f => f.Path == attempt.BeforeSnapshot);
+                Require(before is null || initial.LastSnapshotSha256 == before.Sha256);
+            }
             attempt.Network?.Validate();
             Require(attempt.OmittedFailures is >= 0 and <= 1000 && (attempt.Failures is null || !attempt.Failures.Value.IsDefault && attempt.Failures.Value.Length <= 4));
             if (attempt.Failures is { } failures) foreach (var failure in failures) failure.Validate(attempt.Events.IsDefault ? 0 : attempt.Events.Length);
@@ -143,10 +161,20 @@ public sealed record PublicTaskReport(string Schema, PublicTaskStart Start, Publ
                 && (attempt.FinalUrl is null ? attempt.Outcome == "Unconfirmed" : Start.Job.Source.AllowsDocument(attempt.FinalUrl))
                 && (attempt.ErrorCode is null || attempt.ErrorCode is "PUBLIC_TASK_ATTEMPT_UNCONFIRMED" or "PUBLIC_TASK_POLICY_INTERRUPTED")
                 && (attempt.Outcome != "Reached" || attempt.FinalUrl == Goal!.DestinationUrl && attempt.TaskTargetMatched && attempt.ErrorCode is null));
-            double previous = -1;
+            double previous = attempt.InitialReader?.FinishedMilliseconds ?? -1;
             for (var j = 0; j < attempt.Events.Length; j++)
             {
                 var step = attempt.Events[j];
+                if (step.Reader is { } reader)
+                {
+                    Require(ReaderProfile is not null && reader.Command == (step.Action == "Tab" ? "Tab" : step.Action == "Enter" ? "Activate" : "ReadCurrent")
+                        && reader.Sequence == step.Sequence + 1 && reader.StartedMilliseconds >= previous
+                        && reader.FinishedMilliseconds <= step.ElapsedMilliseconds
+                        && reader.BrowserKeystrokes == (step.Action != "Pointer" && step.InputCompleted ? 1 : 0)
+                        && (reader.Outcome != "Observed" || step.After is null || reader.FocusedNodeId == step.After.NodeId)
+                        && (reader.DocumentUrl is null || Start.Job.Source.AllowsDocument(reader.DocumentUrl)));
+                    reader.Validate(ReaderProfile!);
+                }
                 Require(step.Sequence == j + 1 && double.IsFinite(step.ElapsedMilliseconds) && step.ElapsedMilliseconds >= previous
                     && step.ElapsedMilliseconds <= 180_000 && (!step.InputCompleted || step.InputAttempted)
                     && Start.Job.Source.AllowsDocument(step.DocumentUrl)
@@ -179,6 +207,8 @@ public sealed record PublicTaskAssessment(string Outcome, ImmutableArray<PublicT
         var egressConfirmed = !currentPolicy || report.Egress!.DroppedEvents == 0
             && !report.Egress.Events.Any(e => e.Sequence > report.EgressIsolationProbeThroughSequence && e.Code is not null);
         bool Complete(PublicTaskAttempt a) => a.Outcome != "Unconfirmed" && a.ErrorCode is null && a.TaskTargetMatched
+            && (report.ReaderProfile is null || a.InitialReader is { Outcome: "Observed" }
+                && a.Events.All(e => e.Reader is { Outcome: "Observed" } r && r.BrowserKeystrokes == (a.Method == "Keyboard" ? 1 : 0)))
             && a.PolicyInterruptions == 0 && a.BrowserCloseConfirmed && a.CaptureStopConfirmed && a.DecodedVideoFrames > 0
             && (a.Failures is null || a.Failures.Value.IsEmpty) && a.OmittedFailures == 0
             // Reaching the observed goal proves that specific success despite incidental requests.

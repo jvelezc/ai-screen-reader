@@ -25,6 +25,8 @@ internal sealed record PortalTaskResult(PublicTaskStatus Status, PublicTaskGoal?
 }
 internal sealed record PortalTaskEventPage(PublicTaskStatus Status, string ReportSha256, int Attempt, int Offset,
     int Total, PublicTaskEvent[] Events, int? NextOffset);
+internal sealed record PortalTaskReaderPage(PublicTaskStatus Status, string ReportSha256, int Attempt, int Offset,
+    int Total, string? ReaderProfile, string Coverage, PublicTaskReaderRecord? Initial, PublicTaskEvent[] Events, int MissingRecords, int? NextOffset);
 internal sealed record PortalTaskGraphPage(PublicTaskStatus Status, string ReportSha256, int Attempt, int Offset,
     PublicTaskGraphNode[] Nodes, PublicTaskGraphEdge[] Edges, int TotalNodes, int TotalEdges, int? NextOffset);
 internal sealed record PortalTaskOriginalPage(PublicTaskStatus Status, string ReportSha256, PublicTaskFile File, int Offset,
@@ -147,8 +149,28 @@ internal sealed class PortalPublicTasks(IPortalPublicTaskProject? client, Public
         if (status.ReportSha256 != digest) throw new PortalFault(409, "CONTROL_PUBLIC_TASK_CHANGED");
         var run = report.Attempts.SingleOrDefault(a => a.Number == attempt) ?? throw new PortalFault(404, "CONTROL_PUBLIC_TASK_NOT_FOUND");
         if (offset > run.Events.Length) throw new PortalFault(400, "CONTROL_REQUEST_INVALID");
-        var events = run.Events.Skip(offset).Take(24).ToArray();
+        var events = run.Events.Skip(offset).Take(24).Select(e => e with { Reader = null }).ToArray();
         return new(status, digest, attempt, offset, run.Events.Length, events, offset + events.Length < run.Events.Length ? offset + events.Length : null);
+    }
+    internal async Task<PortalTaskReaderPage> ReaderAsync(PortalIdentity actor, Guid organization, Guid parent, Guid job, int attempt, int offset, string digest, CancellationToken token)
+    {
+        if (attempt is < 1 or > 3 || offset < 0 || !PublicTaskRules.Digest(digest)) throw new PortalFault(400, "CONTROL_REQUEST_INVALID");
+        var (status, report) = await ReportAsync(actor, organization, parent, job, token).ConfigureAwait(false);
+        if (status.ReportSha256 != digest) throw new PortalFault(409, "CONTROL_PUBLIC_TASK_CHANGED");
+        var run = report.Attempts.SingleOrDefault(a => a.Number == attempt) ?? throw new PortalFault(404, "CONTROL_PUBLIC_TASK_NOT_FOUND");
+        if (offset > run.Events.Length) throw new PortalFault(400, "CONTROL_REQUEST_INVALID");
+        var events = run.Events.Skip(offset).Take(12).ToArray();
+        var missing = run.Events.Count(e => e.Reader is null) + (run.InitialReader is null ? 1 : 0);
+        while (true)
+        {
+            var page = new PortalTaskReaderPage(status, digest, attempt, offset, run.Events.Length, report.ReaderProfile,
+                report.ReaderProfile is null ? "NotRetained" : missing == 0 ? "Recorded" : "Partial", offset == 0 ? run.InitialReader : null,
+                events, missing, offset + events.Length < run.Events.Length ? offset + events.Length : null);
+            if (JsonSerializer.SerializeToUtf8Bytes(page, PortalJson.Options).Length <= 112 * 1024) return page;
+            if (events.Length == 0) throw new PortalFault(413, "CONTROL_PUBLIC_TASK_READER_PAGE_TOO_LARGE");
+            events = events[..^1];
+            if (events.Length == 0 && offset < run.Events.Length) throw new PortalFault(413, "CONTROL_PUBLIC_TASK_READER_PAGE_TOO_LARGE");
+        }
     }
     internal async Task<PortalTaskOriginalPage> OriginalAsync(PortalIdentity actor, Guid organization, Guid parent, Guid job, string name, int offset, string digest, CancellationToken token)
     {
@@ -200,6 +222,8 @@ internal static class PortalPublicTaskEndpoints
             TypedResults.Json(await service.ResultAsync(HostedControlServer.Actor(context), organization, scan, job, token).ConfigureAwait(false), PortalJson.Options)).WithName("ReadPublicTaskDiagnosticsResult");
         app.MapGet(root + "/{job:guid}/events/{attempt:int}/{offset:int}/{digest}", async (HttpContext context, PortalPublicTasks service, Guid organization, Guid scan,
             Guid job, int attempt, int offset, string digest, CancellationToken token) => TypedResults.Json(await service.EventsAsync(HostedControlServer.Actor(context), organization, scan, job, attempt, offset, digest, token).ConfigureAwait(false), PortalJson.Options)).WithName("ReadPublicTaskEvents");
+        app.MapGet(root + "/{job:guid}/reader/{attempt:int}/{offset:int}/{digest}", async (HttpContext context, PortalPublicTasks service, Guid organization, Guid scan,
+            Guid job, int attempt, int offset, string digest, CancellationToken token) => TypedResults.Json(await service.ReaderAsync(HostedControlServer.Actor(context), organization, scan, job, attempt, offset, digest, token).ConfigureAwait(false), PortalJson.Options)).WithName("ReadPublicTaskReader");
         app.MapGet(root + "/{job:guid}/graph/{attempt:int}/{offset:int}/{digest}", async (HttpContext context, PortalPublicTasks service, Guid organization, Guid scan,
             Guid job, int attempt, int offset, string digest, CancellationToken token) => TypedResults.Json(await service.GraphAsync(HostedControlServer.Actor(context), organization, scan, job, attempt, offset, digest, token).ConfigureAwait(false), PortalJson.Options)).WithName("ReadPublicTaskGraph");
         app.MapGet(root + "/{job:guid}/originals/{name}/{offset:int}/{digest}", async (HttpContext context, PortalPublicTasks service, Guid organization, Guid scan,

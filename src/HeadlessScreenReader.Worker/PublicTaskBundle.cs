@@ -62,7 +62,14 @@ public sealed record PublicTaskBundle(PublicTaskReport Report, ImmutableDictiona
                 Require(snapshot is not null && expected.Job.Source.AllowsDocument(snapshot.DocumentUrl)
                     && snapshot.CaptureEpoch == 1 && !snapshot.Nodes.IsDefaultOrEmpty && snapshot.Nodes.Length <= ReaderWorkerRequest.MaximumNodes);
                 var attempt = report.Attempts.Single(a => a.BeforeSnapshot == file.Path || a.AfterSnapshot == file.Path);
-                if (attempt.BeforeSnapshot == file.Path) Require(snapshot!.DocumentUrl == expected.Job.Source.TargetUrl && documents.Add(snapshot.DocumentId));
+                if (attempt.BeforeSnapshot == file.Path)
+                {
+                    Require(snapshot!.DocumentUrl == expected.Job.Source.TargetUrl && documents.Add(snapshot.DocumentId));
+                    if (attempt.InitialReader is { } reader)
+                        Require(reader.DocumentId == snapshot.DocumentId && reader.DocumentUrl == snapshot.DocumentUrl
+                            && reader.CaptureEpoch == snapshot.CaptureEpoch && reader.FocusedNodeId == snapshot.FocusedNode?.Id
+                            && (reader.CursorNodeId is null || snapshot.Nodes.Any(n => n.Id == reader.CursorNodeId)));
+                }
                 if (attempt.AfterSnapshot == file.Path && attempt.FinalUrl is { } url) Require(snapshot!.DocumentUrl == url);
             }
         }

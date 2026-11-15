@@ -6,6 +6,7 @@ using System.Text.Json;
 using HeadlessScreenReader.Browser.Playwright;
 using HeadlessScreenReader.Domain;
 using HeadlessScreenReader.Egress;
+using HeadlessScreenReader.ScreenReader;
 using HeadlessScreenReader.Worker;
 
 namespace HeadlessScreenReader.Cli;
@@ -65,6 +66,7 @@ internal static class PublicTaskWorker
                 var method = number < 3 ? "Keyboard" : "Pointer";
                 var outcome = "Unconfirmed"; string? error = null, finalUrl = null; var same = false; var denials = 0;
                 PublicTaskMedia? media = null; PublicNavigationBrowser? browser = null; var closeDeclared = false;
+                PublicTaskReaderController? reader = null; PublicTaskReaderRecord? initialReader = null;
                 AccessibilitySnapshot? beforeSnapshot = null;
                 try
                 {
@@ -82,8 +84,11 @@ internal static class PublicTaskWorker
                         break;
                     }
                     same = await browser.SameGoalAsync(goal, stop.Token).ConfigureAwait(false);
+                    reader = PublicTaskReaderController.Create(browser, goal, (key, _) => Authorize(number, key), TimeProvider.System, began);
                     stage = "Snapshot";
-                    beforeSnapshot = await browser.CaptureAsync(stop.Token).ConfigureAwait(false);
+                    initialReader = await reader.ExecuteAsync("Observe", stop.Token).ConfigureAwait(false);
+                    if (initialReader.Outcome != "Observed") throw new BrowserOperationException("PUBLIC_TASK_READER_UNCONFIRMED");
+                    beforeSnapshot = reader.Snapshot ?? throw new BrowserOperationException("PUBLIC_TASK_READER_UNCONFIRMED");
                     Add(beforePath, JsonSerializer.SerializeToUtf8Bytes(beforeSnapshot, ReaderWorkerWire.Json), "application/json");
                     if (same)
                     {
@@ -93,10 +98,10 @@ internal static class PublicTaskWorker
                         {
                             for (var tab = 0; tab < PublicTaskJob.MaximumTabs; tab++)
                             {
-                                if ((await browser.FocusAsync(stop.Token).ConfigureAwait(false))?.AnchorUrl == goal.DestinationUrl) break;
+                                if (reader.Focus?.AnchorUrl == goal.DestinationUrl) break;
                                 await Input("Tab").ConfigureAwait(false);
                             }
-                            if ((await browser.FocusAsync(stop.Token).ConfigureAwait(false))?.AnchorUrl == goal.DestinationUrl)
+                            if (reader.Focus?.AnchorUrl == goal.DestinationUrl)
                                 await Input("Enter").ConfigureAwait(false);
                         }
                     }
@@ -141,34 +146,50 @@ internal static class PublicTaskWorker
                         catch (OperationCanceledException) { throw; }
                         catch (Exception problem) { await Diagnostic(problem).ConfigureAwait(false); outcome = "Unconfirmed"; error = "PUBLIC_TASK_ATTEMPT_UNCONFIRMED"; }
                     }
-                    if (browser is not null) await browser.DisposeAsync().ConfigureAwait(false);
-                    if (!closeDeclared) await Authorize(number, "Close").ConfigureAwait(false);
+                    try
+                    {
+                        if (browser is not null) await browser.DisposeAsync().ConfigureAwait(false);
+                        if (!closeDeclared) await Authorize(number, "Close").ConfigureAwait(false);
+                    }
+                    finally { reader?.Dispose(); }
                 }
                 denials = Math.Min(1000, browser?.PolicyDenials ?? denials);
                 if (denials != 0) { outcome = "Unconfirmed"; error = "PUBLIC_TASK_POLICY_INTERRUPTED"; }
                 attempts.Add(new(number, Guid.NewGuid(), method, now, outcome, error, finalUrl, same, denials, events.ToImmutable(),
                     beforePath, afterPath, videoPath, media?.BrowserClosed == true, media?.CaptureStopped == true, media?.DecodedFrames ?? 0)
-                { Network = browser?.Network, Failures = failures.ToImmutable(), OmittedFailures = omittedFailures });
+                { InitialReader = initialReader, Network = browser?.Network, Failures = failures.ToImmutable(), OmittedFailures = omittedFailures });
 
                 async Task Input(string action)
                 {
-                    var before = await browser!.FocusAsync(stop.Token).ConfigureAwait(false);
+                    var before = reader!.Focus;
                     var url = browser.CurrentUrl;
-                    await Authorize(number, action).ConfigureAwait(false);
-                    var attempted = true; var completed = false;
+                    var attempted = false; var completed = false; PublicTaskReaderRecord? record = null;
                     try
                     {
-                        if (action == "Pointer") await browser.PointerAsync(goal!, stop.Token).ConfigureAwait(false);
-                        else await browser.PressAsync(action, goal!, stop.Token).ConfigureAwait(false);
-                        completed = true;
+                        if (action == "Pointer")
+                        {
+                            await Authorize(number, action).ConfigureAwait(false);
+                            attempted = true;
+                            await browser.PointerAsync(goal!, stop.Token).ConfigureAwait(false); completed = true;
+                            record = await reader.ExecuteAsync("Observe", stop.Token).ConfigureAwait(false);
+                        }
+                        else
+                        {
+                            record = await reader.ExecuteAsync(action, stop.Token).ConfigureAwait(false);
+                            attempted = reader.InputAttempted; completed = reader.InputCompleted;
+                            before = reader.BeforeFocus;
+                        }
+                        if (record.Outcome != "Observed" || action != "Pointer" && !completed)
+                            throw new BrowserOperationException("PUBLIC_TASK_READER_UNCONFIRMED");
                     }
                     catch (BrowserInputDeniedException) { attempted = false; throw; }
                     finally
                     {
-                        PublicTaskFocus? after = null;
-                        try { after = await browser.FocusAsync(stop.Token).ConfigureAwait(false); } catch { }
+                        if (action != "Pointer") { attempted = reader.InputAttempted; completed = reader.InputCompleted; before = reader.BeforeFocus; }
+                        var after = record?.Outcome == "Observed" ? reader.Focus : null;
                         events.Add(new(events.Count + 1, System.Diagnostics.Stopwatch.GetElapsedTime(began).TotalMilliseconds,
-                            action, before, after, url, attempted, completed));
+                            action, before, after, url, attempted, completed)
+                        { Reader = record });
                     }
                 }
             }
@@ -179,6 +200,7 @@ internal static class PublicTaskWorker
                 browserVersion, playwrightVersion, System.Runtime.InteropServices.RuntimeInformation.OSDescription, "1280x720",
                 PublicTaskRules.Hash(await File.ReadAllBytesAsync(typeof(PublicTaskWorker).Assembly.Location, stop.Token).ConfigureAwait(false)))
             {
+                ReaderProfile = ScreenReaderSession.Profile,
                 AssessmentPolicy = PublicTaskReport.TransportAttributionPolicy,
                 NetworkPolicy = PublicTaskNetworkTrace.PublicDependencyPolicy,
                 Egress = egressTrace,

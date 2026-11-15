@@ -23,6 +23,9 @@ internal static class PublicTaskProof
             var assessment = PublicTaskAssessment.Evaluate(report, true, native.ResourcesAbsent);
             var expected = scenario switch { "working" => "NoBlockingBarrierInTestedTask", "keyboard-blocked" => "WebsiteEvidenceReady", _ => "InsufficientEvidence" };
             var passed = assessment.Outcome == expected && report.AssessmentPolicy == PublicTaskReport.TransportAttributionPolicy
+                && report.ReaderProfile == HeadlessScreenReader.ScreenReader.ScreenReaderSession.Profile
+                && report.Attempts.All(a => a.InitialReader is { Command: "ReadCurrent", Outcome: "Observed" }
+                    && a.Events.All(e => e.Reader is not null))
                 && report.NetworkPolicy == PublicTaskNetworkTrace.PublicDependencyPolicy
                 && report.Egress is { Requests: > 0 } && report.EgressIsolationProbeThroughSequence is > 0
                 && report.Attempts.Length == 3 && report.Attempts.All(a => a.DecodedVideoFrames > 0 && a.Network is { Requests: > 0 })
@@ -34,6 +37,7 @@ internal static class PublicTaskProof
                 Passed = passed,
                 assessment.Outcome,
                 report.AssessmentPolicy,
+                report.ReaderProfile,
                 native.ResourcesAbsent,
                 Attempts = report.Attempts.Select(a => new
                 {
@@ -42,6 +46,8 @@ internal static class PublicTaskProof
                     Events = a.Events.Length,
                     a.DecodedVideoFrames,
                     a.ErrorCode,
+                    ReaderRecords = a.Events.Count(e => e.Reader is not null),
+                    ReaderCommands = a.Events.Select(e => e.Reader?.Command).ToArray(),
                     NetworkRequests = a.Network!.Requests,
                     NetworkEvents = a.Network.Events.Length,
                     a.Network.DroppedEvents

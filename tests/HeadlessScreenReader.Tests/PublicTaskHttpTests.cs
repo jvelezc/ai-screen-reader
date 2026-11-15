@@ -180,7 +180,27 @@ public sealed class PublicTaskHttpTests
                     byte[] bytes = video ? [0x1a, 0x45, 0xdf, 0xa3] : JsonSerializer.SerializeToUtf8Bytes(snapshot, ReaderWorkerWire.Json);
                     files.Add(name, bytes); inventory.Add(new(name, PublicTaskRules.Hash(bytes), bytes.Length, video ? "video/webm" : "application/json"));
                 }
-            report = report with { Files = inventory.ToImmutable() }; files.Add("report.json", JsonSerializer.SerializeToUtf8Bytes(report, ReaderWorkerWire.Json));
+            report = report with
+            {
+                Files = inventory.ToImmutable(),
+                Attempts = report.Attempts.Select(a =>
+                {
+                    if (a.InitialReader is null) return a;
+                    var snapshot = JsonSerializer.Deserialize<AccessibilitySnapshot>(files[a.BeforeSnapshot], ReaderWorkerWire.Json)!;
+                    return a with
+                    {
+                        InitialReader = a.InitialReader with
+                        {
+                            LastSnapshotSha256 = inventory.Single(f => f.Path == a.BeforeSnapshot).Sha256,
+                            DocumentId = snapshot.DocumentId,
+                            DocumentUrl = snapshot.DocumentUrl,
+                            CaptureEpoch = snapshot.CaptureEpoch,
+                            FocusedNodeId = snapshot.FocusedNode?.Id,
+                            CursorNodeId = snapshot.Nodes[0].Id
+                        }
+                    };
+                }).ToImmutableArray()
+            }; files.Add("report.json", JsonSerializer.SerializeToUtf8Bytes(report, ReaderWorkerWire.Json));
             rig.Files = new PublicTaskBundle(report, files.ToImmutable()).Files;
             foreach (var pair in rig.Files) await rig.Store.WriteAsync(report.Start.Job, PublicTaskRules.Hash(pair.Value), pair.Value, default);
             var publication = new PublicTaskPublication("hsr-public-task-publication-v1", report.Start.Job.ParentOriginalSha256,

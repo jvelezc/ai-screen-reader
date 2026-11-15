@@ -4,7 +4,7 @@ Customer prototype: **https://screenreader.privensic.com/**. Sign in, enter a we
 
 Local .NET screen-reader foundation for the architecture in [the original development plan](outputs/HeadlessScreenReader-Architecture-Review-and-Development-Plan.md).
 
-**Current source: HTTP 1.22 / 33 private MCP tools.** [Versioned transport attribution](docs/decisions/0089-versioned-transport-attribution.md) prevents unresolved browser/proxy failures from becoming a proven keyboard barrier and preserves historical originals. The accepted 1.21 core, Edge17 and separate Lovable UI already collect real bounded public task recordings; release/promotion and original-account acceptance are separately recorded in the living architecture plan. **Next: expand supported task coverage** with source-bound search/contact/cart journeys before any purchase or credential entry. Public MCP/plugins remain deferred.
+**Current source: HTTP1.23 /34 private MCP tools.** [Actual reader execution](docs/decisions/0090-public-task-reader-execution.md) connects ReadCurrent, Tab and role-based Activate to original task records and a paged reader API. Historical originals and strict result/event responses remain readable. The accepted f6612af/HTTP1.22 core, Edge17 and separate Lovable UI already collect bounded public task recordings; the new increment still requires CI, promotion and original-account acceptance. **Next: prove public event/video timing and expand task coverage**, then complete criterion-linked assessment, documentation and complexity reduction. Public MCP/plugins remain deferred.
 
 For an existing private hosted MCP connection, call `website_scan_status` with
 the public `scanId`, then `website_screening` with that same `scanId` and the

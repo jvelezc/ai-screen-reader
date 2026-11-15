@@ -55,6 +55,8 @@ public sealed class PublicNavigationBrowser : IAsyncDisposable
 
     public Task<AccessibilitySnapshot> CaptureAsync(CancellationToken token) => _browser.CaptureAsync(token);
     public Task<PublicTaskFocus?> FocusAsync(CancellationToken token) => _browser.PublicTaskFocusAsync(token);
+    public Task<PublicTaskFocus?> FocusFromSnapshotAsync(AccessibilitySnapshot snapshot, CancellationToken token) =>
+        _browser.PublicTaskFocusFromSnapshotAsync(snapshot, token);
 
     private sealed record Link(string Url, string Name, bool Visible);
     private async Task<Link[]> LinksAsync() => (await _browser.DiagnosticPage.Locator("a[href]").EvaluateAllAsync<JsonElement>(
@@ -164,11 +166,15 @@ public sealed partial class ChromiumFixtureBrowser
     internal Task<CaptureExclusionLease> EndPublicTaskCaptureAsync() => _captureAdmission.ExcludeAsync(async () =>
     { await _stopProbeCollector().ConfigureAwait(false); await _cdp.SendAsync("Accessibility.disable").ConfigureAwait(false); });
 
-    internal Task<PublicTaskFocus?> PublicTaskFocusAsync(CancellationToken token) => _captureAdmission.RunAsync<PublicTaskFocus?>(async () =>
+    internal Task<PublicTaskFocus?> PublicTaskFocusAsync(CancellationToken token) => ObservePublicTaskFocusAsync(null, token);
+    internal Task<PublicTaskFocus?> PublicTaskFocusFromSnapshotAsync(AccessibilitySnapshot snapshot, CancellationToken token) =>
+        ObservePublicTaskFocusAsync(snapshot, token);
+    private Task<PublicTaskFocus?> ObservePublicTaskFocusAsync(AccessibilitySnapshot? supplied, CancellationToken token) => _captureAdmission.RunAsync<PublicTaskFocus?>(async () =>
     {
         token.ThrowIfCancellationRequested();
         if (_publicPolicy is not null && !_publicPolicy.AssessUrl(_page.Url).Allowed) throw new BrowserOperationException("TARGET_SCOPE_CHANGED");
-        var snapshot = await CaptureCoreAsync().ConfigureAwait(false);
+        var snapshot = supplied ?? await CaptureCoreAsync().ConfigureAwait(false);
+        if (supplied is not null && snapshot.DocumentUrl != _page.Url) return null;
         var selected = snapshot.FocusedNode;
         var anchor = await _page.EvaluateAsync<string?>("() => document.activeElement?.tagName==='A' ? document.activeElement.href : null").ConfigureAwait(false);
         return selected is { } focus ? new(focus.Id, focus.Role, focus.Name[..Math.Min(focus.Name.Length, 500)], anchor) : null;

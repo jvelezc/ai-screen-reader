@@ -12,6 +12,7 @@ internal static partial class PortalOpenApi
         schemas["PublicTaskStatusOrNull"] = new JsonObject { ["oneOf"] = new JsonArray(Reference("PublicTaskStatus"), new JsonObject { ["type"] = "null" }) };
         schemas["PublicTaskResult"] = Schema<PortalTaskResult>("PublicTaskResult");
         schemas["PublicTaskEvents"] = Schema<PortalTaskEventPage>("PublicTaskEvents");
+        schemas["PublicTaskReader"] = Schema<PortalTaskReaderPage>("PublicTaskReader");
         schemas["PublicTaskGraph"] = Schema<PortalTaskGraphPage>("PublicTaskGraph");
         schemas["PublicTaskOriginal"] = Schema<PortalTaskOriginalPage>("PublicTaskOriginal");
     }
@@ -43,6 +44,10 @@ internal static partial class PortalOpenApi
         var eventParameters = (JsonArray)events["parameters"]!;
         eventParameters.Add(PublicParameter("attempt", 1, 3)); eventParameters.Add(PublicParameter("offset", 0, 49)); eventParameters.Add(PublicDigestParameter());
         paths[root + "/{job}/events/{attempt}/{offset}/{digest}"] = Path("get", events);
+        var reader = TaskOperation("ReadPublicTaskReader", "Actual AI reader commands, announcements, input counts and last-observed snapshot fingerprints. At most12 events and112KiB per page; pagination never skips a record. Initial output appears only at offset0. NotRetained identifies historical originals without a transcript, Partial exposes missing records. These are reader text outputs, not recorded external AT speech; intermediate full snapshots are not retained by this representation. No task input or authority renewal.", "PublicTaskReader");
+        var readerParameters = (JsonArray)reader["parameters"]!;
+        readerParameters.Add(PublicParameter("attempt", 1, 3)); readerParameters.Add(PublicParameter("offset", 0, 49)); readerParameters.Add(PublicDigestParameter());
+        paths[root + "/{job}/reader/{attempt}/{offset}/{digest}"] = Path("get", reader);
         var graph = TaskOperation("ReadPublicTaskGraph", "At most24 observed focus states and24 actual input edges per page; missing focus is explicitly unobserved. No global reachability or unreachability inference.", "PublicTaskGraph");
         var graphParameters = (JsonArray)graph["parameters"]!;
         graphParameters.Add(PublicParameter("attempt", 1, 3)); graphParameters.Add(PublicParameter("offset", 0, 98)); graphParameters.Add(PublicDigestParameter());

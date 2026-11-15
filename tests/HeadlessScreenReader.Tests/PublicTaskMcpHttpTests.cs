@@ -8,12 +8,31 @@ namespace HeadlessScreenReader.Tests;
 
 public sealed class PublicTaskMcpHttpTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PrivateMcpReadsOnlyPinnedReaderOriginalsAndDeniesRevokedAccess(bool recorded)
+    {
+        using var rig = await PublicTaskHttpTests.Rig.Create(recorded ? PublicTaskReaderTests.WithReader : null);
+        await using var server = await rig.Server(); await using var mcp = await Connect(server.BaseAddress, rig.Status.Job.OrganizationId);
+        var args = new Dictionary<string, object?> { ["scanId"] = rig.Status.Job.ParentScanId, ["jobId"] = rig.Status.Job.JobId, ["reportSha256"] = rig.Status.ReportSha256 };
+        var result = (await Call(mcp, "website_task_reader", args)).GetProperty("data");
+        Assert.Equal(recorded ? "Recorded" : "NotRetained", result.GetProperty("coverage").GetString());
+        Assert.Equal(rig.Status.ReportSha256, result.GetProperty("reportSha256").GetString());
+        if (recorded) Assert.Equal("View pricing, link", result.GetProperty("events")[0].GetProperty("reader").GetProperty("announcement").GetString());
+        else Assert.Equal(JsonValueKind.Null, result.GetProperty("initial").ValueKind);
+        args["reportSha256"] = new string('d', 64); await Call(mcp, "website_task_reader", args, true);
+        args["reportSha256"] = rig.Status.ReportSha256; rig.DenyAfter = rig.Reads;
+        var revoked = await Call(mcp, "website_task_reader", args, true);
+        Assert.DoesNotContain("View pricing", revoked.GetRawText()); Assert.Equal(0, rig.Creates);
+    }
+
     [Fact]
     public async Task PrivateMcpReadsSameJobResultTraceGraphAndRecordingThenDeniesRevokedAccess()
     {
         using var rig = await PublicTaskHttpTests.Rig.Create(); await using var server = await rig.Server();
         await using var mcp = await Connect(server.BaseAddress, rig.Status.Job.OrganizationId);
-        var tools = await mcp.ListToolsAsync(); Assert.Equal(33, tools.Count);
+        var tools = await mcp.ListToolsAsync(); Assert.Equal(34, tools.Count);
         var args = new Dictionary<string, object?> { ["scanId"] = rig.Status.Job.ParentScanId, ["jobId"] = rig.Status.Job.JobId };
         var result = await Call(mcp, "website_task_result", args);
         Assert.Equal("WebsiteEvidenceReady", result.GetProperty("data").GetProperty("assessment").GetProperty("outcome").GetString());
