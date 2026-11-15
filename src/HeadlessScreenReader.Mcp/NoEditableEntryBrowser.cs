@@ -3,10 +3,23 @@ using HeadlessScreenReader.Domain;
 namespace HeadlessScreenReader.Mcp;
 
 /// <summary>Prototype input gate. This does not establish a capture-exclusion protocol.</summary>
-public sealed class NoEditableEntryBrowser(IScreenReaderBrowser inner, bool linksOnly = false) : IScreenReaderBrowser
+public sealed class NoEditableEntryBrowser(IScreenReaderBrowser inner, bool linksOnly = false) : IScreenReaderBrowser, ISyntheticSearchBrowser
 {
     public Task<AccessibilitySnapshot> CaptureAsync(CancellationToken cancellationToken = default) =>
         inner.CaptureAsync(cancellationToken);
+
+    public async Task PressSearchKeyAsync(SearchKeyInput input, CancellationToken cancellationToken = default)
+    {
+        if (linksOnly || inner is not ISyntheticSearchBrowser browser)
+            throw new BrowserInputDeniedException("SYNTHETIC_SEARCH_FIXTURE_REQUIRED");
+        if (!input.IsAuthorizedBy(await inner.CaptureAsync(cancellationToken).ConfigureAwait(false)))
+            throw new BrowserInputDeniedException("SEARCH_SCOPE_CHANGED");
+        await browser.PressSearchKeyAsync(input, cancellationToken).ConfigureAwait(false);
+    }
+
+    public Task<bool> SearchValueMatchesAsync(SearchKeyInput scope, string expected, CancellationToken cancellationToken = default) =>
+        !linksOnly && inner is ISyntheticSearchBrowser browser ? browser.SearchValueMatchesAsync(scope, expected, cancellationToken)
+            : Task.FromException<bool>(new BrowserInputDeniedException("SYNTHETIC_SEARCH_FIXTURE_REQUIRED"));
 
     public async Task PressListboxKeyAsync(ListboxKeyInput input, CancellationToken cancellationToken = default)
     {

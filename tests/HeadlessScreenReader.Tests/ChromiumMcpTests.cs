@@ -251,6 +251,45 @@ public sealed class ChromiumMcpTests
         Assert.Equal("closed", (await CallAsync(client, "reader_close", new() { ["sessionId"] = id })).GetProperty("status").GetString());
     }
 
+    [Fact]
+    public async Task McpSyntheticSearchUsesTheSameReaderAndDeclaredFixtureCapability()
+    {
+        await using var client = await ConnectAsync();
+        var status = (await CallAsync(client, "reader_status")).GetProperty("data");
+        Assert.False(status.GetProperty("editableEntry").GetBoolean());
+        var capability = status.GetProperty("syntheticSearch");
+        Assert.Equal("hsr-synthetic-search-v1", capability.GetProperty("profile").GetString());
+        Assert.False(capability.GetProperty("publicPages").GetBoolean());
+        Assert.False(capability.GetProperty("submitsSearch").GetBoolean());
+        var opened = await CallAsync(client, "reader_open_fixture", new() { ["fixture"] = "MockSearchWorkingV1" });
+        var id = opened.GetProperty("sessionId").GetString()!;
+        var snapshot = (await CallAsync(client, "reader_snapshot", new() { ["sessionId"] = id })).GetProperty("data");
+        var document = snapshot.GetProperty("documentId").GetString()!;
+        await Execute(client, id, document, "Tab");
+        var typed = (await CallAsync(client, "reader_execute", new()
+        {
+            ["sessionId"] = id,
+            ["documentId"] = document,
+            ["command"] = "EnterSearchText",
+            ["key"] = "sample course"
+        })).GetProperty("data");
+        Assert.Equal("Observed", typed.GetProperty("outcome").GetString());
+        Assert.Equal(13, typed.GetProperty("browserKeystrokes").GetInt32());
+        Assert.True(typed.GetProperty("searchInput").GetProperty("valueVerified").GetBoolean());
+        await Execute(client, id, document, "Tab");
+        var activated = (await CallAsync(client, "reader_execute", new()
+        {
+            ["sessionId"] = id,
+            ["documentId"] = document,
+            ["command"] = "Activate",
+            ["goal"] = new { role = "heading", name = "Sample course result", mustBeFocused = true }
+        })).GetProperty("data");
+        Assert.Equal("Satisfied", activated.GetProperty("verification").GetString());
+        var timeline = (await CallAsync(client, "reader_timeline", new() { ["sessionId"] = id })).GetProperty("data").GetProperty("events");
+        Assert.Equal(16, timeline.EnumerateArray().Count(e => e.GetProperty("kind").GetString() == "InputCompleted"));
+        Assert.Equal("closed", (await CallAsync(client, "reader_close", new() { ["sessionId"] = id })).GetProperty("status").GetString());
+    }
+
     private static Task<McpClient> ConnectAsync()
     {
         var server = typeof(ChromiumMcpTests).Assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyMetadataAttribute), false)

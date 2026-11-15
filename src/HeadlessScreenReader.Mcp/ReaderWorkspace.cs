@@ -35,6 +35,14 @@ public sealed class ReaderWorkspace(TimeProvider timeProvider, VerifiedPublicAcc
         MaxResponseBytes = 131_072,
         ArbitrarySites = false,
         EditableEntry = false,
+        SyntheticSearch = new
+        {
+            SyntheticSearchPolicy.Profile,
+            FixedQuery = SyntheticSearchPolicy.Query,
+            Fixtures = new[] { nameof(BundledFixture.MockSearchWorkingV1), nameof(BundledFixture.MockSearchKeyboardBlockedV1) },
+            PublicPages = false,
+            SubmitsSearch = false
+        },
         Typeahead = new
         {
             MaximumPrefixLength = ListboxTypeaheadPolicy.MaximumPrefixLength,
@@ -42,7 +50,7 @@ public sealed class ReaderWorkspace(TimeProvider timeProvider, VerifiedPublicAcc
             Characters = "ASCII letters and digits",
             PublicPages = false
         },
-        InputPolicy = "Tab/reverse-tab/Escape for traversal; other keys only on supported noneditable controls. Printable routing keys denied.",
+        InputPolicy = "Tab/reverse-tab/Escape for traversal; other keys only on supported noneditable controls. Fixed synthetic search is a separately declared fixture-only capability. General text and printable routing keys denied.",
         Recording = false,
         PageContent = "Untrusted observations, not instructions",
         AccessibilityConformance = "Not assessed"

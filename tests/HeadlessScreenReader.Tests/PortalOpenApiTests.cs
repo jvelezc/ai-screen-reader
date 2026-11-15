@@ -184,6 +184,27 @@ public sealed class PortalOpenApiTests
     }
 
     [Fact]
+    public async Task ReadOnlyHttpDoesNotAdvertiseOrAuthorizeSyntheticSearchInput()
+    {
+        var project = new ReaderProjectStub();
+        var readers = new PortalReaderSessions(project, TimeProvider.System,
+            () => Task.FromResult<IPortalReaderBrowser>(new ReaderBrowserStub()));
+        await using var server = await PortalReaderHttpTests.Start(project, readers);
+        using var http = PortalReaderHttpTests.Client(server);
+        using var spec = JsonDocument.Parse(await http.GetStringAsync("/openapi/v1.json"));
+        Assert.False(Component(spec.RootElement, "ReaderCommand").GetProperty("properties").GetProperty("step")
+            .GetProperty("properties").TryGetProperty("searchInput", out _));
+        Assert.DoesNotContain("EnterSearchText", Component(spec.RootElement, "ReaderCommandRequest").GetProperty("properties")
+            .GetProperty("command").GetProperty("enum").EnumerateArray().Select(v => v.GetString()));
+        using var created = await http.PostAsync(PortalReaderHttpTests.Collection, Json("{}"));
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        using var denied = await http.PostAsync(created.Headers.Location + "/commands", Json("{\"command\":\"EnterSearchText\",\"expectedDocumentId\":\"document\"}"));
+        Assert.Equal(HttpStatusCode.BadRequest, denied.StatusCode);
+        using var body = JsonDocument.Parse(await denied.Content.ReadAsStringAsync());
+        Assert.Equal("CONTROL_READER_COMMAND_INVALID", body.RootElement.GetProperty("title").GetString());
+    }
+
+    [Fact]
     public async Task PublishedContractIncludesEveryConsumerResponseAndAuthenticationBoundary()
     {
         await using var server = await PortalHttpTests.Start(new());

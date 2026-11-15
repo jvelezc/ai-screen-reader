@@ -8,6 +8,8 @@ Updated November15,2026. Product: Privensic Screen Reader. The original proposal
 
 **Next: expand supported task coverage** beyond following a service link. Each new search/contact/cart journey needs explicit goal selection, safe bounded inputs, matching working/broken sites, independent repeat/pointer evidence and same-task reader output/recordings before it is presented as tested. Verified public event/video correspondence remains a separate open gate; no event seek is inferred from elapsed time or clip length. Criterion-linked assessment must identify untested coverage. Credential entry, transactions, detailed WebSocket handshake diagnostics and broader real assistive-technology validation remain separate gates. Product documentation and complexity reduction follow accepted functionality. Every push must pass Windows/Linux CI; exact promotion and original-account acceptance remain independent gates. Public MCP/plugins remain deferred.
 
+The first broader-journey prerequisite is [fixed-query synthetic search input](validation/synthetic-search-input-v1.md). It uses the actual reader and paired working/keyboard-blocked fixtures through private MCP. Native characters bind document/epoch/focus and verify the resulting field value; existing content cannot be overwritten. Public entry, recorded search packages and hosted admission remain subsequent gates, rather than being inferred from these fixture checks.
+
 ## Historical checkpoint — November 6
 
 The following dated source/deployment record is retained as history; its zero-input statement refers to the earlier public page-only profile.

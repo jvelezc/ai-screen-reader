@@ -57,7 +57,8 @@ public enum ReaderCommand
     PreviousListbox,
     NextOption,
     PreviousOption,
-    Typeahead
+    Typeahead,
+    EnterSearchText
 }
 
 public enum ReaderOutcome
@@ -101,6 +102,8 @@ public sealed record ReaderStep(
     public ReaderTableContext? Table { get; init; }
     public ListboxSelectionContext? ListboxSelection { get; init; }
     public TypeaheadObservation? Typeahead { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public SearchTextObservation? SearchInput { get; init; }
     public System.Collections.Immutable.ImmutableArray<FrameObservation> FrameCoverage { get; init; } = [];
 }
 

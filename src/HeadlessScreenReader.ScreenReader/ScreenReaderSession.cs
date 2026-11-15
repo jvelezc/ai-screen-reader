@@ -149,6 +149,8 @@ public sealed partial class ScreenReaderSession : IDisposable
             return Result(ReaderOutcome.Denied, "Keyboard operation denied by the local fixture policy.");
         if (command == ReaderCommand.Typeahead && !ListboxTypeaheadPolicy.AllowsPrefix(key))
             return Result(ReaderOutcome.Denied, "Typeahead requires 1..16 ASCII letters or digits.", errorCode: "TYPEAHEAD_PREFIX_INVALID");
+        if (command == ReaderCommand.EnterSearchText && !SyntheticSearchPolicy.Allows(key))
+            return Result(ReaderOutcome.Denied, "Only the declared synthetic search query is supported.", errorCode: "SEARCH_TEXT_INVALID");
         await RefreshAsync(token).ConfigureAwait(false);
         if (expectedDocumentId is not null && _snapshot!.DocumentId != expectedDocumentId)
             return Result(ReaderOutcome.Denied, "Document changed; capture a fresh observation before continuing.",
@@ -183,6 +185,8 @@ public sealed partial class ScreenReaderSession : IDisposable
         }
         if (command == ReaderCommand.Typeahead)
             return await TypeaheadAsync(key!.ToLowerInvariant(), token).ConfigureAwait(false);
+        if (command == ReaderCommand.EnterSearchText)
+            return await EnterSearchTextAsync(token).ConfigureAwait(false);
         string? shortcut = command switch
         {
             ReaderCommand.NextHeading => "h",

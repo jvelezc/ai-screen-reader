@@ -165,6 +165,9 @@ internal static partial class PortalOpenApi
             TransformSchemaNode = (context, schema) =>
             {
                 if (schema is not JsonObject value || value["properties"] is not JsonObject properties) return schema;
+                // The fixture-only search extension is not part of the hosted read-only
+                // reader protocol. Its existing commands omit this property at runtime.
+                if (context.TypeInfo.Type == typeof(ReaderStep)) properties.Remove("searchInput");
                 // Response serialization emits every property, including nullable and
                 // optional-constructor defaults such as evidenceStorage.
                 if (context.TypeInfo.Type != typeof(PortalEmptyRequest) && context.TypeInfo.Type != typeof(PortalCreateScanRequest)

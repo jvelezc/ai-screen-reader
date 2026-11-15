@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Synthetic course search — keyboard blocked</title>
+<main>
+  <h1>Find a sample course</h1>
+  <p>Synthetic fixture. Search for sample course. This deliberately broken control responds only to a mouse click.</p>
+  <form id="sample-form">
+    <label for="sample-search">Search courses</label>
+    <input id="sample-search" type="search" autocomplete="off">
+    <div id="sample-submit" role="button" tabindex="0">Search</div>
+  </form>
+  <section id="sample-results" hidden aria-labelledby="results-title">
+    <h2 id="results-title" tabindex="-1">Sample course result</h2>
+    <p>One synthetic course found.</p>
+  </section>
+</main>
+<script>
+document.getElementById('sample-form').addEventListener('submit', event => event.preventDefault());
+document.getElementById('sample-submit').addEventListener('click', () => {
+  if (document.getElementById('sample-search').value === 'sample course') {
+    document.getElementById('sample-results').hidden = false;
+    document.getElementById('results-title').focus();
+  }
+});
+</script>
+</html>

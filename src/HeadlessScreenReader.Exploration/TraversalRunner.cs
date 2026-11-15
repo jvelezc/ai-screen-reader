@@ -172,7 +172,7 @@ public sealed class TraversalRunner(TimeProvider? timeProvider = null)
         };
     }
 
-    private sealed class ObservedBrowser(IScreenReaderBrowser browser, Func<double> elapsed) : IScreenReaderBrowser
+    private sealed class ObservedBrowser(IScreenReaderBrowser browser, Func<double> elapsed) : IScreenReaderBrowser, ISyntheticSearchBrowser
     {
         public AccessibilitySnapshot? Last { get; private set; }
         public int Version { get; private set; }
@@ -189,5 +189,11 @@ public sealed class TraversalRunner(TimeProvider? timeProvider = null)
         public Task PressKeyAsync(string key, CancellationToken cancellationToken = default) => browser.PressKeyAsync(key, cancellationToken);
         public Task PressListboxKeyAsync(ListboxKeyInput input, CancellationToken cancellationToken = default) =>
             browser.PressListboxKeyAsync(input, cancellationToken);
+        public Task PressSearchKeyAsync(SearchKeyInput input, CancellationToken cancellationToken = default) =>
+            browser is ISyntheticSearchBrowser search ? search.PressSearchKeyAsync(input, cancellationToken)
+                : Task.FromException(new BrowserInputDeniedException("SYNTHETIC_SEARCH_FIXTURE_REQUIRED"));
+        public Task<bool> SearchValueMatchesAsync(SearchKeyInput scope, string expected, CancellationToken cancellationToken = default) =>
+            browser is ISyntheticSearchBrowser search ? search.SearchValueMatchesAsync(scope, expected, cancellationToken)
+                : Task.FromException<bool>(new BrowserInputDeniedException("SYNTHETIC_SEARCH_FIXTURE_REQUIRED"));
     }
 }
