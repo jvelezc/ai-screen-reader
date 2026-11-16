@@ -15,6 +15,7 @@ $server='docker.io/rustfs/rustfs@sha256:128220dc9382bac81940a1a9616ee8c274a3f3b8
 $created=$false;$networkCreated=$false;$removed=$false;$networkRemoved=$false;$ready=$false;$nativeRecovered=$false
 $stage='server';$errorCode=$null;$proof=$null
 $reason=$null;$lastStatus=$null;$lastFailure=$null;$publishedPortAvailable=$false;$directInternal=$false;$serverState=$null
+$readDiagnostics=@();$diagnosticChannelSeparate=$false
 $keys=@('HSR_WORKER_DATABASE','HSR_WORKER_IMAGE','HSR_WORKER_RUNTIME','HSR_WORKER_EVIDENCE','HSR_WORKER_SECCOMP',
     'HSR_S3_PROOF_IMAGE','HSR_S3_PROOF_RUNTIME','HSR_S3_PROOF_SECCOMP','HSR_S3_PROOF_EVIDENCE','HSR_S3_PROOF_HOST')
 $prior=@{};foreach($key in $keys){$prior[$key]=[Environment]::GetEnvironmentVariable($key)}
@@ -56,14 +57,22 @@ try {
     $env:HSR_S3_PROOF_IMAGE=$Image;$env:HSR_S3_PROOF_RUNTIME=$Runtime
     $env:HSR_S3_PROOF_SECCOMP=Join-Path $repoRoot 'ops/prototype/playwright-seccomp.json'
     $env:HSR_S3_PROOF_EVIDENCE=Join-Path $folderPath 'evidence'
-    $text=@(& dotnet (Join-Path $PublishedCli 'HeadlessScreenReader.Cli.dll') --check-s3-local "$portNumber" $owner 2>&1)
-    $code=$LASTEXITCODE
-    $text -join "`n"|Set-Content (Join-Path $folderPath 'protocol.log') -Encoding utf8NoBOM
+    # The process helper concurrently drains separate channels; diagnostics are not a JSON receipt.
+    $process=Invoke-ReaderRuntime 'dotnet' @((Join-Path $PublishedCli 'HeadlessScreenReader.Cli.dll'),'--check-s3-local',"$portNumber",$owner) -AllowFailure
+    $code=$process.Code
+    $process.Text|Set-Content (Join-Path $folderPath 'protocol.log') -Encoding utf8NoBOM
+    $process.StandardError|Set-Content (Join-Path $folderPath 'protocol.stderr.jsonl') -Encoding utf8NoBOM
     if($code -ne 0){throw 'S3_NATIVE_PROTOCOL_UNCONFIRMED'}
-    $proof=($text -join "`n")|ConvertFrom-Json
+    $proof=$process.Text|ConvertFrom-Json
     if($proof.Schema -ne 'hsr-local-s3-proof-v1' -or -not $proof.Ready -or $proof.Passed -ne 10 -or
         $proof.Cases.Count -ne 10 -or $proof.HostedProjectChanged -or $proof.AppJwtValidated -or
         $proof.DispatchedInputs -ne 0 -or $proof.GoalVerified){throw 'S3_NATIVE_RECEIPT_UNCONFIRMED'}
+    $readDiagnostics=@($process.StandardError -split '\r?\n'|Where-Object {-not [string]::IsNullOrWhiteSpace($_)}|ForEach-Object {$_|ConvertFrom-Json})
+    if($readDiagnostics.Count -eq 0 -or @($readDiagnostics|Where-Object {
+        $_.Schema -cne 'hsr-evidence-read-v1' -or $_.WebsiteInputRetried -ne $false -or
+        $_.ObjectKeySha256 -cnotmatch '^[a-f0-9]{64}$' -or $_.Attempt -notin @(1,2)
+    }).Count -ne 0){throw 'S3_DIAGNOSTIC_CHANNEL_UNCONFIRMED'}
+    $diagnosticChannelSeparate=$true
     $proof|ConvertTo-Json -Depth 4|Set-Content (Join-Path $folderPath 'protocol.json') -Encoding utf8NoBOM
     $ready=$true;$stage='completed'
 } catch {$errorCode="S3_$($stage.ToUpperInvariant())_UNCONFIRMED"; $reason=if($_.Exception.Message -cmatch '^[A-Z][A-Z0-9_]{2,100}$'){$_.Exception.Message}else{$_.Exception.GetType().Name}}
@@ -99,7 +108,8 @@ $receipt=[pscustomobject]@{Schema='hsr-owned-s3-proof-v1';Ready=($ready -and $re
     Stage=$stage;ErrorCode=$errorCode;Passed=if($proof){$proof.Passed}else{0};Cases=if($proof){$proof.Cases}else{@()};
     ServerRemoved=$removed;NetworkRemoved=$networkRemoved;NativeOwnershipRecovered=$nativeRecovered;HostedProjectChanged=$false;
     Reason=$reason;LastHttpStatus=$lastStatus;LastConnectionFailure=$lastFailure;PublishedLoopbackAvailable=$publishedPortAvailable;
-    DirectOwnedInternalBridge=$directInternal;ServerState=$serverState}
+    DirectOwnedInternalBridge=$directInternal;ServerState=$serverState;
+    DiagnosticChannelSeparate=$diagnosticChannelSeparate;ReadDiagnosticCount=$readDiagnostics.Count}
 $receipt|ConvertTo-Json -Depth 4|Set-Content (Join-Path $folderPath 'run.json') -Encoding utf8NoBOM
 if(-not $receipt.Ready){throw 'OWNED_S3_ACCEPTANCE_UNCONFIRMED'}
 $receipt

@@ -11,7 +11,7 @@ $created=$false; $built=$false; $removed=$false; $imageRemoved=$false; $ready=$f
 $cases=[Collections.Generic.List[string]]::new()
 $releaseCreated=$false
 $script:executed=0; $script:failed=0
-$expected=if($IsLinux){84}else{81}; $linuxSignalPerformed=$false
+$expected=if($IsLinux){85}else{82}; $linuxSignalPerformed=$false
 $crashStarted=$false; $crashEvidence=$null
 $recoveryResources=[Collections.Generic.List[string]]::new()
 $names=@('POSTGRES_PASSWORD','HSR_WORKER_DATABASE','HSR_WORKER_IMAGE','HSR_WORKER_EVIDENCE','HSR_WORKER_RUNTIME','HSR_WORKER_SECCOMP',
@@ -188,6 +188,7 @@ try {
     $stage='s3-evidence'
     $s3=& (Join-Path $PSScriptRoot 'Test-S3Evidence.ps1') -Runtime $Runtime -Image $imageId -PublishedCli $testedControl -Folder (Join-Path $folder 's3')
     Assert-Proof ($s3.Ready -and $s3.Passed -eq 10 -and $s3.ServerRemoved -and $s3.NetworkRemoved -and $s3.NativeOwnershipRecovered) 'ActualSignedS3FinalizationAndOffHostReadbackPreserveNativeFacts'
+    Assert-Proof ($s3.DiagnosticChannelSeparate -and $s3.ReadDiagnosticCount -gt 0) 'S3ReadDiagnosticsRetainClosedFactsWithoutContaminatingNativeReceipt'
     $stage='public-website-collection'
     $publicLines=@(& pwsh -NoProfile -File (Join-Path $PSScriptRoot 'Test-PublicWebsiteCollection.ps1') -Runtime $Runtime -Image $imageId 2>&1)
     $publicExit=$LASTEXITCODE

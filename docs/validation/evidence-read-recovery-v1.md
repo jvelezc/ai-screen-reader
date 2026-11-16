@@ -44,3 +44,5 @@ The same HTTP1.24.1 patch corrects the manifest-inclusive search original ID:
 the consumer now accept1399/1400 and deny1401. This is a source-proven edge case;
 the hosted123-original working search did not hit that limit. Ordinary inventory
 offsets remain24-aligned. See PSR-SEARCH-020 and the tenant search receipt.
+
+CI43848706302 exposes a separate acceptance-harness regression: its native child passes all ten S3 checks, but two closed404 diagnostics were merged into the stdout JSON parser. The failed15/84 receipt and original protocol.log are retained. A dedicated same-image before/after reproduces that failure, then passes10/10 with two separately parsed diagnostics and exact owned cleanup. The existing process helper now drains both channels independently. `S3ReadDiagnosticsRetainClosedFactsWithoutContaminatingNativeReceipt` adds a distinct native guard; expected Linux total85, Windows-controller82. No storage assertion is removed. Complete source CI and promotion remain pending. See PSR-PROCESS-002.
