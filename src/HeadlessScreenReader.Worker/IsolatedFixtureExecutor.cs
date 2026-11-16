@@ -107,7 +107,7 @@ public sealed partial class IsolatedFixtureExecutor : IFixtureExecutor
         }
     }
 
-    private async Task CreateAndInspectAsync(NativeOwnership intent, CancellationToken token, bool reader = false, bool journaled = false, bool mockTask = false)
+    private async Task CreateAndInspectAsync(NativeOwnership intent, CancellationToken token, bool reader = false, bool journaled = false, bool mockTask = false, bool searchTask = false)
     {
         var owner = intent.Owner.ToString("N");
         var name = intent.ContainerName;
@@ -122,11 +122,12 @@ public sealed partial class IsolatedFixtureExecutor : IFixtureExecutor
             "--label", "hsr.observation.job=" + job.JobId.ToString("N"),
             "--label", "hsr.observation.generation=" + job.Generation.ToString(System.Globalization.CultureInfo.InvariantCulture)];
         if (_runtime == "docker") create.AddRange(["--security-opt", "seccomp=" + _seccomp]);
-        if (reader || journaled || mockTask) create.AddRange(["--entrypoint", "dotnet"]);
+        if (reader || journaled || mockTask || searchTask) create.AddRange(["--entrypoint", "dotnet"]);
         create.Add(_image);
         if (reader) create.AddRange(["/app/cli/HeadlessScreenReader.Cli.dll", "--reader-fixture"]);
         if (journaled) create.AddRange(["/app/cli/HeadlessScreenReader.Cli.dll", "--worker-fixture-progress"]);
         if (mockTask) create.AddRange(["/app/cli/HeadlessScreenReader.Cli.dll", "--worker-mock-tasks"]);
+        if (searchTask) create.AddRange(["/app/cli/HeadlessScreenReader.Cli.dll", "--worker-search-tasks"]);
         if ((await InvokeAsync(create, null, token)).Code != 0) throw new InvalidDataException("WORKER_CONTAINER_CREATE_UNCONFIRMED");
         var inspect = await InvokeAsync(["inspect", name], null, token);
         if (inspect.Code != 0) throw new InvalidDataException("WORKER_CONTAINER_INSPECTION_UNCONFIRMED");
@@ -144,6 +145,7 @@ public sealed partial class IsolatedFixtureExecutor : IFixtureExecutor
                 throw new InvalidDataException("WORKER_CONTAINER_ISOLATION_UNCONFIRMED");
             if (reader) ValidateReaderContainer(item, intent);
             if (mockTask) ValidateMockContainer(item, intent);
+            if (searchTask) ValidateSearchContainer(item, intent);
         }
     }
 
@@ -308,7 +310,7 @@ public sealed partial class IsolatedFixtureExecutor : IFixtureExecutor
             try { await process.WaitForExitAsync(); } catch (InvalidOperationException) { }
             try { await Task.WhenAll(output, errors); } catch (Exception) { }
             if (failure is BrowserOperationException progressFailure && (progressFailure.Code.StartsWith("WORKER_PROGRESS_", StringComparison.Ordinal)
-                || progressFailure.Code.StartsWith("MOCK_TASK_", StringComparison.Ordinal)))
+                || progressFailure.Code.StartsWith("MOCK_TASK_", StringComparison.Ordinal) || progressFailure.Code.StartsWith("SEARCH_TASK_", StringComparison.Ordinal)))
                 throw new BrowserOperationException(progressFailure.Code);
             throw new IOException("WORKER_RUNTIME_UNCONFIRMED");
         }

@@ -54,6 +54,41 @@ public static class TraversalRecordingDemo
             cancellationToken, null, null);
     }
 
+    internal static Task<RecordedTraversalResult> RunControlledSearchRouteAsync(string mediaFolder, BundledFixture fixture, int trial,
+        Func<SyntheticSearchInputIntent, CancellationToken, Task<SyntheticSearchInputDecision>> authorize,
+        Func<CancellationToken, Task> authorizeMode,
+        Func<string, long, ImmutableArray<CompletedCaptureSource>, CancellationToken, Task> retain,
+        CancellationToken cancellationToken)
+    {
+        _ = SyntheticSearchSites.Describe(fixture);
+        var plan = SyntheticSearchTaskControl.KeyboardPlan(trial);
+        ArgumentNullException.ThrowIfNull(authorize);
+        ArgumentNullException.ThrowIfNull(authorizeMode);
+        ArgumentNullException.ThrowIfNull(retain);
+        ChromiumRecordingProbe? current = null;
+        var document = ""; long epoch = 0;
+        Task Sources(ImmutableArray<CompletedCaptureSource> originals, CancellationToken token) => retain(document, epoch, originals, token);
+        return RunRecordedRouteAsync(mediaFolder, plan, async (folder, token) =>
+        {
+            var probe = await ChromiumFixtureBrowser.LaunchGuardedSyntheticSearchRecordingAsync(folder, fixture, async (intent, deadline) =>
+            {
+                await current!.CopyCompletedSourcesAsync(Sources, deadline).ConfigureAwait(false);
+                return await authorize(intent, deadline).ConfigureAwait(false);
+            }, token).ConfigureAwait(false);
+            try
+            {
+                var snapshot = await probe.Browser.CaptureAsync(token).ConfigureAwait(false);
+                document = snapshot.DocumentId; epoch = snapshot.CaptureEpoch; current = probe;
+                return probe;
+            }
+            catch { await probe.DisposeAsync().ConfigureAwait(false); throw; }
+        }, cancellationToken, async (checkpoint, token) =>
+        {
+            if (checkpoint.Phase == TraversalCheckpointPhase.Intent && checkpoint.Instruction?.Command == ReaderCommand.EnterFocusMode)
+                await authorizeMode(token).ConfigureAwait(false);
+        }, Sources);
+    }
+
     private static async Task<RecordedTraversalResult> RunRecordedRouteAsync(string mediaFolder, TraversalPlan plan,
         Func<string, CancellationToken, Task<ChromiumRecordingProbe>> launch,
         CancellationToken cancellationToken, Func<TraversalCheckpoint, CancellationToken, Task>? checkpoint,

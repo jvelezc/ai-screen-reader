@@ -11,7 +11,7 @@ $created=$false; $built=$false; $removed=$false; $imageRemoved=$false; $ready=$f
 $cases=[Collections.Generic.List[string]]::new()
 $releaseCreated=$false
 $script:executed=0; $script:failed=0
-$expected=if($IsLinux){79}else{76}; $linuxSignalPerformed=$false
+$expected=if($IsLinux){80}else{77}; $linuxSignalPerformed=$false
 $crashStarted=$false; $crashEvidence=$null
 $recoveryResources=[Collections.Generic.List[string]]::new()
 $names=@('POSTGRES_PASSWORD','HSR_WORKER_DATABASE','HSR_WORKER_IMAGE','HSR_WORKER_EVIDENCE','HSR_WORKER_RUNTIME','HSR_WORKER_SECCOMP',
@@ -93,6 +93,20 @@ try {
         $mockProof.OriginalsRetainedAndReadbackVerified -and @($mockProof.Collections | Where-Object {-not $_.OriginalReadbackVerified}).Count -eq 0 -and
         -not $mockProof.DatabaseAccessed -and -not $mockProof.QueueAdmissionImplemented -and -not $mockProof.AppJwtValidated -and
         -not $mockProof.PublicWebsiteInputEnabled -and -not $mockProof.LegalCaseDetermined) 'IsolatedMockTasksBindFourSourcesOriginalsAndInputAuthorityAndDenyReplayAfterLossWithOwnedRemoval'
+    $stage='isolated-search-tasks'
+    $searchText=@(& dotnet (Join-Path $testedControl 'HeadlessScreenReader.Cli.dll') --check-isolated-search-tasks 2>&1)
+    $searchExit=$LASTEXITCODE
+    ($searchText -join "`n") | Set-Content (Join-Path $folder 'search-task-runtime.json') -Encoding utf8NoBOM
+    if($searchExit -ne 0){throw 'ISOLATED_SEARCH_TASK_PROOF_FAILED'}
+    $searchProof=($searchText -join "`n") | ConvertFrom-Json
+    Assert-Proof ($searchProof.Schema -ceq 'hsr-isolated-search-task-proof-v1' -and $searchProof.State -ceq 'IsolatedSearchTasksVerified' -and
+        $searchProof.Image -ceq $imageId -and $searchProof.CollectedScenarios -eq 2 -and $searchProof.AuthorityLossesDenied -eq 1 -and
+        $searchProof.ReplayAttemptsDenied -eq 2 -and $searchProof.NativeRemovals -eq 5 -and $searchProof.PendingNativeIntents -eq 0 -and
+        $searchProof.RetainedInterruptedImages -gt 0 -and $searchProof.Collections.Count -eq 2 -and
+        @($searchProof.Collections | Where-Object {-not $_.OriginalReadbackVerified -or -not $_.ContainerAbsenceConfirmed -or
+            $_.AuthorizedBoundaries -ne 85 -or $_.NativeInputs -ne 77 -or $_.KeyboardContexts -ne 4 -or $_.MouseContexts -ne 1}).Count -eq 0 -and
+        -not $searchProof.DatabaseAccessed -and -not $searchProof.QueueAdmissionImplemented -and -not $searchProof.AppJwtValidated -and
+        -not $searchProof.PublicWebsiteInputEnabled -and -not $searchProof.LegalCaseDetermined) 'IsolatedSearchTasksRetainFiveContextsPerSourceAndPartialOriginalsAfterPerCharacterAuthorityLossWithoutReplay'
     $stage='persistent-reader'
     $queueRoot=Join-Path $env:HSR_WORKER_EVIDENCE '.runtime'
     New-Item -ItemType Directory -Force $queueRoot | Out-Null

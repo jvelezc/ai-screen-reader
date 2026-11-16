@@ -16,8 +16,14 @@ if (args.Length > 0 && args[0] is "--record-mock-tasks" or "--verify-mock-tasks"
 if (args.SequenceEqual(["--worker-mock-tasks"]))
     return await MockTaskChildWorker.RunAsync(Console.OpenStandardInput(), Console.OpenStandardOutput(), Console.OpenStandardError());
 
+if (args.SequenceEqual(["--worker-search-tasks"]))
+    return await SyntheticSearchTaskChildWorker.RunAsync(Console.OpenStandardInput(), Console.OpenStandardOutput(), Console.OpenStandardError());
+
 if (args.SequenceEqual(["--check-isolated-mock-tasks"]))
     return await IsolatedMockTaskProof.RunAsync(Console.Out);
+
+if (args.SequenceEqual(["--check-isolated-search-tasks"]))
+    return await IsolatedSearchTaskProof.RunAsync(Console.Out);
 
 if (args.SequenceEqual(["--worker-fixture"]))
     return await FixtureWorker.RunAsync(Console.OpenStandardInput(), Console.OpenStandardOutput());

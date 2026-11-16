@@ -313,6 +313,8 @@ public sealed class ChromiumMcpTests
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         var result = await client.CallToolAsync(tool, arguments, cancellationToken: timeout.Token);
         var text = Assert.IsType<TextContentBlock>(Assert.Single(result.Content)).Text;
+        Assert.True(result.StructuredContent is not null,
+            $"{tool}: structured reply missing; IsError={result.IsError ?? false}; textLength={text.Length}; textSha256={Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(text)))}. Original response text is excluded from diagnostics.");
         using var document = JsonDocument.Parse(text);
         var code = document.RootElement.TryGetProperty("errorCode", out var errorCode) ? errorCode.GetString() : null;
         Assert.True(error == (result.IsError ?? false), $"{tool}: expected IsError={error}; actual IsError={result.IsError ?? false}; errorCode={code ?? "none"}.");
