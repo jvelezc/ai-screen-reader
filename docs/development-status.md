@@ -1,13 +1,14 @@
 # Original development goals and next step
 
-Updated November 9, 2026. The original proposal under `outputs/` remains unchanged. The full product remains incomplete.
+Updated November15,2026. Privensic Screen Reader's original proposal under `outputs/` is unchanged. The full product remains incomplete.
 
-**Current source:** HTTP1.22, 33 private MCP tools. The [transport-attribution increment](validation/transport-attribution-v2.md) closes the independent-proxy and cancellation readiness gaps without recomputing historical originals. The [completion plan](completion-plan.md) separates source, CI, exact private promotion and customer acceptance.
+**Accepted production:** core6f90588/HTTP1.23/private MCP34, existing Edge18 and UIce9e581. The original account completed all three GentleBirth pricing attempts, retained30 actual reader records and ten matching originals, played every original video to the end and restored the same task with exactly one admission. Latest pre-promotion health has13 ready/live components, zero recovery attempts and zero replayed inputs. This concerns the tested task, not whole-site conformance or a legal case.
 
-**Last accepted deployment before this increment:** core eca67aa/HTTP1.21 (4037 tests per OS, all nine CI jobs), separate Lovable UI f159bbd (1061 tests per OS), existing Supabase Edge17 and 13 healthy components. Real GentleBirth pricing navigation was recorded twice by keyboard and once by pointer; all three goals were observed, all ten originals verified, all three complete videos played, and the same-review graph/diagnostic table was inspected. Its task assessment was NoBlockingBarrierInTestedTask. This result concerns that task only. The prior failed original remains unchanged.
+**Accepted newer source:** isolated search49d3a5e and stored-video recoveryf3eb455, all nine CI jobs,4,308 tests per OS and native80/80 at the latter. Those source receipts are not a new production deployment.
 
-**Next product capability:** expand the supported bounded task catalogue. Search, contact and cart preparation need explicit source-bound goals, safe input authority, repeat attempts, pointer comparison and real same-task originals. Arbitrary credential entry, completed transactions, broader assistive-technology comparisons and public MCP/plugin publication remain separate gates. Documentation and complexity reduction follow product acceptance; the original plan is preserved.
+**Current increment:** [independent tenant search delivery](validation/tenant-search-task-delivery-v1.md). Local database780/780, actual rootless Linux worker81/81, focused Chromium/HTTP/private MCP102/102 and Linux operator193/193 pass. HTTP1.24/private MCP41 are implemented; full Windows/source CI and hosted acceptance remain pending.
 
+**Next:** finish the complete source gates and promote that exact core, then connect the existing Supabase Edge and separate Lovable UI. Verify real S3 readback, original-account playback and same-demo restoration. Controlled demonstrations stay separate from customer website findings. Public search/contact/cart coverage, verified public event/video correspondence, criterion-linked coverage and broader real assistive-technology validation remain explicit product gates. Complete product documentation follows accepted functionality; behavior-preserving complexity reduction follows documentation. Public MCP/plugins remain deferred.
 ## Historical checkpoint — November 2
 
 The following snapshot retains its then-current versions, receipts and open work.

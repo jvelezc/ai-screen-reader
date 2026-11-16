@@ -33,7 +33,11 @@ public static class ReaderWorkerWire
         await input.ReadExactlyAsync(header.AsMemory(1), token).ConfigureAwait(false);
         var length = BinaryPrimitives.ReadInt32BigEndian(header);
         if (length <= 0 || length > maximumBytes)
-            throw new BrowserOperationException("READER_WORKER_FRAME_INVALID");
+            throw new BrowserOperationException("READER_WORKER_FRAME_INVALID")
+            {
+                Data = { ["DeclaredBytes"] = length, ["MaximumBytes"] = maximumBytes,
+                ["HeaderSha256"] = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(header)) }
+            };
         var payload = new byte[length];
         await input.ReadExactlyAsync(payload, token).ConfigureAwait(false);
         return payload;

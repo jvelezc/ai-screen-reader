@@ -32,7 +32,7 @@ public sealed class PublicTaskMcpHttpTests
     {
         using var rig = await PublicTaskHttpTests.Rig.Create(); await using var server = await rig.Server();
         await using var mcp = await Connect(server.BaseAddress, rig.Status.Job.OrganizationId);
-        var tools = await mcp.ListToolsAsync(); Assert.Equal(34, tools.Count);
+        var tools = await mcp.ListToolsAsync(); Assert.Equal(41, tools.Count);
         var args = new Dictionary<string, object?> { ["scanId"] = rig.Status.Job.ParentScanId, ["jobId"] = rig.Status.Job.JobId };
         var result = await Call(mcp, "website_task_result", args);
         Assert.Equal("WebsiteEvidenceReady", result.GetProperty("data").GetProperty("assessment").GetProperty("outcome").GetString());

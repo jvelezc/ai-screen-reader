@@ -94,6 +94,32 @@ public sealed class ControlledSearchCollectionTests
         var decoded = SyntheticSearchTaskBundle.Decode(encoded, start);
         Assert.Equal(archiveBytes, decoded.Originals);
         Assert.Equal(bundle.Receipt, decoded.Receipt);
+        // Storage accepts the trusted lifecycle contract; actual container absence is a separate native-runtime gate.
+        var localObjects = new FileTraversalObjectStore(Path.Combine(root, "local-objects"));
+        var remoteObjects = new FileTraversalObjectStore(Path.Combine(root, "provider-objects"));
+        var storage = new SyntheticSearchTaskArchive(localObjects, remoteObjects);
+        var prepared = await storage.PrepareAsync(new(start, encoded, true, grants.DirectoryPath), _ => Task.FromResult(true), CancellationToken.None);
+        Assert.False(prepared.OriginalsVerified);
+        Assert.Equal("SEARCH_TASK_PUBLICATION_INVALID", Assert.Throws<BrowserOperationException>(prepared.Validate).Code);
+        var publication = await storage.PublishAsync(start.Job, start.WorkerId, prepared, _ => Task.FromResult(true), CancellationToken.None);
+        publication.Validate();
+        var restored = await storage.ReadAsync(start.Job, start.WorkerId, publication, CancellationToken.None);
+        Assert.Equal(start, restored.Start);
+        Assert.True(JsonElement.DeepEquals(JsonSerializer.SerializeToElement(manifest, ReaderWorkerWire.Json),
+            JsonSerializer.SerializeToElement(restored.Manifest, ReaderWorkerWire.Json)));
+        Assert.Equal(manifest.Files.Length + 1, restored.Files.Count);
+        foreach (var file in manifest.Files)
+        {
+            Assert.Equal(file.Bytes, restored.Files[file.Path].Length);
+            Assert.Equal(file.Sha256, TraversalArchive.Hash(restored.Files[file.Path]));
+        }
+        Assert.Equal(archiveBytes, restored.Archive);
+        await PortalSearchTasksTests.AssertOriginalDeliveryAsync(storage, start, publication, restored.Files);
+        Assert.Equal("SEARCH_TASK_ARCHIVE_INVALID", (await Assert.ThrowsAsync<BrowserOperationException>(() =>
+            storage.ReadAsync(start.Job, Guid.NewGuid(), publication, CancellationToken.None))).Code);
+        Assert.Equal("SEARCH_TASK_AUTHORITY_LOST", (await Assert.ThrowsAsync<BrowserOperationException>(() =>
+            storage.PublishAsync(start.Job, start.WorkerId, prepared, _ => Task.FromResult(false), CancellationToken.None))).Code);
+        Assert.Equal(77, nativeCalls);
         foreach (var mutation in new[] { "legal-claim", "outcome", "entry-value", "field-plan", "graph-keys", "original-video", "pointer-clock" })
         {
             var changed = Change(bundle, mutation);

@@ -12,7 +12,7 @@ internal static partial class PortalOpenApi
 {
     private static readonly Lazy<string> Cached = new(Build);
     public static string Document => Cached.Value;
-    public const string ContractVersion = "1.23.0";
+    public const string ContractVersion = "1.24.0";
 
     private static string Build()
     {
@@ -68,6 +68,7 @@ internal static partial class PortalOpenApi
         };
         AddPublicWebsiteSchemas(schemas);
         AddPublicTaskSchemas(schemas);
+        AddSearchTaskSchemas(schemas);
         var paths = new JsonObject
         {
             ["/api/workspaces/{organization}/archives/{archive}/manifest"] = Path("post", Operation("ReadArchiveManifest", "Read32 entries at most; indexSha256 is caller-retained authority for content identity, not tenant access. Original user/workspace RLS checked before and after storage. Metadata does not establish original availability, scan admission, custody or a goal", "ArchiveManifest", true, "ArchiveManifestRequest", organization: true, archive: true)),
@@ -123,6 +124,7 @@ internal static partial class PortalOpenApi
             "ScanCancellation", true, "EmptyRequest", 202, organization: true, scan: true));
         AddPublicWebsitePaths(paths);
         AddPublicTaskPaths(paths);
+        AddSearchTaskPaths(paths);
         return new JsonObject
         {
             ["openapi"] = "3.1.0",
@@ -178,6 +180,7 @@ internal static partial class PortalOpenApi
                     && context.TypeInfo.Type != typeof(EvidenceReadinessRequest))
                     value["required"] = Strings(properties.Select(property => property.Key).ToArray());
                 ApplyPublicWebsiteSchema(context.TypeInfo.Type, value, properties);
+                ApplySearchTaskSchema(context.TypeInfo.Type, value, properties);
                 if (context.TypeInfo.Type == typeof(PortalWorkspacePageResponse))
                 {
                     properties["workspaces"]!["maxItems"] = 50;

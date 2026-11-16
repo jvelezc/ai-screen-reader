@@ -18,6 +18,7 @@ internal static class WorkerHealth
             await using var database = WorkerDatabase.Create(connection ?? "");
             await using var leases = new PostgresPublicWebsiteLeases(database);
             await leases.VerifySchemaAsync(token).ConfigureAwait(false);
+            if (!await new SearchTaskLeases(database).AvailableAsync(token).ConfigureAwait(false)) throw new IOException();
         });
         var broker = new ReaderHostClient(root, image);
         checks.Add(new("ReaderBroker", await broker.ReadyAsync().ConfigureAwait(false) ? "Ready" : "Unavailable"));

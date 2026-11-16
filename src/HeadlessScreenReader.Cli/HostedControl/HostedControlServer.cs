@@ -21,7 +21,11 @@ internal sealed record PortalEmptyRequest;
 
 internal sealed record PortalRequestDiagnostic(string Schema, string SupportReference, string ReleaseCommit,
     string Operation, string Method, int Status, string? ErrorCode, double ElapsedMilliseconds,
-    Guid? OrganizationId, Guid? ScanId);
+    Guid? OrganizationId, Guid? ScanId)
+{
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public Guid? JobId { get; init; }
+}
 
 /// <summary>Private control plane. All tenant operations revalidate identity and use RLS.</summary>
 internal sealed class HostedControlServer : IAsyncDisposable
@@ -30,8 +34,18 @@ internal sealed class HostedControlServer : IAsyncDisposable
     public Uri BaseAddress { get; }
     private HostedControlServer(WebApplication app, Uri address) { _app = app; BaseAddress = address; }
 
-    public static async Task<HostedControlServer> StartAsync(PortalOptions options, IPortalProjectClient project,
+    public static Task<HostedControlServer> StartAsync(PortalOptions options, IPortalProjectClient project,
         IPortalObservationReader observations, CancellationToken token = default, PortalReaderSessions? readerSessions = null,
+        Func<Task<bool>>? readerRuntimeReady = null, HeadlessScreenReader.Worker.TraversalArchive? traversalArchive = null,
+        IPortalProgressReader? progressReader = null, IPortalProgressSnapshotReader? progressSnapshotReader = null,
+        IPortalRecordedOutputReader? recordedOutputReader = null, IPortalSourceImagesReader? sourceImagesReader = null,
+        Func<Task<bool>>? publicWebsiteRuntimeReady = null, Action<PortalRequestDiagnostic>? diagnostic = null,
+        HeadlessScreenReader.Worker.PublicTaskEvidenceStore? publicTaskEvidence = null) =>
+        StartWithSearchAsync(options, project, observations, null, token, readerSessions, readerRuntimeReady, traversalArchive,
+            progressReader, progressSnapshotReader, recordedOutputReader, sourceImagesReader, publicWebsiteRuntimeReady, diagnostic, publicTaskEvidence);
+
+    internal static async Task<HostedControlServer> StartWithSearchAsync(PortalOptions options, IPortalProjectClient project,
+        IPortalObservationReader observations, PortalSearchTasks? searchTasks, CancellationToken token = default, PortalReaderSessions? readerSessions = null,
         Func<Task<bool>>? readerRuntimeReady = null, HeadlessScreenReader.Worker.TraversalArchive? traversalArchive = null,
         IPortalProgressReader? progressReader = null, IPortalProgressSnapshotReader? progressSnapshotReader = null,
         IPortalRecordedOutputReader? recordedOutputReader = null, IPortalSourceImagesReader? sourceImagesReader = null,
@@ -68,6 +82,7 @@ internal sealed class HostedControlServer : IAsyncDisposable
         builder.Services.AddSingleton<IPortalPublicWebsites>(_ => new PortalPublicWebsiteService(project,
             project as IPortalPublicWebsiteProjectClient, publicWebsiteRuntimeReady));
         builder.Services.AddSingleton(new PortalPublicTasks(project as IPortalPublicTaskProject, publicTaskEvidence, publicWebsiteRuntimeReady));
+        builder.Services.AddSingleton(searchTasks ?? new PortalSearchTasks(project as IPortalSearchTaskProject, null, null));
         var app = builder.Build();
         Uri? bound = null;
         app.Use(async (context, next) =>
@@ -114,12 +129,16 @@ internal sealed class HostedControlServer : IAsyncDisposable
                     or "AdmitPublicTask" or "ReadLatestPublicTask" or "ReadPublicTaskStatus" or "CancelPublicTask"
                         or "ReadPublicTaskResult" or "ReadPublicTaskDiagnosticsResult" or "ReadPublicTaskEvents" or "ReadPublicTaskReader" or "ReadPublicTaskGraph" or "ReadPublicTaskOriginal"
                     or "PortalSession" or "EnsurePersonalWorkspace" or "GetPortalWorkspace" ? operation : "Other";
+                var searchOperation = context.GetEndpoint()?.Metadata.GetMetadata<IEndpointNameMetadata>()?.EndpointName;
+                if (searchOperation is "AdmitSearchTask" or "ReadLatestSearchTask" or "ReadSearchTaskStatus" or "CancelSearchTask"
+                    or "ReadSearchTaskResult" or "ReadSearchTaskFiles" or "ReadSearchTaskOriginal" or "ReadSearchTaskDiagnostics") operation = searchOperation;
                 Guid? Id(string key) => context.Items.ContainsKey(typeof(PortalIdentity))
                     && Guid.TryParse(context.Request.RouteValues[key]?.ToString(), out var id) ? id : null;
                 var value = new PortalRequestDiagnostic("hsr-control-request-v1", reference, options.ReleaseCommit,
                     operation, context.Request.Method is "GET" or "POST" or "OPTIONS" ? context.Request.Method : "Other",
                     errorCode == "CANCELLED" ? 499 : context.Response.StatusCode, errorCode,
-                    System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds, Id("organization"), Id("scan"));
+                    System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds, Id("organization"), Id("scan"))
+                { JobId = Id("job") };
                 try
                 {
                     diagnostic?.Invoke(value);
@@ -139,6 +158,7 @@ internal sealed class HostedControlServer : IAsyncDisposable
         app.MapScanCancellation();
         app.MapPublicWebsites();
         PortalPublicTaskEndpoints.Map(app);
+        PortalSearchTaskEndpoints.Map(app);
         try
         {
             await app.StartAsync(token).ConfigureAwait(false);
@@ -156,6 +176,9 @@ internal sealed class HostedControlServer : IAsyncDisposable
         or "DATABASE_UNAVAILABLE" or "AUTH_PROVIDER_UNAVAILABLE" or "CONTROL_DATABASE_UNAVAILABLE" or "CONTROL_AUTH_PROVIDER_UNAVAILABLE"
         or "CONTROL_PUBLIC_TASK_RUNTIME_UNAVAILABLE" or "CONTROL_PUBLIC_TASK_ORIGINAL_UNAVAILABLE" or "CONTROL_PUBLIC_TASK_RESPONSE_INVALID"
         or "CONTROL_PUBLIC_TASK_CHANGED" or "CONTROL_PUBLIC_TASK_NOT_READY" or "CONTROL_PUBLIC_TASK_NOT_FOUND" or "CONTROL_PUBLIC_TASK_UNAVAILABLE"
+        or "CONTROL_SEARCH_TASK_RUNTIME_UNAVAILABLE" or "CONTROL_SEARCH_TASK_ORIGINAL_UNAVAILABLE" or "CONTROL_SEARCH_TASK_RESPONSE_INVALID"
+        or "CONTROL_SEARCH_TASK_CHANGED" or "CONTROL_SEARCH_TASK_NOT_READY" or "CONTROL_SEARCH_TASK_NOT_FOUND" or "CONTROL_SEARCH_TASK_UNAVAILABLE"
+        or "CONTROL_SEARCH_TASK_QUEUE_FULL" or "CONTROL_SEARCH_TASK_FILE_NOT_FOUND"
         ? code : "CONTROL_REQUEST_FAILED";
     internal static void NoQuery(HttpContext context)
     {

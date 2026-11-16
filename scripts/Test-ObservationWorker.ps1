@@ -11,11 +11,12 @@ $created=$false; $built=$false; $removed=$false; $imageRemoved=$false; $ready=$f
 $cases=[Collections.Generic.List[string]]::new()
 $releaseCreated=$false
 $script:executed=0; $script:failed=0
-$expected=if($IsLinux){80}else{77}; $linuxSignalPerformed=$false
+$expected=if($IsLinux){84}else{81}; $linuxSignalPerformed=$false
 $crashStarted=$false; $crashEvidence=$null
 $recoveryResources=[Collections.Generic.List[string]]::new()
 $names=@('POSTGRES_PASSWORD','HSR_WORKER_DATABASE','HSR_WORKER_IMAGE','HSR_WORKER_EVIDENCE','HSR_WORKER_RUNTIME','HSR_WORKER_SECCOMP',
-    'HSR_CONTROL_PUBLISHABLE_KEY','HSR_CONTROL_EVIDENCE','HSR_CONTROL_PORT','HSR_CONTROL_ORIGIN','HSR_RELEASE_COMMIT')
+    'HSR_CONTROL_PUBLISHABLE_KEY','HSR_CONTROL_EVIDENCE','HSR_CONTROL_PORT','HSR_CONTROL_ORIGIN','HSR_RELEASE_COMMIT',
+    'HSR_EVIDENCE_S3_ACCESS_KEY','HSR_EVIDENCE_S3_SECRET')
 $prior=@{}; foreach($key in $names){$prior[$key]=[Environment]::GetEnvironmentVariable($key)}
 function Assert-Proof([bool]$condition,[string]$case){$script:executed++;if(-not $condition){$script:failed++;throw "WORKER_CASE_UNCONFIRMED_$case"};$cases.Add($case)}
 function Test-WorkerStopDiagnostic([object[]]$output,[string]$expectedStage){
@@ -25,13 +26,18 @@ function Test-WorkerStopDiagnostic([object[]]$output,[string]$expectedStage){
         $value.Category -cin @('DatabaseRejected','DatabaseUnavailable','IoUnavailable','Canceled','Unexpected') -and
         $null -eq $value.SqlState -and $value.Retryable -is [bool] -and -not $value.Retryable
 }
-function Invoke-ProofSql([string]$query){
+function Invoke-ProofSql([string]$query,[ValidateSet('postgres','supabase_admin')][string]$SqlUser='postgres'){
     # SQL (including disposable test password) goes through stdin, never command arguments or retained files.
-    $text=@($query | & $Runtime exec --interactive $name psql -X -U postgres -d postgres -qAt -v ON_ERROR_STOP=1 2>&1)
-    if($LASTEXITCODE -ne 0){throw 'WORKER_DATABASE_SQL_UNCONFIRMED'}
+    $text=@($query | & $Runtime exec --interactive $name psql -X -U $SqlUser -d postgres -qAt -v ON_ERROR_STOP=1 -v VERBOSITY=sqlstate 2>&1)
+    if($LASTEXITCODE -ne 0){
+        $state=[regex]::Match(($text -join "`n"),'(?m)ERROR:\s+([0-9A-Z]{5})\s*$')
+        throw $(if($state.Success){'WORKER_DATABASE_SQL_UNCONFIRMED_'+$state.Groups[1].Value}else{'WORKER_DATABASE_SQL_UNCONFIRMED'})
+    }
     return ($text -join "`n")
 }
 try {
+    # Disposable native/database acceptance must not inherit a hosted evidence destination.
+    $env:HSR_EVIDENCE_S3_ACCESS_KEY=$null; $env:HSR_EVIDENCE_S3_SECRET=$null
     dotnet publish (Join-Path $repoRoot 'src/HeadlessScreenReader.Cli/HeadlessScreenReader.Cli.csproj') -c Release -p:RestoreLockedMode=true -p:PlaywrightPlatform=linux-x64 -o (Join-Path $repoRoot 'artifacts/worker-build/cli') | Out-Null
     if($LASTEXITCODE -ne 0){throw 'WORKER_FIXTURE_PUBLISH_FAILED'}
     dotnet build (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/HeadlessScreenReader.Worker.csproj') -c Release -p:RestoreLockedMode=true | Out-Null
@@ -264,6 +270,53 @@ try {
     Assert-Proof ((Get-FileHash $manifestPath -Algorithm SHA256).Hash.ToLowerInvariant() -ceq $producer.manifest -and $source.Schema -ceq 'hsr-worker-observation-package-v1' -and $source.Job.OrganizationId -eq $org -and $source.Job.ScanId -eq $job.scan_id -and $source.Job.JobId -eq $job.job_id -and $source.Job.Generation -eq 1 -and $source.WorkerId -eq $producer.actual_worker -and $source.ObservationSha256 -ceq $facts.digest -and $source.Origin -ceq 'QueueWorkerObservation' -and $source.Recording -ceq 'NotCollected' -and $source.DispatchedInputs -eq 0 -and -not $source.GoalVerified) 'ProducerManifestPreservesNoRecordingNoInputAndActualAttemptScope'
     $remaining=Invoke-ReaderRuntime $Runtime @('ps','--all','--filter','name=^hsr-observation-','--format','{{.ID}}')
     Assert-Proof ([string]::IsNullOrWhiteSpace($remaining.Text)) 'OwnedObservationContainerIsRemovedBeforeCompletion'
+    $stage='tenant-search-task'
+    $searchSession=[Guid]::NewGuid(); $searchRequest=[Guid]::NewGuid()
+    $null=Invoke-ProofSql "insert into auth.sessions(id,user_id,not_after) values('$searchSession','$user',clock_timestamp()+interval '1 hour');" -SqlUser supabase_admin
+    $searchAdmission=Invoke-ProofSql "begin; set local role authenticated; select set_config('request.jwt.claim.sub','$user',true); select set_config('request.jwt.claims',json_build_object('sub','$user','session_id','$searchSession')::text,true); select hsr.create_search_task('$org','$searchRequest','search-working'); commit;"
+    $searchJob=@($searchAdmission -split "`n" | Where-Object {$_ -match '"Schema"\s*:\s*"hsr-search-task-status-v1"'} | ConvertFrom-Json)
+    if($searchJob.Count -ne 1){throw 'SEARCH_TASK_ADMISSION_UNCONFIRMED'}; $searchJob=$searchJob[0]
+    $searchOutput=@(& dotnet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --once-search-task 2>&1)
+    $searchExit=$LASTEXITCODE; ($searchOutput -join "`n") | Set-Content (Join-Path $folder 'tenant-search-task.json') -Encoding utf8NoBOM
+    $searchRun=($searchOutput -join "`n") | ConvertFrom-Json
+    $searchSaved=(Invoke-ProofSql "select hsr.search_task_metadata(t) from hsr.search_tasks t where organization_id='$org' and id='$($searchJob.Job.JobId)';") | ConvertFrom-Json
+    $searchArchivePath=Join-Path $env:HSR_WORKER_EVIDENCE "search-archives/traversal-v1/$($org.ToString('N'))/$(([Guid]$searchJob.Job.JobId).ToString('N'))/$($searchSaved.Publication.IndexSha256)/index.json"
+    $searchIndex=Get-Content -LiteralPath $searchArchivePath -Raw | ConvertFrom-Json
+    $searchPartsValid=$true
+    foreach($part in $searchIndex.Parts){$partPath=Join-Path (Split-Path $searchArchivePath -Parent) "objects/$($part.Sha256)"; $searchPartsValid=$searchPartsValid -and (Get-Item -LiteralPath $partPath).Length -eq $part.Bytes -and (Get-FileHash -LiteralPath $partPath -Algorithm SHA256).Hash.ToLowerInvariant() -ceq $part.Sha256}
+    Assert-Proof ($searchExit -eq 0 -and $searchRun.State -ceq 'Observed' -and $searchRun.JobId -eq $searchJob.Job.JobId -and
+        -not $searchRun.WebsiteInputReplayed -and -not $searchRun.PublicationOnly -and $searchSaved.State -ceq 'completed' -and
+        $searchSaved.ProducerId -eq $searchRun.ProducerId -and $searchSaved.Publication.ExecutionId -eq $searchRun.ExecutionId -and
+        $searchSaved.Publication.NativeRemoved -and $searchSaved.Publication.OriginalsVerified -and -not $searchSaved.Publication.LegalCaseDetermined -and
+        $searchIndex.Schema -ceq 'hsr-search-task-archive-v1' -and $searchIndex.Start.Job.JobId -eq $searchJob.Job.JobId -and
+        $searchIndex.Start.WorkerId -eq $searchRun.ProducerId -and $searchPartsValid -and
+        (Get-FileHash -LiteralPath $searchArchivePath -Algorithm SHA256).Hash.ToLowerInvariant() -ceq $searchSaved.Publication.IndexSha256) 'TenantSearchUsesRealDatabaseLeaseAndRetainsIndependentFiveContextOriginals'
+    $searchRepeat=@(& dotnet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --once-search-task 2>&1)
+    $searchRepeatExit=$LASTEXITCODE; $searchRepeatResult=($searchRepeat -join "`n") | ConvertFrom-Json
+    $searchHistory=(Invoke-ProofSql "select count(*) from hsr.search_task_publication_history where organization_id='$org' and job_id='$($searchJob.Job.JobId)';").Trim()
+    Assert-Proof ($searchRepeatExit -eq 0 -and $searchRepeatResult.State -ceq 'Empty' -and $searchHistory -ceq '1') 'CompletedTenantSearchCannotReclaimInputOrCreateAnotherPublication'
+    $searchDeniedRequest=[Guid]::NewGuid()
+    $searchDeniedAdmission=Invoke-ProofSql "begin; set local role authenticated; select set_config('request.jwt.claim.sub','$user',true); select set_config('request.jwt.claims',json_build_object('sub','$user','session_id','$searchSession')::text,true); select hsr.create_search_task('$org','$searchDeniedRequest','search-working'); commit;"
+    $searchDeniedJob=@($searchDeniedAdmission -split "`n" | Where-Object {$_ -match '"Schema"\s*:\s*"hsr-search-task-status-v1"'} | ConvertFrom-Json)[0]
+    $null=Invoke-ProofSql "update auth.sessions set not_after=clock_timestamp()-interval '1 second' where id='$searchSession';" -SqlUser supabase_admin
+    $searchDeniedOutput=@(& dotnet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --once-search-task 2>&1)
+    $searchDeniedExit=$LASTEXITCODE; $searchDenied=($searchDeniedOutput -join "`n") | ConvertFrom-Json
+    ($searchDeniedOutput -join "`n") | Set-Content (Join-Path $folder 'tenant-search-denied.json') -Encoding utf8NoBOM
+    Assert-Proof ($searchDeniedExit -eq 3 -and $searchDenied.State -ceq 'AuthorityLost' -and $searchDenied.JobId -eq $searchDeniedJob.Job.JobId -and
+        $searchDenied.ErrorCode -ceq 'SEARCH_TASK_AUTHORITY_LOST' -and -not $searchDenied.WebsiteInputReplayed) 'ExpiredTenantSearchSessionRetainsRejectedJobAndNonzeroWorkerOutcome'
+    $null=Invoke-ProofSql "update auth.sessions set not_after=clock_timestamp()+interval '1 hour' where id='$searchSession';" -SqlUser supabase_admin
+    $stage='search-health'
+    $healthyText=@(& dotnet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --check-health 2>&1)
+    $healthyExit=$LASTEXITCODE; $healthySearch=($healthyText -join "`n") | ConvertFrom-Json
+    $null=Invoke-ProofSql 'revoke execute on function hsr.finish_search_task(uuid,uuid,uuid,uuid,jsonb) from hsr_worker;'
+    try {
+        $degradedText=@(& dotnet (Join-Path $repoRoot 'src/HeadlessScreenReader.Worker/bin/Release/net10.0/HeadlessScreenReader.Worker.dll') --check-health 2>&1)
+        $degradedExit=$LASTEXITCODE; $degradedSearch=($degradedText -join "`n") | ConvertFrom-Json
+    } finally { $null=Invoke-ProofSql 'grant execute on function hsr.finish_search_task(uuid,uuid,uuid,uuid,jsonb) to hsr_worker;' }
+    @($healthySearch,$degradedSearch) | ConvertTo-Json -Depth 5 | Set-Content (Join-Path $folder 'search-health.json') -Encoding utf8NoBOM
+    Assert-Proof ($healthyExit -eq 0 -and $degradedExit -eq 0 -and $healthySearch.InputsDispatched -eq 0 -and $degradedSearch.InputsDispatched -eq 0 -and
+        @($healthySearch.Components | Where-Object {$_.Component -ceq 'DatabaseQueue' -and $_.State -ceq 'Ready'}).Count -eq 1 -and
+        @($degradedSearch.Components | Where-Object {$_.Component -ceq 'DatabaseQueue' -and $_.State -ceq 'Unavailable'}).Count -eq 1) 'SearchHealthRequiresEveryWorkerRpcPermissionWithoutClaimingOrSendingInput'
     $stage='passive-recording'
     $recordRequest=[Guid]::NewGuid()
     $admission=Invoke-ProofSql "begin; set local role authenticated; select set_config('request.jwt.claim.sub','$user',true); select row_to_json(r) from hsr.create_recorded_observation('$org','$recordRequest') r; commit;"

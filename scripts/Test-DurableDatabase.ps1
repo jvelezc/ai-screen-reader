@@ -11,7 +11,7 @@ New-Item -ItemType Directory -Path $folder | Out-Null
 $created = $false; $removed = $false; $ready = $false; $stage = 'create'; $errorCode = $null
 $cases = [Collections.Generic.List[string]]::new()
 $script:discovered = 0; $script:executed = 0; $script:failed = 0
-$expectedCases = 695
+$expectedCases = 780
 $oldPassword = $env:POSTGRES_PASSWORD
 
 function Wait-DatabaseReady {
@@ -126,6 +126,8 @@ try {
     Invoke-DatabaseFile 'tests/database/public-website-status.sql' 'public-website-status' -Expected 29 -User 'supabase_admin'
     $stage = 'public-navigation-tasks'
     Invoke-DatabaseFile 'tests/database/public-navigation-tasks.sql' 'public-navigation-tasks' -Expected 32 -User 'supabase_admin'
+    $stage = 'search-tasks'
+    Invoke-DatabaseFile 'tests/database/search-tasks.sql' 'search-tasks' -Expected 85 -User 'supabase_admin'
     $stage = 'concurrent-cancellation'
     Invoke-DatabaseFile 'tests/database/concurrent-scan-cancellation.sql' 'concurrent-cancellation' -Expected 15 -User 'supabase_admin'
     $stage = 'concurrent-publication'

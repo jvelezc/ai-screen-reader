@@ -57,7 +57,9 @@ internal static class HostedControlDemo
             if (!await readerHost.ReadyAsync().ConfigureAwait(false)) throw new InvalidOperationException();
             await using var readers = new PortalReaderSessions(project, TimeProvider.System,
                 (subject, organization, session) => new PortalHostedReaderBrowser(readerHost, subject, organization, session));
-            await using var server = await HostedControlServer.StartAsync(options, project, new PortalObservationReader(evidence, archive),
+            var searchArchive = new SyntheticSearchTaskArchive(new FileTraversalObjectStore(Path.Combine(evidence, "search-archives")), traversalStore);
+            var searchTasks = new PortalSearchTasks(project, searchArchive, readerHost.PublicJobsReadyAsync);
+            await using var server = await HostedControlServer.StartWithSearchAsync(options, project, new PortalObservationReader(evidence, archive), searchTasks,
                 stop.Token, readers, readerHost.ReadyAsync, traversalStore is null ? null : new TraversalArchive(traversalStore),
                 publicWebsiteRuntimeReady: readerHost.PublicJobsReadyAsync,
                 diagnostic: value => Console.Error.WriteLine(JsonSerializer.Serialize(value)), publicTaskEvidence: taskEvidence).ConfigureAwait(false);

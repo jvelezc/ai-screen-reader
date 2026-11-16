@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using System.Collections.Immutable;
 using System.Text.Json;
 using HeadlessScreenReader.Domain;
 
@@ -15,6 +16,12 @@ public sealed partial record SyntheticSearchTaskBundle(SyntheticSearchTaskCollec
 {
     public const int MaximumArchiveBytes = 26 * 1024 * 1024;
     public const int MaximumBundleBytes = MaximumArchiveBytes + 64 * 1024;
+
+    public ImmutableDictionary<string, byte[]> ReadVerifiedOriginals(SyntheticSearchTaskStart expected)
+    {
+        Validate(expected);
+        return ReadFiles(Originals, MaximumArchiveBytes, 1400).ToImmutableDictionary(StringComparer.Ordinal);
+    }
 
     public void Validate(SyntheticSearchTaskStart expected)
     {

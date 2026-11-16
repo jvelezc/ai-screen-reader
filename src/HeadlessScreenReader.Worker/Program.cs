@@ -39,7 +39,7 @@ if (recordingRecovery && (!Guid.TryParseExact(args[1], "D", out publicationOrgan
     || !long.TryParse(args[3], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out publicationGeneration)
     || publicationGeneration is < 1 or > 3)) return 2;
 if (!recordingRecovery && (args.Length != 1 || args[0] is not ("--once" or "--poll" or "--recover" or "--check-runtime" or "--check-reader-runtime" or "--recover-reader" or "--host-reader"
-    or "--once-public" or "--check-public-runtime" or "--recover-public-reader" or "--check-health" or "--once-public-task" or "--recover-public-tasks")))
+    or "--once-public" or "--check-public-runtime" or "--recover-public-reader" or "--check-health" or "--once-public-task" or "--recover-public-tasks" or "--once-search-task")))
 {
     Console.Error.WriteLine("Usage: HeadlessScreenReader.Worker --once | --once-public | --poll | --recover | --check-runtime | --check-reader-runtime | --recover-reader | --check-public-runtime | --recover-public-reader | --host-reader | --recover-recording <organization> <job> <generation>. Operator configuration is supplied through the private service environment.");
     return 2;
@@ -192,6 +192,17 @@ try
     var producer = new WorkerEvidenceFinalizer(new TraversalArchive(producerObjects is null
         ? new FileTraversalObjectStore(Path.Combine(evidence, "archives")) : producerObjects));
     await using var database = WorkerDatabase.Create(connection);
+    var searchLeases = new SearchTaskLeases(database);
+    var searchAvailable = args[0] is "--poll" or "--once-search-task" && await searchLeases.AvailableAsync(stop.Token);
+    var searchCoordinator = searchAvailable ? new SyntheticSearchTaskCoordinator(searchLeases, executor,
+        new SyntheticSearchTaskArchive(new FileTraversalObjectStore(Path.Combine(evidence, "search-archives")), producerObjects)) : null;
+    if (args[0] == "--once-search-task")
+    {
+        if (searchCoordinator is null) throw new InvalidOperationException();
+        var searchResult = await searchCoordinator.RunOnceAsync(Guid.NewGuid(), stop.Token);
+        Console.WriteLine(JsonSerializer.Serialize(searchResult));
+        return searchResult.State is "Observed" or "Empty" ? 0 : 3;
+    }
     var taskLeases = new PublicTaskLeases(database);
     var tasksAvailable = args[0] is "--poll" or "--once-public-task" && await taskLeases.AvailableAsync(stop.Token);
     using var taskExecutor = tasksAvailable ? new PublicTaskExecutor(evidence, PublicWebsiteRuntime.Scripts, runtime, image) : null;
@@ -222,8 +233,18 @@ try
     string? previousState = null;
     string? previousPublicState = null;
     string? previousTaskState = null;
+    string? previousSearchState = null;
     do
     {
+        if (searchCoordinator is not null)
+        {
+            stage = "SearchTaskCycle";
+            var searchResult = await searchCoordinator.RunOnceAsync(worker, stop.Token);
+            if (searchResult.State != "Empty" || previousSearchState != searchResult.State)
+                Console.WriteLine(JsonSerializer.Serialize(searchResult));
+            previousSearchState = searchResult.State;
+            if (searchResult.State == "Unconfirmed") return 3;
+        }
         if (taskCoordinator is not null)
         {
             stage = "PublicTaskCycle";

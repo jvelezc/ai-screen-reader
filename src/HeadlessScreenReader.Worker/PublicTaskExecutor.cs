@@ -46,6 +46,9 @@ public sealed class PublicTaskExecutor : IDisposable
                 FileMode.CreateNew, FileAccess.Write, FileShare.Read, 4096, FileOptions.Asynchronous | FileOptions.WriteThrough))
             { await JsonSerializer.SerializeAsync(fence, start, ReaderWorkerWire.Json, token).ConfigureAwait(false); await fence.FlushAsync(token).ConfigureAwait(false); fence.Flush(true); }
             var info = Launch("Start-IsolatedPublicReader.ps1", intent);
+            var launcherDiagnostics = Path.Combine(_root, "diagnostics"); Directory.CreateDirectory(launcherDiagnostics);
+            info.ArgumentList.Add("-FailurePath");
+            info.ArgumentList.Add(Path.Combine(launcherDiagnostics, $"{start.ExecutionId:N}-launcher.json"));
             foreach (var arg in new[] { "-AllowedHost", job.Source.AllowedHost, "-TargetUrl", job.Source.TargetUrl, "-NavigationTask" }) info.ArgumentList.Add(arg);
             using var deadline = CancellationTokenSource.CreateLinkedTokenSource(token); deadline.CancelAfter(TimeSpan.FromSeconds(190));
             using var process = new Process { StartInfo = info };
@@ -94,6 +97,51 @@ public sealed class PublicTaskExecutor : IDisposable
                         await progress.HandleAsync(bytes, process.StandardInput.BaseStream, deadline.Token).ConfigureAwait(false);
                         if (progress.Published) process.StandardInput.Close();
                     }
+                }
+                catch (BrowserOperationException error) when (error.Code == "READER_WORKER_FRAME_INVALID")
+                {
+                    var tail = new byte[8192]; var count = 0; var complete = false;
+                    using var inspect = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+                    try
+                    {
+                        while (count < tail.Length)
+                        {
+                            var read = await process.StandardError.BaseStream.ReadAsync(tail.AsMemory(count), inspect.Token).ConfigureAwait(false);
+                            if (read == 0) { complete = true; break; }
+                            count += read;
+                        }
+                    }
+                    catch (Exception failure) when (failure is OperationCanceledException or IOException) { }
+                    var text = System.Text.Encoding.UTF8.GetString(tail, 0, count);
+                    var type = new[] { "System.IO.IOException", "System.ObjectDisposedException", "System.UnauthorizedAccessException",
+                        "System.OperationCanceledException", "System.OutOfMemoryException", "System.InvalidOperationException" }
+                        .FirstOrDefault(text.Contains) ?? "Unclassified";
+                    var reason = text.Contains("Directory not empty", StringComparison.Ordinal) ? "DirectoryNotEmpty"
+                        : text.Contains("No space left", StringComparison.Ordinal) ? "NoSpace"
+                        : text.Contains("Permission denied", StringComparison.Ordinal) ? "PermissionDenied" : "Unclassified";
+                    var retained = new
+                    {
+                        Schema = "hsr-public-task-wire-failure-v1",
+                        start.ExecutionId,
+                        job.OrganizationId,
+                        job.JobId,
+                        DeclaredBytes = error.Data["DeclaredBytes"],
+                        MaximumBytes = error.Data["MaximumBytes"],
+                        HeaderSha256 = error.Data["HeaderSha256"],
+                        TailBytes = count,
+                        TailSha256 = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(tail.AsSpan(0, count))),
+                        TailReadComplete = complete,
+                        Truncated = !complete,
+                        TruncationReason = complete ? null : count == tail.Length ? "ByteLimit" : "ReadUnconfirmed",
+                        FailureType = type,
+                        OsReason = reason,
+                        progress.Published,
+                        ProcessExited = process.HasExited,
+                        ExitCode = process.HasExited ? (int?)process.ExitCode : null
+                    };
+                    await File.WriteAllBytesAsync(Path.Combine(launcherDiagnostics, $"{start.ExecutionId:N}-wire.json"),
+                        JsonSerializer.SerializeToUtf8Bytes(retained), CancellationToken.None).ConfigureAwait(false);
+                    await deadline.CancelAsync().ConfigureAwait(false); throw;
                 }
                 catch { await deadline.CancelAsync().ConfigureAwait(false); throw; }
             }
