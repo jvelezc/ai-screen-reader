@@ -21,7 +21,13 @@ public sealed partial class ChromiumFixtureBrowser
                     || SyntheticSearchPolicy.KeyboardPlan("Enter").Destination.IsSatisfiedBy(current)
                     || !await _page.EvaluateAsync<bool>("() => { const e=document.getElementById('sample-search'); return e instanceof HTMLInputElement && e.type==='search' && !e.disabled && !e.readOnly && e.value===''; }").ConfigureAwait(false))
                     throw new BrowserInputDeniedException("SYNTHETIC_SEARCH_FRESH_STATE_REQUIRED");
+                using var grant = _syntheticSearchAuthority is null ? null : await AuthorizeSyntheticSearchInputAsync(SyntheticSearchInputKind.MouseFocus, null, 0, current,
+                    current.Nodes.SingleOrDefault(n => n.Role == "searchbox" && n.Name == "Search courses")?.Id,
+                    cancellationToken).ConfigureAwait(false);
+                if (grant is not null && !await _page.EvaluateAsync<bool>("() => { const e=document.getElementById('sample-search'); return e instanceof HTMLInputElement && e.type==='search' && !e.disabled && !e.readOnly && e.value===''; }").ConfigureAwait(false))
+                    throw new BrowserInputDeniedException("SEARCH_SCOPE_CHANGED");
                 cancellationToken.ThrowIfCancellationRequested();
+                grant?.EnsureCurrent();
                 attempted = true;
                 await _page.GetByLabel("Search courses", new() { Exact = true }).ClickAsync().ConfigureAwait(false);
                 completed = true;
@@ -56,7 +62,13 @@ public sealed partial class ChromiumFixtureBrowser
                 if (!scope.IsAuthorizedBy(current) || goal.IsSatisfiedBy(current)
                     || !await SearchFieldMatchesAsync(SyntheticSearchPolicy.Query).ConfigureAwait(false))
                     throw new BrowserInputDeniedException("SEARCH_SCOPE_CHANGED");
+                using var grant = _syntheticSearchAuthority is null ? null : await AuthorizeSyntheticSearchInputAsync(SyntheticSearchInputKind.MouseActivation, null, 0, current,
+                    current.Nodes.SingleOrDefault(n => n.Role == "button" && n.Name == "Search")?.Id,
+                    cancellationToken).ConfigureAwait(false);
+                if (grant is not null && !await SearchFieldMatchesAsync(SyntheticSearchPolicy.Query).ConfigureAwait(false))
+                    throw new BrowserInputDeniedException("SEARCH_SCOPE_CHANGED");
                 cancellationToken.ThrowIfCancellationRequested();
+                grant?.EnsureCurrent();
                 attempted = true;
                 await _page.GetByRole(AriaRole.Button, new() { Name = "Search", Exact = true }).ClickAsync().ConfigureAwait(false);
                 completed = true;

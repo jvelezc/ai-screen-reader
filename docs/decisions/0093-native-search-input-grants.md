@@ -1,0 +1,13 @@
+# 0093: Bind search permission to each native input
+
+The original synthetic search API remains available for local fixture reading. A separate guarded recording launcher accepts a bounded permission receiver for the exact two compiled search sources. This is an input-control prerequisite, not durable hosted admission, capture permission, actor authentication or publication authority.
+
+Each request identifies its source hash, native sequence, document, capture epoch and node. Characters have an explicit1–13 ordinal and native key; literal query spaces remain distinct from a button's Space activation. Ordinary Tab/Enter/Space, query characters, native mouse focus and native mouse activation each request their own grant. A receiver is bound once; unsupported raw keys and other sources are denied before dispatch.
+
+Permission I/O can change the browser context. The adapter therefore checks actual focus, document, epoch, node semantics, writable native input type and expected existing text again after the response. A3s grant deadline stays owned by the native operation through its final checks and is checked immediately before dispatch. Timeout, cancellation, missing/invalid decisions and callback failures cannot send a later key. A completed input remains a completed input even if later goal verification is uncertain; grants do not establish native completion or a goal. Callback exception messages are never retained.
+
+The new native fault test exposed PSR-SEARCH-007 before publication: returning from the permission helper disposed the timer too early, allowing13 characters after a3,400ms final field check. The corrected owner lifetime denies all13; the original failed recording and its fingerprints remain retained.
+
+The capture-pause interaction exposed PSR-SEARCH-008: Draining keeps the old epoch until acknowledgement, so epoch equality alone did not revoke a pending input grant. The receiver response and final native dispatch now check phase as well as epoch. Existing in-flight work is still joined before exclusion acknowledgement. The native regression retains the distinction between an actual received key and a reader result withheld during transition.
+
+Public page entry remains denied. Before hosted search, bind these requests to a versioned job and source, durable parent intent/acknowledgement, no-replay fence, retained permitted partial records/originals, independent output validation and current-caller publication. Existing four-source v1 worker control and historical packages retain their original contracts. See [native validation](../validation/synthetic-search-input-authority-v1.md).

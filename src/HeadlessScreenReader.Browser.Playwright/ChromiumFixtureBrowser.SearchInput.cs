@@ -18,6 +18,13 @@ public sealed partial class ChromiumFixtureBrowser : ISyntheticSearchBrowser
                 if (!input.IsAuthorizedBy(snapshot)
                     || !await SearchFieldMatchesAsync(input.ExpectedPrefix).ConfigureAwait(false))
                     throw new BrowserInputDeniedException("SEARCH_SCOPE_CHANGED");
+                using var grant = _syntheticSearchAuthority is null ? null : await AuthorizeSyntheticSearchInputAsync(
+                    SyntheticSearchInputKind.Character, input.Key == " " ? "Space" : input.Key,
+                    input.ExpectedPrefix.Length + 1, snapshot, input.NodeId, cancellationToken).ConfigureAwait(false);
+                if (grant is not null && !await SearchFieldMatchesAsync(input.ExpectedPrefix).ConfigureAwait(false))
+                    throw new BrowserInputDeniedException("SEARCH_SCOPE_CHANGED");
+                cancellationToken.ThrowIfCancellationRequested();
+                grant?.EnsureCurrent();
                 try { await _page.Keyboard.PressAsync(input.Key == " " ? "Space" : input.Key).ConfigureAwait(false); }
                 catch (PlaywrightException exception) { throw new BrowserOperationException("CHROMIUM_INPUT_FAILED", exception); }
                 return true;

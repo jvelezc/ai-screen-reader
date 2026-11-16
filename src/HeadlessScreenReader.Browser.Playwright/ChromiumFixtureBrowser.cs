@@ -348,6 +348,16 @@ public sealed partial class ChromiumFixtureBrowser : IScreenReaderBrowser, ICapt
             throw new BrowserOperationException("KEY_DENIED");
         await _captureAdmission.RunAsync(async () =>
         {
+            if (_syntheticSearchAuthority is not null)
+            {
+                var current = (await CaptureCoreAsync().ConfigureAwait(false)) with { CaptureEpoch = _captureAdmission.Status.Epoch };
+                using var grant = await AuthorizeSyntheticSearchInputAsync(SyntheticSearchInputKind.Key, key, 0, current, current.FocusedNode?.Id,
+                    cancellationToken).ConfigureAwait(false);
+                cancellationToken.ThrowIfCancellationRequested();
+                grant!.EnsureCurrent();
+                await PressKeyCoreAsync(key).ConfigureAwait(false);
+                return true;
+            }
             await PressKeyCoreAsync(key).ConfigureAwait(false);
             return true;
         }, input: true).WaitAsync(cancellationToken).ConfigureAwait(false);

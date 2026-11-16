@@ -58,6 +58,9 @@ public sealed class ChromiumRecordingProbe : IAsyncDisposable
     public Task<PointerTaskReceipt> ObserveSyntheticSearchPointerAsync(SearchKeyInput scope, CancellationToken token = default) =>
         _browser.ObserveSyntheticSearchPointerAsync(scope, token);
 
+    internal void BindSyntheticSearchAuthority(Func<SyntheticSearchInputIntent, CancellationToken, Task<SyntheticSearchInputDecision>> authority) =>
+        _browser.BindSyntheticSearchAuthority(authority);
+
     public Task CopyCompletedSourcesAsync(Func<ImmutableArray<CompletedCaptureSource>, CancellationToken, Task> sink,
         CancellationToken token = default) => CopyCompletedSourcesCoreAsync(sink, CapturePhase.Permitted, token);
 
@@ -252,6 +255,17 @@ public sealed partial class ChromiumFixtureBrowser
     {
         _ = SyntheticSearchSites.Describe(fixture);
         return LaunchControlledRecordingAsync(folder, fixture, cancellationToken);
+    }
+
+    /// <summary>Local fixed sources with an independent, bounded grant before each native input. Not hosted admission.</summary>
+    public static async Task<ChromiumRecordingProbe> LaunchGuardedSyntheticSearchRecordingAsync(string folder, BundledFixture fixture,
+        Func<SyntheticSearchInputIntent, CancellationToken, Task<SyntheticSearchInputDecision>> authority, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(authority);
+        _ = SyntheticSearchSites.Describe(fixture);
+        var probe = await LaunchSyntheticSearchRecordingAsync(folder, fixture, cancellationToken).ConfigureAwait(false);
+        try { probe.BindSyntheticSearchAuthority(authority); return probe; }
+        catch { await probe.DisposeAsync().ConfigureAwait(false); throw; }
     }
 
     private static async Task<ChromiumRecordingProbe> LaunchControlledRecordingAsync(string folder, BundledFixture fixture,
