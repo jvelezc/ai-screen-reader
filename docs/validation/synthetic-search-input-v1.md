@@ -25,4 +25,4 @@ The first native run denied entry because internal snapshots lacked the outward 
 
 Existing fixture commands remain available. For a private local MCP session: open `MockSearchWorkingV1`, capture its document, Tab to Search courses, execute `EnterSearchText` with `key` exactly `sample course`, Tab to Search and Activate with an observed heading goal `Sample course result`. Fresh `MockSearchKeyboardBlockedV1` has the same entry but keyboard activation does not reveal the result. Only an actual separate pointer experiment establishes its mouse outcome.
 
-No source-bound search recording or hosted search task is claimed here. The established recording, isolation, current-caller authorization, no-replay and original-hash requirements must be proved for that profile before public use.
+Source CI43777238287 passes all nine jobs, with4,137 discovered/executed/passed per OS, zero failed/skipped; both uploaded TRX counters are independently checked. The source-only recording prerequisite now continues in [recorded synthetic search experiments](recorded-synthetic-search-v1.md). Hosted/public search remains a separate authority, isolation and customer acceptance gate.

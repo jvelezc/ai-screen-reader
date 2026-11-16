@@ -7,6 +7,9 @@ using HeadlessScreenReader.Domain;
 using HeadlessScreenReader.ScreenReader;
 using Microsoft.Playwright;
 
+if (args.Length > 0 && args[0] is "--record-search-tasks" or "--verify-search-tasks")
+    return await SyntheticSearchCommands.RunAsync(args, Console.Out);
+
 if (args.Length > 0 && args[0] is "--record-mock-tasks" or "--verify-mock-tasks")
     return await MockTaskCommands.RunAsync(args, Console.Out);
 
@@ -63,6 +66,8 @@ if (args.Length > 0 && args[0] is "--archive-evidence-local" or "--archive-evide
 
 if (args.Contains("--help", StringComparer.Ordinal))
 {
+    Console.WriteLine("  --record-search-tasks <search-working|search-keyboard-blocked> <new-directory>: record local synthetic search comparisons; no public-site entry");
+    Console.WriteLine("  --verify-search-tasks <directory> <trusted-manifest-sha256>: verify originals and recompute the local search comparison");
     Console.WriteLine("  --record-mock-tasks <scenario> <new-directory>: three fresh recorded keyboard runs and an independent recorded pointer comparison");
     Console.WriteLine("  --verify-mock-tasks <directory> <trusted-manifest-sha256>: bounded read-only mock package integrity check");
     Console.WriteLine("HeadlessScreenReader. Usage: --hosted-control | --check-control | --check-s3-local <port> <ownerN> | --view-fixture | --private-client | --headed-private-client | --private-pixels | --headed-private-pixels | --private-viewer | --synthetic-handoff | --headed-synthetic-handoff | --headed-session | --controller | --owned-scan | --replay | --features | --traversal-recording | --recording-sync | --capture-probe | [--traversal | --widgets | --observe-live | --text | --frames | --ranges | --composites | --tables | --paragraphs | --multiselect | --typeahead] [--headed] | --reference-template | --reference-case <id> | --assess-reference <file>");

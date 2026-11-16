@@ -59,7 +59,15 @@ public sealed class ChromiumSearchInputTests(Xunit.Abstractions.ITestOutputHelpe
             }
             """);
         var step = await reader.ExecuteAsync(ReaderCommand.EnterSearchText, SyntheticSearchPolicy.Query);
-        output.WriteLine(System.Text.Json.JsonSerializer.Serialize(new { step, Focus = (await browser.CaptureAsync()).FocusedNode }));
+        var observed = await browser.CaptureAsync();
+        output.WriteLine(System.Text.Json.JsonSerializer.Serialize(new
+        {
+            step.Outcome,
+            step.ErrorCode,
+            step.BrowserKeystrokes,
+            FocusRole = observed.FocusedNode?.Role,
+            observed.CaptureEpoch
+        }));
         Assert.Equal(ReaderOutcome.Observed, step.Outcome);
         Assert.Equal(13, step.BrowserKeystrokes);
         Assert.True(step.SearchInput!.ValueVerified);

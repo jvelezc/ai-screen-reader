@@ -52,6 +52,12 @@ public sealed class ChromiumRecordingProbe : IAsyncDisposable
     public Task<PointerTaskReceipt> ObserveMockPointerAsync(CancellationToken token = default) =>
         _browser.ObserveMockPointerAsync(token);
 
+    public Task<SearchFocusReceipt> FocusSyntheticSearchAsync(CancellationToken token = default) =>
+        _browser.FocusSyntheticSearchAsync(token);
+
+    public Task<PointerTaskReceipt> ObserveSyntheticSearchPointerAsync(SearchKeyInput scope, CancellationToken token = default) =>
+        _browser.ObserveSyntheticSearchPointerAsync(scope, token);
+
     public Task CopyCompletedSourcesAsync(Func<ImmutableArray<CompletedCaptureSource>, CancellationToken, Task> sink,
         CancellationToken token = default) => CopyCompletedSourcesCoreAsync(sink, CapturePhase.Permitted, token);
 
@@ -240,6 +246,14 @@ public sealed partial class ChromiumFixtureBrowser
         return LaunchControlledRecordingAsync(folder, fixture, cancellationToken);
     }
 
+    /// <summary>Separate source-checked entry for the two fixed, nonpersonal search examples.</summary>
+    public static Task<ChromiumRecordingProbe> LaunchSyntheticSearchRecordingAsync(string folder, BundledFixture fixture,
+        CancellationToken cancellationToken = default)
+    {
+        _ = SyntheticSearchSites.Describe(fixture);
+        return LaunchControlledRecordingAsync(folder, fixture, cancellationToken);
+    }
+
     private static async Task<ChromiumRecordingProbe> LaunchControlledRecordingAsync(string folder, BundledFixture fixture,
         CancellationToken cancellationToken)
     {
@@ -256,7 +270,7 @@ public sealed partial class ChromiumFixtureBrowser
             {
                 // Static mock pages can supply one genuine initial frame. The older
                 // calibration fixtures keep their three-frame readiness requirement.
-                RequiredStartupFrames = MockSiteTasks.Fixtures.Contains(fixture) ? 1 : 3
+                RequiredStartupFrames = MockSiteTasks.Fixtures.Contains(fixture) || SyntheticSearchSites.Fixtures.Contains(fixture) ? 1 : 3
             };
             var probe = new ChromiumRecordingProbe(browser, source, folder);
             browser._stopProbeCollector = probe.StopCollectorsAsync;

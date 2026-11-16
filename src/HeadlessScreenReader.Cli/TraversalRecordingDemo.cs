@@ -43,6 +43,17 @@ public static class TraversalRecordingDemo
             cancellationToken, checkpoint, null);
     }
 
+    /// <summary>Record a fixed synthetic search route without extending the admitted v1 task profile.</summary>
+    public static Task<RecordedTraversalResult> RunSyntheticSearchRouteAsync(string mediaFolder, BundledFixture fixture, string key,
+        CancellationToken cancellationToken = default)
+    {
+        _ = SyntheticSearchSites.Describe(fixture);
+        var plan = SyntheticSearchPolicy.KeyboardPlan(key);
+        return RunRecordedRouteAsync(mediaFolder, plan,
+            (folder, token) => ChromiumFixtureBrowser.LaunchSyntheticSearchRecordingAsync(folder, fixture, token),
+            cancellationToken, null, null);
+    }
+
     private static async Task<RecordedTraversalResult> RunRecordedRouteAsync(string mediaFolder, TraversalPlan plan,
         Func<string, CancellationToken, Task<ChromiumRecordingProbe>> launch,
         CancellationToken cancellationToken, Func<TraversalCheckpoint, CancellationToken, Task>? checkpoint,
