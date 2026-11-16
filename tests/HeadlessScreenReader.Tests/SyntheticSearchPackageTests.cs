@@ -153,6 +153,29 @@ public sealed class SyntheticSearchPackageTests
         Assert.DoesNotContain(value, output.ToString());
     }
 
+    [Fact]
+    public async Task TrustedHistoricalViewerBytesDoNotDependOnCurrentRendering()
+    {
+        var folder = NewFolder();
+        var failed = new RecordedTraversalResult(null, new("Traverse", "NATIVE_INPUT_UNCONFIRMED", null, [], null, null), null);
+        var export = await SyntheticSearchRecordings.RecordCoreAsync(folder, BundledFixture.MockSearchWorkingV1,
+            (_, _, _, _) => Task.FromResult(failed), (_, _, _) => throw new InvalidOperationException("No mouse input."), CancellationToken.None);
+        var viewer = Path.Combine(folder, "index.html");
+        await File.AppendAllTextAsync(viewer, "<!-- historical renderer variant -->");
+        // Without a separately trusted updated inventory the changed bytes still fail.
+        await Assert.ThrowsAsync<InvalidDataException>(() => SyntheticSearchVerification.VerifyAsync(folder, export.ManifestSha256));
+        var bytes = await File.ReadAllBytesAsync(viewer);
+        var manifestPath = Path.Combine(folder, SyntheticSearchRecordings.ManifestFile);
+        var manifest = JsonNode.Parse(await File.ReadAllBytesAsync(manifestPath))!;
+        var entry = manifest["Files"]!.AsArray().Single(f => f!["Path"]!.GetValue<string>() == "index.html")!;
+        entry["Bytes"] = bytes.LongLength;
+        entry["Sha256"] = TraversalArchive.Hash(bytes);
+        var updated = JsonSerializer.SerializeToUtf8Bytes(manifest, SyntheticSearchRecordings.Json);
+        await File.WriteAllBytesAsync(manifestPath, updated);
+        Assert.True((await SyntheticSearchVerification.VerifyAsync(folder, TraversalArchive.Hash(updated))).IntegrityMatches);
+        Assert.Equal(bytes, await File.ReadAllBytesAsync(viewer));
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("ABCDEF0000000000000000000000000000000000000000000000000000000000")]
@@ -191,6 +214,12 @@ public sealed class SyntheticSearchPackageTests
             Assert.Contains("Completed calls 13", await page.Locator("#selected-detail").InnerTextAsync());
             Assert.Contains("No video position is inferred", await page.Locator("#selected-interval").InnerTextAsync());
             Assert.Equal(beforeSelection, await page.Locator("video").EvaluateAsync<double>("v => v.currentTime"), 2);
+            Assert.Contains("Space character (completed)", await page.Locator("#selected-detail").InnerTextAsync());
+            var original = JsonSerializer.Deserialize<RecordedTraversalResult>(await File.ReadAllBytesAsync(Path.Combine(folder, $"route-{i}-recording.json")), SyntheticSearchRecordings.Json)!;
+            var space = Assert.Single(original.Receipt!.Timeline, e => e.Kind == ReaderEventKind.InputAttempted && e.Detail == " ");
+            await page.Locator($"[data-evidence=event-{space.Sequence}]").ClickAsync();
+            Assert.Contains("Space character", await page.Locator("#selected-detail").InnerTextAsync());
+            Assert.Contains("Without a verified recording interval, selection leaves the video position unchanged", await page.Locator(".scope").First.InnerTextAsync());
         }
         Assert.Empty(network);
     }

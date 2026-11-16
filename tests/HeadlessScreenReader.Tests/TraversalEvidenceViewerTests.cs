@@ -49,6 +49,8 @@ public sealed class TraversalEvidenceViewerTests
         Assert.Contains("goal verification TimedOut", html);
         Assert.Contains("Reader observations", html);
         Assert.Contains("Structured evidence and hashes", html);
+        Assert.Contains("Without a verified recording interval, selection leaves the video position unchanged", html);
+        Assert.DoesNotContain("Selecting evidence only seeks this recording", html);
     }
 
     [Fact]

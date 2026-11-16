@@ -63,7 +63,7 @@ public static class TraversalEvidenceViewer
         }
         foreach (var item in receipt.Timeline)
             items.Add(new($"event-{item.Sequence}", "Event", $"Event {item.Sequence}: {item.Kind}",
-                $"Command {item.CommandSequence}: {item.Command}. {item.Detail}", [$"event-{item.Sequence}"], Cue($"event-{item.Sequence}")));
+                $"Command {item.CommandSequence}: {item.Command}. {EventDetail(item)}", [$"event-{item.Sequence}"], Cue($"event-{item.Sequence}")));
         var body = new StringBuilder();
         body.Append("<header><h1>").Append(H(receipt.Plan.Name)).Append("</h1><p class=outcome>")
             .Append(H($"Destination {receipt.Reachability} · Barrier {receipt.Barrier} · {receipt.StopReason}"))
@@ -73,7 +73,7 @@ public static class TraversalEvidenceViewer
                 + $"Unexecuted route instructions: {receipt.UnexecutedInstructions}. Timeline truncated: {receipt.TimelineTruncated}."))
             .Append("</p><nav aria-label=Reports><a href=\"route-").Append(route).Append(".md\">Readable report</a><a href=\"route-")
             .Append(route).Append(".json\">Structured evidence and hashes</a><a href=\"route-").Append(route).Append(".svg\">Standalone trace</a></nav></header>")
-            .Append("<p class=scope>Controlled synthetic fixture. Selecting evidence only seeks this recording. Input attempts, completed calls, observed state and verified goals remain separate.</p>")
+            .Append("<p class=scope>Controlled synthetic fixture. Select evidence to inspect its records. Without a verified recording interval, selection leaves the video position unchanged. Input attempts, completed calls, observed state and verified goals remain separate.</p>")
             .Append("<main id=main><div class=workspace><section aria-labelledby=trace-title><h2 id=trace-title>Observed route</h2><p>Select a state or action to inspect its evidence. <a href=#selection-title>Go to selected evidence</a>.</p><ol class=trace>");
         foreach (var node in graph.Nodes)
         {
@@ -113,7 +113,7 @@ public static class TraversalEvidenceViewer
             body.Append("<tr data-timeline-event=\"event-").Append(item.Sequence).Append("\"><th scope=row><button type=button data-evidence=\"event-")
                 .Append(item.Sequence).Append("\">Event ").Append(item.Sequence).Append("</button></th><td class=number>")
                 .Append(item.ElapsedMilliseconds.ToString("F1", CultureInfo.InvariantCulture)).Append("</td><td>").Append(H(item.Kind.ToString()))
-                .Append("</td><td>").Append(H(item.Detail)).Append("</td></tr>");
+                .Append("</td><td>").Append(H(EventDetail(item))).Append("</td></tr>");
         body.Append("</tbody></table></div></section><section aria-labelledby=observations-title><h2 id=observations-title>Reader observations</h2>");
         foreach (var observation in receipt.Observations)
         {
@@ -152,5 +152,7 @@ public static class TraversalEvidenceViewer
         return reader.ReadToEnd().Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
     }
     private static string H(string value) => WebUtility.HtmlEncode(value);
+    private static string EventDetail(ReaderEvent item) => item.Kind is ReaderEventKind.InputAttempted or ReaderEventKind.InputCompleted
+        ? TraversalTraceDiagram.DisplayKey(item.Detail) : item.Detail;
     private static string Hash(string value) => Convert.ToBase64String(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
 }

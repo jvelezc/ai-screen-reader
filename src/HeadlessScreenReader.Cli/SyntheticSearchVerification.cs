@@ -64,7 +64,6 @@ public static class SyntheticSearchVerification
                     ViewerFile = $"route-{run.Route}.html"
                 }, TraversalDemo.JsonOptions);
                 if (!JsonElement.DeepEquals(savedRoute.RootElement, expected)) throw new InvalidDataException("SEARCH_ROUTE_GRAPH_CHANGED");
-                CheckText(manifest.Files, $"route-{run.Route}.html", TraversalEvidenceViewer.Render(receipt, run.Route, result.Recording));
             }
         }
         var allComplete = results.Where((r, i) => !SyntheticSearchAssessment.CompleteKeyboard(r, manifest.Source, i == 2 ? "Space" : "Enter")).Any() == false;
@@ -89,21 +88,14 @@ public static class SyntheticSearchVerification
         if (manifest.PointerRunId != pointer?.Activation?.RunId
             || manifest.Observation != SyntheticSearchAssessment.Describe(results, pointer, manifest.Source))
             throw new InvalidDataException("SEARCH_OBSERVATION_CHANGED");
-        CheckText(manifest.Files, "index.html", SyntheticSearchViewer.Render(manifest.Source, manifest.KeyboardRuns, pointer, manifest.Observation, manifest.CollectionStoppedReason));
+        // HTML belongs to its producing release. Its original bytes remain bound by
+        // the trusted inventory; later cosmetic rendering changes cannot invalidate it.
         return new(true, trustedManifestSha256, manifest.Files.Length, manifest.Files.Sum(f => f.Bytes));
     }
 
     private sealed record SearchPointerGraphDocument(JsonElement Nodes, JsonElement Edges, string Schema, string Scope);
 
     private static bool Hash(string? value) => value is { Length: 64 } && value.All(char.IsAsciiHexDigitLower);
-
-    private static void CheckText(System.Collections.Immutable.ImmutableArray<TraversalPackageFile> files, string name, string expected)
-    {
-        var bytes = System.Text.Encoding.UTF8.GetBytes(expected);
-        var file = files.SingleOrDefault(f => f.Path == name);
-        if (file?.Bytes != bytes.LongLength || file.Sha256 != Worker.TraversalArchive.Hash(bytes))
-            throw new InvalidDataException("SEARCH_VIEWER_CHANGED");
-    }
 
     private static void CheckMedia(RecordingProbeMedia? media, string prefix, System.Collections.Immutable.ImmutableArray<TraversalPackageFile> files)
     {

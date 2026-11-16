@@ -114,10 +114,12 @@ public static class TraversalTraceDiagram
     public static string KeyLabel(TraversalGraphEdge edge)
     {
         var observed = edge.KeyboardInputs.IsEmpty ? "no browser keys observed"
-            : string.Join(", ", edge.KeyboardInputs.Select(k => $"{k.Key} ({(k.CompletionEventSequence is null ? "completion unobserved"
+            : string.Join(", ", edge.KeyboardInputs.Select(k => $"{DisplayKey(k.Key)} ({(k.CompletionEventSequence is null ? "completion unobserved"
                 : k.AttemptEventSequence is null ? "completion observed; attempt missing" : "completed")})"));
         return edge.InputEvidenceComplete ? observed : observed + "; keyboard evidence incomplete";
     }
+
+    internal static string DisplayKey(string key) => key == " " ? "Space character" : key;
 
     private static string Short(string value, int length)
     {

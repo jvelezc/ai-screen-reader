@@ -11,6 +11,20 @@ public sealed class TraversalTraceTests
     private static readonly XNamespace Svg = "http://www.w3.org/2000/svg";
 
     [Fact]
+    public void LiteralSpaceHasAReadableLabelWithoutChangingRecordedKeys()
+    {
+        var edge = new TraversalGraphEdge("a1", "o1", "o2", ReaderOutcome.Observed, VerificationStatus.NotRequested)
+        {
+            KeyboardInputs = [new(" ", 1, 2), new("Space", 3, 4)],
+            InputEvidenceComplete = true
+        };
+        Assert.Equal("Space character (completed), Space (completed)", TraversalTraceDiagram.KeyLabel(edge));
+        Assert.Equal(new[] { " ", "Space" }, edge.KeyboardInputs.Select(k => k.Key));
+        Assert.Equal(1, edge.KeyboardInputs[0].AttemptEventSequence);
+        Assert.Equal(2, edge.KeyboardInputs[0].CompletionEventSequence);
+    }
+
+    [Fact]
     public async Task TraceEdges_CarryExactCommandAndActualOrderedKeyEvents()
     {
         var receipt = await Receipt();
