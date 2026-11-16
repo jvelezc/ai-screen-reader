@@ -178,6 +178,57 @@ public sealed class PortalSearchTasksTests
         Assert.False(result.GetProperty("legalCaseDetermined").GetProperty("const").GetBoolean());
         Assert.Equal(4, result.GetProperty("keyboardTrials").GetProperty("maxItems").GetInt32());
         Assert.DoesNotContain("lease_token", schemas.GetProperty("SearchTaskStatus").GetRawText());
+        var originalRoute = paths.GetProperty(prefix + "/{job}/originals/{fileId}/{offset}/{digest}").GetProperty("get");
+        var fileParameter = originalRoute.GetProperty("parameters").EnumerateArray().Single(parameter => parameter.GetProperty("name").GetString() == "fileId");
+        Assert.Equal(1400, fileParameter.GetProperty("schema").GetProperty("maximum").GetInt32());
+    }
+
+    [Theory]
+    [InlineData(1399, true)]
+    [InlineData(1400, true)]
+    [InlineData(1401, false)]
+    public async Task PrivateMcpOriginalSupportsTheManifestInclusiveFinalIdAndRejectsTheNextId(int fileId, bool allowed)
+    {
+        var status = Completed(Queued()); status = status with { Publication = status.Publication! with { Files = 1400 } };
+        var digest = status.Publication!.IndexSha256;
+        var file = new PortalSearchFile(fileId, $"file-{fileId}.webm", 4, new('a', 64), "video/webm");
+        var transport = new SearchBoundTransport(JsonSerializer.Serialize(new PortalSearchOriginalPage(status, digest, file, 4, [], TraversalArchive.Hash([]), null), PortalJson.Options));
+        await using var client = new HostedScanClient(new(new("http://localhost:6086/"), status.Job.OrganizationId, Actor.Token), transport);
+        var reply = await client.SearchTaskAsync("original", status.Job.JobId.ToString("D"), digest: digest, fileId: fileId, offset: 4);
+        if (allowed)
+        {
+            Assert.Null(reply.ErrorCode); Assert.Equal(1, transport.Calls);
+            var page = JsonSerializer.SerializeToElement(reply.Data, PortalJson.Options);
+            Assert.Equal(fileId, page.GetProperty("file").GetProperty("id").GetInt32()); Assert.Empty(page.GetProperty("data").GetBytesFromBase64());
+        }
+        else { Assert.Equal("SEARCH_TASK_REQUEST_INVALID", reply.ErrorCode); Assert.Equal(0, transport.Calls); }
+    }
+
+    [Fact]
+    public async Task PrivateMcpFinalInventoryPageIncludesEveryOriginalAndItsManifest()
+    {
+        var status = Completed(Queued()); status = status with { Publication = status.Publication! with { Files = 1400 } };
+        var digest = status.Publication!.IndexSha256;
+        var files = Enumerable.Range(1392, 9).Select(id => new PortalSearchFile(id, $"file-{id}.webm", 4, new('a', 64), "video/webm")).ToArray();
+        var transport = new SearchBoundTransport(JsonSerializer.Serialize(new PortalSearchFilePage(status, digest, 1392, 1401, files, null), PortalJson.Options));
+        await using var client = new HostedScanClient(new(new("http://localhost:6086/"), status.Job.OrganizationId, Actor.Token), transport);
+        var reply = await client.SearchTaskAsync("files", status.Job.JobId.ToString("D"), digest: digest, offset: 1392);
+        Assert.Null(reply.ErrorCode); Assert.Equal(1, transport.Calls);
+        var page = JsonSerializer.SerializeToElement(reply.Data, PortalJson.Options);
+        Assert.Equal(Enumerable.Range(1392, 9), page.GetProperty("files").EnumerateArray().Select(file => file.GetProperty("id").GetInt32()));
+        Assert.Equal(JsonValueKind.Null, page.GetProperty("nextOffset").ValueKind);
+    }
+
+    private sealed class SearchBoundTransport(string body) : HttpMessageHandler
+    {
+        internal int Calls { get; private set; }
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token)
+        {
+            Calls++; Assert.Equal(HttpMethod.Get, request.Method);
+            var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json") };
+            response.Headers.CacheControl = new() { NoStore = true };
+            return Task.FromResult(response);
+        }
     }
 
     [Fact]

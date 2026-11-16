@@ -1,13 +1,36 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using HeadlessScreenReader.Cli.HostedControl;
+using HeadlessScreenReader.Worker;
 
 namespace HeadlessScreenReader.Tests;
 
 public sealed class PortalRequestDiagnosticTests
 {
+    [Fact]
+    public async Task EvidenceReadCorrelationUsesEachGeneratedRequestReferenceWithoutCrossRequestLeakage()
+    {
+        var observed = new ConcurrentQueue<string?>();
+        var project = new PortalProjectStub { BeforeAuth = _ => { observed.Enqueue(Activity.Current?.GetTagItem(S3ReadResilienceHandler.SupportReferenceTag) as string); return Task.CompletedTask; } };
+        await using var server = await HostedControlServer.StartAsync(new(PortalProjectClientTests.Key,
+            Path.GetFullPath("artifacts/portal-validation/evidence"), new string('a', 40), 0), project, new PortalObservationStub());
+        using var first = PortalHttpTests.Authorized(server); using var second = PortalHttpTests.Authorized(server);
+        first.DefaultRequestHeaders.Add("X-HSR-Request-Id", "NEVER_USE_CALLER_REFERENCE");
+        var responses = await Task.WhenAll(first.GetAsync("/api/session"), second.GetAsync("/api/session"));
+        try
+        {
+            Assert.All(responses, response => Assert.Equal(HttpStatusCode.OK, response.StatusCode));
+            var expected = responses.Select(response => response.Headers.GetValues("X-HSR-Request-Id").Single()).Order().ToArray();
+            Assert.Equal(2, expected.Distinct(StringComparer.Ordinal).Count());
+            Assert.All(expected, reference => Assert.Matches("^[a-f0-9]{32}$", reference));
+            Assert.Equal(expected, observed.Order()); Assert.DoesNotContain("NEVER_USE_CALLER_REFERENCE", observed);
+        }
+        finally { foreach (var response in responses) response.Dispose(); }
+    }
+
     [Theory]
     [InlineData("CONTROL_PUBLIC_WEBSITE_PROCESSOR_UNAVAILABLE", "CONTROL_PUBLIC_WEBSITE_PROCESSOR_UNAVAILABLE")]
     [InlineData("DATABASE_UNAVAILABLE", "DATABASE_UNAVAILABLE")]

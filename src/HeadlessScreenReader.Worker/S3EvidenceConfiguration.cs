@@ -43,11 +43,14 @@ public sealed class S3EvidenceConfiguration
             "hsr-local-proof-access", "hsr-local-proof-secret-synthetic-only");
     }
 
-    internal HttpClient CreateClient(HttpMessageHandler? transport = null)
+    internal HttpClient CreateClient(HttpMessageHandler? transport = null) => CreateClient(transport, S3ReadResilienceHandler.WriteDiagnostic);
+
+    internal HttpClient CreateClient(HttpMessageHandler? transport, Action<S3ReadDiagnostic> diagnostic)
     {
         transport ??= new SocketsHttpHandler
         { AllowAutoRedirect = false, UseCookies = false, UseProxy = false, ConnectTimeout = TimeSpan.FromSeconds(10) };
-        var signer = new SigV4SigningHandler(new BasicAWSCredentials(_access, _secret), RegionEndpoint.USEast1, "s3", transport);
+        var signer = new SigV4SigningHandler(new BasicAWSCredentials(_access, _secret), RegionEndpoint.USEast1, "s3",
+            new S3ReadResilienceHandler(transport, diagnostic));
         return new HttpClient(signer) { Timeout = TimeSpan.FromSeconds(20) };
     }
     public override string ToString() => "S3EvidenceConfiguration(credentials redacted)";

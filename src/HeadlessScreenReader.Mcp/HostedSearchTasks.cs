@@ -29,7 +29,7 @@ public sealed partial class HostedScanClient
             || operation == "start" && (!Guid.TryParse(requestId, out request) || request == Guid.Empty || sourceId is not ("search-working" or "search-keyboard-blocked"))
             || operation is "files" or "original" && (digest is null || !Digest(digest) || offset < 0)
             || operation == "files" && (offset > 1399 || offset % 24 != 0)
-            || operation == "original" && (fileId is < 0 or > 1399 || offset > 26 * 1024 * 1024))
+            || operation == "original" && (fileId is < 0 or > 1400 || offset > 26 * 1024 * 1024))
             return Task.FromResult(new ToolReply("error", null, SyntheticSearchTaskJob.CurrentProfile, ErrorCode: "SEARCH_TASK_REQUEST_INVALID"));
         return LockedAsync(async () =>
         {
@@ -126,7 +126,7 @@ public sealed partial class HostedScanClient
         Require(value is not null && JsonElement.DeepEquals(raw, JsonSerializer.SerializeToElement(value, HostedReaderTransport.Json)));
         return value!;
     }
-    private static void ValidateSearchFile(HostedSearchFile file) => Require(file is not null && file.Id is >= 0 and <= 1399
+    private static void ValidateSearchFile(HostedSearchFile file) => Require(file is not null && file.Id is >= 0 and <= 1400
         && file.Bytes is > 0 and <= 26 * 1024 * 1024 && Digest(file.Sha256) && file.Path is { Length: > 0 and <= 500 }
         && !file.Path.Any(char.IsControl) && !file.Path.Contains('\\') && !file.Path.StartsWith('/')
         && file.Path.Split('/').All(segment => segment.Length > 0 && segment is not ("." or ".."))

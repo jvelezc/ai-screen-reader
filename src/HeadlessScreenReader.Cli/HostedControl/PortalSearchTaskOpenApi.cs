@@ -44,7 +44,7 @@ internal static partial class PortalOpenApi
         paths[root + "/{job}/files/{offset}/{digest}"] = Path("get", files);
         var original = SearchOperation("ReadSearchTaskOriginal", "At most64KiB of one original, pinned by index digest and sorted file ID. Verify page and whole-file SHA-256, then make a fresh exact-EOF authorization read before playback/export. Ordinary offsets are64KiB boundaries; exact EOF is allowed even when unaligned and returns empty bytes. Every read rechecks current caller/workspace and immutable job before and after original retrieval. No signed URL, credentials, generated HTML execution or input replay.", "SearchTaskOriginal");
         var parameters = (JsonArray)original["parameters"]!;
-        parameters.Add(PublicParameter("fileId", 0, 1399)); parameters.Add(PublicParameter("offset", 0, 26 * 1024 * 1024)); parameters.Add(PublicDigestParameter());
+        parameters.Add(PublicParameter("fileId", 0, 1400)); parameters.Add(PublicParameter("offset", 0, 26 * 1024 * 1024)); parameters.Add(PublicDigestParameter());
         paths[root + "/{job}/originals/{fileId}/{offset}/{digest}"] = Path("get", original);
         paths[root + "/{job}/diagnostics"] = Path("get", SearchOperation("ReadSearchTaskDiagnostics", "At most three ordered storage-publication attempts, with original producer, publisher, execution, immutable index and closed failure reasons. WebsiteInputRetried is always false. No raw provider error, lease/session capability, page body, credentials or automatic retry.", "SearchTaskDiagnostics"));
     }
@@ -96,7 +96,7 @@ internal static partial class PortalOpenApi
         }
         if (type == typeof(PortalSearchFile))
         {
-            properties["id"]!["minimum"] = 0; properties["id"]!["maximum"] = 1399;
+            properties["id"]!["minimum"] = 0; properties["id"]!["maximum"] = 1400;
             properties["bytes"]!["minimum"] = 1; properties["bytes"]!["maximum"] = 26 * 1024 * 1024;
             properties["sha256"]!["pattern"] = "^[a-f0-9]{64}$";
             properties["mediaType"]!["enum"] = Strings("video/webm", "application/json", "image/jpeg", "text/html", "text/plain");

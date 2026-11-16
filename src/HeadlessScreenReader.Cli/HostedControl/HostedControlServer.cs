@@ -90,6 +90,8 @@ internal sealed class HostedControlServer : IAsyncDisposable
             Headers(context.Response);
             var started = System.Diagnostics.Stopwatch.GetTimestamp();
             var reference = Guid.NewGuid().ToString("N");
+            using var readCorrelation = new System.Diagnostics.Activity("hsr.control.request").Start();
+            readCorrelation.SetTag("hsr.support_reference", reference);
             context.Items[typeof(PortalRequestDiagnostic)] = reference;
             context.Response.Headers["X-HSR-Request-Id"] = reference;
             string? errorCode = null;

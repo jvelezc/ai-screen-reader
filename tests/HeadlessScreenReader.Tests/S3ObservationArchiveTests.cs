@@ -214,7 +214,8 @@ public sealed class S3ObservationArchiveTests
         using var archive = Archive(transport);
         var error = await Assert.ThrowsAsync<ObservationArchiveException>(() => archive.ReadAsync(FixtureWorkerTests.Job(), new string('a', 64), CancellationToken.None));
         Assert.Equal(ObservationArchiveFailure.Unavailable, error.Failure);
-        Assert.DoesNotContain(Secret, error.ToString()); Assert.Single(transport.Calls);
+        Assert.DoesNotContain(Secret, error.ToString()); Assert.Equal(status is 429 or 500 ? 2 : 1, transport.Calls.Count);
+        Assert.All(transport.Calls, call => Assert.Equal("GET", call.Method));
     }
 
     [Fact]

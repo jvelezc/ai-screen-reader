@@ -116,7 +116,8 @@ public sealed class TraversalObjectStoreTests
     {
         var transport = new Transport { GetStatus = status }; using var store = S3(transport);
         Assert.Equal(TraversalArchiveFailure.Unavailable, (await Assert.ThrowsAsync<TraversalArchiveException>(() => store.ReadAsync(Identity(), null, default))).Failure);
-        Assert.Single(transport.Calls);
+        Assert.Equal(status == HttpStatusCode.InternalServerError ? 2 : 1, transport.Calls.Count);
+        Assert.All(transport.Calls, call => Assert.Equal("GET", call.Method));
     }
 
     [Theory]
