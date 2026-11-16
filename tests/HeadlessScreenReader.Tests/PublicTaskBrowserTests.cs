@@ -6,6 +6,41 @@ namespace HeadlessScreenReader.Tests;
 [Trait("Category", "Browser")]
 public sealed class PublicTaskBrowserTests
 {
+    [Theory]
+    [InlineData(null, "Pricing", "View pricing", "/pricing")]
+    [InlineData("Pricing", "Pricing", "View pricing", "/pricing")]
+    [InlineData("Catalog", "Catalog", "Course catalog", "/catalog")]
+    [InlineData("Contact", "Contact", "Contact us", "/contact")]
+    [InlineData("Help", "Help", "Get help", "/help")]
+    public async Task ActualChromiumDiscoveryChoosesTheRequestedServiceInsteadOfAnEarlierPricingLink(
+        string? requested, string expectedKind, string expectedName, string expectedPath)
+    {
+        await using var browser = await ChromiumFixtureBrowser.LaunchAsync();
+        await browser.DiagnosticPage.SetContentAsync("<h1>Services</h1><a href='https://example.com/pricing'>View pricing</a>"
+            + "<a href='https://example.com/contact'>Contact us</a><a href='https://example.com/catalog'>Course catalog</a>"
+            + "<a href='https://example.com/help'>Get help</a>");
+        var before = browser.DiagnosticPage.Url;
+        var job = PublicTaskTests.Start().Job with { GoalKind = requested };
+        await using var task = new PublicNavigationBrowser(browser, job, Path.GetTempPath());
+        var goal = await task.DiscoverAsync(default);
+        Assert.NotNull(goal);
+        Assert.Equal(expectedKind, goal.Kind);
+        Assert.Equal(expectedName, goal.LinkName);
+        Assert.Equal("https://example.com" + expectedPath, goal.DestinationUrl);
+        Assert.Equal(before, browser.DiagnosticPage.Url);
+    }
+
+    [Fact]
+    public async Task MissingSelectedServiceDoesNotSilentlyFallBackToPricing()
+    {
+        await using var browser = await ChromiumFixtureBrowser.LaunchAsync();
+        await browser.DiagnosticPage.SetContentAsync("<a href='https://example.com/pricing'>View pricing</a>");
+        var job = PublicTaskTests.Start().Job with { GoalKind = "Contact" };
+        await using var task = new PublicNavigationBrowser(browser, job, Path.GetTempPath());
+        Assert.Null(await task.DiscoverAsync(default));
+        Assert.DoesNotContain("https://example.com/", browser.DiagnosticPage.Url, StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task ActualChromiumNetworkTimelineDistinguishesHttpErrorsFromTransportFailures()
     {

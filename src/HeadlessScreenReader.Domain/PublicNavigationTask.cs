@@ -12,10 +12,13 @@ public sealed record PublicTaskJob(Guid OrganizationId, Guid ParentScanId, Guid 
 {
     public const string Profile = "hsr-public-service-navigation-v1";
     public const int MaximumTabs = 48;
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? GoalKind { get; init; }
     public void Validate()
     {
         if (OrganizationId == Guid.Empty || ParentScanId == Guid.Empty || JobId == Guid.Empty || RequestId == Guid.Empty
-            || Generation != 1 || Source is null || !PublicTaskRules.Digest(ParentOriginalSha256))
+            || Generation != 1 || Source is null || !PublicTaskRules.Digest(ParentOriginalSha256)
+            || GoalKind is not null && !PublicTaskGoal.SupportsKind(GoalKind))
             throw new BrowserOperationException("PUBLIC_TASK_JOB_INVALID");
         Source.Validate();
         if (Source != PublicReaderSource.FromUrl(Source.TargetUrl) || new Uri(Source.TargetUrl).Query.Length != 0)
@@ -26,9 +29,10 @@ public sealed record PublicTaskJob(Guid OrganizationId, Guid ParentScanId, Guid 
 /// <summary>One observed public hyperlink, never a form, script, account or transaction command.</summary>
 public sealed record PublicTaskGoal(string Kind, string Name, string LinkName, string DestinationUrl)
 {
+    public static bool SupportsKind(string? kind) => kind is "Pricing" or "Catalog" or "Contact" or "Help";
     public void Validate(PublicReaderSource source)
     {
-        if (Kind is not ("Pricing" or "Catalog" or "Contact" or "Help") || !PublicTaskRules.Text(Name, 200)
+        if (!SupportsKind(Kind) || !PublicTaskRules.Text(Name, 200)
             || !PublicTaskRules.Text(LinkName, 500) || !PublicTaskRules.SafeDestination(source, DestinationUrl))
             throw new BrowserOperationException("PUBLIC_TASK_GOAL_INVALID");
     }
@@ -122,6 +126,7 @@ public sealed record PublicTaskReport(string Schema, PublicTaskStart Start, Publ
             && PublicTaskRules.Text(BrowserVersion, 200) && PublicTaskRules.Text(PlaywrightVersion, 200)
             && PublicTaskRules.Text(Platform, 500) && Viewport == "1280x720" && PublicTaskRules.Digest(CollectorSha256));
         Goal?.Validate(Start.Job.Source);
+        Require(Goal is null || Start.Job.GoalKind is null || Goal.Kind == Start.Job.GoalKind);
         Require(ReaderProfile is null || PublicTaskRules.Text(ReaderProfile, 100));
         Require(NetworkPolicy is null or PublicTaskNetworkTrace.PublicDependencyPolicy);
         Require(AssessmentPolicy is null or TransportAttributionPolicy);

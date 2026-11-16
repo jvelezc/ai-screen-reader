@@ -8,6 +8,26 @@ namespace HeadlessScreenReader.Tests;
 
 public sealed class PublicTaskMcpHttpTests
 {
+    [Fact]
+    public async Task SelectedGoalReconcilesThroughRealStdioAndHttpAndChangedIntentIsDenied()
+    {
+        using var rig = await PublicTaskHttpTests.Rig.Create();
+        rig.Status = rig.Status with { Job = rig.Status.Job with { GoalKind = "Contact" } }; rig.Ready = false;
+        await using var server = await rig.Server(); await using var mcp = await Connect(server.BaseAddress, rig.Status.Job.OrganizationId);
+        var args = new Dictionary<string, object?>
+        {
+            ["scanId"] = rig.Status.Job.ParentScanId,
+            ["requestId"] = rig.Status.Job.RequestId,
+            ["parentOriginalSha256"] = rig.Status.Job.ParentOriginalSha256,
+            ["goalKind"] = "Contact"
+        };
+        var result = await Call(mcp, "website_task_start_for_goal", args);
+        Assert.Equal(rig.Status.Job.JobId, result.GetProperty("data").GetProperty("job").GetProperty("jobId").GetGuid());
+        Assert.Equal("Contact", result.GetProperty("data").GetProperty("job").GetProperty("goalKind").GetString());
+        args["goalKind"] = "Pricing";
+        var denied = await Call(mcp, "website_task_start_for_goal", args, true);
+        Assert.Equal("CONTROL_REQUEST_CONFLICT", denied.GetProperty("errorCode").GetString()); Assert.Equal(0, rig.Creates);
+    }
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -32,7 +52,7 @@ public sealed class PublicTaskMcpHttpTests
     {
         using var rig = await PublicTaskHttpTests.Rig.Create(); await using var server = await rig.Server();
         await using var mcp = await Connect(server.BaseAddress, rig.Status.Job.OrganizationId);
-        var tools = await mcp.ListToolsAsync(); Assert.Equal(41, tools.Count);
+        var tools = await mcp.ListToolsAsync(); Assert.Equal(43, tools.Count);
         var args = new Dictionary<string, object?> { ["scanId"] = rig.Status.Job.ParentScanId, ["jobId"] = rig.Status.Job.JobId };
         var result = await Call(mcp, "website_task_result", args);
         Assert.Equal("WebsiteEvidenceReady", result.GetProperty("data").GetProperty("assessment").GetProperty("outcome").GetString());

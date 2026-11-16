@@ -11,7 +11,11 @@ using Microsoft.AspNetCore.Http.HttpResults;
 namespace HeadlessScreenReader.Cli.HostedControl;
 
 /// <summary>Only the pinned source review and a caller-generated idempotency key; no URLs, selectors or authored input.</summary>
-internal sealed record PortalCreatePublicTaskRequest(Guid RequestId, string ParentOriginalSha256);
+internal sealed record PortalCreatePublicTaskRequest(Guid RequestId, string ParentOriginalSha256)
+{
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? GoalKind { get; init; }
+}
 internal sealed record PortalTaskAttemptSummary(int Number, Guid Id, string Method, string Outcome, string? ErrorCode,
     string? FinalUrl, int Events, int AttemptedInputs, int CompletedInputs, bool TaskTargetMatched, int PolicyInterruptions,
     string Video, bool RecordingAvailable, int DecodedFrames);
@@ -37,6 +41,8 @@ internal interface IPortalPublicTaskProject
     Task<PublicTaskStatus?> ReadPublicTaskAsync(PortalIdentity actor, Guid organization, Guid parent, Guid? job, Guid? request, CancellationToken token);
     Task<PublicTaskStatus> CreatePublicTaskAsync(PortalIdentity actor, Guid organization, Guid parent, PortalCreatePublicTaskRequest request, CancellationToken token);
     Task<PublicTaskStatus?> CancelPublicTaskAsync(PortalIdentity actor, Guid organization, Guid parent, Guid job, CancellationToken token);
+    Task<PublicTaskStatus[]> PublicTaskCoverageAsync(PortalIdentity actor, Guid organization, Guid parent, string digest, CancellationToken token) =>
+        throw new PortalFault(503, "CONTROL_PUBLIC_TASK_COVERAGE_UNAVAILABLE");
 }
 
 internal sealed partial class SupabasePortalClient : IPortalPublicTaskProject
@@ -44,12 +50,19 @@ internal sealed partial class SupabasePortalClient : IPortalPublicTaskProject
     public Task<PublicTaskStatus?> ReadPublicTaskAsync(PortalIdentity actor, Guid organization, Guid parent, Guid? job, Guid? request, CancellationToken token) =>
         PublicTaskRpcAsync(actor, "read_public_task", new { p_organization_id = organization, p_parent_scan_id = parent, p_job_id = job, p_request_id = request }, token);
     public async Task<PublicTaskStatus> CreatePublicTaskAsync(PortalIdentity actor, Guid organization, Guid parent, PortalCreatePublicTaskRequest value, CancellationToken token) =>
-        await PublicTaskRpcAsync(actor, "create_public_task", new
+        await PublicTaskRpcAsync(actor, value.GoalKind is null ? "create_public_task" : "create_public_task_for_goal", value.GoalKind is null ? (object)new
         {
             p_organization_id = organization,
             p_parent_scan_id = parent,
             p_request_id = value.RequestId,
             p_parent_original_sha256 = value.ParentOriginalSha256
+        } : new
+        {
+            p_organization_id = organization,
+            p_parent_scan_id = parent,
+            p_request_id = value.RequestId,
+            p_parent_original_sha256 = value.ParentOriginalSha256,
+            p_goal_kind = value.GoalKind
         }, token).ConfigureAwait(false)
             ?? throw new PortalFault(503, "CONTROL_PUBLIC_TASK_RESPONSE_INVALID");
     public Task<PublicTaskStatus?> CancelPublicTaskAsync(PortalIdentity actor, Guid organization, Guid parent, Guid job, CancellationToken token) =>
@@ -65,24 +78,27 @@ internal sealed partial class SupabasePortalClient : IPortalPublicTaskProject
 }
 
 /// <summary>Every original/result read is bracketed by a current session, membership and immutable job check.</summary>
-internal sealed class PortalPublicTasks(IPortalPublicTaskProject? client, PublicTaskEvidenceStore? evidence, Func<Task<bool>>? ready)
+internal sealed partial class PortalPublicTasks(IPortalPublicTaskProject? client, PublicTaskEvidenceStore? evidence, Func<Task<bool>>? ready)
 {
     private IPortalPublicTaskProject Client => client ?? throw new PortalFault(503, "CONTROL_PUBLIC_TASK_UNAVAILABLE");
     internal async Task<PublicTaskStatus> StartAsync(PortalIdentity actor, Guid organization, Guid parent, PortalCreatePublicTaskRequest request, CancellationToken token)
     {
-        if (request.RequestId == Guid.Empty || !PublicTaskRules.Digest(request.ParentOriginalSha256)) throw new PortalFault(400, "CONTROL_REQUEST_INVALID");
+        if (request.RequestId == Guid.Empty || !PublicTaskRules.Digest(request.ParentOriginalSha256)
+            || request.GoalKind is not null && !PublicTaskGoal.SupportsKind(request.GoalKind)) throw new PortalFault(400, "CONTROL_REQUEST_INVALID");
         var existing = await Client.ReadPublicTaskAsync(actor, organization, parent, null, request.RequestId, token).ConfigureAwait(false);
         if (existing is not null)
         {
             existing.Validate(organization, parent);
-            if (existing.Job.RequestId != request.RequestId || existing.CreatedBy != actor.UserId || existing.Job.ParentOriginalSha256 != request.ParentOriginalSha256)
+            if (existing.Job.RequestId != request.RequestId || existing.CreatedBy != actor.UserId || existing.Job.ParentOriginalSha256 != request.ParentOriginalSha256
+                || existing.Job.GoalKind != request.GoalKind)
                 throw new PortalFault(409, "CONTROL_REQUEST_CONFLICT");
             return existing;
         }
         if (ready is null || !await ready().ConfigureAwait(false)) throw new PortalFault(503, "CONTROL_PUBLIC_TASK_RUNTIME_UNAVAILABLE");
         var result = await Client.CreatePublicTaskAsync(actor, organization, parent, request, token).ConfigureAwait(false);
         result.Validate(organization, parent);
-        if (result.Job.RequestId != request.RequestId || result.CreatedBy != actor.UserId || result.Job.ParentOriginalSha256 != request.ParentOriginalSha256)
+        if (result.Job.RequestId != request.RequestId || result.CreatedBy != actor.UserId || result.Job.ParentOriginalSha256 != request.ParentOriginalSha256
+            || result.Job.GoalKind != request.GoalKind)
             throw new PortalFault(503, "CONTROL_PUBLIC_TASK_RESPONSE_INVALID");
         return await StatusAsync(actor, organization, parent, result.Job.JobId, token).ConfigureAwait(false) ?? throw new PortalFault(503, "CONTROL_PUBLIC_TASK_RESPONSE_INVALID");
     }
@@ -204,6 +220,10 @@ internal static class PortalPublicTaskEndpoints
     internal static void Map(WebApplication app)
     {
         const string root = "/api/workspaces/{organization:guid}/website-scans/{scan:guid}/tasks";
+        app.MapGet("/api/workspaces/{organization:guid}/website-scans/{scan:guid}/coverage/{digest}", async
+            (HttpContext context, IPortalPublicWebsites service, Guid organization, Guid scan, string digest, CancellationToken token) =>
+            TypedResults.Json(await service.CoverageAsync(HostedControlServer.Actor(context), organization, scan, digest, token).ConfigureAwait(false), PortalJson.Options))
+            .WithName("ReadPublicTaskCoverage");
         app.MapPost(root, async (HttpContext context, PortalPublicTasks service, Guid organization, Guid scan, CancellationToken token) =>
         {
             var value = await HostedControlServer.BodyAsync<PortalCreatePublicTaskRequest>(context, token).ConfigureAwait(false);

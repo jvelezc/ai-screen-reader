@@ -12,6 +12,26 @@ public sealed class PublicWebsiteHttpTests
     [InlineData(false, false, 401)]
     [InlineData(true, true, 400)]
     [InlineData(true, false, 200)]
+    public async Task HttpCoverageRequiresTheCurrentCallerAndRejectsQueryScope(bool authenticated, bool query, int expected)
+    {
+        using var rig = new PublicWebsiteApiTests.Rig();
+        await using var server = await Start(rig); using var client = Client(server, authenticated);
+        using var response = await client.GetAsync(Collection(rig) + $"/{rig.Job.ScanId:D}/coverage/{rig.Digest}" + (query ? "?actor=forged" : ""));
+        Assert.Equal(expected, (int)response.StatusCode);
+        if (expected == 200)
+        {
+            using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            Assert.Equal(rig.Digest, json.RootElement.GetProperty("originalSha256").GetString());
+            Assert.Equal("CapturedPageOnly", json.RootElement.GetProperty("coverage").GetProperty("scope").GetString());
+            Assert.True(response.Headers.CacheControl!.NoStore); Assert.Equal(1, rig.CoverageReads);
+        }
+        else { Assert.Equal(0, rig.OriginalReads); Assert.Equal(0, rig.CoverageReads); }
+        Assert.Equal(0, rig.Creates);
+    }
+    [Theory]
+    [InlineData(false, false, 401)]
+    [InlineData(true, true, 400)]
+    [InlineData(true, false, 200)]
     public async Task HttpScreeningUsesExistingAuthorizationAndRejectsQueryScope(bool authenticated, bool forgedQuery, int expected)
     {
         using var rig = new PublicWebsiteApiTests.Rig();

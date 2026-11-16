@@ -18,6 +18,7 @@ internal sealed class PublicTaskProgress(PublicTaskStart start, string root, Fun
         if (intent!.Goal is { } goal)
         {
             goal.Validate(start.Job.Source);
+            Require(start.Job.GoalKind is null || goal.Kind == start.Job.GoalKind);
             Require(_goal is null || _goal == goal); _goal = goal;
         }
         else Require(_goal is null);

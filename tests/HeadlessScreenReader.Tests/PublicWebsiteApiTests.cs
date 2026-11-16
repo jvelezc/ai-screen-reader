@@ -255,6 +255,9 @@ public sealed class PublicWebsiteApiTests
         internal bool Visible = true, ProcessorReady = true, ExistingRequest, HideForeignLookahead, LargeListUrls, RejectCreateQuota;
         internal int Memberships, StatusReads, OriginalReads, Creates, ReadinessReads, ListCount = 1;
         internal Action? AfterStatus, AfterOriginal;
+        internal PublicTaskStatus[] CoverageTasks = [];
+        internal int CoverageReads;
+        internal Action? AfterCoverage;
         internal Action<Dictionary<string, object?>>? StatusChange, SummaryChange;
         private readonly HttpClient _http;
         internal readonly SupabasePortalClient Project;
@@ -322,6 +325,15 @@ public sealed class PublicWebsiteApiTests
                     body = new[] { new { scan_id = Job.ScanId, job_id = Job.JobId } }; break;
                 case "/rest/v1/rpc/read_public_scan_status":
                     StatusReads++; body = Status(); AfterStatus?.Invoke(); break;
+                case "/rest/v1/rpc/read_public_task_coverage":
+                    using (var json = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(token)))
+                    {
+                        Assert.Equal(Job.OrganizationId, json.RootElement.GetProperty("p_organization_id").GetGuid());
+                        Assert.Equal(Job.ScanId, json.RootElement.GetProperty("p_parent_scan_id").GetGuid());
+                        Assert.Equal(Digest, json.RootElement.GetProperty("p_parent_original_sha256").GetString());
+                    }
+                    CoverageReads++; AfterCoverage?.Invoke();
+                    body = JsonSerializer.SerializeToElement(CoverageTasks, ReaderWorkerWire.Json); break;
                 case "/rest/v1/public_scan_jobs":
                     OriginalReads++;
                     Assert.Contains("id=eq." + Job.JobId.ToString("D"), request.RequestUri.Query);

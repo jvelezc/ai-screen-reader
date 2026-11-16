@@ -7,6 +7,20 @@ namespace HeadlessScreenReader.Tests;
 public sealed class PublicWebsiteOpenApiTests
 {
     [Fact]
+    public void CoverageAndSelectedGoalSchemasKeepLegacyAdmissionOptionalAndScopeExplicit()
+    {
+        using var json = JsonDocument.Parse(PortalOpenApi.Document);
+        var schemas = json.RootElement.GetProperty("components").GetProperty("schemas");
+        var request = schemas.GetProperty("CreatePublicTask");
+        Assert.Equal(new[] { "parentOriginalSha256", "requestId" }, request.GetProperty("required").EnumerateArray().Select(p => p.GetString()).Order());
+        Assert.Equal(new string?[] { "Pricing", "Catalog", "Contact", "Help", null }, request.GetProperty("properties").GetProperty("goalKind").GetProperty("enum").EnumerateArray().Select(p => p.GetString()));
+        var coverage = json.RootElement.GetProperty("paths").GetProperty("/api/workspaces/{organization}/website-scans/{scan}/coverage/{digest}").GetProperty("get");
+        Assert.Equal("ReadPublicTaskCoverage", coverage.GetProperty("operationId").GetString());
+        Assert.True(coverage.GetProperty("security")[0].TryGetProperty("bearerAuth", out _));
+        Assert.Equal(new[] { "digest", "organization", "scan" }, coverage.GetProperty("parameters").EnumerateArray().Select(p => p.GetProperty("name").GetString()).Order());
+        Assert.All(coverage.GetProperty("parameters").EnumerateArray(), p => Assert.Equal("path", p.GetProperty("in").GetString()));
+    }
+    [Fact]
     public void DiagnosticsResultIsAnExplicitAuthenticatedRepresentation()
     {
         using var json = JsonDocument.Parse(PortalOpenApi.Document);
@@ -23,7 +37,7 @@ public sealed class PublicWebsiteOpenApiTests
     public void PublicContractDocumentsEveryActualRouteWithPathOnlySelectorsAndAcceptedAdmission()
     {
         using var json = JsonDocument.Parse(PortalOpenApi.Document); var root = json.RootElement;
-        Assert.Equal("1.24.1", root.GetProperty("info").GetProperty("version").GetString());
+        Assert.Equal("1.25.0", root.GetProperty("info").GetProperty("version").GetString());
         var paths = root.GetProperty("paths"); const string prefix = "/api/workspaces/{organization}/website-scans";
         var screening = paths.GetProperty(prefix + "/{scan}/screening/{digest}").GetProperty("get");
         Assert.Equal("ReadPublicWebsiteScreening", screening.GetProperty("operationId").GetString());

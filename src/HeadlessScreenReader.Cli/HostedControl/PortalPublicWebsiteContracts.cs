@@ -89,6 +89,8 @@ internal interface IPortalPublicWebsiteProjectClient
 
 internal interface IPortalPublicWebsites
 {
+    Task<PortalWebsiteTaskCoverageResponse> CoverageAsync(PortalIdentity actor, Guid organization, Guid scan, string digest, CancellationToken token) =>
+        throw new PortalFault(503, "CONTROL_PUBLIC_TASK_COVERAGE_UNAVAILABLE");
     Task<PortalWebsiteScreeningResponse> ScreeningAsync(PortalIdentity actor, Guid organization, Guid scan, string digest, CancellationToken token);
     Task<PortalPublicWebsiteCreatedResponse> AdmitAsync(PortalIdentity actor, Guid organization, PortalCreatePublicWebsiteRequest request, CancellationToken token);
     Task<PortalPublicWebsiteListResponse> ListAsync(PortalIdentity actor, Guid organization, CancellationToken token);

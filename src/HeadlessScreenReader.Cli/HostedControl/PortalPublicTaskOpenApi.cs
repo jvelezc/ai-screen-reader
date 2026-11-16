@@ -5,9 +5,44 @@ namespace HeadlessScreenReader.Cli.HostedControl;
 
 internal static partial class PortalOpenApi
 {
+    private static void ApplyPublicTaskCoverageSchema(Type type, JsonObject value, JsonObject properties)
+    {
+        if (type == typeof(PortalCreatePublicTaskRequest) || type == typeof(PublicTaskJob))
+        {
+            value["required"] = Strings(properties.Select(p => p.Key).Where(k => k != "goalKind").ToArray());
+            var kinds = Strings("Pricing", "Catalog", "Contact", "Help"); kinds.Add((JsonNode?)null);
+            properties["goalKind"]!["enum"] = kinds;
+            properties["goalKind"]!["description"] = "Optional exact service-link kind. Omitted/null preserves automatic selection. Changing this field under the same request conflicts.";
+        }
+        if (type == typeof(PortalWebsiteTaskCoverageResponse))
+        {
+            properties["latestTasks"]!["maxItems"] = 5;
+            properties["taskResultsRequireOriginalRead"]!["const"] = true;
+            properties["captureIndex"]!["const"] = 1; properties["captures"]!["const"] = 2;
+        }
+        if (type == typeof(PublicTaskCoverage))
+        {
+            properties["schema"]!["const"] = PublicTaskCoverage.CurrentSchema;
+            properties["policy"]!["const"] = PublicTaskCoverage.CurrentPolicy;
+            properties["scope"]!["const"] = "CapturedPageOnly";
+            properties["taskExecution"]!["const"] = "NotStartedByCoverage";
+            properties["fullSiteCoverageEstablished"]!["const"] = false; properties["legalCaseDetermined"]!["const"] = false;
+            properties["groups"]!["minItems"] = 8; properties["groups"]!["maxItems"] = 8;
+            properties["limitations"]!["maxItems"] = 12;
+            foreach (var name in new[] { "inspectedNodes", "interactiveControls", "unnamedInteractiveControls", "unclassifiedInteractiveControls" })
+            { properties[name]!["minimum"] = 0; properties[name]!["maximum"] = 2048; }
+            properties["captureEpoch"]!["minimum"] = 1;
+        }
+        if (type == typeof(PublicTaskCoverageGroup))
+        {
+            properties["kind"]!["enum"] = Strings("Pricing", "Catalog", "Contact", "Help", "Search", "FormCompletion", "AccountAccess", "EnrollmentOrCheckout");
+            properties["examples"]!["maxItems"] = 2; properties["executionAuthorized"]!["const"] = false;
+        }
+    }
     private static void AddPublicTaskSchemas(JsonObject schemas)
     {
         schemas["CreatePublicTask"] = Schema<PortalCreatePublicTaskRequest>();
+        schemas["PublicTaskCoverage"] = Schema<PortalWebsiteTaskCoverageResponse>("PublicTaskCoverage");
         schemas["PublicTaskStatus"] = Schema<PublicTaskStatus>("PublicTaskStatus");
         schemas["PublicTaskStatusOrNull"] = new JsonObject { ["oneOf"] = new JsonArray(Reference("PublicTaskStatus"), new JsonObject { ["type"] = "null" }) };
         schemas["PublicTaskResult"] = Schema<PortalTaskResult>("PublicTaskResult");
@@ -19,6 +54,9 @@ internal static partial class PortalOpenApi
     private static void AddPublicTaskPaths(JsonObject paths)
     {
         const string root = "/api/workspaces/{organization}/website-scans/{scan}/tasks";
+        var coverage = Operation("ReadPublicTaskCoverage", "Diagnostic task hints from the exact retained final page tree; no new input. At most five latest task statuses remain bound to the source digest and current caller. Original task results require their own verified read. Unsupported and unobserved journeys remain unassessed, never a clean-site or legal claim.", "PublicTaskCoverage", true, organization: true, scan: true);
+        ((JsonArray)coverage["parameters"]!).Add(PublicDigestParameter());
+        paths["/api/workspaces/{organization}/website-scans/{scan}/coverage/{digest}"] = Path("get", coverage);
         JsonObject TaskOperation(string name, string detail, string output, string? body = null, int status = 200, bool job = true)
         {
             var operation = Operation(name, detail, output, true, body, status, organization: true, scan: true);

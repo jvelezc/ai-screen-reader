@@ -21,7 +21,7 @@ public sealed class PublicWebsiteMcpHttpTests
             rig.Project, new PortalObservationStub(), publicWebsiteRuntimeReady: () => Task.FromResult(true));
         await using (var mcp = await Connect(server.BaseAddress, rig.Job.OrganizationId))
         {
-            var tools = await mcp.ListToolsAsync(); Assert.Equal(41, tools.Count);
+            var tools = await mcp.ListToolsAsync(); Assert.Equal(43, tools.Count);
             var screeningTool = tools.Single(tool => tool.Name == "website_screening");
             Assert.Equal(new[] { "originalSha256", "scanId" }, screeningTool.JsonSchema.GetProperty("properties").EnumerateObject().Select(p => p.Name).Order());
             var admission = tools.Single(tool => tool.Name == "website_scan_start").JsonSchema;
@@ -43,6 +43,11 @@ public sealed class PublicWebsiteMcpHttpTests
             Assert.Equal("InsufficientTaskEvidence", screening.GetProperty("data").GetProperty("screening").GetProperty("evidenceReadiness").GetString());
             Assert.Equal("unnamed", Assert.Single(screening.GetProperty("data").GetProperty("screening").GetProperty("issues").EnumerateArray()).GetProperty("nodeId").GetString());
             Assert.Equal("DiscoverServices", Assert.Single(screening.GetProperty("data").GetProperty("screening").GetProperty("suggestedTasks").EnumerateArray()).GetProperty("purpose").GetString());
+            var coverage = await Call(mcp, "website_task_coverage", new() { ["scanId"] = rig.Job.ScanId, ["parentOriginalSha256"] = rig.Digest });
+            Assert.Equal("website-task-coverage", coverage.GetProperty("status").GetString());
+            Assert.Equal("course", coverage.GetProperty("data").GetProperty("coverage").GetProperty("groups")[1].GetProperty("examples")[0].GetProperty("nodeId").GetString());
+            Assert.True(coverage.GetProperty("data").GetProperty("taskResultsRequireOriginalRead").GetBoolean());
+            Assert.Empty(coverage.GetProperty("data").GetProperty("latestTasks").EnumerateArray());
             var original = await Call(mcp, "website_original", new() { ["scanId"] = rig.Job.ScanId, ["originalSha256"] = rig.Digest });
             Assert.Equal(Encoding.UTF8.GetBytes(rig.Text), original.GetProperty("data").GetProperty("data").GetBytesFromBase64());
         }
@@ -55,6 +60,8 @@ public sealed class PublicWebsiteMcpHttpTests
         });
         Assert.Empty(eof.GetProperty("data").GetProperty("data").GetBytesFromBase64());
         rig.Visible = false;
+        var deniedCoverage = await Call(reconnect, "website_task_coverage", new() { ["scanId"] = rig.Job.ScanId, ["parentOriginalSha256"] = rig.Digest }, true);
+        Assert.DoesNotContain("course", deniedCoverage.GetRawText());
         var denied = await Call(reconnect, "website_observation", new() { ["scanId"] = rig.Job.ScanId }, true);
         Assert.Equal("CONTROL_WORKSPACE_NOT_FOUND", denied.GetProperty("errorCode").GetString());
         Assert.DoesNotContain("Actual exposed name", denied.GetRawText()); Assert.Equal(1, rig.Creates);

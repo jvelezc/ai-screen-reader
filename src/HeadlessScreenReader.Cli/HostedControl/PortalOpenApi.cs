@@ -12,7 +12,7 @@ internal static partial class PortalOpenApi
 {
     private static readonly Lazy<string> Cached = new(Build);
     public static string Document => Cached.Value;
-    public const string ContractVersion = "1.24.1";
+    public const string ContractVersion = "1.25.0";
 
     private static string Build()
     {
@@ -180,6 +180,7 @@ internal static partial class PortalOpenApi
                     && context.TypeInfo.Type != typeof(EvidenceReadinessRequest))
                     value["required"] = Strings(properties.Select(property => property.Key).ToArray());
                 ApplyPublicWebsiteSchema(context.TypeInfo.Type, value, properties);
+                ApplyPublicTaskCoverageSchema(context.TypeInfo.Type, value, properties);
                 ApplySearchTaskSchema(context.TypeInfo.Type, value, properties);
                 if (context.TypeInfo.Type == typeof(PortalWorkspacePageResponse))
                 {

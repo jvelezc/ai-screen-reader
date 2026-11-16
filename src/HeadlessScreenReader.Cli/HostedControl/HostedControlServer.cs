@@ -127,7 +127,7 @@ internal sealed class HostedControlServer : IAsyncDisposable
             {
                 var operation = context.GetEndpoint()?.Metadata.GetMetadata<IEndpointNameMetadata>()?.EndpointName;
                 operation = operation is "AdmitPublicWebsite" or "ListPublicWebsites" or "ReadPublicWebsiteStatus"
-                    or "ReadPublicWebsiteFirstNodes" or "ReadPublicWebsitePinnedNodes" or "ReadPublicWebsiteOriginal"
+                    or "ReadPublicWebsiteFirstNodes" or "ReadPublicWebsitePinnedNodes" or "ReadPublicWebsiteOriginal" or "ReadPublicTaskCoverage"
                     or "AdmitPublicTask" or "ReadLatestPublicTask" or "ReadPublicTaskStatus" or "CancelPublicTask"
                         or "ReadPublicTaskResult" or "ReadPublicTaskDiagnosticsResult" or "ReadPublicTaskEvents" or "ReadPublicTaskReader" or "ReadPublicTaskGraph" or "ReadPublicTaskOriginal"
                     or "PortalSession" or "EnsurePersonalWorkspace" or "GetPortalWorkspace" ? operation : "Other";

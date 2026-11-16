@@ -70,12 +70,15 @@ public sealed class PublicNavigationBrowser : IAsyncDisposable
             ("Catalog", "Reach the service or course catalog", new[] { "course", "catalog" }),
             ("Contact", "Reach contact information", new[] { "contact" }),
             ("Help", "Reach help information", new[] { "help", "support", "faq" }) })
+        {
+            if (_job.GoalKind is not null && _job.GoalKind != kind) continue;
             foreach (var link in await LinksAsync().ConfigureAwait(false))
                 if (link.Visible && PublicTaskRules.Text(link.Name, 500) && PublicTaskRules.SafeDestination(_job.Source, link.Url)
                     && words.Any(word => (link.Name + " " + new Uri(link.Url).AbsolutePath).Contains(word, StringComparison.OrdinalIgnoreCase)))
                 {
                     var goal = new PublicTaskGoal(kind, title, link.Name, link.Url); goal.Validate(_job.Source); return goal;
                 }
+        }
         return null;
     }
 

@@ -8,6 +8,14 @@ public sealed partial class HostedScanClient
 {
     public Task<ToolReply> PublicTaskAsync(string operation, string scanId, string? jobId = null, string? requestId = null,
         string? digest = null, int attempt = 1, int offset = 0, string? file = null, CancellationToken token = default)
+        => PublicTaskCoreAsync(operation, scanId, jobId, requestId, digest, attempt, offset, file, null, token);
+
+    public Task<ToolReply> PublicTaskForGoalAsync(string scanId, string requestId, string digest, string goalKind, CancellationToken token = default)
+        => PublicTaskGoal.SupportsKind(goalKind) ? PublicTaskCoreAsync("start", scanId, null, requestId, digest, 1, 0, null, goalKind, token)
+            : Task.FromResult(new ToolReply("error", null, PublicTaskJob.Profile, ErrorCode: "PUBLIC_TASK_REQUEST_INVALID"));
+
+    private Task<ToolReply> PublicTaskCoreAsync(string operation, string scanId, string? jobId, string? requestId,
+        string? digest, int attempt, int offset, string? file, string? goalKind, CancellationToken token)
     {
         if (!Guid.TryParse(scanId, out var parent) || parent == Guid.Empty || offset < 0
             || operation is not ("start" or "latest" or "status" or "cancel" or "result" or "events" or "reader" or "graph" or "original"))
@@ -33,6 +41,7 @@ public sealed partial class HostedScanClient
             };
             var method = operation is "start" or "cancel" ? HttpMethod.Post : HttpMethod.Get;
             object? body = operation == "start" ? new { requestId = request, parentOriginalSha256 = digest } : null;
+            if (operation == "start" && goalKind is not null) body = new { requestId = request, parentOriginalSha256 = digest, goalKind };
             using var document = await _transport.SendAsync(method, path, body, operation == "start" ? 202 : 200).ConfigureAwait(false);
             var raw = document.RootElement;
             var wrapped = operation is "result" or "events" or "reader" or "graph" or "original";
@@ -42,11 +51,13 @@ public sealed partial class HostedScanClient
             {
                 var status = state.Deserialize<PublicTaskStatus>(HostedReaderTransport.Json) ?? throw new HostedReaderFault("HOSTED_RESPONSE_INVALID");
                 status.Validate(_options.Organization, parent, job == Guid.Empty ? null : job);
-                if (operation == "start") Require(status.Job.RequestId == request && status.Job.ParentOriginalSha256 == digest);
+                if (operation == "start") Require(status.Job.RequestId == request && status.Job.ParentOriginalSha256 == digest && status.Job.GoalKind == goalKind);
                 if (wrapped) Require(status.State == "completed");
                 if (operation is "events" or "reader" or "graph" or "original") Require(status.ReportSha256 == digest && raw.GetProperty("reportSha256").GetString() == digest
                     && raw.GetProperty("offset").GetInt32() == offset);
                 if (operation == "result") Require(!raw.GetProperty("legalCaseDetermined").GetBoolean()
+                    && (status.Job.GoalKind is null || raw.GetProperty("goal").ValueKind == JsonValueKind.Null
+                        || raw.GetProperty("goal").GetProperty("kind").GetString() == status.Job.GoalKind)
                     && raw.GetProperty("scope").GetString() == "PublicServiceNavigationOnly"
                     && raw.GetProperty("videoAlignment").GetString() == "EventSeekingNotVerified"
                     && raw.GetProperty("assistiveTechnologyComparison").GetString() == "NotPerformed"

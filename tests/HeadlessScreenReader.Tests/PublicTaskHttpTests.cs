@@ -13,6 +13,25 @@ namespace HeadlessScreenReader.Tests;
 
 public sealed class PublicTaskHttpTests
 {
+    [Theory]
+    [InlineData(null, 409)]
+    [InlineData("Contact", 202)]
+    [InlineData("Pricing", 409)]
+    [InlineData("Search", 400)]
+    [InlineData("", 400)]
+    public async Task AdmissionBindsTheSelectedGoalBeforeRuntimeOrNewQueueWork(string? kind, int expected)
+    {
+        using var rig = await Rig.Create(); rig.Status = rig.Status with { Job = rig.Status.Job with { GoalKind = "Contact" } }; rig.Ready = false;
+        await using var server = await rig.Server(); using var http = rig.Http(server);
+        using var response = await http.PostAsJsonAsync(rig.Collection, new PortalCreatePublicTaskRequest(rig.Status.Job.RequestId, rig.Status.Job.ParentOriginalSha256) { GoalKind = kind }, PortalJson.Options);
+        Assert.Equal(expected, (int)response.StatusCode); Assert.Equal(0, rig.Creates);
+        if (expected == 400) Assert.Equal(0, rig.Reads);
+        if (expected == 202)
+        {
+            var result = (await response.Content.ReadFromJsonAsync<PublicTaskStatus>(PortalJson.Options))!;
+            Assert.Equal(rig.Status.Job, result.Job); Assert.Equal("Contact", result.Job.GoalKind);
+        }
+    }
     [Fact]
     public async Task LegacyTaskResultShapeStaysCompatibleWhileDiagnosticsRequireExplicitRead()
     {

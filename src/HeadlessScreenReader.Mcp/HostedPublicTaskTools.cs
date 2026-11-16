@@ -7,6 +7,15 @@ namespace HeadlessScreenReader.Mcp;
 [McpServerToolType]
 public sealed class HostedPublicTaskTools(HostedScanClient client)
 {
+    [McpServerTool(Name = "website_task_start_for_goal", ReadOnly = false, Destructive = false, OpenWorld = true),
+        Description("Start one source-bound public service-link experiment for exactly Pricing, Catalog, Contact or Help. Same requestId, original digest and goalKind reconcile one intent; changing the goal requires an explicit new intent. No fallback to another kind, authored selectors, form data or credentials. Two independent keyboard attempts and a separate pointer comparison; admission is not completion. Missing matching links remain unassessed, not barriers.")]
+    public async Task<CallToolResult> StartForGoal(string scanId, string requestId, string parentOriginalSha256, string goalKind, CancellationToken cancellationToken = default) =>
+        ReaderTools.Result(await client.PublicTaskForGoalAsync(scanId, requestId, parentOriginalSha256, goalKind, cancellationToken));
+
+    [McpServerTool(Name = "website_task_coverage", ReadOnly = true, OpenWorld = false),
+        Description("Read bounded diagnostic task hints from the exact saved final page tree and at most five latest same-source task statuses. Supported link profiles, unsupported control families, missing hints and truncation stay explicit. Null goalKind identifies historical automatic selection, not a verified specific journey. Metadata does not verify originals; read each exact task result separately. No website input, full-site coverage, accessibility verdict or legal case is established by this read.")]
+    public async Task<CallToolResult> Coverage(string scanId, string parentOriginalSha256, CancellationToken cancellationToken = default) =>
+        ReaderTools.Result(await client.PublicWebsiteCoverageAsync(scanId, parentOriginalSha256, cancellationToken));
     [McpServerTool(Name = "website_task_start", ReadOnly = false, Destructive = false, OpenWorld = true),
         Description("Start one bounded, anonymous public service-link task for a completed website scan, pinned by parentOriginalSha256. The core selects an observed pricing/catalog/contact/help link; two fresh keyboard attempts and one separate pointer comparison are recorded. No form entry, sign-in, purchase or authored selectors. A fresh requestId UUID represents ONE intended test. Reconcile a lost response only with the SAME requestId and digest; never silently repeat inputs. Admission is not completion or a barrier. Scope/uncertainty and missing evidence remain explicit; no legal case or actual NVDA comparison is determined.")]
     public async Task<CallToolResult> Start(string scanId, string requestId, string parentOriginalSha256, CancellationToken cancellationToken = default) =>
