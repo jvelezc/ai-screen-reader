@@ -12,6 +12,8 @@ public sealed record CompletedCaptureSource(PreciseCaptureFrame Frame, byte[] Co
 public sealed record RecordingProbeMedia(ImmutableArray<SourceMarkerFrame> Source, ImmutableArray<VideoMarkerFrame> Video,
     ImmutableArray<RecordingArtifact> Artifacts, ImmutableArray<PreciseCaptureFrame> PreciseFrames)
 {
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public ImmutableArray<RecordingDecodeAttempt>? DecodeAttempts { get; init; }
     public string SourceClock => "ChromiumCdpJsonDouble";
     public int VideoFramesPerSecond => 25;
     // CDP delivery order can differ from presentation order at startup. Retain
@@ -37,6 +39,7 @@ public sealed class ChromiumRecordingProbe : IAsyncDisposable
     private bool _finalizing;
     private Func<ImmutableArray<CompletedCaptureSource>, CancellationToken, Task>? _finalSources;
     private CancellationToken _finalSourcesToken;
+    private readonly List<RecordingDecodeAttempt> _decodeAttempts = [];
 
     internal ChromiumRecordingProbe(ChromiumFixtureBrowser browser, PreciseScreencastSource source, string folder)
     { _browser = browser; _source = source; _folder = folder; }
@@ -47,6 +50,15 @@ public sealed class ChromiumRecordingProbe : IAsyncDisposable
     public BrowserShutdownStatus ShutdownStatus => _browser.ShutdownStatus;
     /// <summary>Closed collector cause retained during stop; neither a stop acknowledgement nor recording completion.</summary>
     public string? CollectorFailureCode => Volatile.Read(ref _collectorFailure);
+    /// <summary>Present only when a decoder failure occurred; preserves the failed and subsequent stored-media attempts.</summary>
+    public ImmutableArray<RecordingDecodeAttempt>? DecodeAttempts
+    {
+        get
+        {
+            lock (_stopSync) return _decodeAttempts.Any(attempt => attempt.Decode.ErrorCode is not null)
+                ? _decodeAttempts.ToImmutableArray() : null;
+        }
+    }
 
     /// <summary>Independent pointer comparison on an embedded mock source; never a reader keyboard event.</summary>
     public Task<PointerTaskReceipt> ObserveMockPointerAsync(CancellationToken token = default) =>
@@ -214,7 +226,8 @@ public sealed class ChromiumRecordingProbe : IAsyncDisposable
             var extension = Path.GetExtension(file);
             if (extension is not (".webm" or ".jpg")) throw new BrowserOperationException("RECORDING_ARTIFACT_UNRECOGNIZED");
             var bytes = await File.ReadAllBytesAsync(file).ConfigureAwait(false);
-            var decoded = await CaptureProbeDecoder.InspectMarkersAsync(page, bytes, extension == ".webm").ConfigureAwait(false);
+            var decoded = await CaptureProbeDecoder.InspectMarkersAsync(page, bytes, extension == ".webm", attempt =>
+            { lock (_stopSync) _decodeAttempts.Add(new(name, attempt)); }).ConfigureAwait(false);
             var hash = Convert.ToHexStringLower(SHA256.HashData(bytes));
             artifacts.Add(new(name, bytes.Length, hash, decoded.Length));
             if (name == "original.webm") video = decoded;
@@ -227,7 +240,7 @@ public sealed class ChromiumRecordingProbe : IAsyncDisposable
             }
         }
         if (source.Count != precise.Length) throw new BrowserOperationException("RECORDING_SOURCE_ARTIFACT_MISSING");
-        return new(source.ToImmutable(), video, artifacts.ToImmutable(), precise);
+        return new(source.ToImmutable(), video, artifacts.ToImmutable(), precise) { DecodeAttempts = DecodeAttempts };
     }
 
     public ValueTask DisposeAsync() => _browser.DisposeAsync();

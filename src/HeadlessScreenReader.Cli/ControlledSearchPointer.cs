@@ -64,6 +64,7 @@ internal static class ControlledSearchPointer
         catch (Exception exception) when (exception is IOException or TimeoutException or Microsoft.Playwright.PlaywrightException or UnauthorizedAccessException)
         { error = "SEARCH_POINTER_UNCONFIRMED"; }
         return new(new(focus, readerStarted, entry, timeline, after, error) { TimelineTruncated = truncated }, activation,
-            probe?.Environment, media, probe?.CaptureStatus, probe?.ShutdownStatus, stage, error);
+            probe?.Environment, media, probe?.CaptureStatus, probe?.ShutdownStatus, stage, error)
+        { DecodeAttempts = media is null ? probe?.DecodeAttempts : null };
     }
 }

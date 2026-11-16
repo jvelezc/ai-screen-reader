@@ -19,6 +19,8 @@ Local focused group:92 discovered,92 passed, zero failed/skipped. Strict Release
 
 The recording-index correction adds one bounded copy check. A covering five-case run passes the index check and all four existing stdio mock-source cases. The first canonical full run retains4,298 passes and one unexpected MCP fixture-open response; its diagnostic repair and unchanged-behavior rerun are recorded as PSR-MCP-001. Full rerun and exact-source CI are pending.
 
+Exact-source49d3a5e acceptance: all nine CI43808856667 jobs pass. Downloaded Windows and Linux TRX independently confirm4,300 discovered/executed/passed per OS with zero failed/skipped; actual Linux worker80/80 includes both search collections, one mid-query loss, eight retained interrupted images, two denied replays and five native absences. The local full rerun separately retains4,299 passes/one decoder failure and is not called a pass; [stored-video recovery](stored-video-decode-recovery-v1.md) addresses that engine failure in the next increment. The isolated collector remains unpublished to tenants and public websites.
+
 ## Actual isolated Linux receipt
 
 Rootless Podman runs immutable image `sha256:4391921cb794729079e62f41b49a4ffcccb36c5400a90703846b70f7122efc99`. Two complete collections each finish85 control boundaries and77 physical inputs, with five fresh contexts and163 retained images in total. The middle-query loss denies response9; eight earlier images remain. Two replay attempts are denied and all five exact native owners have confirmed absence. Pending native intents:0. The uniquely owned test image is removed. Database access, queue admission, application JWT acceptance and public-site input remain false.

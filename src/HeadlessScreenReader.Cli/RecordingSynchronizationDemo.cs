@@ -16,6 +16,8 @@ public sealed record RecordingSynchronizationReceipt(string Schema, string Folde
     CaptureStatus? CaptureLifecycle, FixtureBrowserEnvironment? Environment)
 {
     public BrowserShutdownStatus? Shutdown { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public ImmutableArray<RecordingDecodeAttempt>? DecodeAttempts { get; init; }
 }
 
 public static class RecordingSynchronizationDemo
@@ -105,7 +107,7 @@ public static class RecordingSynchronizationDemo
         finally { lifecycle = ownedProbe?.CaptureStatus; }
         var receipt = new RecordingSynchronizationReceipt("recording-synchronization-v1", folder, stage, error,
             analysis, samples.ToImmutable(), originUncertainty, actions, steps.ToImmutable(), timeline, media, lifecycle, environment)
-        { Shutdown = ownedProbe?.ShutdownStatus };
+        { Shutdown = ownedProbe?.ShutdownStatus, DecodeAttempts = media is null ? ownedProbe?.DecodeAttempts : null };
         Directory.CreateDirectory(folder);
         await WriteNewAsync(Path.Combine(folder, "receipt.json"), JsonSerializer.Serialize(receipt, TraversalDemo.JsonOptions)).ConfigureAwait(false);
         var recordingLink = !File.Exists(Path.Combine(folder, "original.webm")) ? "No original recording finalized."

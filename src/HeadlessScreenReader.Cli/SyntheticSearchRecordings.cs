@@ -14,7 +14,11 @@ namespace HeadlessScreenReader.Cli;
 
 public sealed record SearchPointerRecording(SearchPointerPreparation? Preparation, PointerTaskReceipt? Activation,
     FixtureBrowserEnvironment? Environment, RecordingProbeMedia? Media, CaptureStatus? Capture,
-    BrowserShutdownStatus? Shutdown, string Stage, string? ErrorCode);
+    BrowserShutdownStatus? Shutdown, string Stage, string? ErrorCode)
+{
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ImmutableArray<RecordingDecodeAttempt>? DecodeAttempts { get; init; }
+}
 
 public sealed record SyntheticSearchManifest(string Schema, DateTimeOffset CreatedAtUtc, SyntheticSearchSite Source,
     ImmutableArray<MockTaskRun> KeyboardRuns, string? PointerRunId, string Observation, string? CollectionStoppedReason,
@@ -164,6 +168,7 @@ public static class SyntheticSearchRecordings
         catch (Exception e) when (e is IOException or TimeoutException or Microsoft.Playwright.PlaywrightException or UnauthorizedAccessException)
         { error = "SEARCH_POINTER_UNCONFIRMED"; }
         var preparation = new SearchPointerPreparation(focus, readerStarted, entry, timeline, after, error) { TimelineTruncated = timelineTruncated };
-        return new(preparation, activation, probe?.Environment, media, probe?.CaptureStatus, probe?.ShutdownStatus, stage, error);
+        return new(preparation, activation, probe?.Environment, media, probe?.CaptureStatus, probe?.ShutdownStatus, stage, error)
+        { DecodeAttempts = media is null ? probe?.DecodeAttempts : null };
     }
 }

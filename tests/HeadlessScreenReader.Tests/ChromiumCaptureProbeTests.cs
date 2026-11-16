@@ -62,6 +62,32 @@ public sealed class ChromiumCaptureProbeTests
         Assert.Equal(0, decoded.LastFrameCanaryPixels);
         Assert.True(decoded.CanaryPixels >= decoded.FirstFrameCanaryPixels);
         Assert.Equal(decoded.Frames, await PlaywrightVideoFrames.CountAsync(await File.ReadAllBytesAsync(video)));
+        var original = await File.ReadAllBytesAsync(video);
+        var originalHash = SHA256.HashData(original);
+        var decodeAttempts = new List<VideoDecodeAttempt>();
+        var nativeDecoders = new List<System.Diagnostics.Process>();
+        var nativeCalls = 0;
+        try
+        {
+            var recovered = await VideoDecodeRecovery.DecodeAsync(original, bytes =>
+                PlaywrightVideoFrames.DecodeCoreAsync(bytes, countOnly: false,
+                    maximumDuration: ++nativeCalls == 1 ? TimeSpan.Zero : null, started: id =>
+                    {
+                        var observation = System.Diagnostics.Process.GetProcessById(id);
+                        _ = observation.Handle;
+                        nativeDecoders.Add(observation);
+                    }), decodeAttempts.Add);
+            Assert.Equal(2, nativeCalls);
+            Assert.Equal(decoded.Frames, recovered.Length);
+            Assert.Equal(new[] { "TimedOut", "Completed" }, decodeAttempts.Select(attempt => attempt.Outcome));
+            Assert.All(nativeDecoders, process => Assert.True(process.HasExited));
+            Assert.Equal(originalHash, SHA256.HashData(await File.ReadAllBytesAsync(video)));
+            var recoveredFirst = await CaptureProbeDecoder.InspectAsync(page, recovered[0], video: false);
+            var recoveredLast = await CaptureProbeDecoder.InspectAsync(page, recovered[^1], video: false);
+            Assert.Equal(decoded.FirstFrameCanaryPixels, recoveredFirst.CanaryPixels);
+            Assert.Equal(decoded.LastFrameCanaryPixels, recoveredLast.CanaryPixels);
+        }
+        finally { foreach (var process in nativeDecoders) process.Dispose(); }
     }
 
     [Fact]

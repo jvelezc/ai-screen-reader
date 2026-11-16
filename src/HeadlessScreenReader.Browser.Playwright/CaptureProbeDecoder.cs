@@ -34,8 +34,12 @@ internal static class CaptureProbeDecoder
     }
 
     public static async Task<ImmutableArray<VideoMarkerFrame>> InspectMarkersAsync(IPage page, byte[] bytes, bool video)
+        => await InspectMarkersAsync(page, bytes, video, null).ConfigureAwait(false);
+
+    internal static async Task<ImmutableArray<VideoMarkerFrame>> InspectMarkersAsync(IPage page, byte[] bytes, bool video,
+        Action<VideoDecodeAttempt>? observe)
     {
-        var frames = video ? await PlaywrightVideoFrames.DecodeAsync(bytes).ConfigureAwait(false) : ImmutableArray.Create<byte[]>(bytes);
+        var frames = video ? await PlaywrightVideoFrames.DecodeAsync(bytes, observe).ConfigureAwait(false) : ImmutableArray.Create<byte[]>(bytes);
         var markers = ImmutableArray.CreateBuilder<VideoMarkerFrame>();
         for (var i = 0; i < frames.Length; i++)
         {

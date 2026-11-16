@@ -13,7 +13,11 @@ namespace HeadlessScreenReader.Cli;
 public sealed record MockTaskRun(int Route, string Key, string? RunId, string Execution,
     string Reachability, int AttemptedKeys, int CompletedKeys, bool HasVideo, string? ErrorCode);
 public sealed record MockPointerRecording(PointerTaskReceipt? Receipt, FixtureBrowserEnvironment? Environment,
-    RecordingProbeMedia? Media, CaptureStatus? Capture, BrowserShutdownStatus? Shutdown, string? ErrorCode);
+    RecordingProbeMedia? Media, CaptureStatus? Capture, BrowserShutdownStatus? Shutdown, string? ErrorCode)
+{
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ImmutableArray<RecordingDecodeAttempt>? DecodeAttempts { get; init; }
+}
 public sealed record MockTaskManifest(string Schema, DateTimeOffset CreatedAtUtc, MockSiteTask Source,
     ImmutableArray<MockTaskRun> KeyboardRuns, string? PointerRunId, string PointerGoalObservation,
     string Observation, string ProducerSha256, string ProducerVersion, string Runtime, string Platform,
@@ -187,7 +191,8 @@ public static class MockTaskRecordings
         catch (OperationCanceledException) { error = "MOCK_POINTER_RECORDING_CANCELLED"; }
         catch (Exception e) when (e is BrowserOperationException or IOException or TimeoutException or Microsoft.Playwright.PlaywrightException)
         { error = "MOCK_POINTER_RECORDING_UNCONFIRMED"; }
-        return new(receipt, probe?.Environment, media, probe?.CaptureStatus, probe?.ShutdownStatus, error);
+        return new(receipt, probe?.Environment, media, probe?.CaptureStatus, probe?.ShutdownStatus, error)
+        { DecodeAttempts = media is null ? probe?.DecodeAttempts : null };
     }
 
     public static async Task<TraversalPackageVerification> VerifyAsync(string folder, string trustedManifestSha256)

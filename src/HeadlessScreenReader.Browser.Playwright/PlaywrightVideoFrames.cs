@@ -9,7 +9,10 @@ namespace HeadlessScreenReader.Browser.Playwright;
 internal static class PlaywrightVideoFrames
 {
     public static async Task<ImmutableArray<byte[]>> DecodeAsync(byte[] video)
-        => await DecodeCoreAsync(video, countOnly: false).ConfigureAwait(false);
+        => await DecodeAsync(video, null).ConfigureAwait(false);
+
+    internal static Task<ImmutableArray<byte[]>> DecodeAsync(byte[] video, Action<VideoDecodeAttempt>? observe) =>
+        VideoDecodeRecovery.DecodeAsync(video, bytes => DecodeCoreAsync(bytes, countOnly: false), observe);
 
     internal static async Task<int> CountAsync(byte[] video)
     {
@@ -19,9 +22,16 @@ internal static class PlaywrightVideoFrames
         return (await DecodeCoreAsync(video, countOnly: true).ConfigureAwait(false)).Length;
     }
 
-    private static async Task<ImmutableArray<byte[]>> DecodeCoreAsync(byte[] video, bool countOnly, bool firstFrameOnly = false)
+    internal static async Task<ImmutableArray<byte[]>> DecodeCoreAsync(byte[] video, bool countOnly, bool firstFrameOnly = false,
+        TimeSpan? maximumDuration = null, Action<int>? started = null)
     {
         if (video.Length is 0 or > 16 * 1024 * 1024) throw new BrowserOperationException("CAPTURE_MEDIA_SIZE_INVALID");
+        var budget = TimeSpan.FromSeconds(countOnly ? 30 : 10);
+        if (maximumDuration is { } requested)
+        {
+            if (requested < TimeSpan.Zero || requested > budget) throw new ArgumentOutOfRangeException(nameof(maximumDuration));
+            budget = requested;
+        }
         var executable = ResolveExecutable();
         var root = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "hsr-video-decode-" + Guid.NewGuid().ToString("N")));
         if (Directory.Exists(root)) throw new BrowserOperationException("CAPTURE_DECODE_DIRECTORY_EXISTS");
@@ -44,9 +54,11 @@ internal static class PlaywrightVideoFrames
             using var process = new Process { StartInfo = start };
             if (!process.Start()) throw new BrowserOperationException("CAPTURE_DECODER_UNAVAILABLE");
             var errors = DrainErrorsAsync(process.StandardError.BaseStream);
-            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(countOnly ? 30 : 10));
+            using var timeout = new CancellationTokenSource(budget);
+            if (budget == TimeSpan.Zero) timeout.Cancel();
             try
             {
+                started?.Invoke(process.Id);
                 var frames = countOnly ? Enumerable.Repeat(Array.Empty<byte>(), await PngFrameReader.CountAsync(process.StandardOutput.BaseStream, timeout.Token).ConfigureAwait(false)).ToImmutableArray()
                     : await PngFrameReader.ReadAsync(process.StandardOutput.BaseStream, timeout.Token).ConfigureAwait(false);
                 await process.WaitForExitAsync(timeout.Token).ConfigureAwait(false);
