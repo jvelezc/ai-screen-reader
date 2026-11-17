@@ -1,5 +1,5 @@
 # Core-side requests. Lovable application traffic must instead invoke Supabase Edge Functions.
-# These examples describe source contract 1.24.0; inspect live OpenAPI before use.
+# These examples describe source contract 1.27.0; inspect live OpenAPI before use.
 # Closed WORKER_PUBLICATION causes on a blocked report mean Unavailable or Invalid.
 # Inspect the SAME scan's retained output if available; no code guarantees recovery or permits replay.
 # Set accessToken only in your HTTP client's private local environment; never commit a real JWT.
@@ -12,6 +12,7 @@
 @sourceImageSha256 = replace-with-original-image-sha256
 @websiteScan = replace-with-public-scan-uuid
 @websiteOriginalSha256 = replace-with-original-sha256-from-public-status
+@taskSetRequest = 77777777-7777-4777-8777-777777777777
 
 ### Admit an approved public website;202 is durable admission, never task/evidence completion
 # Retain requestId BEFORE sending; explicit reconciliation reuses the same UUID and URL.
@@ -234,6 +235,19 @@ Content-Type: application/json
 }
 
 # A changed source prefix returns409. Missing originals never become a final video or new input permission.
+
+### Atomic service-link task set (contract 1.27); retain this request UUID and exact review digest
+# MaximumTasks is an explicit one-to-four budget. Unsupported and other-page tasks stay unassessed.
+# Each admitted task has its own keyboard/mouse results, originals and replay. This is not a verdict.
+POST {{baseUrl}}/api/workspaces/{{organization}}/website-scans/{{websiteScan}}/tasks/sets
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"requestId":"{{taskSetRequest}}","parentOriginalSha256":"{{websiteOriginalSha256}}","maximumTasks":4}
+
+### Reconcile the SAME set without admission or replay; never replace an uncertain request UUID
+GET {{baseUrl}}/api/workspaces/{{organization}}/website-scans/{{websiteScan}}/tasks/sets/{{taskSetRequest}}
+Authorization: Bearer {{accessToken}}
 
 ### Explicit caller-owned cancellation (contract 1.14); repeating the SAME scan is idempotent
 # 202 Requested revokes execution/publication authority, not proof of physical stop or native cleanup.

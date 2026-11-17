@@ -43,6 +43,11 @@ internal interface IPortalPublicTaskProject
     Task<PublicTaskStatus?> CancelPublicTaskAsync(PortalIdentity actor, Guid organization, Guid parent, Guid job, CancellationToken token);
     Task<PublicTaskStatus[]> PublicTaskCoverageAsync(PortalIdentity actor, Guid organization, Guid parent, string digest, CancellationToken token) =>
         throw new PortalFault(503, "CONTROL_PUBLIC_TASK_COVERAGE_UNAVAILABLE");
+    Task<PublicTaskSet?> ReadPublicTaskSetAsync(PortalIdentity actor, Guid organization, Guid parent, Guid request, CancellationToken token) =>
+        throw new PortalFault(503, "CONTROL_PUBLIC_TASK_SET_UNAVAILABLE");
+    Task<PublicTaskSet> CreatePublicTaskSetAsync(PortalIdentity actor, Guid organization, Guid parent,
+        PortalCreatePublicTaskSetRequest request, ImmutableArray<string> kinds, CancellationToken token) =>
+        throw new PortalFault(503, "CONTROL_PUBLIC_TASK_SET_UNAVAILABLE");
 }
 
 internal sealed partial class SupabasePortalClient : IPortalPublicTaskProject

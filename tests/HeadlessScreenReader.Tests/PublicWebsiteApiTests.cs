@@ -258,6 +258,9 @@ public sealed class PublicWebsiteApiTests
         internal PublicTaskStatus[] CoverageTasks = [];
         internal int CoverageReads;
         internal Action? AfterCoverage;
+        internal Func<JsonElement, object?>? ReadSet, CreateSet;
+        internal int SetReads, SetCreates;
+        internal bool RejectSetQuota;
         internal Action<Dictionary<string, object?>>? StatusChange, SummaryChange;
         private readonly HttpClient _http;
         internal readonly SupabasePortalClient Project;
@@ -334,6 +337,18 @@ public sealed class PublicWebsiteApiTests
                     }
                     CoverageReads++; AfterCoverage?.Invoke();
                     body = JsonSerializer.SerializeToElement(CoverageTasks, ReaderWorkerWire.Json); break;
+                case "/rest/v1/rpc/read_public_task_set":
+                    SetReads++;
+                    using (var json = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(token)))
+                        body = ReadSet?.Invoke(json.RootElement);
+                    break;
+                case "/rest/v1/rpc/create_public_task_set":
+                    SetCreates++;
+                    if (RejectSetQuota) return new(HttpStatusCode.BadRequest)
+                    { Content = new StringContent("{\"code\":\"54000\",\"message\":\"PRIVATE_PROVIDER_DETAIL\"}", Encoding.UTF8, "application/json") };
+                    using (var json = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(token)))
+                        body = CreateSet?.Invoke(json.RootElement);
+                    break;
                 case "/rest/v1/public_scan_jobs":
                     OriginalReads++;
                     Assert.Contains("id=eq." + Job.JobId.ToString("D"), request.RequestUri.Query);
