@@ -161,10 +161,10 @@ jobs:
       matrix:
         os: [ubuntu-24.04, windows-latest]
     runs-on: ${{ matrix.os }}
-    # Includes dependency/browser download, the complete suite, demos and artifact publication.
-    # Run42330894939 took over23 minutes on Windows before this new native mock test batch.
-    # Allow download/test/CLI/artifact orchestration headroom. Product deadlines are unchanged.
-    timeout-minutes: 30
+    # Includes downloads, the complete browser suite, CLI checks and artifact publication.
+    # Run43996655970 passed4543 on Windows, then hit30m during CLI; retain all checks.
+    # Job headroom does not change command or native-input authority deadlines.
+    timeout-minutes: 45
     defaults:
       run:
         shell: pwsh
