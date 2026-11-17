@@ -7,6 +7,9 @@ namespace HeadlessScreenReader.Mcp;
 [McpServerToolType]
 public sealed class HostedSearchTaskTools(HostedScanClient client)
 {
+    [McpServerTool(Name = "search_demonstration_history", ReadOnly = true, OpenWorld = false), Description("List at most ten current-caller saved search demonstrations for sourceId search-working or search-keyboard-blocked. Follow nextBeforeJobId as beforeJobId. Opens metadata only; use the exact job result and original resources for evidence. Never start a replacement experiment to recover an earlier recording. This read does not start website input, renew a lease or assess a customer website. An access denial is not empty history.")]
+    public async Task<CallToolResult> History(string sourceId, string? beforeJobId = null, CancellationToken cancellationToken = default) =>
+        ReaderTools.Result(await client.SearchHistoryAsync(sourceId, beforeJobId, cancellationToken));
     [McpServerTool(Name = "search_demonstration_start", ReadOnly = false, Destructive = false, OpenWorld = false),
         Description("Start one controlled search demonstration: sourceId search-working or search-keyboard-blocked, with a new caller requestId UUID for this ONE intended experiment. Four fresh keyboard contexts and a separate mouse comparison use a fixed synthetic query. This does not test the customer's website. Reconcile an uncertain admission only with the SAME requestId and sourceId. Never replay input automatically. An expired input lease is terminal; storage-only recovery preserves originals without new input. Admission is not completion, a barrier, conformance or a legal case.")]
     public async Task<CallToolResult> Start(string requestId, string sourceId, CancellationToken cancellationToken = default) =>

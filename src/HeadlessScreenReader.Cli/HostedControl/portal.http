@@ -84,3 +84,16 @@ Authorization: Bearer {{userJwt}}
 Content-Type: application/json
 
 {"example":"gaps"}
+
+### Read saved search metadata; this never starts a test or website input
+GET {{origin}}/api/workspaces/{{organization}}/search-demonstrations/history/search-working
+Authorization: Bearer {{userJwt}}
+
+### Continue with the exact nextBeforeJobId returned above
+@beforeJob = 00000000-0000-0000-0000-000000000000
+GET {{origin}}/api/workspaces/{{organization}}/search-demonstrations/history/search-working/{{beforeJob}}
+Authorization: Bearer {{userJwt}}
+
+### Unsupported sample is rejected, never treated as a customer URL
+GET {{origin}}/api/workspaces/{{organization}}/search-demonstrations/history/unknown-source
+Authorization: Bearer {{userJwt}}

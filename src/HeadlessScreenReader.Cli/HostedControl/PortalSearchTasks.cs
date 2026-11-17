@@ -26,6 +26,8 @@ internal sealed record PortalSearchDiagnostics(string Schema, Guid JobId, Portal
 
 internal interface IPortalSearchTaskProject
 {
+    Task<PortalSearchHistory> ReadSearchHistoryAsync(PortalIdentity actor, Guid organization, string sourceId, Guid? beforeJob, CancellationToken token) =>
+        throw new PortalFault(503, "CONTROL_SEARCH_HISTORY_UNAVAILABLE");
     Task<SyntheticSearchTaskStatus?> ReadSearchTaskAsync(PortalIdentity actor, Guid organization, Guid? job, Guid? request, CancellationToken token);
     Task<SyntheticSearchTaskStatus> CreateSearchTaskAsync(PortalIdentity actor, Guid organization, PortalCreateSearchTaskRequest request, CancellationToken token);
     Task<SyntheticSearchTaskStatus?> CancelSearchTaskAsync(PortalIdentity actor, Guid organization, Guid job, CancellationToken token);
@@ -72,7 +74,7 @@ internal sealed partial class SupabasePortalClient : IPortalSearchTaskProject
 }
 
 /// <summary>Independent demonstrations, with current-caller checks before and after private original retrieval.</summary>
-internal sealed class PortalSearchTasks(IPortalSearchTaskProject? client, SyntheticSearchTaskArchive? archive, Func<Task<bool>>? ready)
+internal sealed partial class PortalSearchTasks(IPortalSearchTaskProject? client, SyntheticSearchTaskArchive? archive, Func<Task<bool>>? ready)
 {
     internal const int FilePageSize = 24;
     internal const int OriginalPageSize = 64 * 1024;
@@ -218,6 +220,10 @@ internal static class PortalSearchTaskEndpoints
     internal static void Map(WebApplication app)
     {
         const string root = "/api/workspaces/{organization:guid}/search-demonstrations";
+        app.MapGet(root + "/history/{sourceId}", async (HttpContext context, PortalSearchTasks service, Guid organization, string sourceId, CancellationToken token) =>
+            TypedResults.Json(await service.HistoryAsync(HostedControlServer.Actor(context), organization, sourceId, null, token).ConfigureAwait(false), PortalJson.Options)).WithName("ReadSearchTaskHistory");
+        app.MapGet(root + "/history/{sourceId}/{beforeJob:guid}", async (HttpContext context, PortalSearchTasks service, Guid organization, string sourceId, Guid beforeJob, CancellationToken token) =>
+            TypedResults.Json(await service.HistoryAsync(HostedControlServer.Actor(context), organization, sourceId, beforeJob, token).ConfigureAwait(false), PortalJson.Options)).WithName("ReadSearchTaskHistoryBefore");
         app.MapPost(root, async (HttpContext context, PortalSearchTasks service, Guid organization, CancellationToken token) =>
         {
             var value = await HostedControlServer.BodyAsync<PortalCreateSearchTaskRequest>(context, token).ConfigureAwait(false);

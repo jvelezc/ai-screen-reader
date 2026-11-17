@@ -117,7 +117,7 @@ public sealed class PortalSearchTasksTests
         var client = new SearchProject(); client.Diagnostics = new("hsr-search-task-diagnostics-v1", client.Value.Job.JobId, []);
         await using var server = await Server(new(), new(client, null, () => Task.FromResult(true)));
         await using var mcp = await Connect(server.BaseAddress, client.Value.Job.OrganizationId);
-        var tools = await mcp.ListToolsAsync(); Assert.Equal(7, tools.Count(tool => tool.Name.StartsWith("search_demonstration_", StringComparison.Ordinal)));
+        var tools = await mcp.ListToolsAsync(); Assert.Equal(8, tools.Count(tool => tool.Name.StartsWith("search_demonstration_", StringComparison.Ordinal)));
         var latest = await Call(mcp, "search_demonstration_status", []); Assert.Equal(JsonValueKind.Null, latest.GetProperty("data").ValueKind);
         var args = new Dictionary<string, object?> { ["requestId"] = client.Value.RequestId, ["sourceId"] = "search-working" };
         var admitted = await Call(mcp, "search_demonstration_start", args);
@@ -153,7 +153,7 @@ public sealed class PortalSearchTasksTests
     }
 
     [Fact]
-    public void SearchOpenApiDocumentsAllEightAuthenticatedOperationsAndTheirByteAndScopeBounds()
+    public void SearchOpenApiDocumentsAuthenticatedOperationsAndTheirByteAndScopeBounds()
     {
         using var document = JsonDocument.Parse(PortalOpenApi.Document); var spec = document.RootElement;
         const string prefix = "/api/workspaces/{organization}/search-demonstrations";
@@ -164,7 +164,7 @@ public sealed class PortalSearchTasksTests
                 count++; Assert.True(operation.Value.GetProperty("security")[0].TryGetProperty("bearerAuth", out _));
                 Assert.All(operation.Value.GetProperty("parameters").EnumerateArray(), parameter => Assert.Equal("path", parameter.GetProperty("in").GetString()));
             }
-        Assert.Equal(8, count);
+        Assert.Equal(10, count);
         var admission = paths.GetProperty(prefix).GetProperty("post");
         Assert.True(admission.GetProperty("responses").GetProperty("202").GetProperty("headers").TryGetProperty("Location", out _));
         Assert.True(admission.GetProperty("responses").TryGetProperty("429", out _));
@@ -339,7 +339,7 @@ public sealed class PortalSearchTasksTests
         HostedControlServer.StartWithSearchAsync(new(PortalProjectClientTests.Key, Path.GetFullPath("artifacts/portal-validation/evidence"),
             new('a', 40), 0), identity, new PortalObservationStub(), service);
 
-    private static Task<McpClient> Connect(Uri origin, Guid organization)
+    internal static Task<McpClient> Connect(Uri origin, Guid organization)
     {
         var assembly = typeof(PortalSearchTasksTests).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
             .Single(attribute => attribute.Key == "McpServerAssembly").Value!;
@@ -353,7 +353,7 @@ public sealed class PortalSearchTasksTests
             { ["HSR_MCP_API_ORIGIN"] = origin.ToString(), ["HSR_MCP_ORGANIZATION"] = organization.ToString(), ["HSR_MCP_ACCESS_TOKEN"] = Actor.Token }
         }));
     }
-    private static async Task<JsonElement> Call(McpClient mcp, string name, Dictionary<string, object?> args, bool error = false)
+    internal static async Task<JsonElement> Call(McpClient mcp, string name, Dictionary<string, object?> args, bool error = false)
     {
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         var reply = await mcp.CallToolAsync(name, args, cancellationToken: deadline.Token);

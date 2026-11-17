@@ -1,6 +1,6 @@
 # November 16 release acceptance
 
-Exact core d980576008661ec2ecc3a278715c0e7053a76 / HTTP1.24.1 / private MCP41 is promoted as83905b72dd7349fc8c264837204d190a. CI43850576528 passes all nine jobs. Independently downloaded Windows and Linux TRX each report4380 discovered/executed/passed,0failed/skipped. Native receipt85/85, Readytrue, owned database/image cleanup confirmed. Installed164-file inventory4,012,282,184bytes and image sha256:e7356f53a3071ad10e85fdaf42fb621ea7b16333750565d53fc716625d033bee match the release archive; all13 live health components ready with zero recovery/input replay.
+Exact core d980576008661ec2ecc3a278715c0e7053a76d9c / HTTP1.24.1 / private MCP41 is promoted as83905b72dd7349fc8c264837204d190a. CI43850576528 passes all nine jobs. Independently downloaded Windows and Linux TRX each report4380 discovered/executed/passed,0failed/skipped. Native receipt85/85, Readytrue, owned database/image cleanup confirmed. Installed164-file inventory4,012,282,184bytes and image sha256:e7356f53a3071ad10e85fdaf42fb621ea7b16333750565d53fc716625d033bee match the release archive; all13 live health components ready with zero recovery/input replay.
 
 Existing hsr-core Edge20 is active and its three reviewed source files read back exactly. Combined source fingerprint ad2470f3ea21f520ec3af6c20aecb67d1664eb41776f5d6c48a98ae75ab22227. Existing platform verify_jwt=false is preserved; the handler authenticates the original application caller. Read-only publication probes confirm required authenticated routes, not task execution.
 

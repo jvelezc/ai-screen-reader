@@ -14,6 +14,7 @@ internal static partial class PortalOpenApi
         schemas["SearchTaskFiles"] = Schema<PortalSearchFilePage>("SearchTaskFiles");
         schemas["SearchTaskOriginal"] = Schema<PortalSearchOriginalPage>("SearchTaskOriginal");
         schemas["SearchTaskDiagnostics"] = Schema<PortalSearchDiagnostics>("SearchTaskDiagnostics");
+        schemas["SearchTaskHistory"] = Schema<PortalSearchHistory>("SearchTaskHistory");
     }
 
     private static void AddSearchTaskPaths(JsonObject paths)
@@ -47,6 +48,29 @@ internal static partial class PortalOpenApi
         parameters.Add(PublicParameter("fileId", 0, 1400)); parameters.Add(PublicParameter("offset", 0, 26 * 1024 * 1024)); parameters.Add(PublicDigestParameter());
         paths[root + "/{job}/originals/{fileId}/{offset}/{digest}"] = Path("get", original);
         paths[root + "/{job}/diagnostics"] = Path("get", SearchOperation("ReadSearchTaskDiagnostics", "At most three ordered storage-publication attempts, with original producer, publisher, execution, immutable index and closed failure reasons. WebsiteInputRetried is always false. No raw provider error, lease/session capability, page body, credentials or automatic retry.", "SearchTaskDiagnostics"));
+        JsonObject HistoryOperation(bool before)
+        {
+            var operation = SearchOperation(before ? "ReadSearchTaskHistoryBefore" : "ReadSearchTaskHistory",
+                "At most ten current-caller search demonstrations for one controlled sample, ordered by createdAt descending then job ID ascending. Metadata only: read the exact result and verified originals separately. Follow nextBeforeJobId without starting a replacement test. A foreign or wrong-source cursor is denied. This read neither starts input nor establishes a website assessment.", "SearchTaskHistory", job: false);
+            var selectors = (JsonArray)operation["parameters"]!;
+            selectors.Add(new JsonObject
+            {
+                ["name"] = "sourceId",
+                ["in"] = "path",
+                ["required"] = true,
+                ["schema"] = new JsonObject { ["type"] = "string", ["enum"] = Strings("search-working", "search-keyboard-blocked") }
+            });
+            if (before) selectors.Add(new JsonObject
+            {
+                ["name"] = "beforeJob",
+                ["in"] = "path",
+                ["required"] = true,
+                ["schema"] = new JsonObject { ["type"] = "string", ["format"] = "uuid" }
+            });
+            return operation;
+        }
+        paths[root + "/history/{sourceId}"] = Path("get", HistoryOperation(false));
+        paths[root + "/history/{sourceId}/{beforeJob}"] = Path("get", HistoryOperation(true));
     }
 
     private static void ApplySearchTaskSchema(Type type, JsonObject value, JsonObject properties)
@@ -110,6 +134,14 @@ internal static partial class PortalOpenApi
         }
         if (type == typeof(PortalSearchDiagnostics))
         { properties["schema"]!["const"] = "hsr-search-task-diagnostics-v1"; properties["publicationAttempts"]!["maxItems"] = 3; }
+        if (type == typeof(PortalSearchHistory))
+        {
+            properties["schema"]!["const"] = PortalSearchHistory.CurrentSchema;
+            properties["sourceId"]!["enum"] = Strings("search-working", "search-keyboard-blocked");
+            properties["items"]!["maxItems"] = PortalSearchTasks.HistoryPageSize;
+            properties["websiteInputStarted"]!["const"] = false;
+            properties["isAssessment"]!["const"] = false;
+        }
         if (type == typeof(PortalSearchPublicationAttempt))
         { properties["number"]!["minimum"] = 1; properties["number"]!["maximum"] = 3; properties["websiteInputRetried"]!["const"] = false; }
     }

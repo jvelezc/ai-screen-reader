@@ -133,14 +133,15 @@ internal sealed class HostedControlServer : IAsyncDisposable
                     or "PortalSession" or "EnsurePersonalWorkspace" or "GetPortalWorkspace" ? operation : "Other";
                 var searchOperation = context.GetEndpoint()?.Metadata.GetMetadata<IEndpointNameMetadata>()?.EndpointName;
                 if (searchOperation is "AdmitSearchTask" or "ReadLatestSearchTask" or "ReadSearchTaskStatus" or "CancelSearchTask"
-                    or "ReadSearchTaskResult" or "ReadSearchTaskFiles" or "ReadSearchTaskOriginal" or "ReadSearchTaskDiagnostics") operation = searchOperation;
+                    or "ReadSearchTaskResult" or "ReadSearchTaskFiles" or "ReadSearchTaskOriginal" or "ReadSearchTaskDiagnostics"
+                    or "ReadSearchTaskHistory" or "ReadSearchTaskHistoryBefore") operation = searchOperation;
                 Guid? Id(string key) => context.Items.ContainsKey(typeof(PortalIdentity))
                     && Guid.TryParse(context.Request.RouteValues[key]?.ToString(), out var id) ? id : null;
                 var value = new PortalRequestDiagnostic("hsr-control-request-v1", reference, options.ReleaseCommit,
                     operation, context.Request.Method is "GET" or "POST" or "OPTIONS" ? context.Request.Method : "Other",
                     errorCode == "CANCELLED" ? 499 : context.Response.StatusCode, errorCode,
                     System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds, Id("organization"), Id("scan"))
-                { JobId = Id("job") };
+                { JobId = Id("job") ?? Id("beforeJob") };
                 try
                 {
                     diagnostic?.Invoke(value);
