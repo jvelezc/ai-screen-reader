@@ -1,9 +1,10 @@
 # Product access: sign in, enter a URL, see results
 
-Updated November 5, 2026. Customer prototype: https://screenreader.privensic.com/ .
-The product journey is sign in, enter a website URL, then see saved results.
-Publication, original-account acceptance and complete task-evidence collection
-are separate gates. The full product is not complete.
+Updated November 16, 2026. Customer prototype: https://screenreader.privensic.com/ .
+Sign in, enter a website URL and choose **Review and test website**. Read the page
+summary and the bounded public-link task result, then open its matching reader
+records, path and original recording. The full product is not complete; broader
+public search, forms and signed-in target tasks remain development gates.
 
 ## What a person receives
 
@@ -16,11 +17,10 @@ credentials as the product access package.
 
 ## Current delivery and limits
 
-The separate Lovable-compatible application now has an HTTPS deployment path.
-It uses the existing Supabase project and Edge Function, never a browser-to-core
-proxy. Production Auth's site URL and exact callback are configured; existing
-local callbacks are preserved. Edge v14 accepts the exact production origin and
-retains caller/workspace authorization. Confirmed email remains required.
+The separate Lovable-compatible application is published over HTTPS. It uses the
+existing Supabase project and authenticated Edge Function. Confirmed email and
+current workspace membership remain required. Sign-in persists across ordinary
+reloads; a changed or revoked account cannot reuse earlier private records.
 
 The [publication receipt](validation/customer-https-publication-v1.md) separates
 source CI, verified HTTPS files and original-account browser acceptance. The
@@ -31,13 +31,23 @@ saved results, identical original downloads, automatic restoration after reload,
 normal reconnect, local-address validation and saved-list recovery. No
 administrator or fabricated session replaced that account.
 
-Core237d309 is privately deployed with HTTP1.18 and private MCP0.3/26 tools.
-Original-account local acceptance already covers URL admission through Edge,
-isolated execution, saved page results, original-byte download and restoration.
-The current public-URL profile sends **zero target inputs** and makes **no task
-attempt or evidence-readiness decision**. It retains actual page information;
-it does not prove a blocked checkout, repeat failure or successful comparison.
-Controlled fixture assessments and imported scanner results remain distinct.
+Accepted coredc93412/HTTP1.26.0/private MCP44, Edge22 and UI5e76ef5 have separate
+CI, exact publication and original-account browser receipts. A page review sends
+zero target inputs. Its separately admitted public task follows a selected
+Pricing, Catalog, Contact or Help link in two fresh keyboard attempts and one
+independent mouse comparison. The task result explains the observed outcome and
+eight website-evidence conditions. Each result has its own reader text, graph,
+verified originals and recordings. A successful link is not whole-site
+accessibility, and no legal case is determined.
+
+The original-account GentleBirth Pricing test reaches its goal in all three
+attempts. All three original clips play to the end, reload restores the exact
+selected job and320px keyboard use passes without horizontal overflow. Separate
+working and blocked search demonstrations retain their own evidence; they are
+not findings about the submitted customer website. Saved search history reopens
+both original jobs; the missing working path2, matching playback, source switching,
+reload and320px keyboard checks now pass without a replacement admission. Broader
+tasks remain open. See [the current completion plan](completion-plan.md).
 
 Existing source and native checks preserve target/egress policy, current tenant
 authority, original-byte integrity and cleanup uncertainty. A policy denial or

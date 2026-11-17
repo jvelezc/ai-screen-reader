@@ -7,6 +7,66 @@ namespace HeadlessScreenReader.Tests;
 public sealed class PublicTaskBrowserTests
 {
     [Theory]
+    [InlineData("Pricing", "Priceless stories", "/contact", "Prices!", "/pricing")]
+    [InlineData("Catalog", "Discourse guide", "/help", "Courses", "/catalog")]
+    [InlineData("Contact", "Contactless devices", "/pricing", "CONTACT US", "/contact")]
+    [InlineData("Help", "Unhelpful advice", "/catalog", "Support!", "/help")]
+    [InlineData("Pricing", "Explore", "/priceless", "Prices!", "/pricing")]
+    [InlineData("Catalog", "Explore", "/discourse", "Courses", "/catalog")]
+    [InlineData("Contact", "Explore", "/contactless", "CONTACT US", "/contact")]
+    [InlineData("Help", "Explore", "/unhelpful", "Support!", "/help")]
+    public async Task GoalDiscoveryRejectsMisleadingTaskSubstrings(string kind, string misleadingName,
+        string misleadingPath, string expectedName, string expectedPath)
+    {
+        await using var browser = await ChromiumFixtureBrowser.LaunchAsync();
+        var misleading = $"<a href='https://example.com{misleadingPath}'>{misleadingName}</a>";
+        await browser.DiagnosticPage.SetContentAsync(misleading);
+        var before = browser.DiagnosticPage.Url;
+        await using var task = new PublicNavigationBrowser(browser, PublicTaskTests.Start().Job with { GoalKind = kind }, Path.GetTempPath());
+        Assert.Null(await task.DiscoverAsync(default));
+        await browser.DiagnosticPage.SetContentAsync(misleading + $"<a href='https://example.com{expectedPath}'>{expectedName}</a>");
+        var selected = await task.DiscoverAsync(default);
+        Assert.NotNull(selected);
+        Assert.Equal(kind, selected.Kind);
+        Assert.Equal(expectedName, selected.LinkName);
+        Assert.Equal("https://example.com" + expectedPath, selected.DestinationUrl);
+        Assert.Equal(before, browser.DiagnosticPage.Url);
+    }
+
+    [Theory]
+    [InlineData("Pricing", "Plant care", false)]
+    [InlineData("Pricing", "Priceless objects", false)]
+    [InlineData("Pricing", "PRICES", true)]
+    [InlineData("Pricing", "Pricing\u0301", false)]
+    [InlineData("Catalog", "Discourse", false)]
+    [InlineData("Catalog", "Courses", true)]
+    [InlineData("Contact", "Contactless technology", false)]
+    [InlineData("Contact", "Unreachable archive", false)]
+    [InlineData("Contact", "Contact us", true)]
+    [InlineData("Help", "Unhelpful answers", false)]
+    [InlineData("Help", "Questionable catalog", false)]
+    [InlineData("Help", "Frequently asked questions", true)]
+    public void GoalConfirmationRejectsMisleadingHeadings(string kind, string heading, bool expected)
+    {
+        var goal = new PublicTaskGoal(kind, "Reach the requested service", "Explore", "https://example.com/service");
+        var snapshot = new AccessibilitySnapshot("service", [new("heading", "heading", heading)], []) { CaptureEpoch = 1 };
+        Assert.Equal(expected, PublicNavigationBrowser.GoalContentObserved(goal, snapshot));
+    }
+
+    [Theory]
+    [InlineData("promonthly")]
+    [InlineData("/yearbook")]
+    [InlineData("one-timer")]
+    public void PricingGoalDoesNotBorrowBillingSubstrings(string terms)
+    {
+        var goal = new PublicTaskGoal("Pricing", "Reach pricing information", "Prices", "https://example.com/pricing");
+        var snapshot = new AccessibilitySnapshot("pricing", [new("heading", "heading", "Welcome"),
+            new("amount", "StaticText", "$14.99"), new("terms", "StaticText", terms)], [])
+        { CaptureEpoch = 1 };
+        Assert.False(PublicNavigationBrowser.GoalContentObserved(goal, snapshot));
+    }
+
+    [Theory]
     [InlineData(null, "Pricing", "View pricing", "/pricing")]
     [InlineData("Pricing", "Pricing", "View pricing", "/pricing")]
     [InlineData("Catalog", "Catalog", "Course catalog", "/catalog")]
@@ -66,6 +126,7 @@ public sealed class PublicTaskBrowserTests
 
     [Theory]
     [InlineData("$14.99", "/month", true)]
+    [InlineData("$14.99/month", "", true)]
     [InlineData("£20.00", "Billed yearly", true)]
     [InlineData("€19.99", "one-time payment", true)]
     [InlineData("$14.99", "See pricing", false)]

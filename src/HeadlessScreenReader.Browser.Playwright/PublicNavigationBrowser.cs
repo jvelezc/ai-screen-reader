@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Globalization;
 using System.Net;
 using System.Text.Json;
 using HeadlessScreenReader.Domain;
@@ -66,15 +67,15 @@ public sealed class PublicNavigationBrowser : IAsyncDisposable
     {
         token.ThrowIfCancellationRequested();
         foreach (var (kind, title, words) in new[] {
-            ("Pricing", "Reach pricing information", new[] { "pricing", "price", "plans" }),
-            ("Catalog", "Reach the service or course catalog", new[] { "course", "catalog" }),
-            ("Contact", "Reach contact information", new[] { "contact" }),
-            ("Help", "Reach help information", new[] { "help", "support", "faq" }) })
+            ("Pricing", "Reach pricing information", new[] { "pricing", "price", "prices", "plans" }),
+            ("Catalog", "Reach the service or course catalog", new[] { "course", "courses", "catalog", "catalogs", "catalogue", "catalogues" }),
+            ("Contact", "Reach contact information", new[] { "contact", "contacts" }),
+            ("Help", "Reach help information", new[] { "help", "support", "faq", "faqs" }) })
         {
             if (_job.GoalKind is not null && _job.GoalKind != kind) continue;
             foreach (var link in await LinksAsync().ConfigureAwait(false))
                 if (link.Visible && PublicTaskRules.Text(link.Name, 500) && PublicTaskRules.SafeDestination(_job.Source, link.Url)
-                    && words.Any(word => (link.Name + " " + new Uri(link.Url).AbsolutePath).Contains(word, StringComparison.OrdinalIgnoreCase)))
+                    && HasWholeTerm(link.Name + " " + new Uri(link.Url).AbsolutePath, words))
                 {
                     var goal = new PublicTaskGoal(kind, title, link.Name, link.Url); goal.Validate(_job.Source); return goal;
                 }
@@ -123,17 +124,35 @@ public sealed class PublicNavigationBrowser : IAsyncDisposable
     {
         string[] words = goal.Kind switch
         {
-            "Pricing" => ["pric", "plan", "membership", "subscription"],
-            "Catalog" => ["course", "catalog", "class", "program", "workshop"],
-            "Contact" => ["contact", "reach", "touch", "support"],
-            _ => ["help", "support", "faq", "question"]
+            "Pricing" => ["price", "prices", "pricing", "plan", "plans", "membership", "memberships", "subscription", "subscriptions"],
+            "Catalog" => ["course", "courses", "catalog", "catalogs", "catalogue", "catalogues", "class", "classes", "program", "programs", "workshop", "workshops"],
+            "Contact" => ["contact", "contacts", "reach", "touch", "support"],
+            _ => ["help", "support", "faq", "faqs", "question", "questions"]
         };
         if (snapshot.Nodes.Any(node => node.Role is "heading" or "Heading"
-            && words.Any(word => node.Name.Contains(word, StringComparison.OrdinalIgnoreCase)))) return true;
+            && HasWholeTerm(node.Name, words))) return true;
         if (goal.Kind != "Pricing") return false;
         var text = string.Join(" ", snapshot.Nodes.Where(n => n.Role is "StaticText" or "text").Select(n => n.Name));
         return System.Text.RegularExpressions.Regex.IsMatch(text, @"[$€£]\s*\d+(?:[.,]\d{2})?", System.Text.RegularExpressions.RegexOptions.CultureInvariant)
-            && new[] { "/month", "monthly", "/year", "yearly", "one-time" }.Any(word => text.Contains(word, StringComparison.OrdinalIgnoreCase));
+            && HasWholeTerm(text, ["/month", "monthly", "/year", "yearly", "one-time"]);
+    }
+
+    // Task-purpose inference only. Original names and historical report validation stay unchanged.
+    private static bool HasWholeTerm(string text, string[] terms)
+    {
+        static bool Word(char value) => char.IsLetterOrDigit(value) || char.GetUnicodeCategory(value) is
+            UnicodeCategory.NonSpacingMark or UnicodeCategory.SpacingCombiningMark or UnicodeCategory.EnclosingMark;
+        foreach (var term in terms)
+            for (var from = 0; from < text.Length;)
+            {
+                var found = text.IndexOf(term, from, StringComparison.OrdinalIgnoreCase);
+                if (found < 0) break;
+                var end = found + term.Length;
+                if ((found == 0 || !Word(term[0]) || !Word(text[found - 1]))
+                    && (end == text.Length || !Word(term[^1]) || !Word(text[end]))) return true;
+                from = found + 1;
+            }
+        return false;
     }
 
     private Task StopVideoAsync()
