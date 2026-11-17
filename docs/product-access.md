@@ -31,7 +31,7 @@ saved results, identical original downloads, automatic restoration after reload,
 normal reconnect, local-address validation and saved-list recovery. No
 administrator or fabricated session replaced that account.
 
-Accepted coredc93412/HTTP1.26.0/private MCP44, Edge22 and UI5e76ef5 have separate
+Accepted core7a18bb6/HTTP1.26.1/private MCP44, Edge22 and UI58ddd41 have separate
 CI, exact publication and original-account browser receipts. A page review sends
 zero target inputs. Its separately admitted public task follows a selected
 Pricing, Catalog, Contact or Help link in two fresh keyboard attempts and one
