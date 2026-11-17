@@ -25,6 +25,10 @@ internal sealed record PortalRequestDiagnostic(string Schema, string SupportRefe
 {
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public Guid? JobId { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public PortalReviewReadDiagnostic? ReviewEvidence { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public PortalTaskOriginalFailure? OriginalFailure { get; init; }
 }
 
 /// <summary>Private control plane. All tenant operations revalidate identity and use RLS.</summary>
@@ -118,7 +122,13 @@ internal sealed class HostedControlServer : IAsyncDisposable
                 await next(context).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested) { errorCode = "CANCELLED"; context.Abort(); }
-            catch (PortalFault fault) { errorCode = SafeCode(fault.Code); await FailAsync(context, fault.Status, fault.Code).ConfigureAwait(false); }
+            catch (PortalFault fault)
+            {
+                errorCode = SafeCode(fault.Code);
+                if (fault.Data[typeof(PortalTaskOriginalFailure)] is PortalTaskOriginalFailure original)
+                    context.Items[typeof(PortalTaskOriginalFailure)] = original;
+                await FailAsync(context, fault.Status, fault.Code).ConfigureAwait(false);
+            }
             catch (BadHttpRequestException exception)
             { errorCode = "CONTROL_REQUEST_INVALID"; await FailAsync(context, exception.StatusCode is 413 or 415 ? exception.StatusCode : 400, errorCode).ConfigureAwait(false); }
             catch (JsonException) { errorCode = "CONTROL_REQUEST_INVALID"; await FailAsync(context, 400, errorCode).ConfigureAwait(false); }
@@ -129,7 +139,7 @@ internal sealed class HostedControlServer : IAsyncDisposable
                 operation = operation is "AdmitPublicWebsite" or "ListPublicWebsites" or "ReadPublicWebsiteStatus"
                     or "ReadPublicWebsiteFirstNodes" or "ReadPublicWebsitePinnedNodes" or "ReadPublicWebsiteOriginal" or "ReadPublicTaskCoverage"
                     or "AdmitPublicTask" or "ReadLatestPublicTask" or "ReadPublicTaskStatus" or "CancelPublicTask"
-                    or "AdmitPublicTaskSet" or "ReadPublicTaskSet"
+                    or "AdmitPublicTaskSet" or "ReadPublicTaskSet" or "ReadPublicReviewAssessment"
                         or "ReadPublicTaskResult" or "ReadPublicTaskDiagnosticsResult" or "ReadPublicTaskEvents" or "ReadPublicTaskReader" or "ReadPublicTaskGraph" or "ReadPublicTaskOriginal"
                     or "PortalSession" or "EnsurePersonalWorkspace" or "GetPortalWorkspace" ? operation : "Other";
                 var searchOperation = context.GetEndpoint()?.Metadata.GetMetadata<IEndpointNameMetadata>()?.EndpointName;
@@ -142,7 +152,11 @@ internal sealed class HostedControlServer : IAsyncDisposable
                     operation, context.Request.Method is "GET" or "POST" or "OPTIONS" ? context.Request.Method : "Other",
                     errorCode == "CANCELLED" ? 499 : context.Response.StatusCode, errorCode,
                     System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds, Id("organization"), Id("scan"))
-                { JobId = Id("job") ?? Id("beforeJob") };
+                {
+                    JobId = Id("job") ?? Id("beforeJob"),
+                    ReviewEvidence = context.Items.TryGetValue(typeof(PortalReviewReadDiagnostic), out var review) ? review as PortalReviewReadDiagnostic : null,
+                    OriginalFailure = context.Items.TryGetValue(typeof(PortalTaskOriginalFailure), out var original) ? original as PortalTaskOriginalFailure : null
+                };
                 try
                 {
                     diagnostic?.Invoke(value);
@@ -163,6 +177,7 @@ internal sealed class HostedControlServer : IAsyncDisposable
         app.MapPublicWebsites();
         PortalPublicTaskEndpoints.Map(app);
         PortalPublicTaskSetEndpoints.Map(app);
+        PortalPublicReviewAssessmentEndpoints.Map(app);
         PortalSearchTaskEndpoints.Map(app);
         try
         {

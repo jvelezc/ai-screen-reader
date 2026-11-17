@@ -305,7 +305,7 @@ public sealed class PublicTaskSetApiTests
     {
         using var rig = Seed(4); PublicTaskSet? stored = null; rig.ReadSet = _ => stored; rig.CreateSet = _ => stored = Value(rig, 4);
         await using var server = await Server(rig, []); await using var mcp = await Connect(server.BaseAddress, rig.Job.OrganizationId);
-        var tools = await mcp.ListToolsAsync(); Assert.Equal(46, tools.Count);
+        var tools = await mcp.ListToolsAsync(); Assert.Equal(47, tools.Count);
         Assert.Single(tools, t => t.Name == "website_task_set_start"); Assert.Single(tools, t => t.Name == "website_task_set_status");
         var args = new Dictionary<string, object?> { ["scanId"] = rig.Job.ScanId, ["requestId"] = Request, ["parentOriginalSha256"] = rig.Digest, ["maximumTasks"] = 4 };
         var admitted = (await Call(mcp, "website_task_set_start", args)).GetProperty("data");

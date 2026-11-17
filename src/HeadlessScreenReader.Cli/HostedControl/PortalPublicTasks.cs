@@ -135,7 +135,7 @@ internal sealed partial class PortalPublicTasks(IPortalPublicTaskProject? client
         }
         catch (Exception error) { failure = error; }
         await RecheckAsync(actor, status, token).ConfigureAwait(false);
-        if (failure is not null) throw new PortalFault(503, "CONTROL_PUBLIC_TASK_ORIGINAL_UNAVAILABLE");
+        if (failure is not null) throw OriginalUnavailable(status);
         return (status, report!);
     }
     private async Task RecheckAsync(PortalIdentity actor, PublicTaskStatus expected, CancellationToken token)
@@ -148,11 +148,11 @@ internal sealed partial class PortalPublicTasks(IPortalPublicTaskProject? client
     internal async Task<PortalTaskResult> ResultAsync(PortalIdentity actor, Guid organization, Guid parent, Guid job, CancellationToken token)
     {
         var (status, report) = await ReportAsync(actor, organization, parent, job, token).ConfigureAwait(false);
-        Exception? failure = null;
-        try { foreach (var file in report.Files) _ = await evidence!.ReadAsync(report.Start.Job, file.Sha256, file.Bytes, token).ConfigureAwait(false) ?? throw new IOException(); }
+        Exception? failure = null; PublicTaskFile? reading = null;
+        try { foreach (var file in report.Files) { reading = file; _ = await evidence!.ReadAsync(report.Start.Job, file.Sha256, file.Bytes, token).ConfigureAwait(false) ?? throw new IOException(); } }
         catch (Exception error) { failure = error; }
         await RecheckAsync(actor, status, token).ConfigureAwait(false);
-        if (failure is not null) throw new PortalFault(503, "CONTROL_PUBLIC_TASK_ORIGINAL_UNAVAILABLE");
+        if (failure is not null) throw OriginalUnavailable(status, reading);
         var assessment = PublicTaskAssessment.Evaluate(report, true, true);
         if (!JsonElement.DeepEquals(JsonSerializer.SerializeToElement(assessment), JsonSerializer.SerializeToElement(status.Publication!.Assessment)))
             throw new PortalFault(503, "CONTROL_PUBLIC_TASK_RESPONSE_INVALID");

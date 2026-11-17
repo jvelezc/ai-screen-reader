@@ -1,5 +1,5 @@
 # Core-side requests. Lovable application traffic must instead invoke Supabase Edge Functions.
-# These examples describe source contract 1.27.0; inspect live OpenAPI before use.
+# These examples describe source contract 1.28.0; inspect live OpenAPI before use.
 # Closed WORKER_PUBLICATION causes on a blocked report mean Unavailable or Invalid.
 # Inspect the SAME scan's retained output if available; no code guarantees recovery or permits replay.
 # Set accessToken only in your HTTP client's private local environment; never commit a real JWT.
@@ -258,3 +258,9 @@ Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {}
+
+### Assess only this saved task set using independently verified task originals
+# Read-only: missing originals and incomplete tasks remain explicit; no replacement input.
+# Conditions from different tasks never combine into a barrier or a legal determination.
+GET {{baseUrl}}/api/workspaces/{{organization}}/website-scans/{{websiteScan}}/tasks/sets/{{taskSetRequest}}/assessment
+Authorization: Bearer {{accessToken}}
