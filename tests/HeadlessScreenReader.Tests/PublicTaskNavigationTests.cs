@@ -111,6 +111,18 @@ public sealed class PublicTaskNavigationTests
         Assert.Equal("Observed", activation.Outcome); Assert.Equal("Activate", activation.Command);
         Assert.Equal(73, activation.Sequence); activation.Validate(ScreenReaderSession.Profile);
         Assert.Contains(reader.Snapshot!.Nodes, n => n.Role == "heading" && n.Name == "Pricing opened");
+
+        // The website itself wraps its focus route; observe the actual repeated state, not a count cutoff.
+        await browser.DiagnosticPage.EvaluateAsync("() => document.querySelector('#goal').addEventListener('keydown', e => {if(e.key==='Tab'){e.preventDefault();document.querySelector('button').focus();}})");
+        var cycle = new PublicTaskKeyboardPath(Goal with { DestinationUrl = "https://example.com/another-service" });
+        var continued = 0;
+        while (cycle.Continue(reader.Snapshot?.DocumentId, reader.Focus, continued))
+        {
+            var step = await reader.ExecuteAsync("Tab", stop.Token);
+            Assert.Equal("Observed", step.Outcome); Assert.True(reader.InputCompleted); continued++;
+        }
+        Assert.Equal("FocusCycle", cycle.Record().StopReason);
+        Assert.Equal(71, continued); Assert.Equal(0, cycle.Record().CycleStartSequence);
     }
 
     internal static PublicTaskReport LongReport(PublicTaskReport original)

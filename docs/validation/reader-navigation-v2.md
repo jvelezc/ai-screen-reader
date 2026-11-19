@@ -1,5 +1,7 @@
 # Reader-led public task navigation
 
+Current qualification: core e4c6324 / HTTP 1.29 is deployed as 502c23eecf394e7c8ae2259a3e48cef4 after all nine CI jobs pass (4,751 tests on each OS). All 164 installed files and the immutable image match the CI artifact; all 13 health components are Ready/Live, with zero recovery attempts or replayed inputs. See [the consolidated acceptance record](reader-navigation-acceptance-v2.md) for actual reader/browser checks, preserved original-account evidence and remaining product gates.
+
 This increment removes the public task worker's fixed48-Tab cutoff and its corresponding51-command reader budget. The real `ScreenReaderSession` remains the keyboard driver. It saves actual commands, announcements, focused node identity and attempted/completed input separately. The independent mouse attempt is a control comparison; it is never represented as reader navigation.
 
 The sequential route tracks original document/node identities. It continues across any number of distinct observed focus states until the target is focused. Repeating a previously visited focus state ends that route with `FocusCycle`; missing focus ends it with `FocusUnobserved`. Neither establishes that every possible path was explored. Input uncertainty stops dispatch and is not retried automatically. Goal focus, activation and observed destination success remain separate.
