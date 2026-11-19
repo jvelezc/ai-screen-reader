@@ -1,5 +1,5 @@
 # Core-side requests. Lovable application traffic must instead invoke Supabase Edge Functions.
-# These examples describe source contract 1.28.0; inspect live OpenAPI before use.
+# These examples describe source contract 1.30.0; inspect live OpenAPI before use.
 # Closed WORKER_PUBLICATION causes on a blocked report mean Unavailable or Invalid.
 # Inspect the SAME scan's retained output if available; no code guarantees recovery or permits replay.
 # Set accessToken only in your HTTP client's private local environment; never commit a real JWT.
@@ -13,6 +13,8 @@
 @websiteScan = replace-with-public-scan-uuid
 @websiteOriginalSha256 = replace-with-original-sha256-from-public-status
 @taskSetRequest = 77777777-7777-4777-8777-777777777777
+@caseTaskJob = 88888888-8888-4888-8888-888888888888
+@caseReportSha256 = replace-with-selected-task-report-sha256-from-review-assessment
 
 ### Admit an approved public website;202 is durable admission, never task/evidence completion
 # Retain requestId BEFORE sending; explicit reconciliation reuses the same UUID and URL.
@@ -264,3 +266,21 @@ Content-Type: application/json
 # Conditions from different tasks never combine into a barrier or a legal determination.
 GET {{baseUrl}}/api/workspaces/{{organization}}/website-scans/{{websiteScan}}/tasks/sets/{{taskSetRequest}}/assessment
 Authorization: Bearer {{accessToken}}
+
+### Read-only counsel screening for one selected task and one profile
+# Copy the exact job and report digest from the review assessment above.
+# Use JSON null for reportSha256 only when this job has no currently verified original.
+# A changed digest returns409. This operation saves no selections and sends no website input.
+POST {{baseUrl}}/api/workspaces/{{organization}}/website-scans/{{websiteScan}}/tasks/sets/{{taskSetRequest}}/case-assessment
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "profile": "NinthCircuitTitleIIIInjunctive",
+  "jobId": "{{caseTaskJob}}",
+  "reportSha256": "{{caseReportSha256}}",
+  "coverage": "Unassessed",
+  "websiteConnection": "Unassessed",
+  "claimantAccess": "Unassessed",
+  "standing": "Unassessed"
+}

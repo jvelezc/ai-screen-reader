@@ -139,8 +139,9 @@ internal sealed class HostedControlServer : IAsyncDisposable
                 operation = operation is "AdmitPublicWebsite" or "ListPublicWebsites" or "ReadPublicWebsiteStatus"
                     or "ReadPublicWebsiteFirstNodes" or "ReadPublicWebsitePinnedNodes" or "ReadPublicWebsiteOriginal" or "ReadPublicTaskCoverage"
                     or "AdmitPublicTask" or "ReadLatestPublicTask" or "ReadPublicTaskStatus" or "CancelPublicTask"
-                    or "AdmitPublicTaskSet" or "ReadPublicTaskSet" or "ReadPublicReviewAssessment"
+                    or "AdmitPublicTaskSet" or "ReadPublicTaskSet" or "ReadPublicReviewAssessment" or "AssessPublicReviewCase"
                         or "ReadPublicTaskResult" or "ReadPublicTaskDiagnosticsResult" or "ReadPublicTaskEvents" or "ReadPublicTaskReader" or "ReadPublicTaskGraph" or "ReadPublicTaskOriginal"
+                        or "ReadPublicTaskLiveFrame"
                     or "PortalSession" or "EnsurePersonalWorkspace" or "GetPortalWorkspace" ? operation : "Other";
                 var searchOperation = context.GetEndpoint()?.Metadata.GetMetadata<IEndpointNameMetadata>()?.EndpointName;
                 if (searchOperation is "AdmitSearchTask" or "ReadLatestSearchTask" or "ReadSearchTaskStatus" or "CancelSearchTask"
@@ -178,6 +179,7 @@ internal sealed class HostedControlServer : IAsyncDisposable
         PortalPublicTaskEndpoints.Map(app);
         PortalPublicTaskSetEndpoints.Map(app);
         PortalPublicReviewAssessmentEndpoints.Map(app);
+        PortalCaseAssessmentEndpoints.Map(app);
         PortalSearchTaskEndpoints.Map(app);
         try
         {

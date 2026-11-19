@@ -8,6 +8,7 @@ using Microsoft.Playwright;
 namespace HeadlessScreenReader.Browser.Playwright;
 
 public sealed record PublicTaskMedia(byte[] Video, int DecodedFrames, bool CaptureStopped, bool BrowserClosed);
+public sealed record PublicTaskBrowserFrame(byte[] Data, DateTimeOffset CapturedAt);
 
 /// <summary>Fresh anonymous link-navigation context with public HTTPS dependencies and an independently proven network fence.</summary>
 public sealed class PublicNavigationBrowser : IAsyncDisposable
@@ -16,6 +17,7 @@ public sealed class PublicNavigationBrowser : IAsyncDisposable
     private readonly string _videoPath;
     private readonly PublicTaskJob _job;
     private Task? _stopVideo;
+    private PublicTaskBrowserFrame? _liveFrame;
     private readonly object _gate = new();
     internal PublicNavigationBrowser(ChromiumFixtureBrowser browser, PublicTaskJob job, string folder)
     { _browser = browser; _job = job; _videoPath = Path.Combine(folder, "original.webm"); }
@@ -24,6 +26,7 @@ public sealed class PublicNavigationBrowser : IAsyncDisposable
     public int PolicyDenials => _browser.TaskPolicyDenials;
     public string CurrentUrl => _browser.DiagnosticPage.Url;
     public PublicTaskNetworkTrace? Network => _browser.TaskNetworkTrace;
+    public PublicTaskBrowserFrame? TakeLiveFrame() => Interlocked.Exchange(ref _liveFrame, null);
 
     public static async Task<PublicNavigationBrowser> OpenAsync(PublicTaskJob job, IPAddress proxy, string folder, CancellationToken token)
     {
@@ -33,18 +36,9 @@ public sealed class PublicNavigationBrowser : IAsyncDisposable
         var browser = await ChromiumFixtureBrowser.LaunchPublicTaskPageAsync(job.Source.TargetUrl, proxy,
             PublicTargetPolicy.ForPublicDependencies([job.Source.AllowedHost]), token).ConfigureAwait(false);
         var owned = new PublicNavigationBrowser(browser, job, folder);
-        browser.AttachPublicTaskCollector(owned.StopVideoAsync);
         try
         {
-            var first = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            await browser.DiagnosticPage.Screencast.StartAsync(new()
-            {
-                Path = owned._videoPath,
-                Size = new() { Width = 1280, Height = 720 },
-                Quality = 70,
-                OnFrame = _ => { first.TrySetResult(); return Task.CompletedTask; }
-            }).ConfigureAwait(false);
-            await first.Task.WaitAsync(TimeSpan.FromSeconds(5), token).ConfigureAwait(false);
+            await owned.StartCaptureAsync(token).ConfigureAwait(false);
             return owned;
         }
         catch (Exception failure)
@@ -52,6 +46,26 @@ public sealed class PublicNavigationBrowser : IAsyncDisposable
             if (browser.TaskNetworkTrace is { } trace) failure.Data["PublicTaskNetworkTrace"] = trace;
             await browser.DisposeAsync().ConfigureAwait(false); throw;
         }
+    }
+
+    internal async Task StartCaptureAsync(CancellationToken token)
+    {
+        _browser.AttachPublicTaskCollector(StopVideoAsync);
+        var first = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        await _browser.DiagnosticPage.Screencast.StartAsync(new()
+        {
+            Path = _videoPath,
+            Size = new() { Width = 1280, Height = 720 },
+            Quality = 70,
+            OnFrame = frame =>
+            {
+                if (frame.Data.Length <= PublicTaskLiveFrame.MaximumImageBytes)
+                    Interlocked.Exchange(ref _liveFrame, new(frame.Data, DateTimeOffset.UtcNow));
+                first.TrySetResult();
+                return Task.CompletedTask;
+            }
+        }).ConfigureAwait(false);
+        await first.Task.WaitAsync(TimeSpan.FromSeconds(5), token).ConfigureAwait(false);
     }
 
     public Task<AccessibilitySnapshot> CaptureAsync(CancellationToken token) => _browser.CaptureAsync(token);

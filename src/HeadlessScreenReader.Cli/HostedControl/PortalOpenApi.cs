@@ -12,7 +12,7 @@ internal static partial class PortalOpenApi
 {
     private static readonly Lazy<string> Cached = new(Build);
     public static string Document => Cached.Value;
-    public const string ContractVersion = "1.29.0";
+    public const string ContractVersion = "1.30.0";
 
     private static string Build()
     {
@@ -70,6 +70,7 @@ internal static partial class PortalOpenApi
         AddPublicTaskSchemas(schemas);
         AddPublicTaskSetSchemas(schemas);
         AddPublicReviewSchemas(schemas);
+        AddPublicCaseSchemas(schemas);
         AddSearchTaskSchemas(schemas);
         var paths = new JsonObject
         {
@@ -128,6 +129,7 @@ internal static partial class PortalOpenApi
         AddPublicTaskPaths(paths);
         AddPublicTaskSetPaths(paths);
         AddPublicReviewPaths(paths);
+        AddPublicCasePaths(paths);
         AddSearchTaskPaths(paths);
         return new JsonObject
         {
@@ -187,6 +189,7 @@ internal static partial class PortalOpenApi
                 ApplyPublicTaskCoverageSchema(context.TypeInfo.Type, value, properties);
                 ApplyPublicTaskSetSchema(context.TypeInfo.Type, value, properties);
                 ApplyPublicReviewSchema(context.TypeInfo.Type, value, properties);
+                ApplyPublicCaseSchema(context.TypeInfo.Type, value, properties);
                 ApplySearchTaskSchema(context.TypeInfo.Type, value, properties);
                 if (context.TypeInfo.Type == typeof(PortalWorkspacePageResponse))
                 {

@@ -4,7 +4,8 @@ using HeadlessScreenReader.Domain;
 namespace HeadlessScreenReader.Worker;
 
 /// <summary>Durable possible-input records precede acknowledgements. No grant can authorize another job, goal or action.</summary>
-internal sealed class PublicTaskProgress(PublicTaskStart start, string root, Func<string, CancellationToken, Task<bool>> authorize)
+internal sealed class PublicTaskProgress(PublicTaskStart start, string root, Func<string, CancellationToken, Task<bool>> authorize,
+    Func<int, CancellationToken, Task>? setLiveAttempt = null)
 {
     private int _sequence, _attempt;
     private bool _open, _activated, _published;
@@ -40,6 +41,8 @@ internal sealed class PublicTaskProgress(PublicTaskStart start, string root, Fun
             FileOptions.Asynchronous | FileOptions.WriteThrough))
         { await file.WriteAsync(bytes, token).ConfigureAwait(false); await file.FlushAsync(token).ConfigureAwait(false); file.Flush(true); }
         if (!await authorize(Phase, token).ConfigureAwait(false)) throw new BrowserOperationException("PUBLIC_TASK_AUTHORITY_LOST");
+        if (setLiveAttempt is not null && (intent.Action is "Open" or "Close"))
+            await setLiveAttempt(_open ? _attempt : 0, token).ConfigureAwait(false);
         var acknowledgement = new PublicTaskAck(start.ExecutionId, intent.Sequence, PublicTaskRules.Hash(bytes));
         await ReaderWorkerWire.WriteAsync(input, JsonSerializer.SerializeToUtf8Bytes(acknowledgement, ReaderWorkerWire.Json), 4096, token).ConfigureAwait(false);
         _sequence++;

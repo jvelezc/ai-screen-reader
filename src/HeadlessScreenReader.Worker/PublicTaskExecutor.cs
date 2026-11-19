@@ -11,10 +11,12 @@ public sealed class PublicTaskExecutor : IDisposable
 {
     private readonly string _root, _scripts, _runtime, _image;
     private readonly PublicReaderOwnershipJournal _journal;
+    private readonly PublicTaskLiveFrameStore _live;
     private readonly FileStream _exclusive;
     public PublicTaskExecutor(string root, string scripts, string runtime, string image)
     {
         _root = Path.Combine(Path.GetFullPath(root), ".public-task-runtime");
+        _live = new(root);
         _scripts = Path.GetFullPath(scripts); _runtime = runtime; _image = image;
         PublicReaderOwnershipJournal.Validate(new(PublicReaderOwnership.CurrentSchema, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), runtime, image,
             PublicReaderSource.FromUrl("https://screenreader.privensic.com/ci/v1/source")));
@@ -26,6 +28,8 @@ public sealed class PublicTaskExecutor : IDisposable
         foreach (var intent in pending)
         {
             if (intent.Runtime != _runtime) throw new BrowserOperationException("PUBLIC_TASK_RECOVERY_UNCONFIRMED");
+            PublicTaskLiveFrameSink.TryDelete(_live.PathFor(intent.Owner));
+            PublicTaskLiveFrameSink.TryDelete(_live.PathFor(intent.Owner) + ".next");
             await RemoveAsync(intent, true).ConfigureAwait(false);
         }
         return pending.Count;
@@ -56,14 +60,25 @@ public sealed class PublicTaskExecutor : IDisposable
             using var process = new Process { StartInfo = info };
             if (!process.Start()) throw new BrowserOperationException("PUBLIC_TASK_PROCESS_UNCONFIRMED");
             using var kill = deadline.Token.Register(() => { try { if (!process.HasExited) process.Kill(true); } catch { } });
-            var progress = new PublicTaskProgress(start, Path.Combine(_root, "control"), authorize);
-            var output = ReadAsync(process.StandardOutput.BaseStream, PublicTaskReport.MaximumArchiveBytes, deadline.Token);
+            using var live = new PublicTaskLiveFrameSink(start, _live.PathFor(start.ExecutionId));
+            var progress = new PublicTaskProgress(start, Path.Combine(_root, "control"), authorize, live.SetAttemptAsync);
+            var output = ReadOutputAsync();
             var control = ControlAsync();
             await ReaderWorkerWire.WriteAsync(process.StandardInput.BaseStream, JsonSerializer.SerializeToUtf8Bytes(start, ReaderWorkerWire.Json), 16 * 1024, deadline.Token).ConfigureAwait(false);
             await Task.WhenAll(output, control, process.WaitForExitAsync(deadline.Token)).ConfigureAwait(false);
             if (process.ExitCode != 0) throw new BrowserOperationException("PUBLIC_TASK_COLLECTION_UNCONFIRMED");
             collected = PublicTaskBundle.Decode(await output.ConfigureAwait(false), start); progress.Validate(collected.Report);
             if (!await authorize("Finalizing", token).ConfigureAwait(false)) throw new BrowserOperationException("PUBLIC_TASK_AUTHORITY_LOST");
+
+            async Task<byte[]> ReadOutputAsync()
+            {
+                try
+                {
+                    return await PublicTaskLiveWire.ReadArchiveAsync(process.StandardOutput.BaseStream, live.ObserveAsync,
+                        deadline.Token).ConfigureAwait(false);
+                }
+                catch { await deadline.CancelAsync().ConfigureAwait(false); throw; }
+            }
 
             async Task ControlAsync()
             {

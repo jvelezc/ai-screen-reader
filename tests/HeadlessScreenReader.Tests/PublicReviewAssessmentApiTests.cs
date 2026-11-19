@@ -272,8 +272,9 @@ public sealed class PublicReviewAssessmentApiTests
             { ["HSR_MCP_API_ORIGIN"] = server.BaseAddress.ToString(), ["HSR_MCP_ORGANIZATION"] = rig.Set.OrganizationId.ToString(), ["HSR_MCP_ACCESS_TOKEN"] = rig.Actor.Token }
         }));
         var tools = await client.ListToolsAsync();
-        Assert.Equal(47, tools.Count);
+        Assert.Equal(48, tools.Count);
         Assert.Single(tools, value => value.Name == "website_review_assessment");
+        Assert.Single(tools, value => value.Name == "website_case_assessment");
         var args = new Dictionary<string, object?> { ["scanId"] = rig.Set.ParentScanId.ToString(), ["requestId"] = rig.Set.RequestId.ToString() };
         var reply = await client.CallToolAsync("website_review_assessment", args);
         Assert.False(reply.IsError ?? false);
@@ -283,10 +284,26 @@ public sealed class PublicReviewAssessmentApiTests
         Assert.Equal("WebsiteEvidenceReady", json.RootElement.GetProperty("data").GetProperty("outcome").GetString());
         Assert.Contains(rig.Set.Tasks[0].ReportSha256!, text, StringComparison.Ordinal);
         Assert.DoesNotContain(rig.Actor.Token, text, StringComparison.Ordinal);
+        var input = rig.CaseInput();
+        var caseArgs = new Dictionary<string, object?>(args)
+        {
+            ["jobId"] = input.JobId, ["reportSha256"] = input.ReportSha256, ["profile"] = input.Profile,
+            ["coverage"] = "Unassessed", ["websiteConnection"] = input.WebsiteConnection,
+            ["claimantAccess"] = input.ClaimantAccess, ["standing"] = input.Standing
+        };
+        var screening = await client.CallToolAsync("website_case_assessment", caseArgs);
+        Assert.False(screening.IsError ?? false);
+        var caseData = screening.StructuredContent!.Value.GetProperty("data");
+        Assert.Equal("EvidenceGaps", caseData.GetProperty("outcome").GetString());
+        Assert.Equal("Unassessed", caseData.GetProperty("criteria")[0].GetProperty("status").GetString());
+        Assert.Equal("Supported", caseData.GetProperty("criteria")[2].GetProperty("status").GetString());
         rig.DenyFinalSet = true;
         var denied = await client.CallToolAsync("website_review_assessment", args);
         Assert.True(denied.IsError);
         Assert.DoesNotContain(rig.Set.Tasks[0].ReportSha256!, Assert.IsType<TextContentBlock>(Assert.Single(denied.Content)).Text, StringComparison.Ordinal);
+        var deniedScreening = await client.CallToolAsync("website_case_assessment", caseArgs);
+        Assert.True(deniedScreening.IsError);
+        Assert.DoesNotContain(input.ReportSha256!, Assert.IsType<TextContentBlock>(Assert.Single(deniedScreening.Content)).Text, StringComparison.Ordinal);
         Assert.Equal(0, rig.Creates);
         Assert.Equal(0, rig.ReadinessReads);
     }
@@ -298,7 +315,7 @@ public sealed class PublicReviewAssessmentApiTests
         await using var server = await rig.Server(); using var http = rig.Http(server);
         using var document = JsonDocument.Parse(await http.GetStringAsync("/openapi/v1.json"));
         var root = document.RootElement;
-        Assert.Equal("1.29.0", root.GetProperty("info").GetProperty("version").GetString());
+        Assert.Equal("1.30.0", root.GetProperty("info").GetProperty("version").GetString());
         var operation = root.GetProperty("paths").GetProperty("/api/workspaces/{organization}/website-scans/{scan}/tasks/sets/{request}/assessment").GetProperty("get");
         Assert.Equal("ReadPublicReviewAssessment", operation.GetProperty("operationId").GetString());
         Assert.True(operation.GetProperty("security")[0].TryGetProperty("bearerAuth", out _));
@@ -308,6 +325,137 @@ public sealed class PublicReviewAssessmentApiTests
         Assert.False(shape.GetProperty("legalCaseDetermined").GetProperty("const").GetBoolean());
         Assert.Equal(4, shape.GetProperty("tasks").GetProperty("maxItems").GetInt32());
         Assert.Equal(0, rig.TaskReads);
+    }
+
+    [Theory]
+    [InlineData(true, "Supported", "Supported", "CounselReview", "Supported")]
+    [InlineData(true, "Unassessed", "Supported", "EvidenceGaps", "Supported")]
+    [InlineData(true, "Unsupported", "Unassessed", "ContraryEvidence", "Supported")]
+    [InlineData(true, "Unsupported", "Conflicting", "ConflictingEvidence", "Supported")]
+    [InlineData(false, "Supported", "Supported", "ContraryEvidence", "Unsupported")]
+    public async Task CaseScreeningDistinguishesCounselSelectionsFromRecordedBarrier(
+        bool barrier, string coverage, string standing, string outcome, string observed)
+    {
+        using var rig = await Rig.Create(1, barrier);
+        await using var server = await rig.Server(); using var http = rig.Http(server);
+        var input = rig.CaseInput() with { Coverage = coverage, Standing = standing };
+        using var response = await http.PostAsJsonAsync(rig.CasePath, input, PortalJson.Options);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var value = Assert.IsType<PublicCaseAssessment>(await response.Content.ReadFromJsonAsync<PublicCaseAssessment>(PortalJson.Options));
+        Assert.Equal(PublicCaseAssessment.CurrentSchema, value.Schema);
+        Assert.Equal((rig.Set.OrganizationId, rig.Set.ParentScanId, rig.Set.RequestId, input.JobId, input.ReportSha256, input.Profile),
+            (value.OrganizationId, value.ScanId, value.RequestId, value.JobId, value.ReportSha256, value.Profile));
+        Assert.Equal(outcome, value.Outcome);
+        Assert.Equal(new[] { "Coverage", "WebsiteConnection", "Barrier", "ClaimantAccess", "Standing" },
+            value.Criteria.Select(item => item.Id));
+        Assert.Equal(new[] { coverage, "Supported", observed, "Supported", standing }, value.Criteria.Select(item => item.Status));
+        Assert.Equal(new[] { "Counsel", "Counsel", "RecordedTask", "Counsel", "Counsel" }, value.Criteria.Select(item => item.Source));
+        Assert.All(value.Criteria, item =>
+        {
+            Assert.StartsWith("https://", item.Authority.Url, StringComparison.Ordinal);
+            Assert.False(string.IsNullOrWhiteSpace(item.Authority.Pinpoint));
+        });
+        Assert.Equal("https://cdn.ca9.uscourts.gov/datastore/opinions/2019/01/15/17-55504.pdf",
+            value.Criteria[2].Authority.Url);
+        Assert.Equal(0, rig.Creates);
+        Assert.Equal(0, rig.ReadinessReads);
+    }
+
+    [Fact]
+    public async Task CaseScreeningCannotBorrowBarrierEvidenceFromAnotherTask()
+    {
+        using var rig = await Rig.Create(2);
+        await rig.Corrupt(1);
+        await using var server = await rig.Server(); using var http = rig.Http(server);
+        var input = rig.CaseInput(1) with { ReportSha256 = null };
+        using var response = await http.PostAsJsonAsync(rig.CasePath, input, PortalJson.Options);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var value = Assert.IsType<PublicCaseAssessment>(await response.Content.ReadFromJsonAsync<PublicCaseAssessment>(PortalJson.Options));
+        Assert.Equal(input.JobId, value.JobId);
+        Assert.Null(value.ReportSha256);
+        Assert.Equal("EvidenceGaps", value.Outcome);
+        Assert.Equal("Unassessed", Assert.Single(value.Criteria, item => item.Id == "Barrier").Status);
+        Assert.Equal(0, rig.Creates);
+    }
+
+    [Theory]
+    [InlineData("foreign-job", 404)]
+    [InlineData("changed-original", 409)]
+    [InlineData("missing-original-pin", 409)]
+    [InlineData("lost-access", 403)]
+    public async Task CaseScreeningRejectsForeignOrChangedEvidenceAndDropsResultsOnAccessLoss(string variation, int expected)
+    {
+        using var rig = await Rig.Create(1);
+        await using var server = await rig.Server(); using var http = rig.Http(server);
+        var input = rig.CaseInput();
+        input = variation switch
+        {
+            "foreign-job" => input with { JobId = Guid.NewGuid() },
+            "changed-original" => input with { ReportSha256 = new('0', 64) },
+            "missing-original-pin" => input with { ReportSha256 = null },
+            _ => input
+        };
+        rig.DenyFinalSet = variation == "lost-access";
+        using var response = await http.PostAsJsonAsync(rig.CasePath, input, PortalJson.Options);
+        Assert.Equal(expected, (int)response.StatusCode);
+        var problem = await response.Content.ReadAsStringAsync();
+        Assert.DoesNotContain(PublicCaseAssessment.CurrentSchema, problem, StringComparison.Ordinal);
+        Assert.DoesNotContain(rig.CaseInput().ReportSha256!, problem, StringComparison.Ordinal);
+        Assert.Equal(0, rig.Creates);
+    }
+
+    [Theory]
+    [InlineData("authentication", 401)]
+    [InlineData("query", 400)]
+    [InlineData("profile", 400)]
+    [InlineData("criterion-status", 400)]
+    [InlineData("absent-digest-field", 400)]
+    [InlineData("unexpected-private-field", 400)]
+    public async Task CaseScreeningDeniesUnauthenticatedOrMalformedRequestsBeforeReadingEvidence(string variation, int expected)
+    {
+        using var rig = await Rig.Create(1);
+        await using var server = await rig.Server(); using var http = rig.Http(server, variation != "authentication");
+        var input = JsonSerializer.SerializeToNode(rig.CaseInput(), PortalJson.Options)!.AsObject();
+        const string privateValue = "synthetic-private-input";
+        switch (variation)
+        {
+            case "profile": input["profile"] = "UnsupportedProfile"; break;
+            case "criterion-status": input["coverage"] = privateValue; break;
+            case "absent-digest-field": input.Remove("reportSha256"); break;
+            case "unexpected-private-field": input["notes"] = privateValue; break;
+        }
+        using var response = await http.PostAsJsonAsync(rig.CasePath + (variation == "query" ? "?token=untrusted" : ""),
+            input, PortalJson.Options);
+        Assert.Equal(expected, (int)response.StatusCode);
+        Assert.DoesNotContain(privateValue, await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        Assert.Equal(0, rig.SetReads);
+        Assert.Equal(0, rig.TaskReads);
+        Assert.Equal(0, rig.Creates);
+    }
+
+    [Fact]
+    public async Task OpenApiAdvertisesOnlyProtectedPinnedCaseScreeningWithClosedInput()
+    {
+        using var rig = await Rig.Create(0);
+        await using var server = await rig.Server(); using var http = rig.Http(server);
+        using var document = JsonDocument.Parse(await http.GetStringAsync("/openapi/v1.json"));
+        var root = document.RootElement;
+        var path = root.GetProperty("paths").GetProperty("/api/workspaces/{organization}/website-scans/{scan}/tasks/sets/{request}/case-assessment");
+        var operation = path.GetProperty("post");
+        Assert.Equal("AssessPublicReviewCase", operation.GetProperty("operationId").GetString());
+        Assert.True(operation.GetProperty("security")[0].TryGetProperty("bearerAuth", out _));
+        Assert.Equal(new[] { "organization", "scan", "request" },
+            operation.GetProperty("parameters").EnumerateArray().Select(item => item.GetProperty("name").GetString()));
+        Assert.True(operation.GetProperty("requestBody").GetProperty("required").GetBoolean());
+        var schemas = root.GetProperty("components").GetProperty("schemas");
+        var request = schemas.GetProperty("PublicCaseAssessmentRequest");
+        Assert.False(request.GetProperty("additionalProperties").GetBoolean());
+        Assert.Contains(request.GetProperty("required").EnumerateArray(), field => field.GetString() == "reportSha256");
+        var properties = request.GetProperty("properties");
+        Assert.Equal(PublicCaseAssessmentRequest.SupportedProfile, properties.GetProperty("profile").GetProperty("const").GetString());
+        Assert.Equal(4, properties.GetProperty("standing").GetProperty("enum").GetArrayLength());
+        Assert.Equal(5, schemas.GetProperty("PublicCaseAssessment").GetProperty("properties").GetProperty("criteria").GetProperty("maxItems").GetInt32());
+        Assert.Equal(0, rig.SetReads);
     }
 
     private sealed class Rig : HttpMessageHandler
@@ -324,7 +472,11 @@ public sealed class PublicReviewAssessmentApiTests
         private readonly Dictionary<Guid, PublicTaskStatus> _statuses = [];
         private readonly Dictionary<Guid, byte[]> _videos = [];
         private Rig() { _provider = new(this, false); Project = new(_provider, PortalProjectClientTests.Key); Store = new(Root, null); }
-        internal string Path => $"/api/workspaces/{Set.OrganizationId:D}/website-scans/{Set.ParentScanId:D}/tasks/sets/{Set.RequestId:D}/assessment";
+        private string ReviewPath => $"/api/workspaces/{Set.OrganizationId:D}/website-scans/{Set.ParentScanId:D}/tasks/sets/{Set.RequestId:D}";
+        internal string Path => ReviewPath + "/assessment";
+        internal string CasePath => ReviewPath + "/case-assessment";
+        internal PublicCaseAssessmentRequest CaseInput(int index = 0) => new(PublicCaseAssessmentRequest.SupportedProfile,
+            Set.Tasks[index].Job.JobId, Set.Tasks[index].ReportSha256, "Supported", "Supported", "Supported", "Supported");
         internal Task<PublicReviewAssessment> Read(CancellationToken token = default) => new PortalPublicTasks(Project, Store,
             () => { ReadinessReads++; return Task.FromResult(false); }).ReviewAssessmentAsync(Actor, Set.OrganizationId, Set.ParentScanId, Set.RequestId, token);
         internal Task<HostedControlServer> Server(Action<PortalRequestDiagnostic>? diagnostic = null) => HostedControlServer.StartAsync(

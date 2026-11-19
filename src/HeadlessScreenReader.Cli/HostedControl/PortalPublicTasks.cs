@@ -252,6 +252,7 @@ internal static class PortalPublicTaskEndpoints
             TypedResults.Json(await service.ResultAsync(HostedControlServer.Actor(context), organization, scan, job, token).ConfigureAwait(false), PortalJson.Options)).WithName("ReadPublicTaskDiagnosticsResult");
         app.MapGet(root + "/{job:guid}/events/{attempt:int}/{offset:int}/{digest}", async (HttpContext context, PortalPublicTasks service, Guid organization, Guid scan,
             Guid job, int attempt, int offset, string digest, CancellationToken token) => TypedResults.Json(await service.EventsAsync(HostedControlServer.Actor(context), organization, scan, job, attempt, offset, digest, token).ConfigureAwait(false), PortalJson.Options)).WithName("ReadPublicTaskEvents");
+        app.MapGet(root + "/{job:guid}/live-frame", PortalPublicTaskFrames.ReadAsync).WithName("ReadPublicTaskLiveFrame");
         app.MapGet(root + "/{job:guid}/reader/{attempt:int}/{offset:int}/{digest}", async (HttpContext context, PortalPublicTasks service, Guid organization, Guid scan,
             Guid job, int attempt, int offset, string digest, CancellationToken token) => TypedResults.Json(await service.ReaderAsync(HostedControlServer.Actor(context), organization, scan, job, attempt, offset, digest, token).ConfigureAwait(false), PortalJson.Options)).WithName("ReadPublicTaskReader");
         app.MapGet(root + "/{job:guid}/graph/{attempt:int}/{offset:int}/{digest}", async (HttpContext context, PortalPublicTasks service, Guid organization, Guid scan,

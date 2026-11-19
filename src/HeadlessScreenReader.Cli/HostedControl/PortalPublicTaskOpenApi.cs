@@ -9,6 +9,17 @@ internal static partial class PortalOpenApi
     {
         if (type == typeof(PortalTaskAttemptSummary))
             value["required"] = Strings(properties.Select(p => p.Key).Where(k => k != "navigation").ToArray());
+        if (type == typeof(PublicTaskLiveFrame))
+        {
+            properties["schema"]!["const"] = PublicTaskLiveFrame.CurrentSchema;
+            properties["attempt"]!["minimum"] = 1; properties["attempt"]!["maximum"] = 3;
+            properties["sequence"]!["minimum"] = 1;
+            properties["width"]!["minimum"] = 1; properties["width"]!["maximum"] = 1280;
+            properties["height"]!["minimum"] = 1; properties["height"]!["maximum"] = 720;
+            properties["data"]!["maxLength"] = (PublicTaskLiveFrame.MaximumImageBytes + 2) / 3 * 4;
+            properties["data"]!["contentEncoding"] = "base64"; properties["data"]!["contentMediaType"] = "image/jpeg";
+            properties["sha256"]!["pattern"] = "^[a-f0-9]{64}$";
+        }
         if (type == typeof(PublicTaskNavigation))
         {
             properties["strategy"]!["const"] = PublicTaskNavigation.CurrentStrategy;
@@ -53,6 +64,8 @@ internal static partial class PortalOpenApi
         schemas["PublicTaskCoverage"] = Schema<PortalWebsiteTaskCoverageResponse>("PublicTaskCoverage");
         schemas["PublicTaskStatus"] = Schema<PublicTaskStatus>("PublicTaskStatus");
         schemas["PublicTaskStatusOrNull"] = new JsonObject { ["oneOf"] = new JsonArray(Reference("PublicTaskStatus"), new JsonObject { ["type"] = "null" }) };
+        schemas["PublicTaskLiveFrame"] = Schema<PublicTaskLiveFrame>();
+        schemas["PublicTaskLiveFrameOrNull"] = new JsonObject { ["oneOf"] = new JsonArray(Reference("PublicTaskLiveFrame"), new JsonObject { ["type"] = "null" }) };
         schemas["PublicTaskResult"] = Schema<PortalTaskResult>("PublicTaskResult");
         schemas["PublicTaskEvents"] = Schema<PortalTaskEventPage>("PublicTaskEvents");
         schemas["PublicTaskReader"] = Schema<PortalTaskReaderPage>("PublicTaskReader");
@@ -83,6 +96,7 @@ internal static partial class PortalOpenApi
             ["get"] = TaskOperation("ReadLatestPublicTask", "Latest task for this exact source review; null means none. No example or another website is substituted.", "PublicTaskStatusOrNull", job: false)
         };
         paths[root + "/{job}"] = Path("get", TaskOperation("ReadPublicTaskStatus", "Scoped current task metadata; expired authority is not native cleanup or a task verdict.", "PublicTaskStatusOrNull"));
+        paths[root + "/{job}/live-frame"] = Path("get", TaskOperation("ReadPublicTaskLiveFrame", "View-only latest JPEG of this caller's active public task worker, at most8 seconds old. Null means waiting, closed, stale or no live frame. No input, lease renewal, replay or evidence write.", "PublicTaskLiveFrameOrNull"));
         paths[root + "/{job}/cancel"] = Path("post", TaskOperation("CancelPublicTask", "Revoke future input authority; inputs already dispatched are not reversed. Completed originals are unchanged.", "PublicTaskStatus"));
         paths[root + "/{job}/result"] = Path("get", TaskOperation("ReadPublicTaskResult", "Legacy result shape without diagnostics. Verify original report and every artifact before deriving evidence conditions. The explicit /result/diagnostics representation contains at most32 redacted issue events from this same original, timestamp/request/evidence references and troubleshooting actions. Missing/truncated traces and expected isolation probes are explicit; technical failures are not accessibility barriers. Plaintiff-specific legal elements, WCAG conformance and actual NVDA speech are outside scope.", "PublicTaskResult"));
         paths[root + "/{job}/result/diagnostics"] = Path("get", TaskOperation("ReadPublicTaskDiagnosticsResult", "Explicit diagnostic representation of the same verified result, with at most32 original-bound technical issue rows. Same authentication and original verification as /result; no new task authority or input replay.", "PublicTaskResult"));

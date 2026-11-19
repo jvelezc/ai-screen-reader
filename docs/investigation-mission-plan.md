@@ -13,6 +13,8 @@ Today the production workflow reviews a public page and tests supported service 
 
 ## Implementation sequence and acceptance
 
+The first attorney-facing implementation adds a narrow, evidence-linked screening profile and a view-only window onto the active public task. It uses the already supported public-link task evidence. The reader-only planning and broader journey work below remains the path to greater coverage. [Screening and observer scope](validation/case-screening-and-live-view-v1.md)
+
 ### 1. Make public task navigation reader-driven from discovery to completion
 
 Replace live target selection in the public task worker with a planner whose inputs are the declared objective, reader observations, command results, and attempt history. Offer typed reader commands for browse and focus navigation, including landmarks, headings, links, focus traversal, and activation. Keep diagnostic DOM access, screenshots, and pointer comparison behind separate capabilities. Policy and outcome verification may use trusted browser facts internally. The planner sees only the result the user could observe through the reader. Record which route it tried and why it continued, switched, or stopped.

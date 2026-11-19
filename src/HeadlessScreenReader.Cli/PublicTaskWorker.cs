@@ -47,7 +47,7 @@ internal static class PublicTaskWorker
                 throw new BrowserOperationException("PUBLIC_TASK_EGRESS_PROFILE_MISMATCH");
             var probeThroughSequence = probeTrace.Events.LastOrDefault()?.Sequence ?? 0;
             folder = Path.Combine(Path.GetTempPath(), "hsr-public-task-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(folder);
-            var sequence = 0; PublicTaskGoal? goal = null;
+            var sequence = 0; var frameSequence = 0; PublicTaskGoal? goal = null;
             PublicTaskNetworkTrace? discoveryNetwork = null;
             var files = ImmutableDictionary.CreateBuilder<string, byte[]>(); var inventory = ImmutableArray.CreateBuilder<PublicTaskFile>();
             var attempts = ImmutableArray.CreateBuilder<PublicTaskAttempt>();
@@ -69,10 +69,12 @@ internal static class PublicTaskWorker
                 PublicTaskReaderController? reader = null; PublicTaskReaderRecord? initialReader = null;
                 PublicTaskKeyboardPath? path = null;
                 AccessibilitySnapshot? beforeSnapshot = null;
+                long lastFrame = 0;
                 try
                 {
                     browser = await PublicNavigationBrowser.OpenAsync(start.Job, proxy, Path.Combine(folder, $"attempt-{number}"), stop.Token).ConfigureAwait(false);
                     activeBrowser = browser;
+                    await PublishFrame().ConfigureAwait(false);
                     stage = "Discover";
                     browserVersion = browser.BrowserVersion; playwrightVersion = browser.PlaywrightVersion;
                     goal ??= await browser.DiscoverAsync(stop.Token).ConfigureAwait(false);
@@ -197,6 +199,19 @@ internal static class PublicTaskWorker
                             action, before, after, url, attempted, completed)
                         { Reader = record });
                     }
+                    await PublishFrame().ConfigureAwait(false);
+                }
+
+                async Task PublishFrame()
+                {
+                    if (lastFrame != 0 && System.Diagnostics.Stopwatch.GetElapsedTime(lastFrame) < TimeSpan.FromMilliseconds(650)) return;
+                    var captured = browser?.TakeLiveFrame();
+                    if (captured is null || !PublicTaskLiveFrame.TryJpegSize(captured.Data, out var width, out var height)) return;
+                    lastFrame = System.Diagnostics.Stopwatch.GetTimestamp();
+                    var frame = new PublicTaskLiveFrame(PublicTaskLiveFrame.CurrentSchema, start.Job.OrganizationId, start.Job.ParentScanId,
+                        start.Job.JobId, start.ExecutionId, number, ++frameSequence, captured.CapturedAt, width, height, captured.Data,
+                        PublicTaskRules.Hash(captured.Data));
+                    await PublicTaskLiveWire.WriteFrameAsync(output, frame, stop.Token).ConfigureAwait(false);
                 }
             }
             stage = "Report";
@@ -217,7 +232,7 @@ internal static class PublicTaskWorker
             files.Add("report.json", JsonSerializer.SerializeToUtf8Bytes(report, ReaderWorkerWire.Json));
             var bundle = new PublicTaskBundle(report, files.ToImmutable()).Encode();
             await Authorize(0, "Publish").ConfigureAwait(false);
-            await output.WriteAsync(bundle, stop.Token).ConfigureAwait(false); await output.FlushAsync(stop.Token).ConfigureAwait(false);
+            await PublicTaskLiveWire.WriteArchiveAsync(output, bundle, stop.Token).ConfigureAwait(false);
             return 0;
 
             void Add(string path, byte[] content, string type)
