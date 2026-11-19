@@ -18,7 +18,11 @@ internal sealed record PortalCreatePublicTaskRequest(Guid RequestId, string Pare
 }
 internal sealed record PortalTaskAttemptSummary(int Number, Guid Id, string Method, string Outcome, string? ErrorCode,
     string? FinalUrl, int Events, int AttemptedInputs, int CompletedInputs, bool TaskTargetMatched, int PolicyInterruptions,
-    string Video, bool RecordingAvailable, int DecodedFrames);
+    string Video, bool RecordingAvailable, int DecodedFrames)
+{
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public PublicTaskNavigation? Navigation { get; init; }
+}
 internal sealed record PortalTaskResult(PublicTaskStatus Status, PublicTaskGoal? Goal, PublicTaskAssessment Assessment,
     PortalTaskAttemptSummary[] Attempts, PublicTaskFile[] Files, string Browser, string Playwright, string Platform,
     string Viewport, string Scope, string VideoAlignment, bool LegalCaseDetermined, string AssistiveTechnologyComparison,
@@ -158,7 +162,8 @@ internal sealed partial class PortalPublicTasks(IPortalPublicTaskProject? client
             throw new PortalFault(503, "CONTROL_PUBLIC_TASK_RESPONSE_INVALID");
         return new(status, report.Goal, assessment, report.Attempts.Select(a => new PortalTaskAttemptSummary(a.Number, a.Id, a.Method,
             a.Outcome, a.ErrorCode, a.FinalUrl, a.Events.Length, a.Events.Count(e => e.InputAttempted), a.Events.Count(e => e.InputCompleted),
-            a.TaskTargetMatched, a.PolicyInterruptions, a.Video, report.Files.Any(f => f.Path == a.Video && f.MediaType == "video/webm"), a.DecodedVideoFrames)).ToArray(),
+            a.TaskTargetMatched, a.PolicyInterruptions, a.Video, report.Files.Any(f => f.Path == a.Video && f.MediaType == "video/webm"), a.DecodedVideoFrames)
+        { Navigation = a.Navigation }).ToArray(),
             report.Files.ToArray(), report.BrowserVersion, report.PlaywrightVersion, report.Platform, report.Viewport,
             report.Scope, report.VideoAlignment, false, report.AssistiveTechnologyComparison, DateTimeOffset.UtcNow)
         { Diagnostics = PublicTaskIssueTable.From(report) };

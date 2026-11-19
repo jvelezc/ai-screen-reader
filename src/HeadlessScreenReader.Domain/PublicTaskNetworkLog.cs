@@ -40,7 +40,7 @@ public sealed class PublicTaskNetworkLog(string policy, DateTimeOffset startedAt
 
     private void Append(PublicTaskNetworkEvent entry, double elapsed)
     {
-        _elapsed = Math.Max(_elapsed, double.IsFinite(elapsed) ? Math.Clamp(elapsed, 0, 180000) : 0);
+        _elapsed = Math.Max(_elapsed, double.IsFinite(elapsed) ? Math.Max(elapsed, 0) : 0);
         entry = entry with { Sequence = ++_sequence, ElapsedMilliseconds = _elapsed };
         if (_events.Count < PublicTaskNetworkTrace.MaximumEvents) { _events.Add(entry); return; }
         Drop();

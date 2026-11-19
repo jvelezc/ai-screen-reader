@@ -1,0 +1,13 @@
+# Reader-led public task navigation
+
+This increment removes the public task worker's fixed48-Tab cutoff and its corresponding51-command reader budget. The real `ScreenReaderSession` remains the keyboard driver. It saves actual commands, announcements, focused node identity and attempted/completed input separately. The independent mouse attempt is a control comparison; it is never represented as reader navigation.
+
+The sequential route tracks original document/node identities. It continues across any number of distinct observed focus states until the target is focused. Repeating a previously visited focus state ends that route with `FocusCycle`; missing focus ends it with `FocusUnobserved`. Neither establishes that every possible path was explored. Input uncertainty stops dispatch and is not retried automatically. Goal focus, activation and observed destination success remain separate.
+
+New originals and attempt summaries optionally carry `navigation` with strategy `GoalOrFocusCycleV1`, explicit stop reason, recorded Tab-action count, unique state count and cycle start sequence. Historical originals omit this field and retain the same assessment. The old public `MaximumTabs` constant remains unchanged only for source compatibility; no execution, grant or validation uses it.
+
+The170/190-second whole-job timers are removed. The existing coordinator renews its caller/workspace-bound fenced lease every five seconds and cancels execution when authority is lost. Explicit cancellation, native ownership, capture exclusion, independently enforced egress isolation, per-operation I/O deadlines, original-file byte/page validation and safe native cleanup remain active. This is no promise of infinite storage or execution on a broken website. Resource/transport failure cannot establish a website barrier.
+
+HTTP1.29 permits original-bound event/reader/graph page offsets across the protocol's nonnegative integer range. Page sizes remain24 input events,12 reader events/112KiB,24 graph states/edges and64KiB original bytes. The consumer and existing Edge adapter accept these later pages; they do not implement navigation or evidence decisions.
+
+Validation in progress: the pre-fix65-command regression failed with `BudgetExceeded`. The actual Chromium fixture now traverses70 controls, focuses the target on Tab71 and activates it with our reader. Deterministic route-cycle/missing-focus tests, durable authorization beyond48 and pinned HTTP/private-MCP pages after offset120 are included. See PSR-TASK-005 and PSR-UX-013 for delivery status. Existing public website jobs are not rerun or rewritten by this change.

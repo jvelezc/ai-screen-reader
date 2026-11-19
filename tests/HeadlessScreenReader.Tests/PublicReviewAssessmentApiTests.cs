@@ -298,7 +298,7 @@ public sealed class PublicReviewAssessmentApiTests
         await using var server = await rig.Server(); using var http = rig.Http(server);
         using var document = JsonDocument.Parse(await http.GetStringAsync("/openapi/v1.json"));
         var root = document.RootElement;
-        Assert.Equal("1.28.0", root.GetProperty("info").GetProperty("version").GetString());
+        Assert.Equal("1.29.0", root.GetProperty("info").GetProperty("version").GetString());
         var operation = root.GetProperty("paths").GetProperty("/api/workspaces/{organization}/website-scans/{scan}/tasks/sets/{request}/assessment").GetProperty("get");
         Assert.Equal("ReadPublicReviewAssessment", operation.GetProperty("operationId").GetString());
         Assert.True(operation.GetProperty("security")[0].TryGetProperty("bearerAuth", out _));

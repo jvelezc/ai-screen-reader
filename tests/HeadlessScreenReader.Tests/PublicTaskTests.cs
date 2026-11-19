@@ -170,6 +170,23 @@ public sealed class PublicTaskTests
         await Assert.ThrowsAsync<BrowserOperationException>(() => progress.HandleAsync(bytes, new MemoryStream(), default)); Assert.Equal(2, calls);
     }
     [Fact]
+    public async Task DurableInputAuthorizationContinuesBeyondTheOldTabCountAndStillFencesActivation()
+    {
+        var root = Path.GetFullPath(Path.Combine("artifacts", "public-task-tests", Guid.NewGuid().ToString("N")));
+        var start = Start(); var goal = Report(start).Goal!; var checks = 0;
+        var progress = new PublicTaskProgress(start, root, (_, _) => { checks++; return Task.FromResult(true); });
+        using var acknowledgements = new MemoryStream();
+        async Task Send(int sequence, string action) => await progress.HandleAsync(
+            JsonSerializer.SerializeToUtf8Bytes(new PublicTaskIntent(start, sequence, 1, action, goal), ReaderWorkerWire.Json), acknowledgements, default);
+        await Send(1, "Open");
+        for (var n = 2; n <= 130; n++) await Send(n, "Tab");
+        await Send(131, "Enter");
+        Assert.Equal(262, checks); Assert.Equal(131, Directory.GetFiles(root).Length);
+        Assert.Equal("KeyboardAttempt1", progress.Phase);
+        var denied = await Assert.ThrowsAsync<BrowserOperationException>(() => Send(132, "Tab"));
+        Assert.Equal("PUBLIC_TASK_CONTROL_UNCONFIRMED", denied.Code); Assert.Equal(262, checks);
+    }
+    [Fact]
     public async Task PrivateOriginalReadRejectsChangedBytesAndInvalidOffsets()
     {
         var root = Path.GetFullPath(Path.Combine("artifacts", "public-task-tests", Guid.NewGuid().ToString("N")));

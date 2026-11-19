@@ -11,6 +11,7 @@ public sealed record PublicTaskJob(Guid OrganizationId, Guid ParentScanId, Guid 
     long Generation, PublicReaderSource Source, string ParentOriginalSha256)
 {
     public const string Profile = "hsr-public-service-navigation-v1";
+    // Historical v1 limit retained as metadata for source compatibility. Execution does not use it.
     public const int MaximumTabs = 48;
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? GoalKind { get; init; }
@@ -86,6 +87,8 @@ public sealed record PublicTaskAttempt(int Number, Guid Id, string Method, DateT
     public ImmutableArray<PublicTaskFailure>? Failures { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int OmittedFailures { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public PublicTaskNavigation? Navigation { get; init; }
 }
 
 /// <summary>Original collector facts. Resource removal and archive readback are independently checked by the parent.</summary>
@@ -162,7 +165,7 @@ public sealed record PublicTaskReport(string Schema, PublicTaskStart Start, Publ
             Require(attempt.Number == i + 1 && attempt.Id != Guid.Empty && attempt.Method == (i < 2 ? "Keyboard" : "Pointer")
                 && attempt.StartedAt != default && attempt.Outcome is "Reached" or "NotReached" or "Unconfirmed"
                 && attempt.PolicyInterruptions >= 0 && attempt.PolicyInterruptions <= 1000
-                && !attempt.Events.IsDefault && attempt.Events.Length <= PublicTaskJob.MaximumTabs + 1
+                && !attempt.Events.IsDefault
                 && (attempt.FinalUrl is null ? attempt.Outcome == "Unconfirmed" : Start.Job.Source.AllowsDocument(attempt.FinalUrl))
                 && (attempt.ErrorCode is null || attempt.ErrorCode is "PUBLIC_TASK_ATTEMPT_UNCONFIRMED" or "PUBLIC_TASK_POLICY_INTERRUPTED")
                 && (attempt.Outcome != "Reached" || attempt.FinalUrl == Goal!.DestinationUrl && attempt.TaskTargetMatched && attempt.ErrorCode is null));
@@ -181,7 +184,7 @@ public sealed record PublicTaskReport(string Schema, PublicTaskStart Start, Publ
                     reader.Validate(ReaderProfile!);
                 }
                 Require(step.Sequence == j + 1 && double.IsFinite(step.ElapsedMilliseconds) && step.ElapsedMilliseconds >= previous
-                    && step.ElapsedMilliseconds <= 180_000 && (!step.InputCompleted || step.InputAttempted)
+                    && (!step.InputCompleted || step.InputAttempted)
                     && Start.Job.Source.AllowsDocument(step.DocumentUrl)
                     && (i < 2 ? step.Action is "Tab" or "Enter" : step.Action == "Pointer")
                     && (step.Action != "Enter" || j == attempt.Events.Length - 1 && step.Before?.AnchorUrl == Goal!.DestinationUrl));
@@ -190,6 +193,7 @@ public sealed record PublicTaskReport(string Schema, PublicTaskStart Start, Publ
                     if (focus is not null) Require(PublicTaskRules.Text(focus.NodeId, 200) && PublicTaskRules.Text(focus.Role, 100)
                         && focus.Name is { Length: <= 500 } && (focus.AnchorUrl is null || focus.AnchorUrl.Length <= 2048));
             }
+            attempt.Navigation?.Validate(attempt, Goal!);
             Require(attempt.BeforeSnapshot == $"attempt-{i + 1}-before.json" && attempt.AfterSnapshot == $"attempt-{i + 1}-after.json"
                 && attempt.Video == $"attempt-{i + 1}.webm" && attempt.DecodedVideoFrames >= 0);
             if (attempt.Outcome != "Unconfirmed") Require(attempt.BrowserCloseConfirmed && attempt.CaptureStopConfirmed

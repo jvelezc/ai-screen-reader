@@ -14,6 +14,19 @@ namespace HeadlessScreenReader.Tests;
 
 public sealed class PublicTaskReaderTests
 {
+    [Fact]
+    public async Task ReaderContinuesAfterSixtyFourConfirmedKeyboardCommands()
+    {
+        var time = new FakeTimeProvider(); var browser = new Browser();
+        using var reader = new PublicTaskReaderController(browser, Focus, time, time.GetTimestamp());
+        await reader.ExecuteAsync("Observe", default);
+        PublicTaskReaderRecord? last = null;
+        for (var i = 0; i < 65; i++) last = await reader.ExecuteAsync("Tab", default);
+        Assert.NotNull(last); Assert.Equal("Observed", last.Outcome);
+        Assert.Equal(66, last.Sequence); Assert.Equal(65, browser.Keys.Count);
+        Assert.True(reader.InputCompleted); last.Validate(ScreenReaderSession.Profile);
+    }
+
     private static Task<PublicTaskFocus?> Focus(AccessibilitySnapshot snapshot, CancellationToken _) => Task.FromResult(
         snapshot.FocusedNode is { } n ? new PublicTaskFocus(n.Id, n.Role, n.Name, n.Role == "link" ? "https://example.com/pricing" : null) : null);
 

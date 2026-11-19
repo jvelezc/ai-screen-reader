@@ -6,7 +6,7 @@ namespace HeadlessScreenReader.Worker;
 /// <summary>Durable possible-input records precede acknowledgements. No grant can authorize another job, goal or action.</summary>
 internal sealed class PublicTaskProgress(PublicTaskStart start, string root, Func<string, CancellationToken, Task<bool>> authorize)
 {
-    private int _sequence, _attempt, _tabs;
+    private int _sequence, _attempt;
     private bool _open, _activated, _published;
     private PublicTaskGoal? _goal;
     internal string Phase { get; private set; } = "Starting";
@@ -24,8 +24,8 @@ internal sealed class PublicTaskProgress(PublicTaskStart start, string root, Fun
         else Require(_goal is null);
         switch (intent.Action)
         {
-            case "Open": Require(!_open && intent.Attempt == _attempt + 1 && intent.Attempt <= 3); _attempt++; _open = true; _tabs = 0; _activated = false; break;
-            case "Tab": Require(_open && _goal is not null && intent.Attempt == _attempt && _attempt <= 2 && !_activated && ++_tabs <= PublicTaskJob.MaximumTabs); break;
+            case "Open": Require(!_open && intent.Attempt == _attempt + 1 && intent.Attempt <= 3); _attempt++; _open = true; _activated = false; break;
+            case "Tab": Require(_open && _goal is not null && intent.Attempt == _attempt && _attempt <= 2 && !_activated); break;
             case "Enter": Require(_open && _goal is not null && intent.Attempt == _attempt && _attempt <= 2 && !_activated); _activated = true; break;
             case "Pointer": Require(_open && _goal is not null && intent.Attempt == 3 && _attempt == 3 && !_activated); _activated = true; break;
             case "Close": Require(_open && intent.Attempt == _attempt); _open = false; break;

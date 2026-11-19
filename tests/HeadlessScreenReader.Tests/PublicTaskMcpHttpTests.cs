@@ -9,6 +9,27 @@ namespace HeadlessScreenReader.Tests;
 public sealed class PublicTaskMcpHttpTests
 {
     [Fact]
+    public async Task PrivateMcpContinuesOriginalReaderAndTracePagesBeyondOneHundredEvents()
+    {
+        using var rig = await PublicTaskHttpTests.Rig.Create(PublicTaskNavigationTests.LongReport);
+        await using var server = await rig.Server(); await using var mcp = await Connect(server.BaseAddress, rig.Status.Job.OrganizationId);
+        var args = new Dictionary<string, object?>
+        {
+            ["scanId"] = rig.Status.Job.ParentScanId,
+            ["jobId"] = rig.Status.Job.JobId,
+            ["reportSha256"] = rig.Status.ReportSha256,
+            ["offset"] = 120
+        };
+        var reader = (await Call(mcp, "website_task_reader", args)).GetProperty("data");
+        Assert.Equal(140, reader.GetProperty("total").GetInt32());
+        Assert.Equal(121, reader.GetProperty("events")[0].GetProperty("sequence").GetInt32());
+        Assert.Equal(rig.Status.ReportSha256, reader.GetProperty("reportSha256").GetString());
+        var trace = (await Call(mcp, "website_task_trace", args)).GetProperty("data");
+        Assert.Equal(20, trace.GetProperty("events").GetArrayLength());
+        Assert.Equal(0, rig.Creates);
+    }
+
+    [Fact]
     public async Task SelectedGoalReconcilesThroughRealStdioAndHttpAndChangedIntentIsDenied()
     {
         using var rig = await PublicTaskHttpTests.Rig.Create();

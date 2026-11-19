@@ -24,7 +24,7 @@ public sealed partial class HostedScanClient
         if (operation is not ("start" or "latest") && (!Guid.TryParse(jobId, out job) || job == Guid.Empty)
             || operation == "start" && (!Guid.TryParse(requestId, out request) || request == Guid.Empty || !Digest(digest ?? ""))
             || operation is "events" or "reader" or "graph" or "original" && !Digest(digest ?? "")
-            || operation is "events" or "reader" or "graph" && (attempt is < 1 or > 3 || offset > 100)
+            || operation is "events" or "reader" or "graph" && (attempt is < 1 or > 3)
             || operation == "original" && (!PublicTaskRules.FileName(file) || offset > PublicTaskReport.MaximumArchiveBytes))
             return Task.FromResult(new ToolReply("error", null, PublicTaskJob.Profile, ErrorCode: "PUBLIC_TASK_REQUEST_INVALID"));
         return LockedAsync(async () =>

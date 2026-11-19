@@ -7,6 +7,14 @@ internal static partial class PortalOpenApi
 {
     private static void ApplyPublicTaskCoverageSchema(Type type, JsonObject value, JsonObject properties)
     {
+        if (type == typeof(PortalTaskAttemptSummary))
+            value["required"] = Strings(properties.Select(p => p.Key).Where(k => k != "navigation").ToArray());
+        if (type == typeof(PublicTaskNavigation))
+        {
+            properties["strategy"]!["const"] = PublicTaskNavigation.CurrentStrategy;
+            properties["stopReason"]!["enum"] = Strings("GoalFocused", "FocusCycle", "FocusUnobserved", "InputUnconfirmed", "TargetChanged", "NotStarted");
+            properties["stopReason"]!["description"] = "Why this observed sequential route stopped. A focus cycle does not prove that all possible reader routes were exhausted.";
+        }
         if (type == typeof(PortalCreatePublicTaskRequest) || type == typeof(PublicTaskJob))
         {
             value["required"] = Strings(properties.Select(p => p.Key).Where(k => k != "goalKind").ToArray());
@@ -80,15 +88,15 @@ internal static partial class PortalOpenApi
         paths[root + "/{job}/result/diagnostics"] = Path("get", TaskOperation("ReadPublicTaskDiagnosticsResult", "Explicit diagnostic representation of the same verified result, with at most32 original-bound technical issue rows. Same authentication and original verification as /result; no new task authority or input replay.", "PublicTaskResult"));
         var events = TaskOperation("ReadPublicTaskEvents", "At most24 recorded events from one actual attempt, with pinned report digest. Graph projections must retain attempted/completed/observed distinctions. These times do not establish video seeking alignment.", "PublicTaskEvents");
         var eventParameters = (JsonArray)events["parameters"]!;
-        eventParameters.Add(PublicParameter("attempt", 1, 3)); eventParameters.Add(PublicParameter("offset", 0, 49)); eventParameters.Add(PublicDigestParameter());
+        eventParameters.Add(PublicParameter("attempt", 1, 3)); eventParameters.Add(PublicParameter("offset", 0, int.MaxValue)); eventParameters.Add(PublicDigestParameter());
         paths[root + "/{job}/events/{attempt}/{offset}/{digest}"] = Path("get", events);
         var reader = TaskOperation("ReadPublicTaskReader", "Actual AI reader commands, announcements, input counts and last-observed snapshot fingerprints. At most12 events and112KiB per page; pagination never skips a record. Initial output appears only at offset0. NotRetained identifies historical originals without a transcript, Partial exposes missing records. These are reader text outputs, not recorded external AT speech; intermediate full snapshots are not retained by this representation. No task input or authority renewal.", "PublicTaskReader");
         var readerParameters = (JsonArray)reader["parameters"]!;
-        readerParameters.Add(PublicParameter("attempt", 1, 3)); readerParameters.Add(PublicParameter("offset", 0, 49)); readerParameters.Add(PublicDigestParameter());
+        readerParameters.Add(PublicParameter("attempt", 1, 3)); readerParameters.Add(PublicParameter("offset", 0, int.MaxValue)); readerParameters.Add(PublicDigestParameter());
         paths[root + "/{job}/reader/{attempt}/{offset}/{digest}"] = Path("get", reader);
         var graph = TaskOperation("ReadPublicTaskGraph", "At most24 observed focus states and24 actual input edges per page; missing focus is explicitly unobserved. No global reachability or unreachability inference.", "PublicTaskGraph");
         var graphParameters = (JsonArray)graph["parameters"]!;
-        graphParameters.Add(PublicParameter("attempt", 1, 3)); graphParameters.Add(PublicParameter("offset", 0, 98)); graphParameters.Add(PublicDigestParameter());
+        graphParameters.Add(PublicParameter("attempt", 1, 3)); graphParameters.Add(PublicParameter("offset", 0, int.MaxValue)); graphParameters.Add(PublicDigestParameter());
         paths[root + "/{job}/graph/{attempt}/{offset}/{digest}"] = Path("get", graph);
         var original = TaskOperation("ReadPublicTaskOriginal", "At most64KiB of an exact original. Verify page and whole-file hashes and reauthorize at exact EOF before playback/export. The video is the original recording; viewing it sends no website input. No signed URL or storage credential.", "PublicTaskOriginal");
         var parameters = (JsonArray)original["parameters"]!;

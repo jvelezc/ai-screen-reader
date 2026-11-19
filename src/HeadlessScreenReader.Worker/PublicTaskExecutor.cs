@@ -50,7 +50,9 @@ public sealed class PublicTaskExecutor : IDisposable
             info.ArgumentList.Add("-FailurePath");
             info.ArgumentList.Add(Path.Combine(launcherDiagnostics, $"{start.ExecutionId:N}-launcher.json"));
             foreach (var arg in new[] { "-AllowedHost", job.Source.AllowedHost, "-TargetUrl", job.Source.TargetUrl, "-NavigationTask" }) info.ArgumentList.Add(arg);
-            using var deadline = CancellationTokenSource.CreateLinkedTokenSource(token); deadline.CancelAfter(TimeSpan.FromSeconds(190));
+            // The coordinator renews the caller-bound lease and cancels this token on lost authority.
+            // A healthy task is not ended by a wall-clock navigation cutoff.
+            using var deadline = CancellationTokenSource.CreateLinkedTokenSource(token);
             using var process = new Process { StartInfo = info };
             if (!process.Start()) throw new BrowserOperationException("PUBLIC_TASK_PROCESS_UNCONFIRMED");
             using var kill = deadline.Token.Register(() => { try { if (!process.HasExited) process.Kill(true); } catch { } });
@@ -78,7 +80,7 @@ public sealed class PublicTaskExecutor : IDisposable
                                 || diagnostic.Category is not ("Browser" or "Playwright" or "Protocol" or "Timeout" or "Io" or "Canceled" or "Unexpected")
                                 || diagnostic.Code is { } code && (code.Length > 100 || code.Any(c => !char.IsAsciiLetterUpper(c) && c != '_'))) throw new IOException();
                             diagnostic.Network?.Validate(); diagnostic.Egress?.Validate();
-                            diagnostic.Failure?.Validate(PublicTaskJob.MaximumTabs + 1);
+                            diagnostic.Failure?.Validate(int.MaxValue);
                             var folder = Path.Combine(_root, "diagnostics"); Directory.CreateDirectory(folder);
                             await File.WriteAllBytesAsync(Path.Combine(folder, $"{start.ExecutionId:N}-{Guid.NewGuid():N}.json"), bytes, deadline.Token).ConfigureAwait(false);
                             Console.Error.WriteLine(JsonSerializer.Serialize(new

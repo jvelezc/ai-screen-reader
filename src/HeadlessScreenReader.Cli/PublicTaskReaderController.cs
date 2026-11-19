@@ -26,7 +26,7 @@ internal sealed class PublicTaskReaderController : IDisposable
     {
         _time = time; _origin = origin;
         _browser = new(browser, focus);
-        _reader = new(_browser, maxCommands: PublicTaskJob.MaximumTabs + 3, timeProvider: time);
+        _reader = new(_browser, maxCommands: int.MaxValue, timeProvider: time);
     }
 
     internal static PublicTaskReaderController Create(PublicNavigationBrowser browser, PublicTaskGoal goal,

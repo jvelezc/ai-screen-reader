@@ -19,7 +19,7 @@ public sealed record PublicTaskReaderRecord(string Schema, string Profile, long 
         static bool Id(string? value) => value is null || PublicTaskRules.Text(value, 200);
         if (Schema != CurrentSchema || Profile != profile || !PublicTaskRules.Text(Profile, 100)
             || SnapshotCoverage != "LastSnapshotFingerprintOnly" || OutputKind != "AIReaderTextNotRecordedSpeech"
-            || Sequence is < 1 or > PublicTaskJob.MaximumTabs + 3
+            || Sequence is < 1 or > int.MaxValue
             || Command is not ("ReadCurrent" or "Tab" or "Activate")
             || !Enum.GetNames<ReaderMode>().Contains(Mode, StringComparer.Ordinal)
             || !Enum.GetNames<ReaderOutcome>().Contains(Outcome, StringComparer.Ordinal)
@@ -32,7 +32,7 @@ public sealed record PublicTaskReaderRecord(string Schema, string Profile, long 
             || (CaptureEpoch is null) != (DocumentId is null) || CaptureEpoch < 0
             || LastSnapshotSha256 is not null && !PublicTaskRules.Digest(LastSnapshotSha256)
             || !double.IsFinite(StartedMilliseconds) || !double.IsFinite(FinishedMilliseconds)
-            || StartedMilliseconds < 0 || FinishedMilliseconds < StartedMilliseconds || FinishedMilliseconds > 180000)
+            || StartedMilliseconds < 0 || FinishedMilliseconds < StartedMilliseconds)
             throw new BrowserOperationException("PUBLIC_TASK_READER_RECORD_INVALID");
     }
 }

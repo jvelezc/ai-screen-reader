@@ -19,7 +19,7 @@ internal static class PublicTaskWorker
         if (!OperatingSystem.IsLinux() || args.Length != 4 || !IPAddress.TryParse(args[0], out var proxy)
             || proxy.AddressFamily != AddressFamily.InterNetwork || IPAddress.IsLoopback(proxy)
             || !Guid.TryParseExact(args[2], "N", out var owner) || owner == Guid.Empty) return 2;
-        using var stop = CancellationTokenSource.CreateLinkedTokenSource(token); stop.CancelAfter(TimeSpan.FromSeconds(170));
+        using var stop = CancellationTokenSource.CreateLinkedTokenSource(token);
         using var heartbeatStop = new CancellationTokenSource();
         Task? heartbeat = null; string? folder = null; var leased = false;
         PublicTaskStart? started = null; var stage = "Start"; var activeAttempt = 0;
@@ -67,6 +67,7 @@ internal static class PublicTaskWorker
                 var outcome = "Unconfirmed"; string? error = null, finalUrl = null; var same = false; var denials = 0;
                 PublicTaskMedia? media = null; PublicNavigationBrowser? browser = null; var closeDeclared = false;
                 PublicTaskReaderController? reader = null; PublicTaskReaderRecord? initialReader = null;
+                PublicTaskKeyboardPath? path = null;
                 AccessibilitySnapshot? beforeSnapshot = null;
                 try
                 {
@@ -83,6 +84,7 @@ internal static class PublicTaskWorker
                         discoveryNetwork = browser.Network;
                         break;
                     }
+                    if (number < 3) path = new(goal);
                     same = await browser.SameGoalAsync(goal, stop.Token).ConfigureAwait(false);
                     reader = PublicTaskReaderController.Create(browser, goal, (key, _) => Authorize(number, key), TimeProvider.System, began);
                     stage = "Snapshot";
@@ -96,11 +98,8 @@ internal static class PublicTaskWorker
                         if (number == 3) await Input("Pointer").ConfigureAwait(false);
                         else
                         {
-                            for (var tab = 0; tab < PublicTaskJob.MaximumTabs; tab++)
-                            {
-                                if (reader.Focus?.AnchorUrl == goal.DestinationUrl) break;
+                            while (path!.Continue(reader.Snapshot?.DocumentId, reader.Focus, events.Count))
                                 await Input("Tab").ConfigureAwait(false);
-                            }
                             if (reader.Focus?.AnchorUrl == goal.DestinationUrl)
                                 await Input("Enter").ConfigureAwait(false);
                         }
@@ -114,6 +113,7 @@ internal static class PublicTaskWorker
                 catch (OperationCanceledException) { throw; }
                 catch (Exception problem)
                 {
+                    path?.Unconfirmed(events.Count(e => e.Action == "Tab"));
                     await Diagnostic(problem).ConfigureAwait(false);
                     if (goal is null) throw;
                     outcome = "Unconfirmed"; error = "PUBLIC_TASK_ATTEMPT_UNCONFIRMED";
@@ -157,7 +157,13 @@ internal static class PublicTaskWorker
                 if (denials != 0) { outcome = "Unconfirmed"; error = "PUBLIC_TASK_POLICY_INTERRUPTED"; }
                 attempts.Add(new(number, Guid.NewGuid(), method, now, outcome, error, finalUrl, same, denials, events.ToImmutable(),
                     beforePath, afterPath, videoPath, media?.BrowserClosed == true, media?.CaptureStopped == true, media?.DecodedFrames ?? 0)
-                { InitialReader = initialReader, Network = browser?.Network, Failures = failures.ToImmutable(), OmittedFailures = omittedFailures });
+                {
+                    InitialReader = initialReader,
+                    Network = browser?.Network,
+                    Failures = failures.ToImmutable(),
+                    OmittedFailures = omittedFailures,
+                    Navigation = path?.Record()
+                });
 
                 async Task Input(string action)
                 {

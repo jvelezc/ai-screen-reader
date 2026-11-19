@@ -23,7 +23,7 @@ public sealed record PublicTaskNetworkTrace(string Schema, string Policy, DateTi
         foreach (var entry in Events)
         {
             Require(entry.Sequence > sequence && entry.RequestId > 0 && entry.RequestId <= Requests
-                && double.IsFinite(entry.ElapsedMilliseconds) && entry.ElapsedMilliseconds >= elapsed && entry.ElapsedMilliseconds <= 180000
+                && double.IsFinite(entry.ElapsedMilliseconds) && entry.ElapsedMilliseconds >= elapsed
                 && entry.Phase is "Request" or "Response" or "Finished" or "Failed" or "PolicyDenied" or "WebSocketRequested"
                 && entry.Method.Length is > 0 and <= 16 && entry.Method.All(c => char.IsAsciiLetterUpper(c) || c == '-')
                 && entry.ResourceType is "document" or "stylesheet" or "image" or "media" or "font" or "script" or "texttrack"

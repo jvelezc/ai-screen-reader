@@ -15,7 +15,7 @@ public sealed record PublicTaskFailure(string Stage, string Category, string? Co
         if (Stage is not ("Start" or "Isolation" or "Open" or "Discover" or "Snapshot" or "Input" or "Recording" or "Report")
             || Category is not ("Browser" or "Playwright" or "Protocol" or "Timeout" or "Io" or "Canceled" or "Unexpected")
             || Code is not null && (Code.Length is < 1 or > 100 || Code.Any(c => !char.IsAsciiLetterUpper(c) && c != '_'))
-            || OccurredAt == default || !double.IsFinite(ElapsedMilliseconds) || ElapsedMilliseconds is < 0 or > 180000
+            || OccurredAt == default || !double.IsFinite(ElapsedMilliseconds) || ElapsedMilliseconds < 0
             || EventSequence < 0 || EventSequence > maximumEvent || Frames.IsDefault || Frames.Length > 8
             || Frames.Any(f => !f.Type.StartsWith("HeadlessScreenReader.", StringComparison.Ordinal) || !Symbol(f.Type) || !Symbol(f.Method)
                 || f.SourceFile is { } file && (file.Length > 120 || !file.EndsWith(".cs", StringComparison.Ordinal)
