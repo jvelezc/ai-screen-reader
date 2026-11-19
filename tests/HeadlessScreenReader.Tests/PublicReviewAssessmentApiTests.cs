@@ -287,9 +287,13 @@ public sealed class PublicReviewAssessmentApiTests
         var input = rig.CaseInput();
         var caseArgs = new Dictionary<string, object?>(args)
         {
-            ["jobId"] = input.JobId, ["reportSha256"] = input.ReportSha256, ["profile"] = input.Profile,
-            ["coverage"] = "Unassessed", ["websiteConnection"] = input.WebsiteConnection,
-            ["claimantAccess"] = input.ClaimantAccess, ["standing"] = input.Standing
+            ["jobId"] = input.JobId,
+            ["reportSha256"] = input.ReportSha256,
+            ["profile"] = input.Profile,
+            ["coverage"] = "Unassessed",
+            ["websiteConnection"] = input.WebsiteConnection,
+            ["claimantAccess"] = input.ClaimantAccess,
+            ["standing"] = input.Standing
         };
         var screening = await client.CallToolAsync("website_case_assessment", caseArgs);
         Assert.False(screening.IsError ?? false);
