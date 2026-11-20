@@ -41,6 +41,23 @@ public sealed class PublicReaderFailureDiagnosticTests
     }
 
     [Theory]
+    [InlineData("CHROMIUM_CAPTURE_TIMEOUT")]
+    [InlineData("FRAME_TREE_CHANGED")]
+    [InlineData("AX_NODE_ID_CONFLICT")]
+    public async Task CaptureFailureKeepsItsClosedCauseWithoutLoggingBrowserDetails(string cause)
+    {
+        var failure = new BrowserOperationException(cause, new InvalidOperationException("private browser response"));
+        var original = PublicReaderFailureDiagnostic.Create("Capture", failure, Session, 1, null, 11044);
+        using var writer = new StringWriter();
+        await original.WriteAsync(writer);
+        writer.WriteLine("PUBLIC_READER_WORKER_UNCONFIRMED");
+        Assert.DoesNotContain("private browser response", writer.ToString());
+        var diagnostic = PublicReaderFailureDiagnostic.Read(Encoding.UTF8.GetBytes(writer.ToString()), Session);
+        Assert.Equal(cause, diagnostic?.Cause);
+        Assert.Equal("Capture", diagnostic?.Stage);
+    }
+
+    [Theory]
     [InlineData("untrusted-code")]
     [InlineData("exception-message")]
     [InlineData("untrusted-stage")]
