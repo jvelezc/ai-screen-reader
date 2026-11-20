@@ -21,14 +21,22 @@ internal static class PublicTaskProof
             var phases = new List<string>();
             var execution = executor.ExecuteAsync(job, Guid.NewGuid(), (phase, _) => { phases.Add(phase); return Task.FromResult(true); }, CancellationToken.None);
             PublicTaskLiveFrame? observed = null;
-            while (!execution.IsCompleted && observed is null)
+            PublicTaskLiveFrame? keyboard = null, pointer = null;
+            while (!execution.IsCompleted)
             {
-                for (var attempt = 1; attempt <= 3 && observed is null; attempt++)
-                    observed = await live.ReadAsync(job, attempt, DateTimeOffset.UtcNow, CancellationToken.None).ConfigureAwait(false);
-                if (observed is null) await Task.WhenAny(execution, Task.Delay(30)).ConfigureAwait(false);
+                for (var attempt = 1; attempt <= 3; attempt++)
+                {
+                    var frame = await live.ReadAsync(job, attempt, DateTimeOffset.UtcNow, CancellationToken.None).ConfigureAwait(false);
+                    observed ??= frame;
+                    if (frame?.LastKey is not null) keyboard = frame;
+                    if (frame?.Pointer is { Pressed: true }) pointer = frame;
+                }
+                await Task.WhenAny(execution, Task.Delay(80)).ConfigureAwait(false);
             }
             var native = await execution.ConfigureAwait(false);
             var liveSameExecution = observed?.ExecutionId == native.Start.ExecutionId;
+            var liveKeyboardObserved = keyboard?.ExecutionId == native.Start.ExecutionId;
+            var livePointerObserved = pointer?.ExecutionId == native.Start.ExecutionId;
             var liveCleared = observed is not null && await live.ReadAsync(job, observed.Attempt, DateTimeOffset.UtcNow, CancellationToken.None).ConfigureAwait(false) is null;
             var report = native.Bundle.Report;
             var assessment = PublicTaskAssessment.Evaluate(report, true, native.ResourcesAbsent);
@@ -40,7 +48,8 @@ internal static class PublicTaskProof
                 && report.Egress is { Requests: > 0 } && report.EgressIsolationProbeThroughSequence is > 0
                 && report.Attempts.Length == 3 && report.Attempts.All(a => a.DecodedVideoFrames > 0 && a.Network is { Requests: > 0 })
                 && phases.Contains("KeyboardAttempt1") && phases.Contains("KeyboardAttempt2") && phases.Contains("PointerComparison")
-                && liveSameExecution && liveCleared;
+                && liveSameExecution && liveCleared && liveKeyboardObserved
+                && (scenario == "pointer-unconfirmed" || livePointerObserved);
             foreach (var file in native.Bundle.Files) await File.WriteAllBytesAsync(Path.Combine(folder, scenario + "-" + file.Key), file.Value).ConfigureAwait(false);
             receipts.Add(new
             {
@@ -50,6 +59,8 @@ internal static class PublicTaskProof
                 report.AssessmentPolicy,
                 report.ReaderProfile,
                 LiveSameExecution = liveSameExecution,
+                LiveKeyboardObserved = liveKeyboardObserved,
+                LivePointerObserved = livePointerObserved,
                 LiveFrameClearedAfterCompletion = liveCleared,
                 native.ResourcesAbsent,
                 Attempts = report.Attempts.Select(a => new

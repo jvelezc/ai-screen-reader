@@ -8,7 +8,7 @@ using Microsoft.Playwright;
 namespace HeadlessScreenReader.Browser.Playwright;
 
 public sealed record PublicTaskMedia(byte[] Video, int DecodedFrames, bool CaptureStopped, bool BrowserClosed);
-public sealed record PublicTaskBrowserFrame(byte[] Data, DateTimeOffset CapturedAt);
+public sealed record PublicTaskBrowserFrame(byte[] Data, DateTimeOffset CapturedAt, PublicTaskLivePointer? Pointer = null);
 
 /// <summary>Fresh anonymous link-navigation context with public HTTPS dependencies and an independently proven network fence.</summary>
 public sealed class PublicNavigationBrowser : IAsyncDisposable
@@ -18,6 +18,10 @@ public sealed class PublicNavigationBrowser : IAsyncDisposable
     private readonly PublicTaskJob _job;
     private Task? _stopVideo;
     private PublicTaskBrowserFrame? _liveFrame;
+    private sealed record PointerFrame(PublicTaskBrowserFrame Frame, long UnixMilliseconds);
+    private sealed record SourceFrame(PublicTaskBrowserFrame Frame, string Document);
+    private SourceFrame? _lastSourceFrame;
+    private PointerFrame? _pointerFrame;
     private readonly object _gate = new();
     internal PublicNavigationBrowser(ChromiumFixtureBrowser browser, PublicTaskJob job, string folder)
     { _browser = browser; _job = job; _videoPath = Path.Combine(folder, "original.webm"); }
@@ -26,7 +30,13 @@ public sealed class PublicNavigationBrowser : IAsyncDisposable
     public int PolicyDenials => _browser.TaskPolicyDenials;
     public string CurrentUrl => _browser.DiagnosticPage.Url;
     public PublicTaskNetworkTrace? Network => _browser.TaskNetworkTrace;
-    public PublicTaskBrowserFrame? TakeLiveFrame() => Interlocked.Exchange(ref _liveFrame, null);
+    public PublicTaskBrowserFrame? TakeLiveFrame() =>
+        Volatile.Read(ref _pointerFrame) is { } pointer &&
+        DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - pointer.UnixMilliseconds is >= 0 and <= 1700
+            ? pointer.Frame : Interlocked.Exchange(ref _liveFrame, null);
+
+    public bool HasRecentPointerFrame => Volatile.Read(ref _pointerFrame) is { } point &&
+        DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - point.UnixMilliseconds is >= 0 and <= 1700;
 
     public static async Task<PublicNavigationBrowser> OpenAsync(PublicTaskJob job, IPAddress proxy, string folder, CancellationToken token)
     {
@@ -60,7 +70,12 @@ public sealed class PublicNavigationBrowser : IAsyncDisposable
             OnFrame = frame =>
             {
                 if (frame.Data.Length <= PublicTaskLiveFrame.MaximumImageBytes)
-                    Interlocked.Exchange(ref _liveFrame, new(frame.Data, DateTimeOffset.UtcNow));
+                {
+                    var now = DateTimeOffset.UtcNow;
+                    var image = new PublicTaskBrowserFrame(frame.Data, now);
+                    Volatile.Write(ref _lastSourceFrame, new(image, _browser.DiagnosticPage.Url));
+                    Interlocked.Exchange(ref _liveFrame, image);
+                }
                 first.TrySetResult();
                 return Task.CompletedTask;
             }
@@ -118,7 +133,13 @@ public sealed class PublicNavigationBrowser : IAsyncDisposable
         var links = await LinksAsync().ConfigureAwait(false);
         var index = Array.FindIndex(links, link => link.Visible && link.Url == goal.DestinationUrl && link.Name == goal.LinkName);
         if (index < 0) throw new BrowserInputDeniedException("PUBLIC_TASK_TARGET_CHANGED");
-        await _browser.PublicTaskPointerAsync(index, goal.DestinationUrl, token).ConfigureAwait(false);
+        await _browser.PublicTaskPointerAsync(index, goal.DestinationUrl, token, (point, document, at) =>
+        {
+            var source = Volatile.Read(ref _lastSourceFrame);
+            if (source is not null && source.Document == document &&
+                at - source.Frame.CapturedAt.ToUnixTimeMilliseconds() is >= 0 and <= 4500)
+                Volatile.Write(ref _pointerFrame, new(source.Frame with { Pointer = point }, at));
+        }).ConfigureAwait(false);
     }
 
     public async Task<bool> GoalObservedAsync(PublicTaskGoal goal, CancellationToken token)
@@ -195,6 +216,67 @@ public sealed class PublicNavigationBrowser : IAsyncDisposable
 
 public sealed partial class ChromiumFixtureBrowser
 {
+    private sealed record PointerObservation(PublicTaskLivePointer Point, string Document, long UnixMilliseconds);
+    private PointerObservation? _publicTaskPointer;
+
+    internal PublicTaskLivePointer? LivePointer(DateTimeOffset now)
+    {
+        var sample = Volatile.Read(ref _publicTaskPointer);
+        return sample is not null && sample.Document == _page.Url &&
+            now.ToUnixTimeMilliseconds() - sample.UnixMilliseconds is >= 0 and <= 2500 ? sample.Point : null;
+    }
+
+    private async Task ObservePublicTaskPointerAsync(Action<PublicTaskLivePointer, string, long>? observe)
+    {
+        const string world = "hsr-public-task-pointer";
+        const string binding = "hsrPublicTaskPointer";
+        _cdp.Event("Runtime.bindingCalled").OnEvent += (_, data) =>
+        {
+            if (data is not { } args || !args.TryGetProperty("name", out var name) || name.GetString() != binding ||
+                !args.TryGetProperty("payload", out var payload) || payload.GetString() is not { Length: <= 4096 } text) return;
+            try
+            {
+                using var value = JsonDocument.Parse(text);
+                var items = value.RootElement;
+                var point = new PublicTaskLivePointer(items[0].GetInt32(), items[1].GetInt32(), items[2].GetBoolean());
+                if (point.X is >= 0 and < 10000 && point.Y is >= 0 and < 10000 && items[3].GetString() is { } document)
+                {
+                    var at = items[4].GetInt64();
+                    Volatile.Write(ref _publicTaskPointer, new(point, document, at));
+                    observe?.Invoke(point, document, at);
+                }
+            }
+            catch (Exception error) when (error is JsonException or InvalidOperationException or FormatException or IndexOutOfRangeException)
+            { /* An invalid observation supplies no pointer coordinate. */ }
+        };
+        await _cdp.SendAsync("Runtime.enable").ConfigureAwait(false);
+        var frames = await _cdp.SendAsync("Page.getFrameTree").ConfigureAwait(false);
+        if (frames is null) return;
+        var frame = frames.Value.GetProperty("frameTree").GetProperty("frame").GetProperty("id").GetString()!;
+        var isolated = await _cdp.SendAsync("Page.createIsolatedWorld", new Dictionary<string, object>
+        { ["frameId"] = frame, ["worldName"] = world }).ConfigureAwait(false);
+        if (isolated is null) return;
+        var context = isolated.Value.GetProperty("executionContextId").GetInt32();
+        await _cdp.SendAsync("Runtime.addBinding", new Dictionary<string, object> { ["name"] = binding, ["executionContextId"] = context }).ConfigureAwait(false);
+        await _cdp.SendAsync("Runtime.evaluate", new Dictionary<string, object>
+        {
+            ["contextId"] = context,
+            ["expression"] = """
+                (() => {
+                  if (window !== window.top) return;
+                  const report = globalThis.hsrPublicTaskPointer;
+                  const observe = event => {
+                    if (!event.isTrusted || event.pointerType !== 'mouse') return;
+                    report(JSON.stringify([Math.floor(10000 * event.clientX / innerWidth),
+                      Math.floor(10000 * event.clientY / innerHeight), event.type === 'pointerdown', location.href, Date.now()]));
+                  };
+                  addEventListener('pointermove', observe, { capture: true, passive: true });
+                  addEventListener('pointerdown', observe, { capture: true, passive: true });
+                })();
+                """
+        }).ConfigureAwait(false);
+    }
+
     internal int TaskPolicyDenials => _taskDenialCount();
     internal int TaskHttpStatus => _taskHttpStatus();
     internal PublicTaskNetworkTrace? TaskNetworkTrace => _taskNetworkTrace();
@@ -216,9 +298,15 @@ public sealed partial class ChromiumFixtureBrowser
         return selected is { } focus ? new(focus.Id, focus.Role, focus.Name[..Math.Min(focus.Name.Length, 500)], anchor) : null;
     }).WaitAsync(token);
 
-    internal Task PublicTaskPointerAsync(int index, string expected, CancellationToken token) => _captureAdmission.RunAsync(async () =>
+    internal Task PublicTaskPointerAsync(int index, string expected, CancellationToken token,
+        Action<PublicTaskLivePointer, string, long>? observe = null) => _captureAdmission.RunAsync(async () =>
     {
         var link = _page.Locator("a[href]").Nth(index);
+        if (await link.EvaluateAsync<string>("a => a.href").ConfigureAwait(false) != expected) throw new BrowserInputDeniedException("PUBLIC_TASK_TARGET_CHANGED");
+        try { await ObservePublicTaskPointerAsync(observe).WaitAsync(TimeSpan.FromSeconds(1), token).ConfigureAwait(false); }
+        catch (Exception error) when (error is PlaywrightException or TimeoutException)
+        { /* Missing live telemetry does not change the comparison. */ }
+        token.ThrowIfCancellationRequested();
         if (await link.EvaluateAsync<string>("a => a.href").ConfigureAwait(false) != expected) throw new BrowserInputDeniedException("PUBLIC_TASK_TARGET_CHANGED");
         await link.ClickAsync(new() { Timeout = 5000 }).ConfigureAwait(false);
         return true;

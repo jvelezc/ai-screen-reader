@@ -6,6 +6,13 @@ namespace HeadlessScreenReader.Domain;
 public sealed record PublicTaskLiveFrame(string Schema, Guid OrganizationId, Guid ScanId, Guid JobId, Guid ExecutionId,
     int Attempt, int Sequence, DateTimeOffset CapturedAt, int Width, int Height, byte[] Data, string Sha256)
 {
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public PublicTaskLivePointer? Pointer { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? LastKey { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? FocusName { get; init; }
+
     public const string CurrentSchema = "hsr-public-task-live-frame-v1";
     public const int MaximumImageBytes = 160 * 1024;
     public const int MaximumEnvelopeBytes = 224 * 1024;
@@ -15,6 +22,9 @@ public sealed record PublicTaskLiveFrame(string Schema, Guid OrganizationId, Gui
         Schema == CurrentSchema && OrganizationId == start.Job.OrganizationId && ScanId == start.Job.ParentScanId
         && JobId == start.Job.JobId && ExecutionId == start.ExecutionId && Attempt is >= 1 and <= 3 && Attempt == attempt
         && Sequence > 0 && CapturedAt.Offset == TimeSpan.Zero && CapturedAt <= now.AddSeconds(1) && now - CapturedAt <= MaximumAge
+        && (Pointer is null || Attempt == 3 && Pointer.X is >= 0 and < 10000 && Pointer.Y is >= 0 and < 10000)
+        && (LastKey is null || Attempt < 3 && LastKey is "Tab" or "Enter")
+        && (FocusName is null || Attempt < 3 && PublicTaskRules.Text(FocusName, 160))
         && TryJpegSize(Data, out var width, out var height) && width == Width && height == Height && PublicTaskRules.Hash(Data) == Sha256;
 
     public static bool TryJpegSize(byte[]? data, out int width, out int height)
@@ -42,3 +52,5 @@ public sealed record PublicTaskLiveFrame(string Schema, Guid OrganizationId, Gui
         return false;
     }
 }
+
+public sealed record PublicTaskLivePointer(int X, int Y, bool Pressed);

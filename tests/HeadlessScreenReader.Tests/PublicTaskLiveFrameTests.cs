@@ -28,6 +28,26 @@ public sealed class PublicTaskLiveFrameTests
     }
 
     [Fact]
+    [Trait("Category", "Browser")]
+    public async Task ActualBrowserPointerObservationTracksTrustedInputOnly()
+    {
+        await using var browser = await ChromiumFixtureBrowser.LaunchAsync(fixture: BundledFixture.CapturePrivacy);
+        var page = browser.DiagnosticPage;
+        await page.SetContentAsync("<a href='#target' onclick='event.preventDefault()' style='display:block;margin:100px;width:200px;height:40px'>Target</a>");
+        var target = await page.Locator("a").EvaluateAsync<string>("a => a.href");
+        var box = Assert.IsType<Microsoft.Playwright.LocatorBoundingBoxResult>(await page.Locator("a").BoundingBoxAsync());
+        var viewport = await page.EvaluateAsync<int[]>("() => [innerWidth, innerHeight]");
+        await browser.PublicTaskPointerAsync(0, target, default);
+        var point = Assert.IsType<PublicTaskLivePointer>(browser.LivePointer(DateTimeOffset.UtcNow));
+        Assert.True(point.Pressed);
+        Assert.InRange(point.X * viewport[0] / 10000f, box.X - 1, box.X + box.Width);
+        Assert.InRange(point.Y * viewport[1] / 10000f, box.Y - 1, box.Y + box.Height);
+        await page.EvaluateAsync("() => document.querySelector('a').dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse', clientX: 2, clientY: 2 }))");
+        Assert.Equal(point, browser.LivePointer(DateTimeOffset.UtcNow));
+        Assert.Null(browser.LivePointer(DateTimeOffset.UtcNow.AddSeconds(4)));
+    }
+
+    [Fact]
     public async Task LiveFrameAndFinalArchiveUseDistinctBoundedMessages()
     {
         var start = PublicTaskTests.Report().Start;
@@ -68,6 +88,10 @@ public sealed class PublicTaskLiveFrameTests
         await Write(frame with { CapturedAt = DateTimeOffset.UtcNow.AddMinutes(-1) });
         Assert.Null(await Current(1));
         await Write(frame with { Sha256 = new('e', 64) });
+        Assert.Null(await Current(1));
+        await Write(frame with { Pointer = new(2000, 5000, true) });
+        Assert.Null(await Current(1));
+        await Write(frame with { LastKey = "F12" });
         Assert.Null(await Current(1));
         await Write(frame);
         Assert.Equal(frame.Sha256, Assert.IsType<PublicTaskLiveFrame>(await Current(1)).Sha256);

@@ -69,12 +69,14 @@ internal static class PublicTaskWorker
                 PublicTaskReaderController? reader = null; PublicTaskReaderRecord? initialReader = null;
                 PublicTaskKeyboardPath? path = null;
                 AccessibilitySnapshot? beforeSnapshot = null;
-                long lastFrame = 0;
+                using var liveStop = CancellationTokenSource.CreateLinkedTokenSource(stop.Token);
+                Task? liveFrames = null;
+                string? liveKey = null, liveFocus = null;
                 try
                 {
                     browser = await PublicNavigationBrowser.OpenAsync(start.Job, proxy, Path.Combine(folder, $"attempt-{number}"), stop.Token).ConfigureAwait(false);
                     activeBrowser = browser;
-                    await PublishFrame().ConfigureAwait(false);
+                    liveFrames = PublishFramesAsync();
                     stage = "Discover";
                     browserVersion = browser.BrowserVersion; playwrightVersion = browser.PlaywrightVersion;
                     goal ??= await browser.DiscoverAsync(stop.Token).ConfigureAwait(false);
@@ -92,6 +94,7 @@ internal static class PublicTaskWorker
                     stage = "Snapshot";
                     initialReader = await reader.ExecuteAsync("Observe", stop.Token).ConfigureAwait(false);
                     if (initialReader.Outcome != "Observed") throw new BrowserOperationException("PUBLIC_TASK_READER_UNCONFIRMED");
+                    RememberFocus();
                     beforeSnapshot = reader.Snapshot ?? throw new BrowserOperationException("PUBLIC_TASK_READER_UNCONFIRMED");
                     Add(beforePath, JsonSerializer.SerializeToUtf8Bytes(beforeSnapshot, ReaderWorkerWire.Json), "application/json");
                     if (same)
@@ -108,6 +111,8 @@ internal static class PublicTaskWorker
                     }
                     finalUrl = start.Job.Source.AllowsDocument(browser.CurrentUrl) ? browser.CurrentUrl : null;
                     var reached = await browser.GoalObservedAsync(goal, stop.Token).ConfigureAwait(false);
+                    if (number == 3 && browser.HasRecentPointerFrame)
+                        await Task.Delay(1100, stop.Token).ConfigureAwait(false);
                     denials = Math.Min(1000, browser.PolicyDenials);
                     outcome = reached ? "Reached" : same && finalUrl == start.Job.Source.TargetUrl ? "NotReached" : "Unconfirmed";
                     if (denials != 0) { error = "PUBLIC_TASK_POLICY_INTERRUPTED"; outcome = "Unconfirmed"; }
@@ -122,6 +127,8 @@ internal static class PublicTaskWorker
                 }
                 finally
                 {
+                    await liveStop.CancelAsync().ConfigureAwait(false);
+                    if (liveFrames is not null) await liveFrames.ConfigureAwait(false);
                     // A failed input is precisely when the original recording matters most.
                     // Retain permitted observations/media even when the task outcome is uncertain.
                     if (browser is not null && goal is not null)
@@ -199,19 +206,42 @@ internal static class PublicTaskWorker
                             action, before, after, url, attempted, completed)
                         { Reader = record });
                     }
-                    await PublishFrame().ConfigureAwait(false);
+                    if (action != "Pointer" && completed)
+                    {
+                        Volatile.Write(ref liveKey, action);
+                        RememberFocus();
+                    }
                 }
 
-                async Task PublishFrame()
+                void RememberFocus()
                 {
-                    if (lastFrame != 0 && System.Diagnostics.Stopwatch.GetElapsedTime(lastFrame) < TimeSpan.FromMilliseconds(650)) return;
-                    var captured = browser?.TakeLiveFrame();
-                    if (captured is null || !PublicTaskLiveFrame.TryJpegSize(captured.Data, out var width, out var height)) return;
-                    lastFrame = System.Diagnostics.Stopwatch.GetTimestamp();
-                    var frame = new PublicTaskLiveFrame(PublicTaskLiveFrame.CurrentSchema, start.Job.OrganizationId, start.Job.ParentScanId,
-                        start.Job.JobId, start.ExecutionId, number, ++frameSequence, captured.CapturedAt, width, height, captured.Data,
-                        PublicTaskRules.Hash(captured.Data));
-                    await PublicTaskLiveWire.WriteFrameAsync(output, frame, stop.Token).ConfigureAwait(false);
+                    var name = number < 3 ? reader?.Focus?.Name : null;
+                    Volatile.Write(ref liveFocus, name is not null && PublicTaskRules.Text(name, 160) ? name : null);
+                }
+
+                async Task PublishFramesAsync()
+                {
+                    using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(650));
+                    try
+                    {
+                        do
+                        {
+                            var captured = browser?.TakeLiveFrame();
+                            if (captured is null || !PublicTaskLiveFrame.TryJpegSize(captured.Data, out var width, out var height)) continue;
+                            var frame = new PublicTaskLiveFrame(PublicTaskLiveFrame.CurrentSchema, start.Job.OrganizationId, start.Job.ParentScanId,
+                                start.Job.JobId, start.ExecutionId, number, ++frameSequence, captured.CapturedAt, width, height, captured.Data,
+                                PublicTaskRules.Hash(captured.Data))
+                            {
+                                Pointer = number == 3 ? captured.Pointer : null,
+                                LastKey = Volatile.Read(ref liveKey),
+                                FocusName = Volatile.Read(ref liveFocus)
+                            };
+                            // Let an in-flight message settle before closing so the evidence archive remains framed.
+                            await PublicTaskLiveWire.WriteFrameAsync(output, frame, stop.Token).ConfigureAwait(false);
+                        } while (await timer.WaitForNextTickAsync(liveStop.Token).ConfigureAwait(false));
+                    }
+                    catch (Exception error) when (error is IOException or OperationCanceledException)
+                    { /* Unavailable live transport cannot supply a task outcome. */ }
                 }
             }
             stage = "Report";

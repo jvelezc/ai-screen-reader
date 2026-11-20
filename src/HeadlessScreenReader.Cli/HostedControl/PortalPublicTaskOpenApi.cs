@@ -11,6 +11,9 @@ internal static partial class PortalOpenApi
             value["required"] = Strings(properties.Select(p => p.Key).Where(k => k != "navigation").ToArray());
         if (type == typeof(PublicTaskLiveFrame))
         {
+            value["required"] = Strings(properties.Select(p => p.Key).Where(k => k is not ("pointer" or "lastKey" or "focusName")).ToArray());
+            properties["lastKey"]!["description"] = "Optional last completed keyboard input within this attempt.";
+            properties["focusName"]!["maxLength"] = 160;
             properties["schema"]!["const"] = PublicTaskLiveFrame.CurrentSchema;
             properties["attempt"]!["minimum"] = 1; properties["attempt"]!["maximum"] = 3;
             properties["sequence"]!["minimum"] = 1;
