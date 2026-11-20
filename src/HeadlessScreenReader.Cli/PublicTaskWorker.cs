@@ -130,8 +130,10 @@ internal static class PublicTaskWorker
                     await liveStop.CancelAsync().ConfigureAwait(false);
                     if (liveFrames is not null) await liveFrames.ConfigureAwait(false);
                     // A fast keyboard route can finish before the next scheduled frame.
-                    if (number < 3 && liveKey is not null)
-                        await PublishFrameAsync(reuseLatest: true).ConfigureAwait(false);
+                    // The close grant retires the attempt's live frame on a separate stream.
+                    if (number < 3 && liveKey is not null &&
+                        await PublishFrameAsync(reuseLatest: true).ConfigureAwait(false))
+                        await Task.Delay(1500, stop.Token).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
                     // A failed input is precisely when the original recording matters most.
                     // Retain permitted observations/media even when the task outcome is uncertain.
                     if (browser is not null && goal is not null)
@@ -235,11 +237,11 @@ internal static class PublicTaskWorker
                     catch (OperationCanceledException) when (liveStop.IsCancellationRequested) { }
                 }
 
-                async Task PublishFrameAsync(bool reuseLatest = false)
+                async Task<bool> PublishFrameAsync(bool reuseLatest = false)
                 {
                     var captured = browser?.TakeLiveFrame(reuseLatest);
                     if (captured is null || DateTimeOffset.UtcNow - captured.CapturedAt >= PublicTaskLiveFrame.MaximumAge ||
-                        !PublicTaskLiveFrame.TryJpegSize(captured.Data, out var width, out var height)) return;
+                        !PublicTaskLiveFrame.TryJpegSize(captured.Data, out var width, out var height)) return false;
                     var frame = new PublicTaskLiveFrame(PublicTaskLiveFrame.CurrentSchema, start.Job.OrganizationId, start.Job.ParentScanId,
                         start.Job.JobId, start.ExecutionId, number, ++frameSequence, captured.CapturedAt, width, height, captured.Data,
                         PublicTaskRules.Hash(captured.Data))
@@ -252,9 +254,10 @@ internal static class PublicTaskWorker
                     {
                         // Complete each message before opening the evidence archive on this stream.
                         await PublicTaskLiveWire.WriteFrameAsync(output, frame, stop.Token).ConfigureAwait(false);
+                        return true;
                     }
                     catch (Exception error) when (error is IOException or OperationCanceledException)
-                    { /* Unavailable live transport cannot supply a task outcome. */ }
+                    { return false; /* Unavailable live transport cannot supply a task outcome. */ }
                 }
             }
             stage = "Report";
