@@ -129,6 +129,9 @@ internal static class PublicTaskWorker
                 {
                     await liveStop.CancelAsync().ConfigureAwait(false);
                     if (liveFrames is not null) await liveFrames.ConfigureAwait(false);
+                    // A fast keyboard route can finish before the next scheduled frame.
+                    if (number < 3 && liveKey is not null)
+                        await PublishFrameAsync(reuseLatest: true).ConfigureAwait(false);
                     // A failed input is precisely when the original recording matters most.
                     // Retain permitted observations/media even when the task outcome is uncertain.
                     if (browser is not null && goal is not null)
@@ -226,19 +229,29 @@ internal static class PublicTaskWorker
                     {
                         do
                         {
-                            var captured = browser?.TakeLiveFrame();
-                            if (captured is null || !PublicTaskLiveFrame.TryJpegSize(captured.Data, out var width, out var height)) continue;
-                            var frame = new PublicTaskLiveFrame(PublicTaskLiveFrame.CurrentSchema, start.Job.OrganizationId, start.Job.ParentScanId,
-                                start.Job.JobId, start.ExecutionId, number, ++frameSequence, captured.CapturedAt, width, height, captured.Data,
-                                PublicTaskRules.Hash(captured.Data))
-                            {
-                                Pointer = number == 3 ? captured.Pointer : null,
-                                LastKey = Volatile.Read(ref liveKey),
-                                FocusName = Volatile.Read(ref liveFocus)
-                            };
-                            // Let an in-flight message settle before closing so the evidence archive remains framed.
-                            await PublicTaskLiveWire.WriteFrameAsync(output, frame, stop.Token).ConfigureAwait(false);
+                            await PublishFrameAsync().ConfigureAwait(false);
                         } while (await timer.WaitForNextTickAsync(liveStop.Token).ConfigureAwait(false));
+                    }
+                    catch (OperationCanceledException) when (liveStop.IsCancellationRequested) { }
+                }
+
+                async Task PublishFrameAsync(bool reuseLatest = false)
+                {
+                    var captured = browser?.TakeLiveFrame(reuseLatest);
+                    if (captured is null || DateTimeOffset.UtcNow - captured.CapturedAt >= PublicTaskLiveFrame.MaximumAge ||
+                        !PublicTaskLiveFrame.TryJpegSize(captured.Data, out var width, out var height)) return;
+                    var frame = new PublicTaskLiveFrame(PublicTaskLiveFrame.CurrentSchema, start.Job.OrganizationId, start.Job.ParentScanId,
+                        start.Job.JobId, start.ExecutionId, number, ++frameSequence, captured.CapturedAt, width, height, captured.Data,
+                        PublicTaskRules.Hash(captured.Data))
+                    {
+                        Pointer = number == 3 ? captured.Pointer : null,
+                        LastKey = Volatile.Read(ref liveKey),
+                        FocusName = Volatile.Read(ref liveFocus)
+                    };
+                    try
+                    {
+                        // Complete each message before opening the evidence archive on this stream.
+                        await PublicTaskLiveWire.WriteFrameAsync(output, frame, stop.Token).ConfigureAwait(false);
                     }
                     catch (Exception error) when (error is IOException or OperationCanceledException)
                     { /* Unavailable live transport cannot supply a task outcome. */ }

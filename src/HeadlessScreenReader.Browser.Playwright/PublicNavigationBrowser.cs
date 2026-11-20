@@ -30,10 +30,12 @@ public sealed class PublicNavigationBrowser : IAsyncDisposable
     public int PolicyDenials => _browser.TaskPolicyDenials;
     public string CurrentUrl => _browser.DiagnosticPage.Url;
     public PublicTaskNetworkTrace? Network => _browser.TaskNetworkTrace;
-    public PublicTaskBrowserFrame? TakeLiveFrame() =>
+    public PublicTaskBrowserFrame? TakeLiveFrame(bool reuseLatest = false) =>
         Volatile.Read(ref _pointerFrame) is { } pointer &&
         DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - pointer.UnixMilliseconds is >= 0 and <= 1700
-            ? pointer.Frame : Interlocked.Exchange(ref _liveFrame, null);
+            ? pointer.Frame
+            : Interlocked.Exchange(ref _liveFrame, null) ??
+              (reuseLatest ? Volatile.Read(ref _lastSourceFrame)?.Frame : null);
 
     public bool HasRecentPointerFrame => Volatile.Read(ref _pointerFrame) is { } point &&
         DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - point.UnixMilliseconds is >= 0 and <= 1700;
